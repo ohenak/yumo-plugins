@@ -588,7 +588,73 @@ behavioural one.
 
 ## 6. Error Handling and Degradation
 
-*(pending)*
+Every failure scenario reachable by this feature, with its expected behaviour. Nothing here halts,
+and nothing introduces an operator-facing failure class (REQ-DECLEDGER-04, G-3).
+
+### 6.1 Failure table
+
+| # | Scenario | Where handled | Behaviour |
+|---|---|---|---|
+| F-1 | `.claude/pdlc.config.json` absent or unreadable | `readLearningsConfigSafely` returns `null`; `parseDecisionLedgerConfig(null)` | All three keys take C-5 defaults ⇒ `enabled: false` ⇒ disabled run. No notice |
+| F-2 | Config file present but not valid JSON | `parseDecisionLedgerConfig`'s `JSON.parse` catch | Defaults ⇒ disabled run. No notice (the shipped parsers are silent here too) |
+| F-3 | `decisionLedger` key absent | missing-block short-circuit | Defaults ⇒ disabled run. **No notice** — the common case, kept silent so the disabled report stays byte-identical |
+| F-4 | `decisionLedger` present but not a plain object | `sectionMalformed: true` | Defaults ⇒ disabled run, plus `NTC-DECLEDGER-MALFORMED` |
+| F-5 | One key wrong-typed, others valid | `boolField` / `nonNegativeInt` push to `invalidKeys` | **Only** that key defaults; the other two keep operator values; other blocks untouched. Plus `NTC-DECLEDGER-KEYTYPE` naming the key (BR-10, E-5). With `enabled` the wrong-typed key the fallback is `false`, so the run is a disabled run |
+| F-6 | `git ls-files` returns `!ok`, or `_git` throws | `gatherDecisionCorpus`' outer `try/catch` | `{ unlistable: true }` ⇒ `corpusOutcome: "RSN-UNLISTABLE"` ⇒ empty selection ⇒ `renderDecisionLedgerBlock` returns `""` ⇒ **total leg** (E-2) |
+| F-7 | Enumeration succeeds but returns zero paths | `entries.length === 0` | `corpusOutcome: "RSN-EMPTY"` ⇒ total leg |
+| F-8 | One source file unreadable (`_readFile` throws, or returns `null`/`undefined`) | per-path `try/catch` | That entry gets `readOk: false`, is counted in `failedSources`, contributes no line; **every other source renders** ⇒ partial leg (E-3) |
+| F-9 | A source reads but holds zero decision records | `recogniseDecisionRecords` returns `[]` | Counted in `emptySources`, **not** in `failedSources`. Contributes no line, is not a failure, and cannot cause the total leg (BR-8, E-4, `M-4e`) |
+| F-10 | Every in-scope decision fails to render for any mixture of F-8/F-9 reasons | `selected.length === 0` | Total leg — same bytes as F-6/F-7. This is why §6.2 partitions on *what survives*, never on *what failed* |
+| F-11 | Rendered index exceeds `maxEntries` and/or `maxBytes` | §3.6's drop loop | Whole lines dropped in omission order until both bounds hold; each drop recorded in `omitted[]`. Never truncated, never aborted, never oversized (BR-13, N-1) |
+| F-12 | A single line alone exceeds `maxBytes` | same loop | Dropped whole; the remaining lines render if they fit; if it was the only line, `selected` is empty and the block is `""` (E-8 ⇒ E-6) |
+| F-13 | `maxEntries` resolves to `0` | `nonNegativeInt` accepts `0`; the drop loop empties `selected` | Block is `""` — E-6's outcome. Not an error, not a fallback to the default, not a halt (E-7) |
+| F-14 | The feature under review has no directory among the three globs, or its directory yields zero records | §3.1's union over one operand | Project-level set alone. Not a failure, not an empty-set error (Q-2) |
+
+Nothing in this table throws past `dispatchAndVerify`, and nothing writes to disk.
+
+### 6.2 The two legs, restated as one predicate
+
+FSPEC §3.3's legs are decided by what **survives**, never by the kind of thing that failed:
+
+```
+selected.length === 0            →  total leg    (block is "", dispatch as if flag off)
+0 < selected.length < inScope    →  partial leg  (failed lines absent, survivors render)
+selected.length === inScope      →  ordinary render
+```
+
+Because the predicate reads only `selected`, there is no third outcome to invent and no case left
+over: the total leg is the degenerate case of the partial leg where the surviving subset is empty.
+This is also why F-9 cannot cause the total leg on its own reading — an empty source removes
+nothing from `selected` that was ever in it.
+
+### 6.3 O-7 — the driver-internal observable BR-8 needs
+
+FSPEC O-7 assigns TSPEC an obligation: BR-8's empty-versus-failed distinction has no
+dispatch-visible consequence, so without a driver-internal observable it is unfalsifiable.
+
+The observable is the pair of **separate** fields `failedSources` and `emptySources`, returned by
+`selectDecisions` and carried onto `report.decisionLedger.dispatches[].{failedSources,emptySources}`
+(§5.1). They are disjoint by construction — an entry is classified by `readOk`, and an entry with
+`readOk: true` can only reach `emptySources` — and their union is the set of sources contributing
+no line.
+
+That gives AT-10's classification conjunct something to assert: for a corpus whose only source
+reads and parses to zero records, the dispatch bytes are E-6's (identical to the total leg's, so
+not discriminating), **and** `failedSources` is `[]` while `emptySources` has one member. Reverse
+the classification in the implementation and the bytes do not move but the assertion fails — which
+is exactly the falsifiability O-7 asked for.
+
+Neither field is read by any driver computation; both are write-only report data, so adding them
+cannot disturb BR-11/§5.5.
+
+### 6.4 Degradation direction
+
+Every path above degrades toward **absence**, never toward a wrong line (BR-7). A decision missing
+from the index is one a reviewer may freely challenge; a decision rendered with a wrong statement or
+an unresolvable citation would suppress a legitimate challenge. Concretely: a record whose heading
+does not match `DECISION_HEADING_RE` is not recognised and contributes nothing, rather than being
+rendered with a guessed statement; a source that fails to read contributes nothing rather than a
+placeholder line; and a line that will not fit is dropped whole rather than truncated.
 
 ## 7. Test Strategy
 
