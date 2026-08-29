@@ -71,7 +71,35 @@ FINDING: Low | inherited | nonlocal | Header *Cross-Reviews* row (REQ:13) | The 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: is the Baseline's *Cited by* list meant to name every citing site, or only the ones a `Version` bump must re-verify? I have read it as the former, since it calls itself "the propagation path" — but if the intent is the latter, `§6 R-5` and `§7 A-1` still qualify, because both restate a measured *number*, not just an id. |
+| Q-02 | Round 8's Q-01 is now answered from the TSPEC side (the bound includes block framing, headroom ~441 B). Does that answer want to land back in C-5 as F-02 proposes, or does the REQ deliberately keep the substance floor and leave the rendered figure entirely to the TSPEC? Either is defensible; only C-5 can settle which. |
+
 ## Positive Observations
+
+- **The erratum did exactly what it declared and nothing more.** Three sites changed; the diff is
+  twelve inserted lines, nine of them the note itself. I checked every clause that reads the
+  Baseline at a version (`§4 C-5`, `§5 REQ-DECLEDGER-01`, `§5 REQ-DECLEDGER-04`, `§7 O-1`, `§7 O-5`,
+  `§7 O-6`) and none needed to move, because v1.2 added §8 without disturbing §1–§7. "No measured
+  value moves" is a checkable claim and it checks out.
+- **The claim is backed by an id rather than by assertion.** The note could have said "nothing
+  moved"; instead it cites `M-7e`, which is the fact that §8 was measured on the same tree at the
+  same `Verified at` commit. That is the form the pm-author altitude rule asks for, and it is why
+  I could confirm the claim from the Baseline alone.
+- **The routing is clean and explicit.** Three of the five routed items belong to se-author's
+  documents, and the note names them as such rather than silently dropping them or restating them
+  here. Restating them would have been the tempting error — they concern C-5's own default — and
+  it was not made. Under DEC-ERR-01 that is the difference between an absorbed decision and a
+  question re-asked one layer down.
+- **The FSPEC cascade the v1.8 note promised has landed.** Round 8's F-05 named two lines
+  (`FSPEC:111`, `FSPEC:545`) still carrying `8000` and the retired analogy. Both now read
+  `12500` derived from `M-7b`/`M-7c` (`FSPEC:120`, `FSPEC:554-555`), and the FSPEC's own Baseline
+  pin is `v1.2` (`FSPEC:11`). The declared debt was paid, unprompted, before this confirmation.
+- **No stale live pin survives anywhere in the REQ.** The two remaining `v1.1` strings are
+  historical statements about what v1.1 contained, and both are true of the v1.1 commit. That
+  distinction — a pin versus a fact about a past version — is the one an incautious sweep would
+  have flattened.
 
 ## Recommendation
 
