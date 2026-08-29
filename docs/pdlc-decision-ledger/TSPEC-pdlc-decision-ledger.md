@@ -581,7 +581,11 @@ is therefore **pinned, not left to drift**: the four constants together must ren
 bytes**, asserted by a pure unit test against that literal. Without the pin the framing is an
 unmeasured quantity sitting inside a measured budget, and §3.6's headroom arithmetic would be
 unfalsifiable prose. If a future edit to the rule text needs more than 1,200 bytes, the pin reddens and
-the budget is re-decided deliberately — which is the point. Statements are transcribed verbatim and are
+the budget is re-decided deliberately — which is the point. **1,200 is a budget the rule text must be
+drafted to fit, not a measurement of drafted text** (the constants do not exist yet), and it is not
+free: §3.6's ~495 bytes of headroom shrink one-for-one with any raise, so the task that writes
+`DECISION_LEDGER_RULE_TEXT` either fits the budget or re-opens the arithmetic together with ERR-2
+rather than quietly raising the literal. Statements are transcribed verbatim and are
 single-line by construction (§3.2 matches to end of line), so no line can wrap into a second and
 "whole lines are omitted" is well-defined byte-wise. Field order and separators are fixed here so
 PROPERTIES can transcribe expected values from the fixture (Q-1); the values themselves come from
@@ -1192,7 +1196,7 @@ they can be written against a fixed target.
 ## 9. Open Questions
 
 Nothing here blocks PLAN authoring. §9.1 records decisions this spec took where real alternatives
-existed — DECISIONS material. §9.2 records the one erratum this spec raises upstream. §9.3 records
+existed — DECISIONS material. §9.2 records the errata this spec raises upstream. §9.3 records
 what remains genuinely open.
 
 ### 9.1 Decisions taken, with the alternative rejected
@@ -1208,6 +1212,9 @@ what remains genuinely open.
 | **D-7** | The rendered citation is `[{sourcePath} § {id}]` (§4.3) | `[{sourcePath} § {heading}]`, which an earlier draft specified. The heading *is* the id plus the statement, so that form rendered every statement twice — 9,371 bytes against 6,305 for the project-level set, ~33% of the block spent on a duplicate. Path-plus-id resolves the record at its own source, which is all BR-3 and AT-02 require. `DecisionRecord.heading` is retained as the verbatim value expected results are transcribed from, but is not rendered |
 | **D-8** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` (§4.2) | Letting `selectDecisions` compute the size from its own concatenation. Two implementations of one format drift, and the drift is invisible in the worst direction — BR-12's bound enforced against a size the prompt does not have, with both functions individually looking right and every test green |
 | **D-9** | The framing constants are pinned to a ≤1,200-byte budget by a unit test (§4.3) | Leaving framing unmeasured. D-5 charges framing to `maxBytes`, so an unpinned framing size is an unmeasured quantity inside a measured budget, and §3.6's headroom arithmetic would be unfalsifiable prose |
+
+| **D-10** | §3.6's "the promoted corpus is admitted whole" is stated as a **measured, pinned** fact at the Baseline's commit, with an assertion at C-5's shipped defaults in §7.3's corpus oracle | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is ~495 bytes of headroom — about three more promoted decisions, in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision |
+| **D-11** | AT-03's mutation is applied to the scripted `_readFile` double's returned text, not to the fixture copy FSPEC AT-03's Given names (§7.6) | Mutating the fixture file, as AT-03 literally says. §7.3's per-file digest guard makes the copy immutable and AT-01 requires it, so the two clauses are contradictory as written; mutating on disk also writes to the working tree, which §7.3 exists to prevent. The double's return preserves what AT-03 is *for* — re-gathering per dispatch, holding no snapshot (§2.6, BR-9) — and is a stronger falsifier, since it varies only the bytes the injector reads. Raised at the FSPEC as ERR-4 rather than left as an unexplained divergence |
 
 These are load-bearing and a future reader will otherwise reconsider them confidently:
 **DECISIONS is warranted.**
@@ -1228,7 +1235,9 @@ lines.** A-1 records 8000 as an unmeasured analogy from `learningsInjection`. Th
 taken (§3.6): at the Baseline's `Verified at` commit, under §4.3's shipped line format, the
 project-level set alone renders 41 lines / **6,305** bytes, and with §4.3's ≤1,200-byte framing
 budget charged (D-5) the 8,000-byte bound leaves roughly **495** bytes — about **two** feature-level
-lines at the measured 137–160 bytes/line. The largest feature directory (`pdlc-headless-engine`,
+lines at the measured feature-level size of **152–261** bytes/line (means 183 / 191 / 206 for
+`pdlc-advisory-wave-gate` / `pdlc-engineering-loop` / `pdlc-headless-engine`; project-level lines are
+smaller, 109–200, mean 153). The largest feature directory (`pdlc-headless-engine`,
 `M-6b`'s 63-line floor) would need 12,059 bytes to render whole.
 
 Nothing here is broken: the omission order is designed for exactly this, project-level material is
@@ -1241,6 +1250,30 @@ either value since the bound is a parameter and the order is the mechanism. The 
 supplied so the choice can be made on numbers; A-1 already makes the default operator-revisable
 without a REQ revision, so this may equally be resolved by leaving C-5 alone and letting operators
 raise it.
+
+*No PLAN task turns on which way ERR-2 resolves* (PM Q-02). If the default moves, the change is one
+literal in C-5's row and the same literal in the config parser's default, both inside tasks the PLAN
+already owes; the only test that reads the value is §7.3's shipped-default assertion, whose threshold
+follows the resolved default while its transcribed 6,305 does not move. If the default stands, nothing
+is written at all. What ERR-2 must not do is resolve *after* those tasks are written, which is why it
+is raised now rather than at implementation.
+
+**ERR-3 — FSPEC AT-02's Then clause is written against a citation format this spec retired.** It
+reads "the cited record file exists and **carries the cited heading**"; under D-7 the rendered line
+cites `[{sourcePath} § {id}]`, so nothing in the line names a heading and a test author working from
+AT-02's literal text has nothing to resolve. The line format is FSPEC Q-1's own delegation to this
+spec, so the criterion's wording should follow the format rather than the reverse. The intent is
+unchanged and is discharged in §7.6's resolution chain — the citation resolves at its own source and
+the statement matches — so the correction is to AT-02's words: *the cited record file exists and
+carries a record with the cited id, whose statement equals the rendered statement*.
+
+**ERR-4 — FSPEC AT-03's Given ("a record in the frozen fixture copy changes between two dispatch
+constructions") is contradicted by AT-01's frozen-fixture requirement.** §7.3 guards the copy with
+hand-transcribed per-file digests, so a test mutating a fixture file reddens the integrity guard, and
+the mutation would also write to the working tree. D-11 substitutes the scripted `_readFile` double's
+returned text, which preserves AT-03's subject and constraint; AT-03's Given should name the level
+at which the corpus changes ("the corpus read by a dispatch changes between two constructions")
+rather than the file, so the two criteria stop contradicting each other.
 
 ### 9.3 Genuinely open
 
