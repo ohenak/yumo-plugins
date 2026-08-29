@@ -267,6 +267,52 @@ are omitted is TSPEC's (O-1); that the bounds hold afterwards is this rule. *(-0
 
 ## 5. Edge Cases & Error Scenarios
 
+Rendering is **total**: every case below has one stated outcome, and no case is left to an
+engineer's discretion. Cases marked *(no HEAD instance)* have no witness in the standing corpus and
+are owed a constructed fixture — REQ O-5/O-6 record that as a coverage obligation on PROPERTIES, not
+as a defect here.
+
+### Configuration edges
+
+| # | Case | Outcome |
+|---|---|---|
+| **E-1** | `enabled` absent, `false`, wrong-typed, or the whole block missing | Disabled behavior, BR-4. All four spellings of "not enabled" collapse to one outcome; none is an error and none is reported to the operator |
+| **E-5** | One key malformed, the other two valid — for each of the three keys, and for each of {wrong type, malformed, absent} | Only that key takes its default; the other two keep operator values; other blocks unaffected (BR-10). With `enabled` the malformed key, the fallback is `false`, so the run is a disabled run |
+
+### Corpus edges
+
+| # | Case | Outcome |
+|---|---|---|
+| **E-4** | A source file exists, reads and parses, and holds **zero** decision records | Ordinary empty result. Contributes nothing; neither fail-open leg is taken (BR-8). Two standing-corpus files are in this position — `M-4a` (decisions carried as bullets with no id at all) and `M-4b` (headings whose ids carry no namespace segment) |
+| **E-9** | A file mixes decision records with headings that contain a `DEC-` id but record nothing — question headings and back-references | The non-records contribute no line; the file's real records render normally. `M-4d` is the sole HEAD instance, carrying 4 records alongside 8 such headings. Which headings qualify is the recognition rule's (O-1); that a mixed file still renders its real records is this spec's |
+| **E-10** | One id is opened twice in one file, the first opening stating the question and the second stating the outcome | Exactly one line renders, and its statement says what was **decided** (BR-2, BR-3). `M-3c` is the sole HEAD witness |
+| **E-11** *(no HEAD instance)* | The same id is recorded in both a project-level and a feature-level file | One line renders. `M-5a` records zero such ids at HEAD, so no expected value can be transcribed; `M-5c` names the intent — the project-level record wins, a decision promoted to project level rendering in its promoted form — and the rule itself is TSPEC's (O-1). Owed a synthetic two-file fixture (O-5) |
+
+### Failure edges
+
+| # | Case | Outcome |
+|---|---|---|
+| **E-2** *(no HEAD instance)* | **Every** decision-record source is missing, unreadable, or unparseable | Total leg: no index, no rule text — the disabled behavior of BR-4. Not a halt, not a new operator-facing failure class |
+| **E-3** *(no HEAD instance)* | One decision of several fails to render; the rest are fine | Partial leg: that line is omitted, every other line renders, index and rule text are present (BR-7) |
+
+### Size edges
+
+| # | Case | Outcome |
+|---|---|---|
+| **E-6** | The in-scope set is **empty** — zero decisions, whether because none exist or because all were omitted | **No index block at all.** Not an empty block, not a header with no rows. Rule text does not stand alone without an index |
+| **E-7** | `maxEntries` resolves to `0` | Treated as zero in-scope decisions — E-6's outcome. **Not an error**, not a fallback to the default, not a halt |
+| **E-8** | A **single line by itself** exceeds `maxBytes` | That line is omitted whole. It is never truncated mid-line, and its omission does not abort the rest: the remaining lines render if they fit (BR-13). Where it was the only line, E-6 follows |
+
+### Two non-cases, stated so they are not invented
+
+**N-1 — there is no "index too large to send" failure.** Over-budget is always resolved by omission
+(BR-13), so no dispatch is ever aborted, oversized, or retried on account of index size. E-8 is the
+extreme, and it too resolves by omission.
+
+**N-2 — there is no suppressed-finding state.** A reviewer who declines to file is not observable to
+the driver: the finding is **absent**, not marked, not counted, not carried. No driver-side
+"discounted finding" state exists for any gate to disagree about (REQ NG-4, BR-11).
+
 ## 6. Acceptance Tests
 
 ## 7. Open Questions
