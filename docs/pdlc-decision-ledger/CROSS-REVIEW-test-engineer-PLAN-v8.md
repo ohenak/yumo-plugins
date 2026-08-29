@@ -98,7 +98,40 @@ carried forward into the revision. I raise no successor to it.
 
 ## Verification
 
-_pending_
+What I did, so the next round can reproduce it:
+
+1. Re-read my own prior round, `CROSS-REVIEW-test-engineer-PLAN-v7.md` — verdict *Approved with
+   minor changes*, `{"high":0,"medium":1,"low":1}`, `REVIEWED-COMMIT: 5ffa27135`,
+   `UPSTREAM-STATE: TSPEC sha256:eef45ef3…0623c8`.
+2. `git log --oneline -- TSPEC…` → one commit since that approval: `452d72c07`
+   *"erratum v1.0 — home the census constants, drop them from owned decls"*. Read its full diff
+   (48 lines changed, +44/−4, §7.3 body + changelog only).
+3. Confirmed PLAN's own bytes are unchanged since `5ffa27135` (no PLAN commit follows it).
+4. `shasum -a 256` over all four upstream documents; compared against the PLAN header pin table and
+   against the hashes carried in this dispatch. All four dispatch hashes reproduce.
+5. Grepped PLAN for every occurrence of `CENSUS`, `OWNED_DECLS`, `§7.3` (40 matches) and read each
+   in full — the five sites in §Batches are the complete set of contradicted loci.
+6. Re-derived the partition arithmetic from TSPEC v1.0's own text rather than trusting either
+   document's stated count: six tokens (`selectDecisions`, `recogniseDecisionRecords`,
+   `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`,
+   `DECISION_LEDGER_CORPUS_OUTCOMES`) ∪ eight exempt (`parseDecisionLedgerConfig`,
+   `buildDecisionLedgerInjector`, `DECISION_LEDGER_DEFAULTS`, `DECISION_HEADING_RE`,
+   `DECISION_CORPUS_ARGV`, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`,
+   `DECISION_LEDGER_NOTICES`) = fourteen owned (six §4.1/§4.2/§4.4 functions + five constants +
+   §5.2's three catalogues). **Fourteen, not fifteen** — independently derived, and it agrees with
+   the erratum's own arithmetic.
+7. Re-derived the batch column from declared dependency edges for every census-touching task; no
+   desync, no cycle, no unresolved dependency (see §Dependencies).
+
+**What the revision must do to earn approval.** Re-pin TSPEC to v1.0 `b1b603a8…d31a0`, then correct
+the five sites to the v1.0 contract in one pass: all three census constants are test-file constants
+of `decisionLedgerCensus.test.js`; six ∪ eight = fourteen; delete T-18's "add the frozen
+`DECISION_LEDGER_CENSUS_TOKENS` declaration to `orchestrate-dev.js`" instruction and the manifest
+row that claims it; invert the two file-ownership disclaimers; drop the quoted "token strings live
+inside its own declaration" rationale, which upstream no longer contains; and restate T-11's
+un-skip-at-T-18 justification over the fourteen *module* owned members. The v0.7 revision history
+should record that the resolution it named "rejected" was subsequently adopted upstream — leaving
+that paragraph as written would put the PLAN's own history in contradiction with its body.
 
 ## Questions
 
