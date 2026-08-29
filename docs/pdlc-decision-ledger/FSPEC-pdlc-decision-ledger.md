@@ -64,6 +64,34 @@ halt, and disclosed in `.claude/pdlc.config.example.json`. Where this spec says 
 
 ## 2. Linked Requirements
 
+Every behavior in this document traces to exactly one REQ acceptance criterion. The right-hand
+column names where in this spec the criterion's behavior is specified; nothing in §3–§6 exists
+without a row here.
+
+| Requirement | What it fixes | Specified in |
+|---|---|---|
+| **REQ-DECLEDGER-01** | Index rendered when enabled, one line per in-scope decision, sourced fresh at dispatch-construction time | BR-1, BR-2, BR-3, BR-9; flow §3.2 steps 2–5; AT-01, AT-02, AT-03 |
+| **REQ-DECLEDGER-02** | Disabled path byte-identical to the pre-feature baseline | BR-4; flow §3.2 step 1; E-1; AT-04, AT-05 |
+| **REQ-DECLEDGER-03** | Rule text requires High severity **and** new evidence to re-open | BR-5, BR-6; flow §3.2 step 6; AT-06, AT-07 |
+| **REQ-DECLEDGER-04** | Index construction fails open, two legs, never silently stale | BR-7, BR-8; flow §3.3; E-2, E-3, E-4; AT-08, AT-09, AT-10 |
+| **REQ-DECLEDGER-05** | Three config keys fail open independently | BR-10; flow §3.1; E-5; AT-11 |
+| **REQ-DECLEDGER-06** | Decision id is the reviewer's reopening dedupe key; driver identity unchanged | BR-6, BR-11; AT-12 |
+| **REQ-DECLEDGER-07** | Rendered index stays within both declared bounds | BR-12, BR-13; E-6, E-7, E-8; AT-13, AT-14, AT-15 |
+| **REQ-DECLEDGER-08** | Driver-side scoring identical whether the flag is on or off | BR-11, BR-14; AT-16, AT-17 |
+
+**User stories** (REQ §8, unchanged here): US-01 reviewer re-litigation — REQ-DECLEDGER-01/-03/-06;
+US-02 operator currency and bounded size — REQ-DECLEDGER-04/-07; US-03 operator safe-to-enable —
+REQ-DECLEDGER-02/-05/-08.
+
+**Non-goals carried through.** This spec adds no behavior outside the REQ's non-goals. In
+particular it specifies **no** driver-side reading of a decision id (NG-4), **no** change to
+`MAX_REVIEW_ROUNDS`, `MAX_LIFETIME_ROUNDS` or `MAX_ERRATUM_FOLLOWUP_ROUNDS` (NG-5), and **no**
+new record file type or new field on any existing record shape (REQ §2 G-1).
+
+**G-4 has no row**, by REQ design: it is a non-binding rationale note measured retrospectively from
+committed `CROSS-REVIEW-*` artifacts, and no gate, test, flow or acceptance test in this document
+depends on it.
+
 ## 3. Behavioral Flow
 
 ## 4. Business Rules
