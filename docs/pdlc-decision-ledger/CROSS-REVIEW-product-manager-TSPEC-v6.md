@@ -163,6 +163,35 @@ acceptance criterion lost an oracle in this edit.
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §3.6 says 441 bytes is "under two lines of margin" and that consolidation grows `docs/_decisions/` by exactly this mechanism. Is there a product intent that the operator be *told* when a dispatch first starts omitting — or is a silent omission (recorded only in `omitted[]`) acceptable for the whole life of the feature? REQ G-1 does not require a signal, so this is a question, not a finding. |
+| Q-02 | ERR-2 is closed by REQ v1.8 and no PLAN task is owed. Is any DECISIONS-document text still written against the retired `8000` (I did not review DECISIONS this round)? If so it should ride the same erratum rather than be found at implementation. |
+
+## Positive Observations
+
+- The erratum is scoped exactly as it announces. I checked the bytes against the declared list and
+  found no section outside it moved, no approved decision re-litigated, and no measured value
+  silently changed — Baseline v1.2 was verified as recording `M-1`…`M-6` at the same `Verified at`
+  commit, which is what makes the re-pin free.
+- Reconciling §3.6 with `DEC-DECLEDGER-03` by stating inertness as *a measurement at one commit, not
+  a property of the mechanism* is the right product framing, and it is stated with the reasons an
+  operator would recognise: 441 bytes of margin, a directory that grows by consolidation, and
+  operator-configurable non-negative thresholds.
+- §9.2 handles the resolution honestly. Rather than deleting ERR-1/ERR-2, it keeps the case in past
+  tense, names REQ v1.8 as where each landed, and records that the predicted discharge is exactly
+  what happened. A future reader can reconstruct why C-5 says 12,500.
+- §7.6's AT-01 note could have kept its conclusion and quietly swapped the number. It did not — the
+  expired justification was replaced with a better one.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves every routed item and breaks nothing I previously approved. One stale sentence
+remains (§3.6, line 433) — a `delta`/`local` Medium. It is a one-clause tensing fix; it does not
+gate, and it should ride the next edit to this document rather than a new round.
+
 ## Positive Observations
 
 ## Recommendation
