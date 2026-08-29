@@ -315,4 +315,127 @@ the driver: the finding is **absent**, not marked, not counted, not carried. No 
 
 ## 6. Acceptance Tests
 
+Who / Given / When / Then. Each test names the criterion and the rules it exercises. Tests asserting
+against the standing corpus assert against a **frozen fixture copy** of it at Baseline v1.1's
+`Verified at` commit, never the live repository — which grows, on this branch included, and would
+otherwise drift the test on unrelated decisions (REQ-DECLEDGER-01, O-6).
+
+### Index rendering
+
+**AT-01 — the index renders the Baseline's enumeration, compared as whole lines.**
+*Who:* the driver. *Given:* the flag resolves `true`, the frozen fixture corpus is in place, and the
+set is within bounds. *When:* a review dispatch prompt is constructed. *Then:* the rendered line set
+equals the expected set — **equality of rendered lines, not containment and not equality over ids
+alone**. The expected value is the Baseline's enumeration transcribed by id: `M-1d` project-level,
+`M-2e` per feature directory, under the directory-glob reading O-1 selects. Ids alone are blind to
+`M-3c`'s twice-opened block, which is why the comparison ranges over id, statement and citation
+together. *(-01; BR-1, BR-2, BR-3)*
+
+**AT-02 — every rendered citation resolves at its own source.** *Who:* the driver. *Given:* as
+AT-01. *When:* the index is rendered. *Then:* for each line, the cited record file exists and
+carries the cited heading, and the statement field says what was decided rather than what was asked.
+A line citing a record that does not exist, or a heading not in that file, fails. *(-01; BR-3)*
+
+**AT-03 — the index is derived fresh, not carried forward.** *Who:* the driver. *Given:* the flag
+resolves `true`; a decision record changes between two dispatches in the same round window. *When:*
+the second dispatch is constructed. *Then:* the second index reflects the changed record. A snapshot
+taken at the first dispatch and rendered again fails. *(-01; BR-9)*
+
+### Disabled path
+
+**AT-04 — the disabled dispatch is byte-identical to the committed baseline.** *Who:* the driver.
+*Given:* `enabled` is `false`. *When:* any dispatch prompt is constructed. *Then:* the dispatch
+stream is byte-identical to the committed fixture baseline — not a same-branch before/after
+comparison. *(-02; BR-4)*
+
+**AT-05 — all four not-enabled spellings collapse to one outcome.** *Who:* the driver. *Given:*
+`enabled` in turn absent, `false`, wrong-typed, and the whole `decisionLedger` block missing.
+*When:* a dispatch is constructed under each. *Then:* all four produce the AT-04 byte-identical
+stream, and none reports an error to the operator. *(-02; BR-4, E-1)*
+
+### Rule text
+
+**AT-06 — the rule text carries both conjuncts and both exemplars.** *Who:* the driver. *Given:* the
+flag resolves `true` and an index rendered. *When:* the dispatch is constructed. *Then:* rule text is
+present adjacent to the index, requires High severity **and** evidence outside the decision's own
+record, and carries both boundary exemplars of BR-6. Rule text carrying one conjunct, or no
+exemplars, fails. *(-03; BR-5, BR-6)*
+
+**AT-07 — the boundary exemplars are decidable, read against the cited record.** *Who:* a reader
+applying the rule text to two constructed candidate findings — one matching the *in* exemplar, one
+the *out* exemplar. *Given:* the rule text of AT-06 and the decisions' own records. *When:* each
+candidate is classified. *Then:* they classify oppositely, and the classification reads the **cited
+record**, not the index line alone — the line need not carry the decision's own citations. *(-03;
+BR-6)*
+
+**AT-12 — the reopening key and the driver's identity key are separate and both intact.** *Who:* the
+driver and the reviewer. *Given:* the flag resolves `true`. *When:* a dispatch is constructed and a
+round is accounted. *Then:* the rule text directs the reviewer to key repeats on the decision id,
+**and** `DEC-LOOPECON-06`'s exact-match triple (severity, section anchor, normalised text) remains
+the sole key the driver dedupes on. A change to the driver's key fails. *(-06; BR-6, BR-11)*
+
+### Fail-open
+
+**AT-08 — every source unavailable takes the total leg.** *Who:* the driver. *Given:* the flag
+resolves `true`; a constructed corpus where every source is missing, unreadable or unparseable.
+*When:* the dispatch is constructed. *Then:* no index and no rule text; the dispatch matches AT-04's
+byte-identical stream; no halt and no operator-facing failure. *(-04; BR-7, E-2)*
+
+**AT-09 — one failing decision omits one line.** *Who:* the driver. *Given:* the flag resolves
+`true`; a constructed corpus where one decision of several fails to render. *When:* the dispatch is
+constructed. *Then:* that line is absent, every other expected line is present, and the rule text is
+present. A partial or malformed line for the failing decision fails. *(-04; BR-7, E-3)*
+
+**AT-10 — an empty file takes the ordinary path, not the failure path.** *Who:* the driver.
+*Given:* the flag resolves `true`; a source that exists, reads and parses but holds zero decision
+records — including the case where it is the only source. *When:* the dispatch is constructed.
+*Then:* it contributes nothing and neither fail-open leg is taken. Where it is the only source, E-6
+follows (no index block) rather than E-2's total leg. *(-04; BR-8, E-4)*
+
+### Configuration
+
+**AT-11 — per-key fallback over the full enumeration.** *Who:* the config loader. *Given:* each of
+C-3's three keys in turn, crossed with {wrong type, malformed, absent}, with the other two valid.
+*When:* config is parsed for a dispatch. *Then:* only the affected key takes its C-5 default; the
+other two keep operator values; every other config block is unaffected. Asserted as **set equality
+over C-3's enumeration**, not containment, so a fourth key or a different spelling fails. *(-05;
+BR-10, E-5)*
+
+### Size bounds
+
+**AT-13 — both bounds hold on the index text alone.** *Who:* the driver. *Given:* the flag resolves
+`true`; an in-scope set exceeding `maxEntries` rows, and separately one exceeding `maxBytes` bytes.
+*When:* the index is rendered. *Then:* the rendered index has at most `maxEntries` lines and at most
+`maxBytes` bytes, measured over the index block alone; the dispatch is neither oversized nor
+aborted. *(-07; BR-12, BR-13)*
+
+**AT-14 — the empty and zero cases.** *Who:* the driver. *Given:* the flag resolves `true`; first a
+zero-decision in-scope set, then `maxEntries` resolved to `0`. *When:* the index is rendered.
+*Then:* in both cases **no index block at all** — not an empty block, not a header without rows —
+and `maxEntries` of `0` is not an error, not a fallback to the default, and not a halt. *(-07; E-6,
+E-7)*
+
+**AT-15 — a single oversized line is omitted whole.** *Who:* the driver. *Given:* the flag resolves
+`true`; one line alone exceeds `maxBytes`, among other lines that fit. *When:* the index is
+rendered. *Then:* that line is absent in full, no truncated fragment of it appears, and the
+remaining lines render. *(-07; BR-13, E-8)*
+
+### Driver invariance
+
+**AT-16 — replay under both flag settings agrees on every driver-side outcome.** *Who:* the driver.
+*Given:* one recorded fixture of reviewer outputs for a round — verdict lines, counts, any
+`FINDING:` lines — replayed twice, once with the flag `true` and once `false`. *When:* the driver
+accounts for that round. *Then:* the convergence decision, the identity-triple dedupe and resulting
+open-finding ledger, the `review.derivativeStop` flat/non-flat classification, the erratum items
+minted under `DEC-ERRROUTE-01`, and the fail-closed read of a non-approving confirmation carrying no
+parseable `FINDING:` line are all identical. The dispatch-construction leg differs in **exactly one
+asserted way**: the `false` run's dispatch is byte-identical to AT-04's baseline and the `true`
+run's carries the rendered index. *(-08; BR-14)*
+
+**AT-17 — a filed reopening is scored as any other High finding.** *Who:* the driver. *Given:* the
+flag resolves `true`; a reviewer files a High finding re-opening an indexed decision. *When:* the
+round is accounted. *Then:* it is scored, deduped and routed as any other High finding — it mints
+its erratum item and satisfies the confirmation-presence check. Any special-casing on account of the
+index fails. *(-08; BR-11, BR-14, N-2)*
+
 ## 7. Open Questions
