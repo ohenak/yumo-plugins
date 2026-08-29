@@ -61,7 +61,40 @@ obligation; they disagree only on one referent, recorded as F-01 below.
 
 ## Interfaces
 
+The delta touches no public seam, no notice id, no config key and no rendered-output contract — the
+three surfaces a product reader cares about. `decisionLedger`'s three C-5 keys, the omission-reason
+catalogue, the `NTC-DECLEDGER-*` ids and §4.3's line format are all byte-unchanged from the version I
+approved, and FSPEC §110/§114/§124's config semantics are still compressed the same way.
+
+One interface-adjacent claim is new and worth pinning: §7.2's live arm is specified against the
+module's **default-exported `main()`**, citing `advisoryDisabled.test.js`, `advisoryWaveGateMain.test.js`,
+`anchorCascade.test.js` and `branchGuard.test.js` as the shipped shape. Those four modules do exist
+and do drive `main()`, so the arm is specified against a real entry point rather than an invented
+one — the failure mode DC-07 exists to catch (a builder proved in isolation and never assembled) is
+closed at the design level, not deferred to implementation discretion.
+
 ## Data structures
+
+**Item 5 — the unsatisfiable census token (landed, and landed the right way).** `DECISION_LEDGER_CENSUS_TOKENS`
+now reads `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`,
+`gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` —
+`decisionLedger` is gone. I verified the precedent the reasoning rests on: `orchestrate-dev.js` has
+**six** `buildFinalReport(` call sites (16725, 16742, 16767, 16791, 18294, 18326), all far outside any
+`main()` wiring sentinel, and `learningsInjectionField` is named at nine points across them. §7.3's
+"~six shipped call sites" is the accurate figure — the raising review's "eight" was the loose one, and
+the document is right to have written what the source says rather than what the finding said.
+
+The disposition is also the better of the two available: dropping the token rather than carving
+`buildFinalReport` out of the scan keeps the census's blind spot small, and — the load-bearing part
+for me — keeps the companion **set-equality** check against the module's *exported* decision-ledger
+symbol names exact, since `decisionLedger` is a report field, not an exported symbol. A carve-out
+would have widened an absence oracle's blind region to buy a token that was never a symbol. Good call,
+and §7.3 states the reasoning rather than just the outcome, so a later reader cannot re-add the token
+by accident.
+
+What that disposition costs is one *transferred* obligation: the `report.decisionLedger` field
+(§5.4, REQ C-2's disabled-path byte-identity) loses its census proof and is now owed behaviourally.
+§7.3 names two places that pick it up. Neither citation resolves as written — see F-01 and F-02.
 
 ## Verification
 
