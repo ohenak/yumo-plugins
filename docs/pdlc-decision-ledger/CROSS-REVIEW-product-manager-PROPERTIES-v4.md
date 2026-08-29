@@ -108,3 +108,22 @@ v1.0. Two non-gating items for the next touch of this document:
 
 `REQ` BR-11 / NG-4, `REQ` C-2 and `REQ` NG-5 are untouched by this revision; product scope is
 unchanged.
+
+## Delta-Confirmation Findings
+
+Both findings are **delta** (the v1.2 edit introduced the text carrying them) and **local** (they sit
+inside sections this round changed: §Gaps' routed-items block and PROP-INV-09).
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-07 | Medium | delta | local | §Gaps routes only the census-constant half of the `PLAN` v0.7 ↔ `TSPEC` v1.0 divergence. `PLAN` T-10a (`PLAN`:151) also still names FX-BASELINE's "baseline notices array" and an unqualified "flag-off key set" as conjunct-3 referents — the referents PROP-OFF-05 and PROP-WIRE-12 retire in this same revision as non-existent. The document corrects the substance without routing it, so `PLAN`'s author is never told, and an implementer working T-10a from `PLAN` writes the unimplementable oracle. Add the second half to the routed item. | §Gaps, Risks and Routed Items — routed upstream |
+| F-08 | Low | delta | local | PROP-INV-09's new text attributes the AT map to "`FSPEC` §7.6". §7.6 is `TSPEC`'s (`TSPEC`:1549); `FSPEC`'s acceptance tests are §6 and its §7 is Open Questions. The substance is right; the document name is not, and PROP-WIRE-12 states the same fact one section earlier as "no `FSPEC` AT row". | §Properties, INV family, PROP-INV-09 |
+
+FINDING: Medium | delta | local | §Gaps, Risks and Routed Items — routed upstream | §Gaps routes only the census-constant half of the PLAN v0.7 ↔ TSPEC v1.0 divergence; PLAN T-10a (PLAN:151) still names FX-BASELINE's baseline notices array and an unqualified flag-off key set as conjunct-3 referents, which this same revision retires as non-existent in PROP-OFF-05 and PROP-WIRE-12, so PLAN's author is never told and a T-10a implementer writes the unimplementable oracle
+
+FINDING: Low | delta | local | §Properties, INV family, PROP-INV-09 | PROP-INV-09 attributes the AT map to FSPEC §7.6, but §7.6 is TSPEC's (TSPEC:1549) and FSPEC's acceptance tests are its §6; the substance (no AT row asserts report.decisionLedger) is correct, only the document name is wrong
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
