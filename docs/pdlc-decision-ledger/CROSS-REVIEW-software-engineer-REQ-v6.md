@@ -55,8 +55,55 @@ The pin is honest at HEAD today. F-03 below is about whether it stays that way.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-03: is this feature expected to author `docs/pdlc-decision-ledger/DECISIONS-pdlc-decision-ledger.md`? If yes, the pinned set moves on this branch and F-03 needs answering before FSPEC; if the feature has decided not to author one, saying so in §7 closes F-03 at the cost of one clause. |
+| Q-02 | On F-01: is the intended expected value the id set, or the per-file/per-directory counts? Both are defensible acceptance criteria, but they are different oracles with different strength, and AC-01 currently names the first while citing facts that supply only the second. |
+
 ## Positive Observations
+
+- **The split is the right one, and it was executed rather than gestured at.** Five rounds died on
+  a recognition predicate being defended inside a goal clause. v1.6 does not re-word the predicate —
+  it removes it, relocates the measurements to a named commit, and hands the rule to TSPEC (O-1)
+  with a constraint that keeps TSPEC honest ("a TSPEC choice that renders a set differing from
+  `M-1`/`M-2`/`M-3` at the Baseline's commit fails REQ-DECLEDGER-01", `REQ:332-334`). That is the
+  post-mortem's Recommendation 1(a) applied literally, and it is the structurally correct move: a
+  measurement taken once is not contestable with one more counterexample, which a predicate over a
+  live corpus always is.
+- **The measurements survive independent replay in full.** I re-derived every `M-*` fact from the
+  working tree without reading the Baseline's numbers first: 41/41 project-level, the twelve-file
+  breakdown in path order, 22 for the `pdlc-headless-engine` directory, 13-records-over-7-ids for
+  the engineering loop, zero cross-file duplicates, and all thirty-odd cited line numbers in
+  `M-3b`, `M-4b` and `M-4d`. Not one was off by one. For a document whose whole value now rests on
+  a cited substrate, that substrate being reproducible is the thing that matters most.
+- **`M-3c` and `M-5b`/`M-5c` are model entries.** Each states the fact, then states the
+  *consequence for a consumer* separately, and `M-5c` goes further by flagging that a path-ordering
+  tie-break is not equivalent to the intended precedence and is ill-defined without naming a
+  collation (byte order and case-folded collation invert on `_`). That is a real implementation
+  trap named before anyone hits it — exactly what a baseline is for.
+- **The prior round's two findings were routed, not absorbed.** F-02 became O-5 with an explicit
+  "this is a coverage obligation, not a REQ defect" and an owner. Resisting the pull to answer a
+  coverage gap by adding a rule to G-1 is the discipline that was missing in rounds 2–5.
 
 ## Recommendation
 
+**Needs revision** — one High.
+
+The restructure is sound and I want it to land; F-01 is not a challenge to it but a gap it opened.
+By moving the expected value out of the REQ and into the Baseline, §5 became a promise about a
+document that does not yet carry what the promise needs: AC-01 names set equality over ids, and the
+Baseline supplies extents. That is a one-section fix inside a file this REQ already owns — enumerate
+the in-scope ids at the pinned commit, and have AC-01 cite that enumeration. F-02 (id-only equality
+is blind to the `M-3c` key, the very case routed there) is Medium and fixable in the same edit by
+letting equality range over the rendered line rather than the id. F-03 (does the pin survive this
+feature authoring its own `DECISIONS` file?) and F-04 (Baseline `Cited by` incomplete) are recorded
+and non-gating.
+
+I want to be clear that this is not a re-litigation of the clause that consumed rounds 2–5. That
+clause is gone from the REQ and I am not asking for it back — F-01 is satisfiable entirely inside
+the constraints file, with no recognition rule returning to §2.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
