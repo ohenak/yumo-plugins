@@ -169,6 +169,83 @@ precedence direction leaves PROP-PRE-01 green and reddens PROP-PRE-02/03; emitti
 reddens PROP-PRE-01 and leaves PROP-PRE-02 green. Both are therefore required, and PROP-PRE-05
 additionally reddens a build that got the right answer for the wrong reason.
 
+### REND — rendering (`renderDecisionLedgerBlock`)
+
+Traces `REQ-DECLEDGER-01`/`-03`/`-07`; `FSPEC` BR-1, BR-3, E-6, AT-14; `TSPEC` §4.3, D-7, D-8, D-9.
+Owner **T-06 → T-15**. Level: **pure unit** and **property**.
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-REND-01** | `renderDecisionLedgerBlock({selected: []})` must return **exactly `""`** — not a header, not a preamble, not rule text, not a trailer, not a newline, not a space. `String.length === 0`, asserted as an equality against `""`, never as falsiness. | Contract |
+| **PROP-REND-02** | For a non-empty `selected`, the block must open with the header `--- CLOSED DECISIONS (do not re-open without new evidence) ---`, be prefixed `"\n\n"`, carry `DECISION_LEDGER_PREAMBLE`, then the index lines, then `DECISION_LEDGER_RULE_TEXT`, then close with `--- END CLOSED DECISIONS ---` and **no trailing newline**. | Contract |
+| **PROP-REND-03** | Each index line must render as `{id} — {statement}  [{sourcePath} § {id}]` — the fields, separators and order fixed by `TSPEC` §4.3 — with every field **transcribed** from the `DecisionRecord`, none synthesised. | Data Integrity |
+| **PROP-REND-04** ✖ | The rendered citation must **not** carry the record's full heading (`DecisionRecord.heading` must not appear in the block), which is `D-7`'s retired form and costs ~33% of the block by rendering every statement twice (9,371 vs 6,305 bytes over the project-level set). `heading` must still be **present on the type**, since §Oracles transcribes expected values from it. | Data Integrity |
+| **PROP-REND-05** | **(P-LINE, property.)** For any non-empty `selected`, the index region's `split("\n")` length must equal `selected.length` — exactly one **physical** line per selected record — and **no** rendered line may contain an embedded newline. | Data Integrity |
+| **PROP-REND-06** | For any non-empty `selected`, the index lines must appear in `TSPEC` §3.6's order: **all** `origin === "project"` lines before **any** `origin === "feature"` line, and within an origin, in enumeration order. | Data Integrity |
+| **PROP-REND-07** | Rendering must be a **pure function of `selected`**: two calls with equal input must return byte-identical strings, and the call must not read the filesystem, consult a clock, a locale or an environment variable. | Idempotency |
+| **PROP-REND-08** | The four framing constants — header, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, trailer, plus the blank lines between them — must render to **≤ 1,200 bytes** measured by `Buffer.byteLength(…, "utf8")`, asserted against that literal (`TSPEC` D-9). | Performance |
+| **PROP-REND-09** | `renderDecisionLedgerBlock` must be the **only** producer of ledger bytes: `selectDecisions` must obtain `renderedBytes` by calling it, asserted by a call-count spy showing `selectDecisions` invokes the renderer at least once per drop-loop step and **never** concatenates a line itself (`TSPEC` D-8). | Contract |
+
+**PROP-REND-08 is a budget, not a measurement.** `TSPEC` §4.3 is explicit that 1,200 is the budget
+the rule text must be *drafted to fit*; the constants do not exist yet. If a later edit needs more,
+the pin reddens and `TSPEC` §3.6's headroom arithmetic is re-decided deliberately — the ~4,995-byte
+whole-corpus headroom and the **441**-byte margin on `M-6b`'s worst standing case shrink one-for-one
+with any raise.
+
+**Why PROP-REND-09 is a call-count and not a shape assertion.** Two implementations of one format
+produce the same-shaped output while disagreeing on size, and the disagreement is invisible in the
+worst direction: the bound is enforced against a size the prompt does not have, `BR-12` is violated,
+and every shape assertion stays green. The behavioural call-count is the only oracle that
+distinguishes them.
+
+### BND — bounds (O-8)
+
+Traces `REQ-DECLEDGER-07`, `REQ` C-5; `FSPEC` BR-12, BR-13, E-6, E-7, E-8, N-1, AT-13, AT-14,
+AT-15; `TSPEC` §3.6, §7.5, F-11…F-13. Owner **T-07 → T-16**. Level: **property** (`fast-check`,
+declared at `pdlc/workflows/package.json:13` as `"fast-check": "^4.9.0"` and installed), with
+`AT-13`/`AT-15` retained as example regression anchors.
+
+**The property, stated once.** *For any in-scope record set and any non-negative `maxEntries` and
+`maxBytes`, the rendered block either is exactly `""` or satisfies all four conjuncts below.* The
+generator draws record sets spanning **zero, one and many** records; line lengths spanning
+**below, at and above** `maxBytes`; and bounds spanning **`0`, exactly-fitting and generous** — so
+`E-6`, `E-7` and `E-8` fall **inside** the property's range rather than beside it.
+
+| Id | Conjunct / property | Category | Falsifying mutation that must red it |
+|---|---|---|---|
+| **PROP-BND-01** | At most `maxEntries` **lines** in the rendered index region. | Contract | the drop loop tests `>` instead of `≥` on the line count, emitting `maxEntries + 1` lines |
+| **PROP-BND-02** | At most `maxBytes` **bytes** in the whole block, framing **charged** (`TSPEC` D-5), measured as `Buffer.byteLength(block, "utf8")`. | Contract | the loop charges index lines only, omitting framing — D-5's charge removed |
+| **PROP-BND-03** ✖ | **No truncation:** every rendered line must be byte-identical to the line the **unbounded** renderer would produce for that record; no line abbreviated, no fragment of a dropped line present. | Data Integrity | a line is truncated to the remaining byte budget instead of being dropped whole |
+| **PROP-BND-04** | **Prefix conjunct (non-vacuity):** the rendered set must be a prefix of the unbounded set under `TSPEC` §3.6's omission order — feature-level dropped before project-level, and within an origin, reverse enumeration order (last enumerated dropped first). | Data Integrity | the loop drops from the front (project-level first) instead of the back |
+| **PROP-BND-05** | Both bounds must be applied by **one** loop with a **disjunctive** condition — *while the block exceeds `maxEntries` lines **or** `maxBytes` bytes, drop the next line in omission order* — so there is no "which bound binds first" stage; each drop must be recorded in `omitted[]` with `reason` in `{RSN-ENTRIES, RSN-BYTES}`. | Functional | the loop applies one bound then the other, leaving a set that satisfies the second and violates the first |
+| **PROP-BND-06** | Enumeration order must be **deterministic**: repeated selection over the same corpus must produce byte-identical `selected`, `omitted` and block, with no dependence on clock, locale, or filesystem walk order (`TSPEC` §3.6). | Idempotency | the loop iterates an unordered map |
+
+**PROP-BND-04 is what makes the family non-vacuous, and it is stated as a positive.** A renderer
+returning `""` for every input satisfies PROP-BND-01, -02 and -03 trivially. Only the prefix
+conjunct fails it. Every one of the four therefore carries its own named mutation above; each must
+be **applied, observed red, reverted, and the observed failure transcribed into the test file's
+header** (`PLAN` §Definition of Done, `TSPEC` §7.5).
+
+**PROP-BND-07 — the model must not reuse the renderer.** ✖ The property's model must carry its
+**own** formatter, transcribed by hand from `TSPEC` §4.3's stated format
+(`{id} — {statement}  [{sourcePath} § {id}]`), and must **not** call
+`renderDecisionLedgerBlock` or any production line renderer. Building the expected line from the
+production renderer makes PROP-BND-03 true by construction — a dropped separator, a citation
+rendered as `{heading}`, or a truncated statement appears on **both** sides of the comparison and
+the conjunct can never fail. The cost is one duplicated format literal; PROP-REND-08's framing pin
+and the ORC-02 resolution check are what keep the duplicate honest.
+
+**Boundary properties, held as examples alongside the property** (`FSPEC` AT-13/AT-15 regression
+anchors, `TSPEC` §7.6):
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-BND-08** | `maxEntries: 0` must render **exactly `""`** — treated as zero in-scope decisions, **not** an error, **not** a fallback to `70`, **not** a halt (`FSPEC` E-7). | Error Handling |
+| **PROP-BND-09** | `maxBytes: 0` must render **exactly `""`** by the same route — every line exceeds `0`, so `E-8` then `E-6` — **not** an error, **not** a fallback to `12500`, **not** a halt. | Error Handling |
+| **PROP-BND-10** | A **single line alone** exceeding `maxBytes`, among other lines that fit, must be **absent in full** from the block, no fragment of it present, and the remaining lines must render. Where it was the only line, the block is `""`. | Error Handling |
+| **PROP-BND-11** ✖ | No input may cause the dispatch to be **aborted, oversized, retried, or reported as an error** on account of index size: over the whole generator range, `selectDecisions` must return normally and no notice or failure class may be emitted (`FSPEC` N-1). | Error Handling |
+| **PROP-BND-12** | `maxBytes` must bound the **index block alone** as it appears in the prompt — not its contribution to total dispatch size, and not the underlying record bytes: asserted by varying the surrounding prompt's size and showing `selected` and `omitted` are unchanged. | Contract |
+
 ## Oracles
 
 ## Fixtures
