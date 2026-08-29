@@ -58,3 +58,82 @@ revision moved them and §3.6's safety argument now rests on them:
 The v2 figure this round retired (137–160 bytes/line) was indeed wrong, and the replacement is right
 to the byte. I could not falsify a single number in the revision.
 
+## F-01 in detail — the one thing blocking approval
+
+§7.5's argument against implementation echo is, on its merits, the best paragraph in the document.
+It says (1067–1072) that building the expected line by calling the production line renderer would
+make the no-truncation conjunct true by construction — "a wrong line *format* … would appear on both
+sides of the comparison and the conjunct could never fail" — and concludes that the model "carries
+its **own** formatter, transcribed from §4.3's stated format … and independent of production code".
+I agree with all of it.
+
+Four lines above it, the section still says the opposite:
+
+> The model is built from the production line renderer applied per record, not from a
+> re-implementation of the drop loop, so a bug in the loop cannot be mirrored into the oracle.
+> — §7.5:1063–1065
+
+`git log -S` places the two on either side of the round-1 fix: the sentence above is original §7
+draft text (`76f28dde4`), the correction was added by `4352d6d8c` in response to v1, and the
+superseded sentence was never deleted. So the section now instructs the implementer to do the thing
+the next paragraph proves would make the property vacuous — and states it **first**, in the
+paragraph that reads like the specification of the model, with the correction framed as commentary.
+
+**Why this is High rather than a wording nit.** The whole value of O-8's property is that
+three of its four conjuncts are cheap and one is load-bearing. If the model calls the production
+renderer per record, the no-truncation conjunct is an identity comparison, the two bounds conjuncts
+are satisfied by an empty block, and only the prefix conjunct survives — which is precisely the
+failure §7.5 itself names. An implementer who follows line 1063 ships a green property that cannot
+red on a wrong line format, and no reviewer of the resulting test can point at the spec and say it
+was wrong: the spec said both things.
+
+**The change that resolves it.** Delete the first clause and keep the second, which is correct and
+is doing separate work:
+
+> The model applies its **own** formatter (below) per record, not a re-implementation of the drop
+> loop, so a bug in the loop cannot be mirrored into the oracle.
+
+Nothing else in §7.5 moves: the own-formatter paragraph, the four-row mutation table and the
+"transcribed from data, never captured from the code under test" close are all correct as written,
+and all three already presuppose the own-formatter shape.
+
+**The Process tag is the point.** This is the second consecutive round in which a fix was applied by
+*adding* the corrected statement while the superseded one stayed on the page — v2's F-01 was §7.4's
+clause (b) sitting under a corrected "Baseline identity" bullet, and this is §7.5's model sentence
+sitting above a corrected own-formatter paragraph. Both were found by reading the section top to
+bottom rather than reading the diff, which is the durable lesson: **a revision that corrects a rule
+must delete the sentence it supersedes, and a re-review of a corrected section has to read the whole
+section, not the hunk.** Worth carrying to harvest; the erratum-and-addendum authoring style this
+pipeline encourages makes it a recurring hazard, not a one-off.
+
+## F-02 in detail
+
+D-10 is the right instrument and I am glad it exists. The concern is one conjunct of three.
+
+§7.3 specifies the assertion as: "build the project-level-only block over the frozen fixture at
+**C-5's shipped defaults** (`maxEntries: 70`, `maxBytes: 8000`) and assert three things — the
+rendered index-line bytes equal the transcribed literal **6,305**; that value is `≤ maxBytes − 1200`;
+and `omitted[]` contains no id whose `origin` is `"project"`."
+
+On a project-level-only input at those defaults, **nothing is omitted under any drop order**: 41
+records against `maxEntries` 70, and 6,305 index bytes plus ≤1,200 framing against 8,000. `omitted[]`
+is empty whichever end the loop drops from, so the conjunct the section calls "what fails if a future
+change re-orders the drop loop so a project-level line goes first" cannot fail — for that mutation or
+any other. It is an absence assertion over a set that is empty by construction: the shape §7.3
+otherwise polices well (its own non-empty-slice guard for the census exists for exactly this reason).
+
+**The cheap fix keeps all three conjuncts and makes the third real.** Run the assertion over the
+**whole** frozen fixture — project-level plus feature-level, which is what a real dispatch gathers —
+at the shipped defaults. Then the bound genuinely binds, `omitted[]` is non-empty and populated with
+feature-level ids, and "no `omitted[]` id has `origin === "project"`" becomes the direct executable
+statement of §3.6's promise, red under a reversed drop order. The byte conjunct survives unchanged if
+it is stated over the rendered **project-level** lines within that block (still 6,305, still
+transcribed), which also keeps the drift tripwire pointed at the corpus rather than at the fixture's
+feature half. Optionally add the positive counterpart — the set of rendered project-level ids equals
+the fixture's 41, set equality, not containment — and the promise is pinned from both sides.
+
+If instead the project-only build is deliberate (to keep the byte pin independent of feature-level
+fixture churn), then say so and drop the `omitted[]` conjunct's stated purpose: a conjunct that
+cannot fail should not be advertised as a falsifier, and the drop-order claim can rest on §7.5's
+prefix conjunct alone, which does falsify it.
+
