@@ -198,4 +198,14 @@ gate, and it should ride the next edit to this document rather than a new round.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §3.6's rationale paragraph still concludes "the claim was wrong because **`maxBytes` binds first in every case**". That holds only under the retired `8000` default (6,800 allowance against 10,859 index bytes). At REQ C-5's resolved `12500` it contradicts §3.6's own next paragraph ("neither bound fires on any real dispatch at that commit") and §7.3's rewritten text ("at 141 records `maxEntries` 70 **binds first**"). Fix by tensing the clause to the then-current default, e.g. "…because at C-5's then-current `8000` default `maxBytes` bound first in every case (6,800 allowance against 10,859 index bytes)". Traces to REQ C-5, REQ G-1. | §3.6 "Rationale, and the measurement that governs it", the sentence ending "and D-5 charges framing to it" |
+
+
+FINDING: Medium | delta | local | §3.6 "Rationale, and the measurement that governs it" — the sentence ending "and D-5 charges framing to it" | The retired-default conclusion "`maxBytes` binds first in every case" survived the re-measurement; it is false at REQ C-5's resolved `12500` and contradicts §3.6's own "neither bound fires on any real dispatch at that commit" and §7.3's "`maxEntries` 70 binds first". Tense the clause to the then-current `8000` default.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
