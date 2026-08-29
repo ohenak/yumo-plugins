@@ -930,8 +930,8 @@ named fixture and a named property family above. That is this document's complet
 
 ### Routed upstream (erratum channel)
 
-**One item**, raised against `PLAN` and not folded into this document, because fixing it means
-editing a task row this document does not own.
+**Two items**, both raised against `PLAN` and neither folded into this document, because fixing
+either means editing a task row this document does not own.
 
 **PLAN's byte-identity recording cannot make AT-05 non-vacuous.** T-02 (`PLAN`:101) defines exactly
 **one** case, `REVIEW-LOOP-REVIEWER-PROMPTS`, "driving exported `reviewLoop`". `PLAN`'s AT map
@@ -947,6 +947,24 @@ input **is** the config text — the `CONFIG-GATE-SPELLINGS` case `## Fixtures` 
 FX-BASELINE, running each `learningsConfigText` value through `parseDecisionLedgerConfig` →
 `buildDecisionLedgerInjector` and recording the resulting stream. PROP-OFF-02 and PROP-OFF-03 are
 written against that case and will not be satisfiable until T-02 carries it.
+
+**PLAN v0.7's census constants contradict TSPEC v1.0, in five places.** `TSPEC` v1.0 §7.3
+(*Where the three census constants live*) makes `DECISION_LEDGER_CENSUS_TOKENS`,
+`DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` declarations of the census **test
+file**, with `DECISION_LEDGER_OWNED_DECLS` holding **fourteen** module declarations (six functions ∪
+eight top-level constants). `PLAN` v0.7 at HEAD says the opposite in five places — `PLAN`'s revision
+history, the T-11 row, the two file-ownership manifest rows and the §Definition of Done census
+bullet — declaring `DECISION_LEDGER_CENSUS_TOKENS` **production**, written into
+`orchestrate-dev.js` by T-18, a member of `DECISION_LEDGER_OWNED_DECLS` and of
+`DECISION_LEDGER_CENSUS_EXEMPT`, with the partition stated as six ∪ nine = **fifteen**; the T-11 row
+names the fourteen-member form as the "**rejected** resolution". The two cannot both hold: under
+`PLAN`'s form `DECISION_LEDGER_CENSUS_TOKENS` is simultaneously a member of the owned list and a
+declaration whose slice must be excluded, which `TSPEC` v1.0 removed precisely to make the partition
+coherent. This document re-pins PROP-INV-06, PROP-INV-07 and PROP-INV-11 to **`TSPEC` v1.0**, the
+deeper upstream, and the census module's red→green rationale in §Coverage Matrix follows it. The
+divergence is upstream-vs-upstream and is not a defect of this document; it is routed rather than
+adjudicated here. Until `PLAN` re-pins, an implementer discharging PROP-INV-07 from `PLAN`'s T-11
+row writes a partition that cannot close.
 
 ### Known gaps — deliberate, with the reason
 
