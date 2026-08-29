@@ -42,6 +42,44 @@ in §9.2's ERR-2 history and the v0.5 erratum note, which is the correct place f
 
 ## Architecture
 
+**Product lens on the omission order (§3.6).** The erratum's substantive product move is the switch
+from "the order is live on day one" to "the order does not fire at the Baseline commit, and that is a
+measurement, not a property". Measured against REQ HEAD this is the faithful reading: REQ C-5 now
+defaults `maxBytes` to `12500` and cites `M-7c` for it, and `M-6b`'s 63-record floor renders 12,059
+bytes with framing charged, so neither bound fires on a G-1-scoped dispatch. §3.6 says exactly that,
+keeps the order specified and tested as load-bearing, and gives the operator-lowers-a-threshold and
+corpus-growth regimes as the reason — which is `DEC-DECLEDGER-03`'s conclusion on the same ground.
+No acceptance criterion is narrowed by the change.
+
+**One sentence did not follow the re-measurement.** §3.6's rationale paragraph (line 433) still reads:
+
+> the claim was wrong because **`maxBytes` binds first in every case**, and D-5 charges framing to it.
+
+That was true only under the retired `8000` (allowance 6,800, against 10,859 index bytes at 63
+records, with 63 lines clearing `maxEntries` 70). At REQ HEAD's `12500` it is false in both regimes
+the same erratum measured:
+
+- on a G-1-scoped dispatch, **neither** bound fires — §3.6's own next paragraph, twenty lines below,
+  says "so neither bound fires on any real dispatch at that commit, and no line is omitted";
+- on §7.3's 141-record fixture, `maxEntries` **binds first** — §7.3 as rewritten says "at 141 records
+  `maxEntries` 70 **binds first**, forcing at least 71 omissions before the byte bound is reached".
+
+So the document now asserts "`maxBytes` binds first in every case" and "`maxEntries` 70 binds first"
+about the same defaults, three sections apart. The sentence is a recital of why an earlier draft's
+inertness claim was falsified, and that history is worth keeping — but as written it is present-tense
+and universal, not tensed to the retired default, so a reader arriving at §3.6 first takes the wrong
+model of which bound governs into §7.3 and into the PLAN task that writes that oracle. The fix is one
+clause: attribute the falsification to the then-current `8000` bound, e.g. "…was wrong because at
+C-5's then-current `8000` default `maxBytes` bound first in every case (allowance 6,800 against
+10,859 index bytes), and D-5 charges framing to it" — leaving the `maxEntries`-half-is-sound sentence
+before it untouched. Traces to REQ C-5 and REQ G-1.
+
+**Scope discipline held.** I checked for product decisions taken in this document under cover of the
+erratum. There are none: §3.6's §4.3-quoted budget, D-5, D-7 and D-10 are unchanged in substance, the
+default is explicitly stated as "never this spec's to set … settled upstream", and no section outside
+the erratum's declared list moved. The recital's promise — "no approved decision is re-litigated" —
+holds on the bytes.
+
 ## Interfaces
 
 ## Data Model
