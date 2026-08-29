@@ -14,7 +14,23 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.2 | 2026-08-28 |
+| Draft | se-author | 0.3 | 2026-08-28 |
+
+**v0.3 — addresses TSPEC cross-review round 2** (`CROSS-REVIEW-product-manager-TSPEC-v2.md`,
+`CROSS-REVIEW-test-engineer-TSPEC-v2.md`). TE F-01 (High): §7.4's clause (b) still specified the
+non-hermetic `git merge-base origin/main HEAD` computed at test time, contradicting the corrected
+bullet above it; the clause now carries the shipped hand-transcribed-literal shape and names the
+excluded form. TE F-02 / PM F-01 (Medium, same proposition): §3.6's "always" is hedged to what is
+measured — the order *prioritises* the promoted corpus rather than guaranteeing it — and the
+promise is pinned by a shipped-default assertion in §7.3's corpus oracle (D-10), the only place
+C-5's defaults are exercised at all. PM F-02 (Medium): §7.6 states AT-02's resolution chain from
+the **rendered line**, and §4.3 stops naming `DecisionRecord.heading` as its input. Lows: the
+per-line figure is re-measured and corrected in §3.6 and ERR-2 (feature-level lines are 152–261
+bytes, not 137–160); §7.3 restates the `DEC-LOOPECON-07` precedent as the declaration-anchored
+slicing it actually is; AT-03's departure from FSPEC's literal Given is recorded as D-11. Three
+reviewer questions are answered in place (§7.5's per-conjunct mutations, §7.3's `main()` slice,
+§4.3's framing budget), and ERR-3/ERR-4 route the two FSPEC criteria whose wording this spec's
+format and fixture decisions outran.
 
 **v0.2 — addresses TSPEC cross-review round 1** (`CROSS-REVIEW-product-manager-TSPEC-v1.md`,
 `CROSS-REVIEW-test-engineer-TSPEC-v1.md`). Both reviewers independently falsified §3.6's
