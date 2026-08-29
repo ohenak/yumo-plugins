@@ -942,7 +942,7 @@ black-box sub-process, and this feature adds no reason to deviate.
 ### 7.3 The frozen fixture copy, and why it is not the live repository
 
 REQ-DECLEDGER-01 and FSPEC AT-01 require the corpus assertions to run against a **frozen fixture
-copy** at Baseline v1.1's `Verified at` commit, never the live repository. The reason is concrete
+copy** at Baseline v1.2's `Verified at` commit, never the live repository. The reason is concrete
 and this branch is the witness: `docs/pdlc-decision-ledger/` is growing while the feature is built,
 and this feature's own DECISIONS document will be added to it, so a test reading the live tree would
 red on unrelated decisions the moment any feature records one. It is the same class of failure as
@@ -966,40 +966,47 @@ the pinned exclusion cases.
 **The shipped-default assertion (§3.6's headroom, D-10).** AT-01 deliberately runs with the bounds
 non-binding (§7.6), so without this the shipped configuration is never exercised anywhere. One
 assertion in this oracle closes that: build the block over the **whole** frozen fixture — all 141
-in-scope records, project-level and feature-level, which is what a real dispatch gathers — at
-**C-5's shipped defaults** (`maxEntries: 70`, `maxBytes: 8000`), and assert three things:
+records it contains, project-level and feature-level together — at **C-5's shipped defaults**
+(`maxEntries: 70`, `maxBytes: 12500`), and assert three things:
 
 1. **The project-level half is admitted whole, and its size is pinned.** The set of rendered ids
    whose `origin` is `"project"` is **set-equal** to the fixture's 41 project-level ids, transcribed
    as a literal in the test file, and those lines joined by `\n` are the transcribed literal
    **6,305** bytes.
-2. **The headroom that makes (1) true is stated as arithmetic.** `6,305 ≤ maxBytes − 1200`
-   (§4.3's framing pin is the other half of this sum).
+2. **The headroom that makes (1) true is stated as arithmetic.** `6,305 ≤ maxBytes − 1200` — at
+   C-5's resolved default, `6,305 ≤ 11,300` (§4.3's framing pin is the other half of this sum).
 3. **No project-level id is dropped, over a set that is genuinely non-empty.** `omitted[]` is
    non-empty and **every** id in it has `origin === "feature"`.
 
 Building over the whole fixture rather than the project-level slice is what makes conjunct (3) do
-work. At 141 records the byte bound **binds** — the drop loop must run, and §3.6's feature-level-first
-order is what decides who survives — so "no project-level id was omitted" is an absence asserted over
-a non-empty `omitted[]`, and it reddens under a reversed drop order, which is the mutation this
-assertion exists to catch. On the project-level-only slice it could not: 41 records against
-`maxEntries` 70 and 6,305 index bytes against a 6,800-byte allowance leave nothing to drop, so
-`omitted[]` is empty under *every* drop order and the conjunct is vacuously true. That is the same
+work — and **the fixture is deliberately larger than any dispatch this feature will ever construct**.
+REQ G-1 scopes a real in-scope set to the project's closed decisions plus those of the one feature
+under review — at the Baseline commit, `M-6b`'s 63-record floor, which §3.6 measures as rendering
+whole under C-5's resolved default. The 141-record whole-fixture build is an over-sized basis chosen
+so that a bound binds: at 141 records `maxEntries` 70 **binds first**, forcing at least 71
+omissions before the byte bound is reached, so the drop loop must run and §3.6's feature-level-first
+order is what decides who survives. "No project-level id was omitted" is therefore an absence
+asserted over a non-empty `omitted[]`, and it reddens under a reversed drop order, which is the
+mutation this assertion exists to catch. On the project-level-only slice it could not: 41 records
+against `maxEntries` 70 and 6,305 index bytes against an 11,300-byte allowance leave nothing to
+drop, so `omitted[]` is empty under *every* drop order and the conjunct is vacuously true. That is the same
 empty-by-construction shape this section's non-empty-slice guard for the census exists to prevent,
 and it is not repeated here (D-10's rejected alternative).
 
 Note what conjunct (3) deliberately does **not** say: it does not pin *how many* feature-level lines
-survive. Under the shipped bound roughly two do (§3.6's ~495 bytes of headroom against a 152–261-byte
-feature line), and that count is a renderer-arithmetic detail that would churn on any line-format
+survive. Under the shipped bounds roughly two dozen do — `maxEntries` 70 less the 41 project-level
+lines caps it at 29, and §3.6's ~4,995 bytes of headroom against a 152–261-byte feature line trims a
+few more — and that count is a renderer-arithmetic detail that would churn on any line-format
 change without naming a defect. The falsifier lives in the origin partition, not in the count.
 
 Both transcribed literals — the 41 ids and 6,305 — are **hand-transcribed from the fixture, never
 derived at test time from the renderer or from a manifest** (PM Q-01). Deriving either would make the
 assertion an echo of the code under test, and re-deriving 6,305 from the fixture would defeat the
 purpose of pinning it: transcribing rather than merely bounding it makes corpus drift visible at the
-re-capture, which is the deliberate moment to re-decide ERR-2's default. If ERR-2 is resolved by
-raising C-5's default, the assertion's threshold in (2) moves to the resolved value and the
-transcribed 6,305 stays — the corpus size is what is being watched, not the bound.
+re-capture, which is the deliberate moment to re-decide C-5's default. ERR-2 has since been resolved
+that way upstream (REQ v1.8, default 12,500), and this oracle absorbed it exactly as stated: the
+threshold in (2) follows the resolved value and the transcribed 6,305 did not move — the corpus size
+is what is being watched, not the bound.
 
 **Source census for BR-11 / §5.5.** Alongside the behavioural replay of AT-16, one oracle reads
 `orchestrate-dev.js`'s source and pins an *absence*. The precedent is `DEC-LOOPECON-07`, and it is
@@ -1212,11 +1219,14 @@ transcription of expected values; AT-02 does not consume it.
 
 **AT-01 runs with the byte bound non-binding, and this is deliberate.** §3.6's measurement shows the
 45- and 48-line sets render to 7,042 and 7,650 bytes of index lines, which with §4.3's framing budget
-exceed the `maxBytes` default of 8,000. Under default configuration the renderer would drop lines and
-the 45/48-line expected sets would be **unproducible** — the oracle would assert a set the renderer
-cannot emit. AT-01's subject is the **recognition rule** (§3.1–§3.4), not the bounds, so the oracle
-supplies an explicitly non-binding `maxBytes` (and `maxEntries`) and says so in the test file's
-header. The bounds are the subject of §7.5's property and AT-13/AT-15, where they are exercised across
+sit inside C-5's resolved `maxBytes` default of 12,500 — so at the Baseline commit these sets are
+producible under default configuration too, and the reason for supplying explicit bounds is not that
+they are unproducible today. It is that AT-01's expected sets must not depend on the bound at all:
+the margin is measured, not structural — `M-6b`'s 63-record case clears the same bound by only 441
+bytes (§3.6) — so corpus growth, or an operator who lowers either threshold, would silently make an
+expected set **unproducible** and redden a recognition-rule oracle for a bounds reason. AT-01's
+subject is the **recognition rule** (§3.1–§3.4), not the bounds, so the oracle supplies an
+explicitly non-binding `maxBytes` (and `maxEntries`) and says so in the test file's header. The bounds are the subject of §7.5's property and AT-13/AT-15, where they are exercised across
 their whole range. Stated so the wrong fix is not applied later: if this test ever reddens, the
 correct response is **never** to trim the expected set to whatever the renderer emitted — that is the
 implementation echo AT-01's own "never captured from the renderer's output" clause forbids.
