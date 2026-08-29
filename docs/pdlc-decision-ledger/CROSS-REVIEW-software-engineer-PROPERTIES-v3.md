@@ -141,7 +141,44 @@ resolves-to-one, not by set equality.
 
 ## Oracles
 
+I re-read ORC-01…ORC-06 against §7.3 at HEAD. **None of the six reads the census operands**, so the
+oracle section survives the cascade intact:
+
+| Oracle | Reads moved §7.3 text? | Note |
+|---|---|---|
+| ORC-01 corpus oracle | No | whole-line equality over FX-CORPUS; §5.3/§5.5 territory |
+| ORC-02 citation resolution chain | No | starts at the rendered line |
+| ORC-03 shipped-default assertions | No | §4.1 defaults |
+| ORC-04 byte-identity baseline guard | No | pins `mergeBaseSha`; §7.2 |
+| ORC-05 bounds model | No | O-8, must not reuse the renderer |
+| ORC-06 replay oracle | No | FX-REPLAY anchoring; discharges PROP-INV-01…04 |
+
+Worth stating positively because it bounds the blast radius: the census is specified in `PROPERTIES`
+**entirely inside the INV property table**, with no oracle of its own. That is why the repair is two
+table rows plus two prose glosses and touches nothing else — and also why the defect survived a full
+approval round, since no oracle section restates the operands in a place a reader would cross-check.
+
+The census's non-vacuity story is split across PROP-INV-08 (non-empty slices) and the §7.7
+compensating-control note at `PROPERTIES`:390–395, which pairs the census with PROP-INV-01…04 for
+couplings routed through generically-named locals. That pairing is unchanged by v1.0 and remains
+faithful to §7.7.
+
 ## Fixtures
+
+No fixture moves. The census is a **source census** — its operand is `orchestrate-dev.js` at HEAD,
+not a recorded fixture — so FX-CORPUS, FX-REPLAY, FX-BASELINE, FX-FAILOPEN and FX-PRECEDENCE are all
+untouched by the erratum. I confirmed the four corpus literals (6,305 / 10,859 / 12,059 / 441) are
+explicitly unchanged in TSPEC's own v1.0 changelog, so ORC-01's transcribed expectations and
+PROP-DISC-10's per-file digest pin need no re-transcription.
+
+One fixture-adjacent consequence is worth naming, because it is where the repair will be felt at
+implementation time rather than in this document: with `DECISION_LEDGER_CENSUS_TOKENS` now a
+**test-file** constant of `decisionLedgerCensus.test.js`, all three census operands live in that one
+test file, and the census's scanned source is a file that declares none of them. That is the
+precedent's arrangement exactly — `ANCHOR_TOKENS` is a top-level constant of
+`loopEconomicsAnchorGuard.test.js`, not of the module it scans — and it removes the circularity the
+old wording needed the "token strings live inside its own declaration" exclusion to escape. The
+design is cleaner after v1.0; `PROPERTIES` simply has not caught up with it.
 
 ## Delta-Confirmation Findings
 
