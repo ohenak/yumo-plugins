@@ -73,3 +73,52 @@ is byte-unchanged and is not re-litigated. The single item open from v6 was my F
    `PLAN`:207): dropping a token from the production constant breaks
    `CENSUS_TOKENS ∪ EXEMPT = OWNED_DECLS` and reddens. This is worth stating because it is the
    reason the fix is safe, and no site says it yet.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | The precedent T-11 clones recognises **function declarations only** — `loopEconomicsAnchorGuard.test.js`:61's `DECL_RE` is `/^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/`, and `bodyOf` throws `No top-level declaration found for {name}` when a name is absent from `allTopLevelDecls` (`:124-130`). Nine of the fifteen `DECISION_LEDGER_OWNED_DECLS` members are top-level **`const`** declarations, not functions (`DECISION_CORPUS_ARGV`, `DECISION_HEADING_RE`, `DECISION_LEDGER_DEFAULTS`, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, the three §5.2 catalogues, and now `DECISION_LEDGER_CENSUS_TOKENS`). A literal clone therefore throws on nine of fifteen, and §7.3's resolves-to-exactly-one conjunct is unsatisfiable for them. T-11 says "the precedent's way" and "next top-level declaration of any name" without saying the regex must widen to `const` declarations. **Fix:** one clause in T-11 stating that the cloned `DECL_RE` covers top-level `const` as well as `function` declarations (the house style is `export const …`, e.g. `pdlc/workflows/orchestrate-dev.js`:48, :52, :64). Medium, not High: it is inherited from pre-v0.7 bytes, it reddens loudly at T-11's first run rather than passing vacuously, and it does not change any count, batch or ownership. | BR-11, REQ NG-4 |
+| F-02 | Low | Local | T-18 says to add `DECISION_LEDGER_CENSUS_TOKENS` "as a top-level constant" but not whether it is **exported**, and T-11 does not say whether its test reads the six tokens by importing that constant or by hand-transcribing them. The two readings differ in test strength: an import makes the census's expectation come from the module under test (guarded only indirectly, by the partition — see §What I verified, item 6), a transcription keeps it independent. Every sibling constant in the module is `export const` (`orchestrate-dev.js`:48, :52, :59-60, :64, :169, :309, :418). **Fix:** say `export const` in T-18, and in T-11 say which of the two forms the test uses. | BR-11 |
+| F-03 | Low | Local | The rewritten T-11 row (`PLAN`:152) has a broken stitch: the new production-home clause ends "…and T-18 lists T-11 in its `Depends on`." and is immediately followed by "— and two further frozen lists **declared in this task's own test file**…", which resumes a sentence that already ended. The instruction is load-bearing and is read by an implementer under time pressure; the dangling dash reads as a dropped clause. **Fix:** rejoin as a new sentence ("The task's two further frozen lists are declared in its own test file…"). | — |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Still open from v6 and unanswered here: `PROPERTIES-pdlc-decision-ledger.md`:377-378 (PROP-INV-06/07) still describes the pre-v0.9 census — "three brace-matched declarations" and a token set "set-equal to the module's decision-ledger exports" — i.e. exactly the two forms `TSPEC`:1296-1297 and now PLAN v0.7 name as rejected. PROPERTIES is now the last document in the feature describing the superseded contract. Does the orchestrator intend PROPERTIES to be re-grounded on TSPEC v0.9 before implementation begins, so T-11's test is not written against two contradictory contracts? |
+| Q-02 | v0.7 routes the residual upstream gap as `ERRATUM: TSPEC` in its revision history. I have emitted that erratum line in this round (TSPEC specifies `DECISION_LEDGER_CENSUS_TOKENS` only in §7.3; §5.2's frozen-catalogue table lists just `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`, `DECISION_LEDGER_NOTICES`, and no §4 module-surface section declares it). Confirm the route lands on TSPEC rather than being absorbed into PLAN prose — PLAN cannot itself add a constant to the upstream module surface. |
+
+## Positive Observations
+
+- **The fix chose the reading the upstream actually carries, and said why the other was rejected.**
+  TE's suggested alternative — drop the member, restate the partition as six ∪ eight = fourteen —
+  is recorded as rejected with its reason (it would put the PLAN out of contract with the TSPEC it
+  had just re-pinned, and a production `CENSUS_TOKENS` whose declaration were not sliced out would
+  red the census on its own six literals). Reconciling two reviewers who disagreed about the
+  *direction* of the fix, in writing, is the behaviour that keeps the next round short.
+- **One defect, four sites, one sentence each.** The failure mode here was a clause that said
+  different things in different places; the repair says the same thing at T-11, T-18, both manifest
+  rows and the DoD bullet, in the same words. That is the shape that does not decay.
+- **No count moved, and the claim is checkable in thirty seconds.** Six ∪ nine = fifteen still
+  reconciles name-for-name with `TSPEC`:1297, and the new "all fifteen are written by a `[green]`
+  task of batches 3–8" claim is a complete cover of T-13…T-18 with no member left homeless — I
+  walked it row by row and it balances.
+- **The red-before-green edge is named rather than left to be discovered.** T-18 explains why the
+  constant lands in the last production batch instead of earlier, which is exactly the question an
+  implementer of batch 3 would otherwise raise mid-wave.
+
+## Recommendation
+
+**Approved with minor changes**
+
+My v6 F-01 is fully resolved and nothing the revision touched broke. No High finding is open
+anywhere in the document. F-01 (Medium) — the cloned `DECL_RE` must recognise `const` declarations
+or nine of fifteen owned members cannot resolve — and the two Lows should be folded into the next
+PLAN pass or, failing that, into T-11's and T-18's implementation briefs; they do not gate the
+phase.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
