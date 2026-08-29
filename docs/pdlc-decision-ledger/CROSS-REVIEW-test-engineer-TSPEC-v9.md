@@ -73,6 +73,60 @@ carries that claim and §5.3/T-19's config and documentation edits are not sourc
 
 ## Data Model
 
+The only data the delta moves is §7.3's two census **operands**, and that is where both Highs live.
+No literal changed: 6,305 / 10,859 / 12,059 / 441 are unchanged at all sixteen sites, and I re-ran
+the arithmetic once more (`12,500 − 1,200 = 11,300`; `11,300 − 10,859 = 441`) to be sure the token
+edit did not disturb §7.3's conjunct pair. It did not.
+
+**Operand 1 — the forbidden token set, after the edit.** Six members: `selectDecisions`,
+`recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`,
+`DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`.
+
+**Operand 2 — the scanned source: everything minus four owned regions.** Three brace-matched
+slices (`parseDecisionLedgerConfig`, `buildDecisionLedgerInjector`, and the
+`selectDecisions`/`recogniseDecisionRecords`/`renderDecisionLedgerBlock` group) plus the
+sentinel-bounded `main()` wiring run.
+
+The edit's own test of satisfiability, stated in the new paragraph, is exactly right: *a token is
+unsatisfiable when the conforming sites that mention it land in the scanned remainder.* Applying
+that test to the surviving six against the declarations §4 and §5.2 actually specify:
+
+| Token | Where conforming code declares / mentions it | Inside an owned region? |
+|---|---|---|
+| `selectDecisions` | own body (sliced); called inside `buildDecisionLedgerInjector` (sliced) | ✅ |
+| `renderDecisionLedgerBlock` | own body (sliced); called inside `buildDecisionLedgerInjector` (sliced) | ✅ |
+| `recogniseDecisionRecords` | own body (sliced) — **but §4.4 has `gatherDecisionCorpus` call it**, and `gatherDecisionCorpus` is not a sliced region | ❌ |
+| `gatherDecisionCorpus` | **§4.4 declares it as a sixth top-level export.** Its declaration line and whole body are in none of the four regions | ❌ |
+| `DECISION_LEDGER_OMIT_REASONS` | **§5.2 declares it as a top-level frozen literal**, outside all four regions | ❌ |
+| `DECISION_LEDGER_CORPUS_OUTCOMES` | same | ❌ |
+
+Four of the six therefore occur in the scanned remainder on a *correct* implementation, so
+"zero occurrences of any member in the scanned remainder" cannot go green. This is F-01, and it is
+the same defect class the round just repaired for `decisionLedger` — the fix named the principle
+and applied it to one member without sweeping the set. The carve-out list enumerates five
+declarations; §4 declares six functions and §5.2 three catalogues.
+
+**The companion set-equality is red for the mirror reason (F-02).** It asserts
+`DECISION_LEDGER_CENSUS_TOKENS` set-equal to "the module's exported decision-ledger symbol names".
+Enumerating those from §3.1/§3.2/§4/§5.2 gives at least thirteen — `DECISION_CORPUS_ARGV`,
+`DECISION_HEADING_RE`, `DECISION_LEDGER_DEFAULTS`, `parseDecisionLedgerConfig`,
+`recogniseDecisionRecords`, `selectDecisions`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`,
+`buildDecisionLedgerInjector`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`,
+`DECISION_LEDGER_NOTICES`, `DECISION_LEDGER_CENSUS_TOKENS` itself — against a six-member set. The
+new paragraph's closing clause, "the field name is not an exported symbol, so its removal also
+keeps the companion set-equality check exact", is directionally true about `decisionLedger` and
+does not make the check satisfiable: it was already unsatisfiable in the other direction, by seven
+members. Both Highs are inherited — the pre-round bytes carried the same carve-out list and the
+same four tokens — and both sit in the row this edit rewrote, so both are `inherited` + `local`.
+
+The fix is small and belongs to the same author in the same section: name the predicate the census
+actually wants. Either (a) restrict the token set to symbols whose *every* conforming mention is
+inside an owned region — which is `selectDecisions` and `renderDecisionLedgerBlock`, and then say
+so and drop the set-equality to a **subset** relation with a stated reason; or (b) keep the six and
+extend the owned regions to `gatherDecisionCorpus`'s brace-matched body and §5.2's three catalogue
+declarations, and restate the set-equality against the *distinctive* exported names rather than all
+of them. (b) preserves more of BR-11's falsifying power and is the smaller edit to the table.
+
 ## Test Strategy
 
 ## Open Questions
