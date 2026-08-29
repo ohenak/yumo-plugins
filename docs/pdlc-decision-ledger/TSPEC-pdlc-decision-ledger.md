@@ -491,6 +491,25 @@ rule text, trailer) is charged to the bound as well, because BR-12 bounds "the b
 block as it appears in the prompt"; this differs from `renderLearningsBlock`, whose framing is
 explicitly *not* charged, and the divergence is stated here so it is a decision rather than a slip.
 
+**One byte budget, one producer — `selectDecisions` never re-implements the format.** Two functions
+would otherwise own the same number: `selectDecisions` computing `renderedBytes` and
+`renderDecisionLedgerBlock` producing the bytes. Two implementations of one format drift, and the
+drift is invisible in the worst direction — the bound is enforced against a size the prompt does not
+actually have, so BR-12 is wrong while every test is green. The single source of truth is therefore
+stated normatively:
+
+> `renderDecisionLedgerBlock` is the **only** producer of ledger bytes. `selectDecisions` obtains
+> `renderedBytes` by calling it — `Buffer.byteLength(renderDecisionLedgerBlock({ selected }), "utf8")`
+> — on the candidate set at each step of §3.6's drop loop. It never concatenates a line itself and
+> never carries a copy of the format.
+
+The dependency is `selectDecisions` → `renderDecisionLedgerBlock`, which is acyclic (the renderer is
+pure and takes only `selected`), so this costs nothing structurally. It also makes the bound exact by
+construction rather than by agreement: the number compared against `maxBytes` is the byte length of
+the very string that is appended to the prompt. §7.5's property gets its teeth from this — a
+bounds-conformance property that measured a *reconstruction* of the block would pass while the real
+block overflowed.
+
 ### 4.3 Rendering (pure)
 
 ```ts
@@ -506,7 +525,7 @@ Rendered form — the concrete format FSPEC Q-1 assigns to this spec:
 --- CLOSED DECISIONS (do not re-open without new evidence) ---
 {DECISION_LEDGER_PREAMBLE}
 
-{id} — {statement}  [{sourcePath} § {heading}]
+{id} — {statement}  [{sourcePath} § {id}]
 … one line per decision, project-level first, then feature-level …
 
 {DECISION_LEDGER_RULE_TEXT}
@@ -514,7 +533,26 @@ Rendered form — the concrete format FSPEC Q-1 assigns to this spec:
 ```
 
 One decision occupies exactly one physical line: the id, ` — `, the statement, then the citation in
-square brackets as `{sourcePath} § {heading}`. Statements are transcribed verbatim and are
+square brackets as `{sourcePath} § {id}`.
+
+**Why the citation names the id and not the full heading.** An earlier draft cited
+`{sourcePath} § {heading}`, where `heading` is the full heading line as it appears on disk — which
+already contains both the id and the statement. That rendered the statement **twice** on every line
+and cost ~33% of the block for no additional information (§3.6's measurement: 9,371 → 6,305 bytes on
+the project-level set). What AT-02 requires is that each citation *resolve back at its own source*,
+and a path plus the record's id does that exactly as well as a path plus its heading: the id is
+unique within its file (`M-1a`, and §3.3's last-wins key makes it so by construction even where it is
+not), so `{sourcePath} § {id}` locates one record. `DecisionRecord.heading` is retained on the type
+because it is the verbatim on-disk text the fixture's expected values are transcribed from (§7.3) and
+because AT-02's resolution check reads it; it is simply not *rendered*.
+
+The framing — header, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, trailer and the blank
+lines between them — is charged to `maxBytes` (D-5), so its size is part of the bound's arithmetic and
+is therefore **pinned, not left to drift**: the four constants together must render to **≤ 1,200
+bytes**, asserted by a pure unit test against that literal. Without the pin the framing is an
+unmeasured quantity sitting inside a measured budget, and §3.6's headroom arithmetic would be
+unfalsifiable prose. If a future edit to the rule text needs more than 1,200 bytes, the pin reddens and
+the budget is re-decided deliberately — which is the point. Statements are transcribed verbatim and are
 single-line by construction (§3.2 matches to end of line), so no line can wrap into a second and
 "whole lines are omitted" is well-defined byte-wise. Field order and separators are fixed here so
 PROPERTIES can transcribe expected values from the fixture (Q-1); the values themselves come from
