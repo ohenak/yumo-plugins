@@ -33,3 +33,42 @@ acceptance criterion and no `REQ`/`FSPEC` scope moved — I re-diffed the four c
 
 The two round-3 questions are also answered: Q-01 by the new module-manifest paragraph
 (`:889–906`), Q-02 by PROP-WIRE-12's referent split.
+
+## New observations in the changed sections
+
+**Arithmetic checks out.** INV 10 → 11, WIRE 11 → 12; the partition
+`10 + 11 + 9 + 6 + 12 + 11 + 5 + 11 + 12 + 6 + 10` sums to **103** as claimed, and the pyramid
+restatement `36 + 12 + 39 + 6 + 10 = 103` holds with integration recomputed as FAIL 11 + PRE 5 +
+INV 11 + WIRE 12 = 39. Property ids are contiguous with no gaps or duplicates
+(PROP-INV-01…11, PROP-WIRE-01…12), the family table and module manifest rows were both re-pinned
+(`PROP-INV-06…11`, `PROP-WIRE-01…12`), and no stale `101`/`37` reading survives outside the
+changelog's own before→after prose.
+
+**The named test modules are real PLAN artifacts, and ownership is unchanged.** PROP-WIRE-12 lands
+in `decisionLedgerMain.test.js`, owned by T-10a (`PLAN`:206) with T-18 un-skipping (`PLAN`:220);
+PROP-INV-11 lands in `decisionLedgerCensus.test.js`, owned by T-11 (`PLAN`:207). Both are `[new]`
+modules explicitly planned in `PLAN`'s batch table, so nothing here asks for a file no task creates,
+and the "all 24 task ids traced in both directions" claim is unaffected by the two new properties.
+
+**Test-quality bars are met by both new properties.** PROP-WIRE-12's expected delta is the literal
+`{decisionLedger}` transcribed from `TSPEC`:1170, not a value derived from the code under test, and
+its both-directions set equality is exactly the completeness form (a dropped key fails, not only an
+added one). PROP-OFF-05's former absence-shaped conjunct ("free of `NTC-DECLEDGER-*`") is now a
+positive set-equality to empty. PROP-INV-11's count-of-`1` is likewise positive rather than a
+"not renamed" negative.
+
+**One un-routed upstream contradiction remains (F-07, Medium).** §Gaps now routes the census-constant
+divergence as a second `ERRATUM: PLAN` item and is right to — `PLAN`:19/152/207/219/490–495 do state
+`DECISION_LEDGER_CENSUS_TOKENS` as production and the owned list as fifteen, against `TSPEC`
+v1.0:1324's test-file home and fourteen. But the *same* PLAN task row carries a second divergence this
+document silently corrected without routing: `PLAN` T-10a (`PLAN`:151) still instructs
+"`notices` is **set-equal** to the baseline notices array" and "`report`'s key set is **set-equal**
+to the flag-off key set", which is precisely the retired FX-BASELINE referent PROP-OFF-05 and
+PROP-WIRE-12 now reject as non-existent. An implementer writing T-10a from `PLAN` writes the
+unimplementable oracle; this document knows why it is unimplementable and does not say so in §Gaps.
+
+**One citation slip (F-08, Low).** PROP-INV-09 attributes the AT map to "`FSPEC` §7.6". §7.6 is a
+**TSPEC** section (`TSPEC`:1549, "Coverage of the FSPEC's acceptance tests"); `FSPEC`'s acceptance
+tests are its §6 and its §7 is Open Questions (`FSPEC`:344, `:512`). The substance is correct — no
+AT row's Notes column mentions `report.decisionLedger` (`TSPEC`:1553–1560) — only the document name
+is wrong, and PROP-WIRE-12 one section earlier says "no `FSPEC` AT row" for the same fact.
