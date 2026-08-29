@@ -246,3 +246,79 @@ converged twice. Hand-transcribed pins and citations — edition 1's Shape C was
 not recur; the pins verify clean at HEAD.
 
 ## Recommendation
+
+Ordered by leverage. Items 1–3 unblock this feature and are all that stand between v0.8 and a passing
+delta confirmation; items 4–6 are pipeline changes that prevent the class.
+
+**1. Land routed item 1 exactly as both confirmers specify — no adjudication, no redesign.**
+Replace T-10a conjunct 3 (`PLAN`:157) with the two oracles the confirmers agree on:
+
+- The flag-off arm runs a **paired flag-on run** with the same fixture and seams, and asserts the
+  **symmetric difference** of the two `report` key sets equals `{decisionLedger}` — **asserted in both
+  directions**, so a spuriously-added key on either arm reddens.
+- The arm's **`NTC-DECLEDGER-*` notice set is set-equal to empty** — not "contains no
+  `NTC-DECLEDGER-*`", which §Definition of Done already flags as the weaker form.
+
+Delete both retired referents: "the flag-off key set" and "the baseline notices array". Neither
+exists in T-02's recording, which per TSPEC §7.4 holds reviewer-prompt streams only. Keep the
+byte-identity conjunct against T-02's committed recording, which is untouched by this finding.
+
+**2. Land TE-2's inherited twin in the same edit.** Correct the §Definition of Done flag-off
+report/notices bullet (`PLAN`:494–499 region) to the same two oracles, phrased identically. Then
+verify mechanically, and treat a non-zero result as unlanded:
+
+```
+$ grep -n "flag-off key set\|baseline notices array" PLAN-pdlc-decision-ledger.md   # expect: no matches
+```
+
+**3. Land the three Lows in the same pass.** Re-read T-11's closing pointer (`PLAN`:158) once F-01
+lands and restate it in the new terms (TE-3). Delete the duplicated `Revision history:` prefix from
+the second consecutive changelog entry (TE-4). Repair the three self-refuting single-siting sentences
+(PM-2) — a citing site should say "per TSPEC §7.3" and stop, not narrate that it is not restating the
+arithmetic while restating it. Then bump to v0.9 with a changelog entry naming what addressed each of
+the six findings, flip this file to `RESOLVED: yes` in the same commit, and re-run `pdlc dev`.
+
+**4. Build the routed-locus diff gate. It is no longer a candidate — it is the fix for a reproduced
+defect.** Before delta confirmation is dispatched, the engine compares each routed item's named locus
+against the round's diff and fails closed if any routed locus is byte-unchanged, naming the locus. The
+routed list already carries loci, so the input exists. This would have halted round 9 locally, before
+a single confirmer token was spent, and it would have halted round 4 the same way. **Two observed
+occurrences, five rounds apart, in one feature.** Escalate it out of the "standing candidate" state
+recorded in the `erratum-routed-item-unlanded-halt` memory note and into the engine.
+
+**5. Route by claim, not only by locus.** Item 4 alone would not have caught TE-2, because the DoD
+twin was never routed. Give each routed item an optional **retired-text** field carrying a verbatim
+quote of the clause being removed; after the round, the gate greps the whole document for that text
+and fails closed if it survives *anywhere*. This is the same fail-closed, positive-oracle shape the
+finding-grammar hook already uses, and it converts "the author must remember every site" into a
+mechanical check. It is the cheapest available answer to Shape B.
+
+**6. Close the checklist gap that produced the defective conjunct (testing lens).** Add to the oracle
+falsifiability checklist, in `pdlc/OPERATIONS.md` and the reviewing SKILLs:
+
+> A positive conjunct added to defeat an absence-shaped oracle must itself be falsifiable **on the arm
+> it runs on**. Asserting that a value equals its own definition on that arm (`report`'s key set
+> set-equal to "the flag-off key set", on the flag-off run) satisfies the pairing rule with an oracle
+> of zero power. The distinguishing conjunct must be **cross-arm** — a comparison against the paired
+> opposite run — or it is not a distinguishing conjunct.
+
+Ship T-10a conjunct 3 as the worked example. This is a generic hazard of every "add a positive
+conjunct" rule, not a quirk of this feature.
+
+**Gap named for the record.** Edition 1 closed by observing that the erratum channel's delta
+confirmation is an absence-shaped oracle — reviewers assert "nothing routed remains unreflected" —
+and that its missing positive conjunct is trivially available: *each routed locus changed bytes.*
+That observation was correct, was written down, and was not built. The recurrence documented here is
+what an unbuilt positive conjunct costs: two confirmer dispatches, one halt, and a document that
+still contradicts itself at two sites. Recommendation 4 is that conjunct; recommendation 5 is the
+cross-arm strengthening of it; recommendation 6 is the same lesson applied one layer down, to the
+oracles this PLAN is specifying. The pipeline is currently asking its documents to meet a
+falsifiability bar it does not meet itself.
+
+**Provenance**
+- Engine version: 0.2.4
+- Plugin version: 0.23.4
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
