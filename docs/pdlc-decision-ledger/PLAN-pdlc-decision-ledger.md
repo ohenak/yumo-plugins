@@ -453,12 +453,17 @@ required not to:
       baseline notices array. Set equality is what makes a spuriously-added key or notice fail;
       "contains no `NTC-DECLEDGER-*`" alone does not.
 - [ ] Every row of TSPEC §6.1 and every FSPEC AT has a passing test, per the two tables above.
-- [ ] T-07's four mutations and T-02's three mutations each applied, observed red, reverted, and the
-      observed failure transcribed into the respective test file's header.
+- [ ] Every named mutation applied, observed red, reverted, and the observed failure transcribed into
+      the respective test file's header: T-07's four, T-02's three, and — under TSPEC §7.5's O-8
+      discipline, each checked against an **independent model** rather than the production function —
+      `P-REC`'s four (T-05) and `P-LINE`'s three (T-06).
 - [ ] `DECISION_LEDGER_RULE_TEXT` + preamble + header + trailer render to ≤ 1,200 bytes, asserted
       against that literal (`DEC-DECLEDGER-12`).
 - [ ] The census (T-11) is green with every slice asserted non-empty, and
-      `DECISION_LEDGER_CENSUS_TOKENS` set-equal to the module's exported decision-ledger symbols.
+      `DECISION_LEDGER_CENSUS_TOKENS` — its **six** members — set-equal to the module's exported
+      decision-ledger symbols. `decisionLedger` is **not** among them (TSPEC v0.8 §5.5: the report
+      field is threaded through `buildFinalReport` outside `main()`, so the token is unsatisfiable);
+      its obligation is discharged behaviourally by T-10a's live arm, not by the census.
 - [ ] The enablement flag is read by **destructuring**; PROP-DIS-06 in `advisoryDisabled.test.js` is
       still green.
 - [ ] `.claude/pdlc.config.example.json` carries the `decisionLedger` block; `pdlc/OPERATIONS.md`,
