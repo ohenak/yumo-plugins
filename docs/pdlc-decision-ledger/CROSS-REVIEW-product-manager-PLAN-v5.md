@@ -153,6 +153,43 @@ and the surrounding census contract are stale.
 
 ## Verification
 
+Traceability of the changed rows to the requirements they serve, and the test-shape bar applied to
+the assertions they specify.
+
+**The terminal `102` control is a genuine positive control, and it is now positioned where it can
+run.** T-19's new conjunct pairs an absence-shaped obligation (the `decisionLedger` namespace is
+excluded from the census) with a positive assertion on the same path (the complement still counts
+`102` once all twelve modules exist). That is the paired-oracle bar, and T-00a's retained TE F-03
+paragraph is honest about the limit — the complement pin cannot detect a *dropped* `decisionLedger*`
+module, which is exactly why T-12a's twelve-name **set equality** exists alongside it. Set equality,
+not containment and not a count, so a deleted case fails and names itself. Both halves survive the
+edit intact.
+
+**No implementation echo introduced.** T-12a's disclosure assertions remain "derived from the
+production constants, never transcribed" for the three catalogues (`DECISION_LEDGER_OMIT_REASONS`,
+`DECISION_LEDGER_NOTICES`, `DECISION_LEDGER_DEFAULTS`) while T-12a's namespace census and T-19's
+`102` are transcribed literals — the right split, since the former assert *agreement between
+document and code* and the latter assert a *spec figure*. The DoD bullet (`PLAN`:450–454) preserves
+the "derived … rather than restated" wording.
+
+**Coverage claims check out against the current suite layout.** `documentOracles.test.js` exists and
+carries the census at :398–420; `pdlc/engine/__tests__/` is the home of the engine-side
+`node:test` check T-12 targets, consistent with the `Engine tests (ubuntu-latest)` required check.
+The four required PR checks the PLAN's landing task (T-20) re-runs are unchanged by this edit.
+
+**The open item is a verification gap, not a wording gap.** BR-11 / REQ NG-4 is the requirement that
+"no driver-side computation takes a decision id as input", and the PLAN gives it exactly one
+falsifying instrument: T-11's source census. Because T-11 now specifies the census in the two forms
+`TSPEC` v0.9 §7.3 explicitly ruled out (§Dependencies F-01), the instrument as planned cannot go
+green, and the two catalogues v0.9 requires it to be built from (`DECISION_LEDGER_CENSUS_EXEMPT`,
+`DECISION_LEDGER_OWNED_DECLS`) are unowned by any task and unlisted in the file-ownership manifest.
+A P0-adjacent non-goal therefore has no landable proof in the plan. That is why F-01 is High rather
+than a re-pin nit.
+
+What I am **not** raising: the two v4 Medium/Low findings that predate this loop (T-03's shell-pipe
+escaping, and the delta-coverage instruction's delivery across batches 3–8) remain open in the
+ordinary loop and are unaffected by this edit; I do not re-raise them here.
+
 ## Positive Observations
 
 ## Recommendation
