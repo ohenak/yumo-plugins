@@ -10,7 +10,7 @@
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | te-author | 0.1 | 2026-08-29 |
+| Draft | te-author | 1.0 | 2026-08-29 |
 
 ## Overview
 
