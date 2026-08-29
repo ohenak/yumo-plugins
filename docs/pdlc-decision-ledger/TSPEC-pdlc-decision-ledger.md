@@ -1331,6 +1331,16 @@ below: `DECISION_LEDGER_OWNED_DECLS` enumerates *module* top-level declarations 
 resolve to exactly one top-level declaration of `orchestrate-dev.js` — so a test-file constant can
 never be a member of it, and the census never scans the file the three are declared in.
 
+**The size of the owned list, stated once.** `DECISION_LEDGER_OWNED_DECLS` has **fourteen** members
+— §4.1–§4.4's six functions plus the eight top-level constants enumerated in the *Scanned source*
+row below — and the partition is therefore **six ∪ eight = fourteen**. That arithmetic is stated
+here and nowhere else in this document: any other section, and any downstream document, cites it
+rather than restating it, because a count restated at several sites is a one-row edit that goes
+stale at all but one of them (the `pdlc-wave-resume` lesson). A downstream document that carries a
+*fifteen*-member owned list, or that assigns any of the three census constants a home in
+`orchestrate-dev.js`, is stale against this section and not a competing design: this paragraph and
+the row below are the pin, and the correction direction is downstream-to-here, never the reverse.
+
 | Operand | Definition | How it is kept honest |
 |---|---|---|
 | **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose six members are the names that carry or produce decision-record **data**: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` | Not set equality against *all* of the module's decision-ledger exports — that comparison is red by construction, since §3.1/§4.1/§4.2/§4.4/§5.2 declare roughly a dozen and only these six are data-carrying. The companion test instead asserts **`DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`**, the two sub-sets **disjoint**, over the same frozen owned-declaration list the second operand slices. That is still an exact set equality — a symbol added later must be classified into one list or the other or the test reddens — but the partition is stated rather than assumed. `DECISION_LEDGER_CENSUS_EXEMPT` holds the plumbing declarations, each with its reason: `parseDecisionLedgerConfig` and `buildDecisionLedgerInjector` (named by the wiring block, config and construction, they carry no record), `DECISION_LEDGER_DEFAULTS` (config defaults), `DECISION_HEADING_RE` (grammar), `DECISION_CORPUS_ARGV` (the `_git` argv literal), `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT` (fixed prompt framing text, no record data), and `DECISION_LEDGER_NOTICES` (run-level notice ids, which generic driver code legitimately renders and counts). The census constants themselves are absent from both sub-sets because they are not module declarations at all (see *Where the three census constants live* above). Generic tokens like `id` are excluded by construction — no member is a name the shipped module already uses |
