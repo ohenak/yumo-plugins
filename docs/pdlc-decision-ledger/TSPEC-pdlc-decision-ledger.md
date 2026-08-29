@@ -990,7 +990,8 @@ Suite: `pdlc/workflows/__tests__/` under jest (`cd pdlc/workflows && npm test`),
 `npm run test:coverage` is four `&&`-joined clauses. Its **fourth**, `c8 report --check-coverage
 --per-file --branches 85`, has an `include` list naming `**/pdlc/workflows/orchestrate-dev.js` as a
 single file. Since every symbol this feature adds lands in that ~817 KB file (D-6), the new branches
-are averaged into a per-file ratio already dominated by ~17k lines of shipped code: §6.1's
+are averaged into a per-file ratio already dominated by the **18,509** lines of shipped code the
+file measures at HEAD: §6.1's
 **fourteen** failure rows could be entirely uncovered and that ratio would not move. The percentage
 clause is therefore not evidence for this feature, and this spec does not rely on it. It is not,
 however, the whole of the coverage gate.
@@ -1082,8 +1083,16 @@ conjuncts:
    **ends with** the rendered ledger block — not merely "differs from the baseline".
 3. **Flag off, three positive conjuncts:** the reviewer prompt is byte-identical to §7.4's committed
    merge-base recording (an independent referent, never a string computed by subtracting the block
-   from the flag-on prompt), the `report` key set is **set-equal** to the flag-off recording, and the
-   emitted `NTC-DECLEDGER-*` notice set is **set-equal** to empty.
+   from the flag-on prompt); the `report` object **the flag-off `main()` run itself returns** has a
+   key set whose symmetric difference from the flag-on run's key set is exactly `{decisionLedger}`,
+   asserted as a set equality in both directions so a spuriously added or dropped key on **either**
+   arm fails; and the emitted `NTC-DECLEDGER-*` notice set is **set-equal** to empty. Note the
+   referent split, because it is easy to get wrong: §7.4's recording is cited for the **prompt**
+   conjunct only. It records one narrow case driving exported `reviewLoop` and captures
+   reviewer-prompt streams, never `report` keys — §7.4 expressly rejects a whole-`main()` recording
+   *because* it would red on this feature's new report field — so it cannot serve as the key-set
+   referent. The paired flag-off/flag-on runs inside this arm are that referent, which is the form
+   PLAN T-10a already states.
 
 This arm is also the second delta-coverage risk site named above: it is what executes §6.1's
 per-path `try/catch` arms inside the wiring block. PLAN T-10a owns it.
