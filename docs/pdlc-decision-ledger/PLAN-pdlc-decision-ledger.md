@@ -218,4 +218,99 @@ finding-restatement prompt builders (`DEC-DECLEDGER-04`); and `DEC-LOOPECON-06`'
 
 ## Verification
 
-*(pending)*
+### Suite layout, verified at HEAD
+
+Two suites carry this feature's tests, and both are already required checks:
+
+| Suite | Command | Gate check |
+|---|---|---|
+| `pdlc/workflows/__tests__/` (jest) | `cd pdlc/workflows && npm test`; coverage via `npm run test:coverage` | `Unit tests (ubuntu-latest, node 20)` |
+| `pdlc/engine/__tests__/` (`node:test`, 73 files at HEAD) | `cd pdlc/engine && npm ci && npm test` | `Engine tests (ubuntu-latest)` |
+
+Verified layout facts this PLAN relies on: `pdlc/workflows/package.json`'s jest
+`testPathIgnorePatterns` is `["/node_modules/", "/__tests__/helpers/", "/__tests__/fixtures/"]`, so
+T-01's helper and T-02/T-03's fixtures — including `scenarios.mjs` — are never collected as tests;
+and `pdlc/workflows/__tests__/fixtures/` already holds sibling fixture directories
+(`learnings-baseline/`, `loop-economics-baseline/`), so T-02 and T-03 add two more of a shipped kind.
+
+**The coverage gate is not evidence for this feature, and this PLAN does not lean on it.** The c8
+`include` list names `**/pdlc/workflows/orchestrate-dev.js` as a single file and the gate is
+`--check-coverage --per-file --branches 85`. Every symbol this feature adds lands in that ~817 KB
+file, so the new branches average into a ratio dominated by shipped code: TSPEC §6.1's fourteen
+failure rows could be entirely uncovered and the number would not move. The obligation is discharged
+by the explicit row-to-task mapping below instead.
+
+### Failure-row coverage — every row of TSPEC §6.1 has a named owner
+
+| Row | Scenario | Owning task |
+|---|---|---|
+| F-1 | config file absent / unreadable | T-04 → T-13 |
+| F-2 | config file not valid JSON | T-04 → T-13 |
+| F-3 | `decisionLedger` block absent (no notice) | T-04 → T-13 |
+| F-4 | block present but not a plain object (`NTC-DECLEDGER-MALFORMED`) | T-04 → T-13 |
+| F-5 | one key wrong-typed (`NTC-DECLEDGER-KEYTYPE`, other keys keep operator values) | T-04 → T-13 |
+| F-6 | `git ls-files` `!ok` **or** `_git` throws ⇒ `RSN-UNLISTABLE` | T-08 → T-17 |
+| F-7 | enumeration returns zero paths ⇒ `RSN-EMPTY` | T-08 → T-17 |
+| F-8 | one source unreadable (`null` **and** throwing arms) ⇒ `failedSources` | T-08 → T-17 |
+| F-9 | source reads, zero records ⇒ `emptySources`, not a failure | T-08 → T-17 |
+| F-10 | nothing survives, for any mixture of F-8/F-9 ⇒ total leg | T-08 → T-17 |
+| F-11 | either bound exceeded ⇒ drop loop in omission order | T-07 → T-16 |
+| F-12 | a single line alone exceeds `maxBytes` ⇒ dropped whole | T-07 → T-16 |
+| F-13 | either threshold resolves to `0` | T-04 (validator), T-10 (byte-identity outcome) |
+| F-14 | feature has no directory, or its directory yields zero records | T-08 → T-17 |
+
+### Acceptance-test coverage — every FSPEC AT has a named owner
+
+| AT | Owning task | Level |
+|---|---|---|
+| AT-01, AT-02, AT-18 | T-09 → T-17 | corpus oracle over the frozen fixture |
+| AT-03 | T-08 → T-17 | injector, scripted `_readFile` mutation (`DEC-DECLEDGER-14`) |
+| AT-04 | T-02 | committed merge-base baseline guard |
+| AT-05, AT-14, AT-16, AT-17 | T-10 → T-18 | loop integration against T-02's recording |
+| AT-06, AT-07 | T-06 → T-15 | pure unit on the rule-text constants |
+| AT-08, AT-09, AT-10 | T-08 → T-17 | fail-open legs + O-7's `failedSources`/`emptySources` split |
+| AT-11 | T-04 → T-13 | pure unit, set equality over C-3 |
+| AT-12 | T-10 (driver half) → T-18, T-06 (text half) → T-15, T-11 (census) | integration + source census |
+| AT-13, AT-15 | T-07 → T-16 | property, plus retained example anchors |
+
+### Anti-echo commitments
+
+Three places where an expectation could be derived from the code under test, and the task that is
+required not to:
+
+1. **T-09** transcribes expected statements, citations, the 41 project-level ids, `6,305`, the 63
+   `M-6b` ids and `10,859` **by hand from the fixture** — never captured from the renderer, never
+   read from a manifest (`DEC-DECLEDGER-16`). If T-09 reddens, the correct response is **never** to
+   trim the expected set to whatever the renderer emitted.
+2. **T-07**'s property model carries its **own** formatter transcribed from TSPEC §4.3; reusing the
+   production renderer would make the no-truncation conjunct true by construction.
+3. **T-02** asserts `mergeBaseSha` against a hand-transcribed `EXPECTED_MERGE_BASE_SHA`, never
+   against the manifest it is checking, and never against a `git merge-base origin/main HEAD`
+   computed at test time (which would depend on a current local `origin/main` and could red on an
+   unrelated push to `main`).
+
+### Definition of Done
+
+- [ ] All 21 tasks ✅; every `[red]` block un-skipped by its named `[green]` task, none left skipped.
+- [ ] `cd pdlc/workflows && npm run test:coverage` exits 0; `cd pdlc/engine && npm ci && npm test`
+      exits 0; `bash -n` clean over tracked `*.sh`; the fixture-machine leg green — the four
+      required checks named in `CLAUDE.md`.
+- [ ] Flag off ⇒ reviewer-prompt stream byte-identical to T-02's committed merge-base recording
+      (AT-04), and all four not-enabled spellings collapse to it (AT-05).
+- [ ] Flag off ⇒ the report object carries **no** `decisionLedger` field and **no** notice.
+- [ ] Every row of TSPEC §6.1 and every FSPEC AT has a passing test, per the two tables above.
+- [ ] T-07's four mutations and T-02's three mutations each applied, observed red, reverted, and the
+      observed failure transcribed into the respective test file's header.
+- [ ] `DECISION_LEDGER_RULE_TEXT` + preamble + header + trailer render to ≤ 1,200 bytes, asserted
+      against that literal (`DEC-DECLEDGER-12`).
+- [ ] The census (T-11) is green with every slice asserted non-empty, and
+      `DECISION_LEDGER_CENSUS_TOKENS` set-equal to the module's exported decision-ledger symbols.
+- [ ] The enablement flag is read by **destructuring**; PROP-DIS-06 in `advisoryDisabled.test.js` is
+      still green.
+- [ ] `.claude/pdlc.config.example.json` carries the `decisionLedger` block; `pdlc/OPERATIONS.md`,
+      `pdlc/README.md` and `CLAUDE.md` name it; no `SKILL.md` and no `pdlc/engine/` runtime file
+      changed.
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/workflows/dist/` is staged in
+      the same commit as the workflow-source change; `pdlc/.claude-plugin/plugin.json` version bumped
+      from `0.23.6`.
+- [ ] No test reads the live `docs/` tree; no test writes to the working tree or to a fixture file.
