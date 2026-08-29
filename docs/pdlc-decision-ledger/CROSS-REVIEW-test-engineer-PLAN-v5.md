@@ -212,3 +212,59 @@ Everything I asserted above, and the command that grounds it:
 and `DECISION_LEDGER_CENSUS_EXEMPT` to be declared by `T-00` or by a new batch-1 row. That is a
 plan-authoring choice, not a defect; F-01 only requires that the PLAN name whichever task declares
 them.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | `T-11` specifies the census against TSPEC **v0.8** §7.3, which **v0.9 replaced as red-by-construction**. Scanned source is still "source minus three sliced declarations plus the wiring block", leaving `gatherDecisionCorpus` and §5.2's two catalogue tokens in the remainder on correct code (v0.9 changelog:26 says four of six tokens would occur there); v0.9:1297 requires slicing **every** owned declaration via the frozen `DECISION_LEDGER_OWNED_DECLS`. And the companion oracle is still "set equality against the module's exported decision-ledger symbol names", which v0.9:1296 explicitly repudiates in favour of the `CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS` disjoint partition. Neither `OWNED_DECLS` nor `CENSUS_EXEMPT` appears anywhere in the PLAN. `T-11` is a `[red]` row that batch-2 `T-18` depends on, so an implementer following it writes a test that can never go green. | Batches → `T-11` (PLAN:134); §Definition of Done census bullet |
+| F-02 | Medium | delta | local | The header upstream pin still reads `TSPEC-pdlc-decision-ledger.md` **v0.8** `sha256:28d25518…32cb49`; HEAD's TSPEC declares **v0.9** (front-matter:17) and digests `eef45ef3…0623c8`. TSPEC v0.9 landed at 08:44, six minutes before the v0.5 PLAN commit at 08:50, so the round re-derived three pins mechanically and left the fourth on a superseded version. The REQ, FSPEC and DECISIONS pins are all correct — v4's F-03 transposition is fully closed. | Header → Upstream pins |
+
+**On F-01's provenance.** The pre-round bytes carried the same `T-11` text, but they were *correct*
+when written: TSPEC was v0.8 at `36cd34d4d`. The divergence came into existence when TSPEC v0.9
+landed mid-round, and this round's edit touched `T-11` twice — re-pointing its citation to §7.3 and
+restoring its second-operand sentence — without re-reading the §7.3 it re-pointed to. I tag it
+`delta` on that basis: the round is the one that could and should have caught it, and the remedy is
+a bounded PLAN edit rather than a route back to an earlier phase. `local` because both findings sit
+inside sections this edit changed.
+
+**Not filed.** I did not re-open the v3-approved structural approvals (batch DAG, red-before-green
+pairings, `[Fake first]` ordering, file-ownership disjointness) beyond re-deriving the four touched
+rows, and I did not re-litigate `T-05`/`T-06`/`T-11`'s §7.5 mutation discipline, which v0.9 did not
+touch.
+
+## Positive Observations
+
+- **The routed item landed exactly as specified, at every site it needed to.** v4 asked for one
+  task id to own the terminal `102` assertion at a batch where it is evaluable. v0.5 named `T-19`
+  (batch 9), made `T-00a`'s acceptance one-sided and honest about what it can prove at batch 1,
+  narrowed `T-12a`'s disclaimer to the *set* census so it no longer disclaims something nobody
+  owns, and credited T-19 in both the §Definition of Done bullet and the file-ownership manifest.
+  Four consistent sites, no dangling prose. This is the clean version of the two shapes I offered.
+- **v4 F-02 and F-03 both closed and verified mechanically.** The §5.5→§7.3 citation is corrected
+  at both sites, and §7.3 is genuinely the enclosing section (TSPEC:1153). The DECISIONS digest was
+  re-derived from `shasum -a 256` rather than re-typed, which is why it now matches to the
+  character.
+- **The staleness that F-01 names is discoverable *because* the header pins versions and digests.**
+  The v0.4 pin-table improvement I praised last round is what let this round find F-01 in one
+  `shasum` comparison rather than by reading two documents side by side. The anchor did its job.
+- **The revision-history paragraph is honest about scope**, naming POSTMORTEM-PR and enumerating
+  the five landed items rather than claiming a broader re-grounding than occurred.
+
+## Recommendation
+
+**Needs revision**
+
+One High finding open. To close it, re-ground `T-11` on TSPEC **v0.9** §7.3: replace the
+three-slices-plus-wiring scanned source with the frozen `DECISION_LEDGER_OWNED_DECLS` list sliced
+over all top-level declarations, replace the exports set-equality with the
+`CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS` disjoint partition, name whichever task declares the
+two new frozen lists, and keep the non-empty-slice conjunct already present. Advance the header
+TSPEC pin to v0.9 `sha256:eef45ef3…0623c8` and the "TSPEC v0.8 §7.3" version references in the
+`T-11` row and §Definition of Done in the same pass (F-02). The six census tokens and the
+`decisionLedger`-is-not-a-token rationale survive v0.9 unchanged, so no other row needs to move.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
