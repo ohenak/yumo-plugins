@@ -20,11 +20,20 @@
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | §3.2 step 2 scopes the set to "the project's closed decisions plus those of the feature whose document is under review". Under the feature this pipeline is running now (`pdlc-decision-ledger`) that feature contributes **zero** records — there is no `DECISIONS-pdlc-decision-ledger.md`. Is a dispatch whose feature contributes nothing simply the project-level set (BR-1 satisfied, index renders), and is that the same resolution Q-2 gives to a document with no feature directory? Stating the two together would make the in-scope function total without adding a rule. |
+| Q-02 | E-3's Partial leg says "one decision of several fails to render". What makes an *individual* decision fail once its file has parsed — a record whose heading has an id but no statement, an unrepresentable byte, an overlong statement? If the only realistic per-decision failure is "the whole file did not parse", then E-3 and F-01's missing middle case are the same case and §3.3 collapses to two legs stated over the surviving subset. |
+| Q-03 | BR-14 and AT-16 enumerate five driver-side outcomes that must be identical across the two flag settings. Is that enumeration meant to be exhaustive of driver-side accounting (asserted by set equality against a named list, so a sixth mechanism added later fails), or a representative sample? AT-11 takes the set-equality discipline explicitly for C-3's keys; AT-16 does not say either way. |
+| Q-04 | Q-3 asks whether the block is disclosed in `.claude/pdlc.config.example.json`. Confirmed at HEAD: both shipped gated blocks are disclosed there (`cascade.pinCheck`, `review.derivativeStop`), each with an engine-side disclosure test (`pdlc/engine/__tests__/loop-config-example.test.js`, `learnings-config-example.test.js`). Since NG-6 explicitly preserves that precedent, is there any live reason *not* to disclose — i.e. is Q-3 a genuine open question, or a decision the precedent has already made that TSPEC only has to record? |
 
 ## Positive Observations
 
-_(pending)_
+- The **two-moving-parts split in §1** (driver-side index / reviewer-side rule) with an explicit observable per part is the single most useful thing in this document: it is what makes NG-4 falsifiable rather than aspirational, and §3.4's "a reviewer who files anyway is not intercepted" closes the loop honestly.
+- **Every claim about the config precedent checks out at HEAD.** Per-key independent fallback is really shipped in the shape BR-10 describes (`pdlc/workflows/orchestrate-dev.js:2272-2296`: absent ⇒ default, wrong type ⇒ default + `invalidKeys`, other keys untouched), the config path is `.claude/pdlc.config.json` (`:2194`), and `DEC-LOOPECON-06`'s exact-match triple that AT-12 promises to leave alone exists as cited (`docs/completed/pdlc-loop-economics/DECISIONS-pdlc-loop-economics.md:163`), as does `DEC-ERRROUTE-01` (`docs/_decisions/DECISIONS-erratum-routing.md:12`).
+- **Feasibility is not in doubt.** `reviewerPrompt` (`pdlc/workflows/orchestrate-dev.js:11433`) is a single, already-parameterised seam for review dispatch construction, and it already carries two flag-gated conditional clause appends that are the empty string when off — so BR-4's byte-identical disabled path is cheap and structurally proven, and the prompt is rebuilt inside the dispatch loop (`:11143`), so BR-9's per-dispatch freshness is available without restructuring anything.
+- The **`maxBytes`/`maxEntries` interaction at the single-oversized-line case (E-8)** and the N-1/N-2 non-cases are the right things to have written down: they are exactly where an implementer would otherwise invent an abort path.
+- **§2's traceability table earns its place** — every AC has a row, every row names both rules and tests, and G-4's explicit *no row, by design* is better than silence.
 
 ## Recommendation
 
