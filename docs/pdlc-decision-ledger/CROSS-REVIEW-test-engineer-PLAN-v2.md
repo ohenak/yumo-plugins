@@ -164,6 +164,140 @@ attributes four ids to `pdlc-rcv-budget-stop`. Details in F-01.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | T-03's transcribed `git ls-tree \| grep -E` enumeration omits `DECISION_CORPUS_ARGV`'s fourth pathspec (`docs/discarded/*/DECISIONS-*.md`); it yields 24/25, not the row's own 25/26, and the fixture built from it drops a file carrying four decision ids | Batches, T-03; Dependencies, "T-03 must complete before any corpus assertion" |
+| F-02 | Medium | Local | "It runs at every wave gate from batch 3 onward" is false: the wave gate's `implementation.testCommand` is plain `npm test`, not `npm run test:coverage`, so the delta-coverage gate first fires at PR CI | Verification, "The coverage gate — corrected" |
+| F-03 | Medium | Local | T-00a's positive control (count still `102`) pins the *complement* of the excluded namespace, so it cannot falsify a dropped `decisionLedger*` module — the stated rationale is not what the assertion buys | Batches, T-00a |
+| F-04 | Low | Local | "fourteen new test/fixture paths" disagrees with the manifest it declares it must agree with (15 new paths under `__tests__/`, or 16 counting the engine module) | Overview, "Blast radius outside `orchestrate-dev.js`" |
+| F-05 | Low | Local | T-03's row carries an unescaped `\|` inside a code span; the engine parses it correctly but GFM splits on it, so the row renders with extra columns on GitHub | Batches, T-03 |
+
+### F-01 (High, Local) — the frozen fixture would be built from 24 files, not 25
+
+`T-03`'s row transcribes, as the reproducible historical enumeration, a pipeline whose filter has
+**three** alternatives:
+
+```
+git ls-tree -r --name-only 8c673a09f | grep -E '^(docs/_decisions/DECISIONS-[^/]*\.md
+                                                 |docs/[^/]+/DECISIONS-[^/]*\.md
+                                                 |docs/completed/[^/]+/DECISIONS-[^/]*\.md)$'
+```
+
+`DECISION_CORPUS_ARGV`, as the TSPEC specifies it, has **four** pathspecs — the three above plus
+`:(glob)docs/discarded/*/DECISIONS-*.md`. The row's grep drops that fourth one.
+
+Measured on `feat-pdlc-decision-ledger`:
+
+| Enumeration | at `8c673a09f` | live (`git ls-files`) |
+|---|---|---|
+| the row's three-alternative grep | **24** | **25** |
+| the same grep plus `docs/discarded/[^/]+/DECISIONS-[^/]*\.md` | **25** | **26** |
+
+So the row's *numbers* — "yields **25**", "live tree yields 26" — are the Baseline's numbers and are
+correct; the *command* the row tells the implementer to run is not the command that produces them.
+The row's own reconciliation sentence, that "the two enumerations shown agree at `8c673a09f`", is
+falsified by running them: they differ by one at both ends.
+
+The single file the grep drops is
+`docs/discarded/pdlc-rcv-budget-stop/DECISIONS-pdlc-rcv-budget-stop.md`. It is present at
+`8c673a09f`, and the Baseline's `M-2b` attributes **4** distinct ids to `pdlc-rcv-budget-stop`
+(`DEC-BUD-01`…`DEC-BUD-04`).
+
+Why this is High rather than a transcription nit: T-03's fixture is the input to **every** corpus
+assertion in the PLAN — T-08 and T-09 both carry `T-03`, and the AT table routes AT-01, AT-02 and
+AT-18 through T-09 against that fixture. T-09's expected values are, by the PLAN's own anti-echo
+commitment #1, **hand-transcribed from the Baseline** — the 41 project-level ids, `6,305`, the 63
+`M-6b` ids, `10,859` — and the Baseline computed them over the 25-file corpus. An implementer who
+builds the fixture from the row as written gets 24 files, four fewer feature-level ids (the
+`M-2e` sum becomes 96, not 100), and T-09 reds.
+
+That red is the *good* outcome. The bad one is the one anti-echo commitment #1 exists to forbid and
+which a wrong fixture makes tempting: T-09 reds, the fixture looks authoritative because a task row
+told the implementer how to build it, and the expected set gets trimmed to what the renderer emitted
+over 24 files. The PLAN explicitly says "if T-09 reddens, the correct response is **never** to trim
+the expected set" — this defect is precisely the situation that instruction is guarding, arriving
+through the fixture-construction door instead.
+
+**The fix is one cell:** add `|docs/discarded/[^/]+/DECISIONS-[^/]*\.md` to T-03's grep alternation
+so the transcribed command has all four of `DECISION_CORPUS_ARGV`'s pathspecs, and re-state the
+reconciliation as measured (24→25 is the discarded-directory file; 25→26 is this feature's own
+`DECISIONS-pdlc-decision-ledger.md`, which the row already names correctly). I would also add, to
+T-03's integrity guard, a **set-equality** conjunct on the fixture's path list against a
+hand-transcribed 25-element literal rather than a count — the row currently says "equality on the
+fixture's path list", which is right, but a count-only reading of it is what let a 24/25 command sit
+next to a 25/26 claim without either falsifying the other.
+
+### F-02 (Medium, Local) — the delta-coverage gate does not run at the wave gate
+
+The rewritten coverage section states: *"It runs at every wave gate from batch 3 onward and inside
+the Definition of Done's own `npm run test:coverage` bullet"*, and draws the consequence that *"an
+uncovered-branch failure at batch 3 or batch 8 is a designed check firing, not a surprise."*
+
+The wave gate runs `implementation.testCommand`. In `.claude/pdlc.config.json` (and identically in
+`.claude/pdlc.config.example.json`) that is:
+
+```
+(cd pdlc/engine && npm test) && cd pdlc/workflows && npm test -- --testPathIgnorePatterns …
+```
+
+— `npm test`, not `npm run test:coverage`. Clause 3 is not in it. The delta-coverage gate therefore
+fires in exactly two places: the CI `Unit tests (ubuntu-latest, node 20)` check, which does run
+`test:coverage` (`.github/workflows/pr-tests.yml`), and the DoD bullet the PLAN already carries.
+
+The evidence obligation is intact — the DoD bullet is the real binding and it is correctly worded
+and correctly owned by T-18. What is wrong is the *timing*, and the risk it hides is the opposite of
+the one the paragraph describes: an uncovered branch introduced by T-13 at batch 3 will **not**
+surface at batch 3; it surfaces at PR time, by which point it is a batch-8-era remediation across
+six greens. Either correct the sentence to "runs on the required CI check and in the DoD, not at the
+wave gate", or — better, and I would prefer this — give T-18's row an explicit instruction to run
+`node scripts/check-wave-resume-delta-coverage.mjs` by hand after each of batches 3–8 so the
+feedback is per-wave. Changing `testCommand` itself is out of scope and would widen the gate for
+unrelated work (the T17 gate-widening hazard).
+
+### F-03 (Medium, Local) — the census positive control pins the complement, not the namespace
+
+T-00a's acceptance is "two-sided: the exclusion lands **and** the filtered count is still `102` …
+a positive control, so a future `decisionLedger`-prefixed module cannot silently vanish from every
+census."
+
+The second clause does not follow. `count === 102` is an assertion about the *non*-`decisionLedger`
+modules. Once `!name.startsWith("decisionLedger")` is in the filter, deleting any one of this
+feature's twelve modules leaves the count at 102 — the assertion is structurally incapable of seeing
+it. What the control does buy is real and worth keeping (a mistyped prefix, or an exclusion that
+accidentally swallows a neighbouring namespace, moves the count and reds), but it is not what the
+row claims.
+
+This is Medium, not High, because it matches the shipped precedent exactly: `learnings*`,
+`waveResume*`, `loop*` and `escalationView*` all sit under the same un-pinned arrangement, and
+`documentOracles.test.js`'s own comment block explains why a per-namespace count cannot live in a
+batch-1 task (it would red the wave gate at every wave as the manifest lands one file per wave).
+
+The concrete close is to put the namespace count where it *can* be terminal: a conjunct in T-12a's
+family, un-skipped by T-19 in batch 9, asserting the `decisionLedger*` module count is set-equal to
+the twelve names in this PLAN's file-ownership manifest, transcribed by hand. By batch 9 all twelve
+exist, so it never reds mid-feature, and a dropped module then fails something. Alternatively,
+soften the row's claim to what the control actually proves.
+
+### F-04 (Low, Local) — the prose summary disagrees with the manifest it promises to match
+
+The blast-radius paragraph closes with "the file-ownership manifest below is the complete list; this
+paragraph is its prose summary and **must agree with it**." It says "fourteen new test/fixture
+paths". The manifest lists fifteen new paths under `pdlc/workflows/__tests__/` — twelve
+`decisionLedger*.test.js` modules, `helpers/decisionLedgerDoubles.js`, and the two fixture trees
+`fixtures/decision-ledger-baseline/**` and `fixtures/decision-corpus/**` — or sixteen if the engine
+module is counted rather than named separately in the preceding sentence. Nothing mechanical reads
+the figure; it is a self-declared invariant, so it should hold.
+
+### F-05 (Low, Local) — an unescaped pipe inside T-03's code span
+
+T-03's cell contains `` `git ls-tree -r --name-only 8c673a09f | grep -E …` ``, with that first pipe
+unescaped inside the backtick span. The engine is safe: `splitPipeRow` tracks open code spans and
+does not split inside one, and I confirmed the row yields exactly 7 cells with `Batch` = `1`.
+GFM, however, splits table rows on pipes *before* inline parsing, so on GitHub this row renders with
+extra columns. The alternation pipes in the same span are already written `\|`; write this one the
+same way for consistent rendering. Recorded because the PLAN itself now (rightly) treats row shape
+as a machine contract.
+
 ## Questions
 
 ## Positive Observations
