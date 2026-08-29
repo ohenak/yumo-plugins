@@ -202,7 +202,7 @@ parser ignores by design.
 | `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` `pdlc/workflows/__tests__/decisionLedgerMain.test.js` `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-18 | 8 (un-skip) |
 | `.claude/pdlc.config.example.json` | T-19 | 9 |
 | `pdlc/OPERATIONS.md` `pdlc/README.md` `CLAUDE.md` | T-19 | 9 |
-| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` `pdlc/workflows/__tests__/documentOracles.test.js` | T-19 | 9 (un-skip) |
+| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` `pdlc/workflows/__tests__/documentOracles.test.js` | T-19 | 9 (un-skip; also the terminal `102` positive control) |
 | `pdlc/workflows/dist/pdlc-cli.mjs` | T-20 | 10 (generated — never hand-edited) |
 | `pdlc/.claude-plugin/plugin.json` | T-20 | 10 |
 
