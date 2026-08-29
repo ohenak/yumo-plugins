@@ -314,6 +314,82 @@ baseline guard** over **FX-BASELINE**.
 (PROP-REND-01) — so an ordering mistake cannot violate it. PROP-OFF-06 is the falsifier that this
 construction was actually adopted.
 
+### TEXT — the rule text
+
+Traces `REQ-DECLEDGER-03`, `REQ-DECLEDGER-06`; `FSPEC` BR-5, BR-6, AT-06, AT-07, AT-12; `TSPEC`
+§4.3. Owner **T-06 → T-15**. Level: **pure unit** on `DECISION_LEDGER_RULE_TEXT`.
+
+**What is asserted is a property of the emitted text, never of anyone's classification.** No human
+is in any oracle here, and nothing mechanically evaluates evidence novelty — `BR-6` is explicit that
+no component compares citations.
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-TEXT-01** | `DECISION_LEDGER_RULE_TEXT` must state **both** conjuncts of the bar as a conjunction: **High severity** *and* citing evidence **not part of that decision's own record**. Text carrying one conjunct fails. | Functional |
+| **PROP-TEXT-02** | It must carry **both** boundary exemplars, each **explicitly labelled with the side it falls on** — *in scope for re-opening*: a shipped behaviour that changed after the decision was recorded, cited at the changed source; *not in scope*: a source the decision already cites, re-cited at a different line or a later commit with no behavioural change. Text carrying one exemplar, or both unlabelled, fails. | Functional |
+| **PROP-TEXT-03** | It must direct the reviewer to decide against the **cited record**, not the index line — which need not carry the decision's own citations (`REQ-DECLEDGER-03`, AT-07). | Functional |
+| **PROP-TEXT-04** | It must direct the reviewer to treat the **decision id as the reopening key** across rounds, recording a repeat **as a repeat naming that id** rather than as a fresh finding (`REQ-DECLEDGER-06`). | Functional |
+| **PROP-TEXT-05** | The rule text must be emitted **adjacent to the index**, inside the same block returned by `renderDecisionLedgerBlock`, and must appear in the order fixed by `TSPEC` §4.3: bar, exemplars, cited-record instruction, id-as-key direction. | Contract |
+| **PROP-TEXT-06** ✖ | The rule text must **not** be emitted when `selected` is empty (PROP-REND-01), and must **not** appear in any prompt other than the review-loop reviewer prompt (PROP-WIRE-09). | Contract |
+
+**Whitespace-normalise before matching.** Every substring assertion in PROP-TEXT-01…04 must
+whitespace-normalise both the rule text and the sought sentinel before comparing. These are
+multi-word sentinels inside a wrapped prose constant; a sentinel straddling a hard newline silently
+matches zero and the property passes for the wrong reason.
+
+### INV — driver invariance (`NG-4` made falsifiable)
+
+Traces `REQ-DECLEDGER-08`, `REQ` NG-4, NG-5, R-2; `FSPEC` BR-11, BR-14, N-2, AT-16, AT-17; `TSPEC`
+§5.5, §7.3. Owner **T-10 → T-18** (replay), **T-11 → T-18** (census). Level: **replay integration**
+over **FX-REPLAY**, plus a **source census**.
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-INV-01** | For **one fixed recorded set of reviewer outputs** replayed twice — flag `true` and flag `false` — all **five** named driver-side outcomes must be identical: the convergence decision; `DEC-LOOPECON-06`'s identity-triple dedupe and the resulting open-finding ledger; the `review.derivativeStop` flat/non-flat classification; the erratum items minted under `DEC-ERRROUTE-01`; and the fail-closed read of a non-approving confirmation carrying no parseable `FINDING:` line. The five are asserted **individually**, and the list is **not** claimed exhaustive — a sixth mechanism is covered by extending it, never by a set equality. | Integration |
+| **PROP-INV-02** | **Anchored, not merely invariant.** At least one of the five — the **open-finding ledger**, which the recorded reviewer outputs already determine — must additionally be asserted equal to a value **transcribed from FX-REPLAY**, so the test fails if that anchor moves and not only if the two runs diverge. | Integration |
+| **PROP-INV-03** | The dispatch-construction leg must differ in **exactly one asserted way**, stated positively on both sides: the `false` run's dispatch is byte-identical to FX-BASELINE's recording, and the `true` run's carries the rendered index. "Allowed to differ" is not asserted; the difference is. | Integration |
+| **PROP-INV-04** | A **High** finding re-opening an indexed decision that a reviewer files anyway must be scored, deduped and routed **as any other High finding**: it must mint its erratum item and satisfy the confirmation-presence check. Any special-casing on account of the index fails. | Integration |
+| **PROP-INV-05** ✖ | **No suppressed-finding state.** A finding the reviewer declines to file must be **absent** — not marked, not counted, not carried. No driver-side "discounted finding" state may exist for any gate to disagree about (`FSPEC` N-2). Asserted as a report-shape set equality, not as a scan for an absent key. | Contract |
+| **PROP-INV-06** ✖ | **Source census.** Zero occurrences of any member of `DECISION_LEDGER_CENSUS_TOKENS` — `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` — anywhere in `orchestrate-dev.js` **outside** the four regions this feature owns: the three function bodies sliced by brace-matching from their declarations, and the `main()` wiring run between `// === DECISION LEDGER WIRING START ===` and `... END ===`. | Contract |
+| **PROP-INV-07** | `DECISION_LEDGER_CENSUS_TOKENS` must be **set-equal** to the module's exported decision-ledger symbol names, so a symbol added later cannot escape the census by not being listed. | Contract |
+| **PROP-INV-08** | **Every census slice must be asserted non-empty** before the count is taken. An empty slice makes the census vacuous — the exact shape of the false green this whole family exists to prevent. | Contract |
+| **PROP-INV-09** ✖ | The report field name `decisionLedger` must **not** be a census token. `TSPEC` §7.3 records why: the shipped `learningsInjectionField` analogue is threaded through `buildFinalReport` and named at every one of its call sites, all far outside `main()`'s wiring sentinels, so the census would red on conforming code. What the field is owed instead is behavioural — PROP-OFF-05 and PROP-WIRE-11. | Contract |
+| **PROP-INV-10** ✖ | No constant this feature touches may alter `MAX_REVIEW_ROUNDS`, `MAX_LIFETIME_ROUNDS` or `MAX_ERRATUM_FOLLOWUP_ROUNDS` (`REQ` NG-5), asserted by pinning their HEAD values. | Contract |
+
+**PROP-INV-06's two operands are both frozen and both set-equality-checked**, which is the whole
+reason the census is implementable. `TSPEC` §7.3 records the earlier, unimplementable wording and
+why it failed: the token set was ubiquitous (`id` is one of the commonest identifiers in the file)
+and the scanned regions do not exist as source objects — `orchestrate-dev.js` carries exactly one
+sentinel-bounded region at HEAD (`advisoryDisabled.test.js:718–719` searches for
+`"// === LEARNINGS INJECTION REGION START ==="` by **exact string**, not by sentinel *shape*), so
+this feature's own wiring sentinels are invisible to PROP-DIS-06's slice and vice versa. What the
+census deliberately does **not** attempt is proving the absence of a coupling routed through a
+generically-named local; that residue is covered behaviourally by PROP-INV-01…04, and the two
+together are the compensating control `TSPEC` §7.7 records against `REQ` R-3.
+
+### DISC — disclosure
+
+Traces `FSPEC` Q-3; `REQ` NG-6; `TSPEC` §5.3. Owner **T-12 → T-19** (engine) and **T-12a → T-19**
+(documentation). Level: **engine disclosure test** (`node:test`) and **document oracle**.
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-DISC-01** | `.claude/pdlc.config.example.json` must parse, and its top-level section set must **contain** `decisionLedger`. Containment, not equality — the file is shared with the eight blocks present at HEAD, verified as `dispatch`, `advisory`, `implementation`, `learningsInjection`, `cascade`, `review`, `loop`, `merge`. | Contract |
+| **PROP-DISC-02** | `decisionLedger`'s own key→value map must be asserted by **set equality** against a **hand-transcribed** literal of `REQ` C-5's three keys and defaults — `{"enabled": false, "maxEntries": 70, "maxBytes": 12500}` — so a fourth key or a different spelling fails. | Contract |
+| **PROP-DISC-03** ✖ | That literal must **not** be imported from `DECISION_LEDGER_DEFAULTS`. Importing it makes the example agree with the code **by construction** and the oracle can never fail — the reason `loop-config-example.test.js` transcribes `MERGE_DEFAULTS` rather than importing it. | Contract |
+| **PROP-DISC-04** | The disclosure test must live in its **own** file, `pdlc/engine/__tests__/decision-ledger-config-example.test.js`, one file per block — the shape `learnings-config-example.test.js`, `loop-config-example.test.js` and `advisory-config-example.test.js` all take at HEAD — so an example edit cannot redden an unrelated engine concern. | Contract |
+| **PROP-DISC-05** | `pdlc/OPERATIONS.md`, `pdlc/README.md` and `CLAUDE.md` must name the `decisionLedger` block, asserted by a **derived** document oracle whose expectations come from `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_NOTICES` and `DECISION_LEDGER_DEFAULTS` rather than being restated as literals. | Contract |
+| **PROP-DISC-06** ✖ | No `SKILL.md` and no `pdlc/engine/` **runtime** file may change (`REQ` NG-6, `TSPEC` D-3): the only `pdlc/engine/` addition is the disclosure test of PROP-DISC-04. `SKILL.md` text cannot be config-gated, so a `SKILL.md` route would make `REQ` C-2's byte-identical disabled path unachievable. | Contract |
+| **PROP-DISC-07** | `documentOracles.test.js`'s `*.test.js` census filter must exclude the `decisionLedger` namespace **and** still count `102` after this feature's twelve new modules exist. The literal is **saturated** at HEAD (`documentOracles.test.js:398–420` filters on the `learnings`, `waveResume`, `loop` and `escalationView` prefixes and asserts `expect(count).toBe(102)`), so batch 1 alone would redden a required check before any production code exists. | Contract |
+| **PROP-DISC-08** | `node pdlc/workflows/build-runtime.mjs --check` must exit `0` and `pdlc/workflows/dist/` must be staged in the same commit as the workflow-source change; `pdlc/.claude-plugin/plugin.json` must bump from its HEAD value **`0.23.6`** to `0.23.7`, satisfying `pdlc/engine/package.json`'s `"pdlcPluginCompat": "^0.23.0"`. | Contract |
+
+**PROP-DISC-07's positive control pins the complement.** Excluding a namespace and re-asserting
+`102` proves the **rest** of the directory did not move; it does not count this feature's own
+modules. The count of decision-ledger modules is pinned separately by `PLAN`'s file-ownership
+manifest — twelve `decisionLedger*.test.js` modules, verified by enumeration of the PLAN's own task
+table: `Preflight`, `FixtureGuard`, `BaselineGuard`, `Config`, `Recognise`, `Render`, `Bounds`,
+`Injector`, `Corpus`, `Loop`, `Main`, `Census`.
+
 ## Oracles
 
 ## Fixtures
