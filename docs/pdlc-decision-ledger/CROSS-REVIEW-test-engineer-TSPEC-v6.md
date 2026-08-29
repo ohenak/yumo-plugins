@@ -254,8 +254,19 @@ and this document is again what D-10 says it is. F-02 (mis-stated bind order), F
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | The edit moved the load-bearing measured margin from 6,305-vs-6,800 (~495 bytes, pinned by §7.3 conjunct (2)) to 12,059-vs-12,500 on the `M-6b` slice (441 bytes, pinned by nothing). Conjunct (2) now reads `6,305 ≤ 11,300` with ~4,995 slack, so §3.6's "no line is omitted on any real dispatch", D-10's "clearing the bound by 441" and §7.6's AT-01 rationale all expire after roughly two promoted lines with the whole suite green — the exact silent-expiry shape D-10 forbids. Add an `M-6b`-slice assertion at shipped defaults: empty `omitted[]` (positive form), transcribed 12,059 / 10,859, and `12,059 ≤ 12,500` as arithmetic. | §7.3 (shipped-default assertion), §3.6, §9.1 D-10 |
+| F-02 | Low | delta | local | §7.3 says `maxEntries` 70 "binds first, forcing at least 71 omissions before the byte bound is reached". §3.6 specifies one loop dropping while lines exceed `maxEntries` **or** bytes exceed `maxBytes`; at 141 records both are exceeded from the outset and the byte bound determines the terminal set — as the same section concedes when it says the ~4,995-byte headroom trims further past the 29-line entry cap. Conclusion (the drop loop runs) is unaffected; the mechanism description would mislead a test author into pinning 29 survivors. | §7.3 (whole-fixture rationale) |
+| F-03 | Low | delta | local | §9.4's rewritten A-1 says "still operator-vetoable" without the window upstream states. REQ A-1: revisable "before FSPEC authoring"; FSPEC A-1: "operator-vetoable before TSPEC authoring". Both windows closed (FSPEC v1.3, TSPEC authored), so the unqualified phrasing over-states what upstream now says. Restate as vetoable-by-erratum, or carry the window verbatim. | §9.4 Assumptions, A-1 |
+| F-04 | Low | inherited | local | ERR-2's retained pre-resolution paragraph still argues in the present tense — "The measurement is supplied so the choice can be made on numbers; A-1 already makes the default operator-revisable without a REQ revision, so this may equally be resolved by leaving C-5 alone" — directly above a **Resolution** paragraph recording that REQ v1.8 took the raise. The last commit converted the arithmetic to past tense but not this clause, and its A-1 appeal no longer matches REQ A-1's windowed wording. Past-tense it as the rest of ERR-2 now is. | §9.2 ERR-2 (paragraph before **Resolution**) |
+
+FINDING: High | delta | local | §7.3 shipped-default assertion / §3.6 / D-10 | the load-bearing measured margin moved to `M-6b`'s 441 bytes (12,059 vs 12,500) while the pin stayed on 6,305 vs 11,300 (~4,995 slack), so §3.6's "no line is omitted on any real dispatch" now expires silently with every test green — add an `M-6b`-slice assertion at shipped defaults pinning empty `omitted[]`, the transcribed 12,059, and `12,059 ≤ 12,500`
+FINDING: Low | delta | local | §7.3 whole-fixture rationale | "`maxEntries` 70 binds first, forcing at least 71 omissions before the byte bound is reached" mis-describes the single or-conditioned drop loop — at 141 records both bounds are exceeded from the outset and the byte bound sets the terminal survivor count, as the same section later concedes
+FINDING: Low | delta | local | §9.4 Assumptions A-1 | "still operator-vetoable" drops the window upstream states (REQ A-1 "before FSPEC authoring", FSPEC A-1 "before TSPEC authoring"), both of which have closed
+FINDING: Low | inherited | local | §9.2 ERR-2, paragraph above **Resolution** | the pre-resolution argument is still in the present tense ("this may equally be resolved by leaving C-5 alone") directly above the paragraph recording that REQ v1.8 resolved it, and its A-1 appeal no longer matches REQ A-1's windowed wording
 
 ## Verdict
 
-_(pending)_
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 3}
