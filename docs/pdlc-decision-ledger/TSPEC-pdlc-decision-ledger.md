@@ -505,7 +505,86 @@ doubles are sync. The single `await` per round is placed immediately before the 
 
 ## 5. Data Model
 
-*(pending)*
+### 5.1 Types
+
+`DecisionRecord`, `CorpusEntry`, `DecisionLedgerConfig` are declared in §4. Two further shapes are
+report-side only.
+
+```ts
+interface DecisionLedgerDispatchRecord {
+  readonly feature: string;
+  readonly phaseId: string | null;
+  readonly docType: string | null;
+  readonly round: number;
+  readonly rows: Array<{ id: string; sourcePath: string; origin: "project" | "feature" }>;
+  readonly omitted: Array<{ id: string; reason: "RSN-ENTRIES" | "RSN-BYTES" }>;
+  readonly renderedBytes: number;
+  readonly corpusOutcome: "RSN-UNLISTABLE" | "RSN-EMPTY" | null;
+  readonly failedSources: string[];   // read failed — §6.3
+  readonly emptySources: string[];    // read fine, zero records — §6.3
+}
+
+interface DecisionLedgerSink {
+  ruleInputs?: { thresholds: { maxEntries: number; maxBytes: number } };
+  dispatches: DecisionLedgerDispatchRecord[];
+}
+```
+
+`report.decisionLedger` is set to the sink **only** when the injector is non-null, and is otherwise
+absent from the report object entirely — never `undefined`-spread. This is the shipped
+`learningsInjectionField` discipline (`main()` sets
+`const learningsInjectionField = learningsInjectorFn ? learningsSink : undefined` and the report
+builder spreads conditionally), and it is what keeps a disabled run's report byte-identical.
+
+### 5.2 Frozen catalogues
+
+Three frozen literals, each the operand of its own set-equality test — the shipped
+`LEARNINGS_REJECT_REASONS` / `LEARNINGS_CORPUS_OUTCOMES` / `LEARNINGS_NOTICES` pattern:
+
+| Constant | Members |
+|---|---|
+| `DECISION_LEDGER_OMIT_REASONS` | `RSN-ENTRIES`, `RSN-BYTES` |
+| `DECISION_LEDGER_CORPUS_OUTCOMES` | `RSN-UNLISTABLE`, `RSN-EMPTY` |
+| `DECISION_LEDGER_NOTICES` | `NTC-DECLEDGER-MALFORMED`, `NTC-DECLEDGER-KEYTYPE` |
+
+Disjointness in kind is structural, not conventional: an omit reason may appear only in
+`omitted[].reason`, a corpus outcome only in `corpusOutcome`, a notice id only in the run-level
+`notices[].id`.
+
+### 5.3 Config schema, as disclosed
+
+`.claude/pdlc.config.example.json` gains one top-level block, the values being C-5's declared
+defaults verbatim:
+
+```json
+"decisionLedger": { "enabled": false, "maxEntries": 70, "maxBytes": 8000 }
+```
+
+`pdlc/engine/__tests__/decision-ledger-config-example.test.js` asserts (a) the file parses, (b) the
+top-level section set **contains** `decisionLedger` — containment, because the file is shared with
+four other blocks, exactly as `loop-config-example.test.js` reasons about the same file — and (c)
+`decisionLedger`'s own key→value map by **set equality** against a literal transcription of C-5's
+three keys and defaults, so a fourth key or a different spelling fails. The literal is transcribed
+by hand rather than imported from `DECISION_LEDGER_DEFAULTS`, so the example is checked against the
+documented shape rather than agreeing with the code by construction — the reason
+`loop-config-example.test.js` states for transcribing `MERGE_DEFAULTS` rather than importing it.
+
+### 5.4 State
+
+There is none that survives a dispatch. `injectDecisionLedger`'s closure holds `config` and the
+seams; it holds no corpus, no rendered block and no snapshot (§2.6). The sink accumulates records
+for the report only, and nothing in the driver ever reads it back.
+
+### 5.5 The one thing the driver never holds
+
+No driver-side computation takes a decision id as input. `DecisionRecord.id` exists only inside
+`selectDecisions` / `renderDecisionLedgerBlock` and in `report.decisionLedger.dispatches[].rows[]`,
+which is written and never read. Convergence, `DEC-LOOPECON-06`'s identity-triple dedupe, the
+`review.derivativeStop` flat/non-flat classification, erratum minting under `DEC-ERRROUTE-01` and
+the fail-closed confirmation-presence check all consume reviewer output and never the ledger. This
+is BR-11 / REQ NG-4, and it is falsifiable by construction: `selectDecisions`' output does not
+reach any of those code paths, which §7.3 asserts as a source-census oracle rather than only as a
+behavioural one.
 
 ## 6. Error Handling and Degradation
 
