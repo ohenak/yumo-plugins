@@ -72,3 +72,53 @@ Three Mediums follow — all created by AC-01's widening, all additive, none gat
 |----|---------|
 | Q-05 | On F-30: is the intended expected for statement and citation a transcription from the frozen fixture's own heading text and record location? If so, one clause in AC-01 says it and forecloses the render-and-freeze shortcut. If instead only the id field is meant to be asserted with full equality, the "id, statement and citation all agree" sentence overstates what the criterion can check. |
 | Q-06 | On F-32: does the frozen fixture stay byte-frozen for the whole of REQ-DECLEDGER-01, or is a second, mutated copy expected for the recompute leg? Either answer is fine; only the silence is a problem, because the freeze is what makes the leg unobservable. |
+
+## Positive Observations
+
+- **The round fixed the oracle where the oracle lives.** Round 6's High was not that AC-01 said
+  the wrong thing — it was that the substrate AC-01 cited could not supply an expected set. v1.7
+  changes the substrate (`M-1d`, `M-2e`) and leaves AC-01's claim standing. That is the second
+  round running where the fix is structural rather than another defended clause, and it is why the
+  finding did not recur in a new form.
+- **The enumerations reproduce exactly, including the parts that are easy to get wrong.** 41 ids
+  in path order across twelve files, two of them with interleaved namespaces; 100 feature ids
+  across twelve directories with elided ranges and one zero. I re-derived the whole corpus and
+  diffed rather than spot-checking. Zero discrepancies, and the elision notation is self-checking
+  against the per-directory sums.
+- **`M-1d`'s closing note is a reviewer's note, written by the author.** "The list is not
+  reconstructible from `M-1b`'s counts" is exactly the objection someone would raise on the next
+  round — why enumerate what you already counted — and it is answered in the same cell, with the
+  two interleaved-namespace files named. That is the difference between a measurement and a
+  measurement that survives being re-read.
+- **AC-01's widening to the rendered line is the right response to SE F-02, and it names why.**
+  Id-only equality is invariant under the `M-3c` key choice; the criterion now says so in one
+  sentence and cites the block that witnesses it. F-30 is not a disagreement with the widening, it
+  is the follow-through the widening needs on the two new fields.
+- **O-6 widened past the finding that prompted it.** F-28 asked for AC-04's three legs; O-6 covers
+  those and folds in the frozen corpus copy, which came from a different reviewer's finding
+  entirely. Two findings converged into one obligation with one owner instead of two clauses that
+  would have drifted apart.
+- **The version note routes rather than restates.** Each round-6 finding is named with its
+  destination (`M-1d`/`M-2e`, O-1, O-6, Baseline-side), and I confirmed all four landed where
+  claimed. No finding was silently dropped, and no superseded prose was left behind — the old
+  "equality is asserted against those ids" phrasing and the v1.0 Baseline pins are gone
+  everywhere, including §2:77.
+
+## Recommendation
+
+**Approved with minor changes** — no High findings.
+
+The blocking defect is resolved and the resolution is verifiable by transcription, which is the
+property it lacked for six rounds. The three Mediums are all downstream of this round's own
+widening of AC-01, all additive, and none reopens the altitude decision or the membership reading:
+F-30 (name the frozen fixture as the transcription source for the statement and citation fields,
+so the expectation cannot be rendered by the code under test), F-31 (say which directory of
+`M-2e` the fixture takes, so the expected set is one-valued and stays under `maxEntries`), F-32
+(record the recompute leg in O-6 as a construction-only obligation, since the freeze makes it
+unobservable otherwise). FSPEC can proceed on this version; all three are one-clause edits that
+can travel with the next revision.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 0}
