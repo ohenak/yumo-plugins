@@ -85,4 +85,24 @@ FINDING: Low | inherited | nonlocal | `docs/_constraints/pdlc-decision-corpus-ba
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The routed items are absorbed upstream, verified at the text: `REQ:36` now aims the v1.8 cascade at
+§3.1 and §7 A-1 and says why not §3.3, and `baseline:6` now lists §7 Assumptions A-1 among the
+propagation sites. Nothing remained for the FSPEC to change, and nothing in it changed on their
+account. The one FSPEC edit this round is independent (TE round-3 F-03) and is sound at both
+altitudes: it widens a stated outcome to the second bound rather than replacing one, and it derives
+that outcome from rules already in the document.
+
+Re-reading the upstream at the dispatch hash rather than the item list, the FSPEC is still a faithful
+compression: both pins resolve, both C-5 literals are verbatim, §7 A-1 mirrors the REQ's current
+rationale, and every `M-*` id resolves in Baseline v1.2. No High finding, delta or inherited, anywhere
+in the document. The single carried finding is `Low`, inherited, and in a constraints file rather than
+in the FSPEC — a one-word extent mismatch (`§1–§8` vs `§1–§7`) that owes no version bump because no
+fact moves. It does not gate this document, and I would not spend an FSPEC round on it; it should be
+swept whenever `docs/_constraints/pdlc-decision-corpus-baseline.md` is next opened.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
