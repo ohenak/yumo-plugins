@@ -62,3 +62,34 @@ The fix only works if T-11 stays skipped until T-18 lands. I checked the columns
 `DECISION_LEDGER_CENSUS_TOKENS` is now a production top-level constant of `orchestrate-dev.js` whose only consumer is a test — T-11's `decisionLedgerCensus.test.js`. Nothing in the production module reads it: it exists so that its own declaration is a sliceable region, i.e. its purpose is to be *removed* from the census's scanned source. I grounded the "no production consumer" reading in the module's shape: `orchestrate-dev.js` exports inline (`export const` / `export function`, `pdlc/workflows/orchestrate-dev.js:48`, `:52`, `:88`, `:106`) with no trailing `export { … }` block, so a declaration that no other production site references is genuinely dead outside tests, and there is no export-surface or unused-export guard in `pdlc/workflows/__tests__/` that would notice.
 
 This is not a High. It does not red anything, the six literals are pinned (below), and the choice is TSPEC §7.3's, not the PLAN's. But it is the dead-config shape my lens flags at Medium: a frozen constant introduced in production with no production caller. The cheap fix is one clause in T-18 saying so deliberately — that the constant is production *solely* to be sliced, that its only importer is the census test, and that this is intended rather than an unwired integration — so that a DoD sweep reading the diff does not file it as an unwired artifact and "fix" it by deleting it, which would silently re-open the exact failure v0.7 just closed.
+
+## Dependencies
+
+### Upstream pins — unmoved and still correct
+
+The four pins in the header are byte-identical to v0.6's and were verified character-for-character in the v6 round; this edit touches no pin. In-body citations still read "TSPEC v0.9 §7.3" at every site, including the two new sentences, and `grep -n "v0\.8"` still returns no TSPEC citation. The revision-history paragraph describes v0.7 as closing a reviewer-raised item rather than as an upstream re-grounding, which is the honest description of this pass.
+
+### Batch-DAG — untouched, re-derived anyway
+
+The edit changes no `Batch` and no `Depends on` cell. I re-derived the tail of the graph the fix depends on, since the whole argument rests on T-18 landing after T-11 is committed:
+
+| Task | Depends on | max(dep batch) | Declared batch | Verdict |
+|---|---|---|---|---|
+| T-11 | T-00, T-01 | 1 | 2 | ✅ |
+| T-13 | T-02, T-04 | 2 | 3 | ✅ |
+| T-14 | T-05, T-13 | 3 | 4 | ✅ |
+| T-15 | T-06, T-14 | 4 | 5 | ✅ |
+| T-16 | T-07, T-15 | 5 | 6 | ✅ |
+| T-17 | T-08, T-09, T-16 | 6 | 7 | ✅ |
+| T-18 | T-10, T-10a, T-11, T-17 | 7 | 8 | ✅ |
+| T-19 | T-12, T-12a, T-18 | 8 | 9 | ✅ |
+
+Acyclic over the touched sub-graph, ids unique, every dependency resolves to a declared task, and the ordering that makes the fix sound (T-13…T-18 all before or at the un-skip point of the `[red]` T-11) holds.
+
+**Same-batch same-new-file check.** The edit adds no file and no task. `decisionLedgerCensus.test.js` is still created by T-11 alone in batch 2; `orchestrate-dev.js` is an existing file with six sequential owners in batches 3–8, one per batch, so no two concurrent implementers author it. No collision introduced.
+
+### One residual, and it is upstream (`ERRATUM: TSPEC`)
+
+The PLAN now asserts something about the module surface that its upstream does not carry. I checked TSPEC for every occurrence of the constant: `DECISION_LEDGER_CENSUS_TOKENS` appears at `TSPEC-pdlc-decision-ledger.md:36`, `:89`, `:1296`, `:1297`, `:1300`, `:1318` and `:1329` — the overview/changelog lines and §7.3 (`### 7.3` opens at `:1153`, `### 7.4` at `:1342`). It appears in **no** module-surface section: not §4.1/§4.2/§4.4 (Interfaces, `:649`–`:875`), and not §5.2 Frozen catalogues (`:909`), which enumerates exactly three frozen constants — `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`, `DECISION_LEDGER_NOTICES`.
+
+So TSPEC requires a production top-level constant to exist (via §7.3's `DECISION_LEDGER_OWNED_DECLS` membership and its resolves-to-one conjunct) while specifying it in no interface or data-model section. The PLAN is right not to decide this itself, and right to route it: the revision-history paragraph already names it as `ERRATUM: TSPEC`. I am seconding that route rather than making it a PLAN finding — the PLAN's transcription is faithful to the upstream it pins, and the fix belongs in TSPEC §5.2, where the other three frozen catalogues are declared with their shapes.
