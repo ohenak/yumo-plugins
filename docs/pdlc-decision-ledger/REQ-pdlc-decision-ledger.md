@@ -339,9 +339,12 @@ file, and precedence across files. G-1 routes membership deliberately and states
 outcome; the Baseline supplies the measured extent to build against, including the three cases a
 rule has to survive — the twice-opened block whose second opening is the deciding one (`M-3c`),
 the file mixing records with question headings and back-references (`M-4d`), and the absence of
-any cross-file duplicate to calibrate precedence on (`M-5a`, `M-5c`). A TSPEC choice that renders
-a set differing from `M-1`/`M-2`/`M-3` at the Baseline's commit fails REQ-DECLEDGER-01; within
-that constraint the rule is TSPEC's to design.
+any cross-file duplicate to calibrate precedence on (`M-5a`, `M-5c`). **Membership reads the directory
+glob.** Where `M-2c`'s two feature file-scope readings differ (14 ids against 22), the directory
+reading governs, matching the floor C-5 already took from `M-6b`; this selects between two measured
+numbers and mints no recognition rule. A TSPEC choice that renders a set differing from `M-1d` /
+`M-2e` under that reading, at the Baseline's commit, fails REQ-DECLEDGER-01; within that
+constraint the rule is TSPEC's to design.
 
 **O-2** Whether the wiring needs a `SKILL.md` edit or can go through dispatch construction is a
 TSPEC choice (NG-7). Either path stays config-gated (C-1/C-2).
@@ -359,6 +362,14 @@ covered by transcribing anything that exists. PROPERTIES owes it a **synthetic f
 constructed two-file corpus recording one id in both a project-level and a feature-level file,
 exercising the precedence leg that `M-5c` names the intent of. This is a coverage obligation, not
 a REQ defect, and it is recorded here rather than answered by adding a rule to G-1.
+
+**O-6** *(owner te-author.)* REQ-DECLEDGER-04's legs are in O-5's position: none has a HEAD
+instance, and Baseline `M-4e` records that an empty file and a failure to read are separable only
+by construction. PROPERTIES owes a constructed fixture to each — every source unavailable, one
+decision of several failing while the rest render, and a file holding no record taking the
+ordinary-empty path rather than the partial one — and likewise to the frozen corpus copy
+REQ-DECLEDGER-01 asserts against. Coverage obligations, not REQ defects, recorded here rather than
+answered by adding a rule to G-1.
 
 **Assumptions.** Authored in an orchestrated dispatch; these are explicit, operator-vetoable
 assumptions rather than blocking open questions:
