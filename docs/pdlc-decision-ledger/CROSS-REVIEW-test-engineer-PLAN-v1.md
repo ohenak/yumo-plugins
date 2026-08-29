@@ -311,6 +311,97 @@ One caveat worth writing into whichever task owns this: the script warns (does n
 measured the working tree (line 211). An implementer running it mid-edit gets an offset result. The
 task should say "commit, then run".
 
+### F-03 (High, Cross-Feature) — nothing in the PLAN executes the `main()` wiring
+
+T-18 is the task that makes this feature live. Its row lists: place the
+`// === DECISION LEDGER WIRING START/END ===` sentinels in `main()`; read the flag by
+**destructuring**; construct the injector; install `wrapperSeams._injectDecisionLedger`; thread the
+awaited seam into `reviewerPrompt`'s two call sites; populate `report.decisionLedger`.
+
+T-18 un-skips two modules, and neither runs that code:
+
+- **T-10** (`decisionLedgerLoop.test.js`) drives `parseDecisionLedgerConfig` and
+  `buildDecisionLedgerInjector` directly and compares against T-02's `reviewLoop`-scoped recording.
+  Its row says so in as many words: the four AT-05 spellings are *"run through
+  `parseDecisionLedgerConfig` [and] `buildDecisionLedgerInjector`"*. That is the unit path.
+- **T-11** (`decisionLedgerCensus.test.js`) reads `orchestrate-dev.js` **as text** and counts token
+  occurrences outside four sliced regions. A source census proves a string is present in a file. It
+  cannot prove a line runs.
+
+So the assembly that turns three tested pure functions into a live feature — config → injector →
+seam → `reviewerPrompt` — is asserted by a grep and by nothing else. This is precisely the
+builder-not-wired class `DOMAIN-CONSTRAINTS.md` DC-07 exists to prevent: *"a builder unit-tested but
+never assembled in the production composition root is untested in the sense that matters."* A
+transposed argument, a seam installed under the wrong key, a `_injectDecisionLedger` that is not
+awaited, or a wiring block placed after the last `reviewerPrompt` call would leave every task in this
+PLAN green.
+
+The lower-level proof is not the only option available, which is what makes this gating rather than
+a design trade-off. `main()` is the default export at `orchestrate-dev.js:14657`, and driving it is
+routine in this suite — over twenty modules do it, including
+`advisoryDisabled.test.js:70` (`import mainDev, * as dev from "../orchestrate-dev.js"`),
+`advisoryWaveGateMain.test.js:21`, `anchorCascade.test.js:21`, `approvalNormalization.test.js:44`,
+`branchGuard.test.js:25`, `erratumProtocol.test.js:21`. `advisoryWaveGateMain.test.js` exists for
+exactly this reason — its own header records that closing a TE finding *"required an enabled-tier,
+`mainDev`-driven A6 module"*.
+
+**What I am asking for:** one `main()`-driven arm, owned by a red row in batch 2 and un-skipped by
+T-18, with a runtime oracle rather than a presence check. The minimum falsifiable shape:
+
+1. Drive `main()` with the flag **on** and a scripted `_readFile`/`_git`, and assert a call-count
+   spy: `gatherDecisionCorpus`' `_git` seam is invoked **≥ 1** on the served reviewer flow. That is
+   the conjunct a fake of the outer interface cannot satisfy.
+2. Positively assert the served healthy state — the reviewer prompt handed to a reviewer dispatch
+   **ends with** the rendered ledger block (a positive presence conjunct), not merely that it
+   "differs from baseline".
+3. Drive `main()` with the flag **off** and assert the paired positive: the reviewer prompt is
+   byte-identical to the flag-on prompt **minus** the block, `report` carries no `decisionLedger`
+   key, and `notices` is unchanged — three positive conjuncts, not an absence-only `!= enabled`.
+
+I recognise this cuts against TSPEC §7.4's deliberate decision to record `reviewLoop` narrowly rather
+than the whole of `main()`, and that decision is sound *for the byte-identity recording* — a
+whole-`main()` recording would indeed red on this feature's own intended additions. But the
+recording and the wiring proof are different obligations: the first needs a narrow frozen baseline,
+the second needs one live execution. Nothing about §7.4 forbids the second. I have raised the
+underlying gap upstream as an erratum against TSPEC so the design and the PLAN move together; the
+PLAN-side ask is the task row.
+
+Note this finding and F-02 reinforce each other: because nothing executes the wiring, its lines are
+uncovered by construction, so `check-wave-resume-delta-coverage.mjs` will red at batch 8 on exactly
+these lines. Adding the `main()`-driven arm closes both.
+
+### F-04 (High, Local) — T-19 has a green row with no red predecessor for one of its two test files
+
+The PLAN's own PLAN-review standard, which I apply as written, is that every implementation row has a
+preceding red row referencing the same test file and ≥1 named AT. T-19 lists two test files:
+
+- `pdlc/engine/__tests__/decision-ledger-config-example.test.js` — red predecessor T-12 (batch 1).
+  ✅ Correct, and the red-before-green table records the pair.
+- `pdlc/workflows/__tests__/documentOracles.test.js` — **no red predecessor anywhere in the PLAN.**
+  It appears in no other row, in the red-before-green table's left column, or in the AT-ownership
+  table.
+
+Separately, three of T-19's four source files — `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` —
+have **no assertion at all** in any row. T-19's acceptance is prose ("document the block and the
+ledger's mechanics… a one-line pointer in `README.md`… `CLAUDE.md`'s deep-dive catalogue not stale").
+A documentation task whose only acceptance is prose is a task that cannot fail: an implementer who
+writes one sentence and an implementer who writes the full mechanics both pass.
+
+That is not a hypothetical concern in this repository, which routinely pins documentation
+mechanically — `documentOracles.test.js` already carries a D-1 oracle over `CLAUDE.md`
+(line 318) and a D-3 oracle over `pdlc/README.md` (line 357), and an advisory-disclosure family whose
+count words are derived from `ADVISORY_SEAMS` and `ADVISORY_DEFAULTS` (lines 579-625) so that a
+seam added without a documentation row goes red.
+
+**What resolves it:** a red row in batch 2 (say `T-12a`, deps T-00) owning a decision-ledger
+disclosure oracle in `documentOracles.test.js`, un-skipped by T-19, that derives its expectations
+from the production constants rather than restating them — the shape lines 579-625 already
+establish. The minimum: `OPERATIONS.md`'s omission-reason list set-equals `DECISION_LEDGER_OMIT_REASONS`;
+its notice list set-equals the keys of `DECISION_LEDGER_NOTICES`; its config-key list set-equals the
+keys of `DECISION_LEDGER_DEFAULTS`. Set equality, not containment, so a reason deleted from the
+document fails. Then T-19's Test File column has a red predecessor for both entries, and its
+documentation half becomes falsifiable.
+
 ## Questions
 
 _pending_
