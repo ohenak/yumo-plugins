@@ -1240,16 +1240,30 @@ set-equality-checked, so neither can drift silently:
 
 | Operand | Definition | How it is kept honest |
 |---|---|---|
-| **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose members are the *distinctive, unambiguous* exported names this feature introduces: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` | A companion test asserts **set equality** between `DECISION_LEDGER_CENSUS_TOKENS` and the module's exported decision-ledger symbol names, so a symbol added later cannot escape the census by not being listed. Generic tokens like `id` are excluded by construction — the set holds only names that are unique to this feature |
-| **Scanned source** | The whole of `orchestrate-dev.js`, **minus** the four regions this feature legitimately owns: `parseDecisionLedgerConfig`'s body, `buildDecisionLedgerInjector`'s body, `selectDecisions`/`recogniseDecisionRecords`/`renderDecisionLedgerBlock`'s bodies, and the `main()` wiring block. The first three are sliced by brace-matching from their declarations, exactly as `advisoryDisabled.test.js`'s `sourceExcludingParser` slices `parseAdvisoryConfig`. The fourth is **not** the whole of `main()`, which owns a great deal of unrelated code a coupling could hide in: it is the contiguous run of lines between two literal sentinel comments the wiring is written between (`// === DECISION LEDGER WIRING START/END ===`, placed by the task that writes the wiring), so `main()` outside that run stays inside the census | The slicing helper is the shipped one's shape, and the test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous |
+| **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose six members are the names that carry or produce decision-record **data**: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` | Not set equality against *all* of the module's decision-ledger exports — that comparison is red by construction, since §3.1/§4.1/§4.2/§4.4/§5.2 declare roughly a dozen and only these six are data-carrying. The companion test instead asserts **`DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`**, the two sub-sets **disjoint**, over the same frozen owned-declaration list the second operand slices. That is still an exact set equality — a symbol added later must be classified into one list or the other or the test reddens — but the partition is stated rather than assumed. `DECISION_LEDGER_CENSUS_EXEMPT` holds the plumbing declarations, each with its reason: `parseDecisionLedgerConfig` and `buildDecisionLedgerInjector` (named by the wiring block, config and construction, they carry no record), `DECISION_LEDGER_DEFAULTS` (config defaults), `DECISION_HEADING_RE` (grammar), `DECISION_CORPUS_ARGV` (the `_git` argv literal), `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT` (fixed prompt framing text, no record data), `DECISION_LEDGER_NOTICES` (run-level notice ids, which generic driver code legitimately renders and counts) and `DECISION_LEDGER_CENSUS_TOKENS` (the census's own operand). Generic tokens like `id` are excluded by construction — no member is a name the shipped module already uses |
+| **Scanned source** | The whole of `orchestrate-dev.js`, **minus** (a) the body of **every** declaration this feature introduces — the frozen list `DECISION_LEDGER_OWNED_DECLS`, i.e. §4.1/§4.2/§4.4's six functions plus every top-level constant it declares: §3.1's `DECISION_CORPUS_ARGV`, §3.2's `DECISION_HEADING_RE`, §4.1's `DECISION_LEDGER_DEFAULTS`, §4.3's `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT`, §5.2's three catalogues, and `DECISION_LEDGER_CENSUS_TOKENS` itself (the token strings live inside its own declaration, so the census would otherwise red on its own literal) — and (b) the `main()` wiring block. The declaration bodies are sliced the precedent's way: from a declaration's own line to the **next top-level declaration of any name**, boundaries taken from *all* of the module's top-level declarations rather than from the owned subset, which is `loopEconomicsAnchorGuard.test.js`'s `bodyOf` over `allTopLevelDecls` (and the same brace-anchored idea as `advisoryDisabled.test.js`'s `sourceExcludingParser` slicing `parseAdvisoryConfig`). Slicing **every** owned declaration, not a hand-picked three, is what makes the census satisfiable: a token's own declaration line, and its uses by its sibling declarations, are then never in the remainder. (b) is **not** the whole of `main()`, which owns a great deal of unrelated code a coupling could hide in: it is the contiguous run of lines between two literal sentinel comments the wiring is written between (`// === DECISION LEDGER WIRING START/END ===`, placed by the task that writes the wiring), so `main()` outside that run stays inside the census | `DECISION_LEDGER_OWNED_DECLS` is frozen and each member must resolve to **exactly one** top-level declaration at HEAD, so a rename or a deletion reddens rather than silently shrinking the exclusion. The test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous. A name pattern is deliberately **not** used to derive the owned list: the shipped module already declares `MERGE_MAX_DECISION_STEPS`, `renderDecisionEntry`, `escalationDecision`, `erratumGateDecision` and `parseDecisionsWarranted`, so any `/Decision/i` rule would exclude unrelated shipped code from the census and blind it |
 
 The assertion is then the precedent's: **zero occurrences** of any member of
 `DECISION_LEDGER_CENSUS_TOKENS` in the scanned remainder. This is implementable, non-vacuous, and it
 falsifies exactly what BR-11 claims — if a future edit reads a decision id inside convergence,
-dedupe, derivative-stop or erratum-mint code, that code sits outside the four owned regions and the
+dedupe, derivative-stop or erratum-mint code, that code sits outside every owned region and the
 census reddens. What it deliberately does **not** attempt is to prove the absence of a coupling
 routed through a generically-named local; that residue is covered behaviourally by AT-16's replay
 (§7.6), and the two together are the compensating control §7.7 records against R-3.
+
+**The satisfiability test, and why it is applied to the whole set rather than one member.** Both
+operands above are stated in their present form because of one predicate, which is the thing a later
+editor must keep true: *a token is unsatisfiable exactly when a **conforming** implementation
+mentions it in the scanned remainder.* Round 9 caught this being applied to a single member. An
+earlier operand pair excluded only three function bodies plus the wiring block, which left
+`gatherDecisionCorpus` (§4.4's sixth function, declared at top level), §5.2's three frozen
+catalogues, and every mention of a token inside a sibling declaration's body in the remainder — four
+of the six tokens would have occurred there on correct code, so "zero occurrences" could never have
+gone green. The repair is the general one rather than another member-by-member exception: **slice
+every declaration this feature introduces**, so the token set can be chosen for what it *watches*
+(driver code that touches decision data) instead of being trimmed to whatever happens to survive a
+hand-picked exclusion list. Any future member added to `DECISION_LEDGER_CENSUS_TOKENS` must be
+checked against that predicate before it is added, not after a round finds it red.
 
 **Why the report field name is not a census token.** An earlier draft of the token set also carried
 `decisionLedger`, the `report` field of §5.4. That member is unsatisfiable against the very precedent
@@ -1261,11 +1275,16 @@ deliberately (the field is set **only** when the injector is non-null), so the e
 `decisionLedger` sites will land in the remainder too and the census would red on conforming code.
 `decisionLedger` is therefore **dropped** from `DECISION_LEDGER_CENSUS_TOKENS` rather than the report
 sites being carved out — carving out `buildFinalReport` would blind the census to a much larger
-surface than the field name is worth, and the field name is not an exported symbol, so its removal
-also keeps the companion set-equality check (against *exported* decision-ledger symbol names) exact.
-What the field is owed instead is behavioural: §7.2's live composition-root arm asserts the flag-off
-`report` key set is set-equal to §7.4's committed recording, and §7.6's AT rows assert its presence
-and shape on the flag-on path.
+surface than the field name is worth. It is not a declaration either, so it is absent from
+`DECISION_LEDGER_OWNED_DECLS` and the partition check above is unaffected in both directions.
+What the field is owed instead is behavioural, and by exactly two named homes: §7.2's live
+composition-root arm, whose conjunct 3 asserts the flag-off and flag-on `report` key sets differ by
+exactly `{decisionLedger}` — the referent is the arm's own paired runs, **not** §7.4's recording,
+which captures reviewer-prompt streams and no `report` key at all — and, on the flag-on path, that
+same arm's presence-and-shape assertion on the field. §7.6's AT rows are **not** a home for it: no
+AT row's Notes column mentions `report.decisionLedger`, and PLAN T-10a already records that its
+`report.decisionLedger` assertion is the only one. A future editor who deletes §7.2's arm therefore
+removes the field's sole proof, which is stated here so the deletion is visibly a spec change.
 
 ### 7.4 O-4 — the byte-identity baseline and its pinning
 
