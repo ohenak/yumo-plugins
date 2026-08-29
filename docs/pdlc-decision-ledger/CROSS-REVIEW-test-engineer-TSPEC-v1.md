@@ -78,13 +78,56 @@ Then say what the expected count is (zero) and which arm falsifies it.
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-01 | §4.3 charges every decision its statement twice (once as `statement`, once inside the full `heading` citation). AT-02 only needs the citation to resolve at its own file — would `{sourcePath} § {id}` discharge it, and roughly halve the block? That would move F-01 from "the default is wrong" to "the format was wasteful". |
+| Q-02 | §7.2's corpus-oracle row says the rule's output "reproduces `M-1d`, `M-2e`, …". Is that set equality over the full per-directory id map (so a deleted directory fails), or per-count assertions? §7.6 AT-01 says whole-line equality for two dispatches only — the other ten directories in `M-2e` then have no oracle at all. |
+| Q-03 | §4.2 returns `omitted[]` with `reason` `RSN-ENTRIES` / `RSN-BYTES`, but a line dropped by the single loop can satisfy both predicates at once (F-11/F-12 in §6.1). Which reason is recorded, and is that pinned by a test? As written the catalogue is a set-equality operand with an unspecified assignment rule. |
+| Q-04 | §6.1 F-8 treats `_readFile` returning `undefined` as a failed read, but §4.4 types the seam `Promise<string \| null>`. Is `undefined` a fourth case the double must script, or is F-8's mention redundant? |
 
 ## Positive Observations
 
-*(pending)*
+- **§3.5's verification table is correct, and I confirmed it by execution, not by reading.** Running
+  `DECISION_CORPUS_ARGV` + `DECISION_HEADING_RE` + last-wins over the tree at `8c673a09f` reproduced
+  every figure: 25 files, 41 project-level distinct ids, 100 feature-level ids, and every
+  per-directory count (`pdlc-headless-engine` 22, `pdlc-advisory-tier` 11, `pdlc-engine-distribution`
+  / `pdlc-learnings-injection` / `pdlc-loop-economics` 10 each, `pdlc-consolidation-agent` /
+  `pdlc-wave-resume` 8, `pdlc-engineering-loop` 7, `orchestrate-dev-workflow` 6,
+  `pdlc-advisory-wave-gate` 4, `pdlc-rcv-budget-stop` 4, `pdlc-plugin-retirement` 0), plus
+  `DEC-LOOP-01`'s statement resolving to the second, deciding opening. A spec whose central rule
+  reproduces its baseline exactly is rare and worth saying out loud.
+- **§3.2's five-conjunct table earns each conjunct against a named counter-instance.** The optional
+  ordinal prefix is genuinely load-bearing: without it `pdlc-engine-distribution` and
+  `pdlc-consolidation-agent` contribute 0 instead of 18, which I confirmed.
+- **§7.3's frozen-fixture-not-live-repo argument is right and is the correct generalisation** of the
+  `coveredViolations` whole-tree hazard. Reading the live tree would red the moment this feature's
+  own DECISIONS document lands.
+- **§2.3's "destructured, not dotted" is a real constraint, correctly identified.**
+  `advisoryDisabled.test.js:738–742` counts `/\.enabled\b/` over `orchestrate-dev.js` (learnings
+  region and `parseAdvisoryConfig` body excluded) and asserts **exactly three**; a dotted
+  `decisionLedgerConfig.enabled` would red it. Very few specs catch a pin that indirect.
+- **Set equality is demanded in the right three places** — §5.2's catalogues, §5.3's
+  `decisionLedger` key map, §7.4(c)'s case ids — and §5.3 correctly reasons about containment for
+  the shared top-level section set, matching `loop-config-example.test.js:63–80` exactly.
+- **§6.2's single predicate on what *survives* is the right shape.** It removes a whole family of
+  precedence-chain false greens by construction: there is no terminal state an earlier branch can
+  preempt, because there is only one branch.
+- **§6.4's degradation-toward-absence argument** is stated as a testable direction (never a guessed
+  statement, never a placeholder line, never a truncation), not as a sentiment.
 
 ## Recommendation
 
-*(pending)*
+**Needs revision**
 
+Five High findings. The design is strong and its central rule is verified; what is not yet sound is
+the **test strategy**, and specifically four oracles that cannot fail for the thing they are named
+after — AT-05's config spellings never reaching the recorded stream (F-02), the merge-base assertion
+that reds on unrelated events (F-03), the precedence direction with no positive conjunct (F-04), and
+a source census whose operand and token sets are unspecified (F-05) — plus a bounds design whose
+inertness premise is false at the shipped default (F-01, measured). Each has a concrete path
+forward stated above; none requires rethinking §3.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 4, "low": 3}
