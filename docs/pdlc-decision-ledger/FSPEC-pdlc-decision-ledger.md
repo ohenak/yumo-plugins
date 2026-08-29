@@ -94,6 +94,86 @@ depends on it.
 
 ## 3. Behavioral Flow
 
+All of it runs at **dispatch-construction time**, once per review dispatch. Nothing here runs at
+round start, at phase entry, or on a schedule, and nothing is carried forward from an earlier
+dispatch in the round window (REQ-DECLEDGER-01, mirroring the shipped `REQ-LOOPECON-01b`
+recompute-at-dispatch contract).
+
+### 3.1 Reading configuration
+
+Config is read for the dispatch from the operator's `.claude/pdlc.config.json`. The
+`decisionLedger` block holds exactly the three keys REQ C-3 enumerates. Each key is resolved
+independently:
+
+| Condition on a key | Resolution |
+|---|---|
+| Present, right type, valid | Use the operator's value |
+| Present, wrong type, or malformed | That key alone falls back to its C-5 default |
+| Absent | That key falls back to its C-5 default |
+| The whole `decisionLedger` block absent or malformed | All three keys take their C-5 defaults, which means `enabled` is `false` |
+
+Resolution of one key never affects another key, another config block, or the run (BR-10). Defaults
+are `enabled` `false`, `maxEntries` `70`, `maxBytes` `8000` (REQ C-5).
+
+### 3.2 Constructing a review dispatch — the enabled path
+
+1. **Gate.** If resolved `enabled` is not `true`, stop. The dispatch is constructed exactly as it
+   is today: no index block, no rule text, no marker, no whitespace (BR-4). Steps 2–6 do not run.
+2. **Determine the in-scope set.** The set is the project's closed decisions plus those of the
+   feature whose document is under review, with the **individual decision** as the unit, not the
+   file (REQ §2 G-1). It is derivable, not a per-document relevance judgement: nothing about the
+   document under review beyond its feature narrows the set.
+3. **Gather the records.** Read the decision-record sources as they exist now. A source that is
+   missing, unreadable, or unparseable routes to §3.3 rather than to a failure.
+4. **Render.** Each in-scope decision renders **exactly once**, on one line carrying its id, a
+   one-line statement of what it decided, and a source citation naming the record file and the
+   record's heading. Where a record carries an origin or evidence datum it may follow; where it does
+   not, the line renders without it, which is not a defect (BR-3).
+5. **Apply bounds.** If the rendered set exceeds `maxEntries` rows or `maxBytes` bytes, whole lines
+   are omitted until both bounds hold (BR-12, BR-13). The dispatch is never oversized and never
+   aborted over index size.
+6. **Attach the rule text.** Rule text is placed adjacent to the index, carrying REQ-DECLEDGER-03's
+   two-conjunct bar and its two boundary exemplars, and REQ-DECLEDGER-06's id-as-reopening-key
+   direction (BR-5, BR-6).
+
+The dispatch is then issued. **The driver's work ends at step 6**: it has written prompt bytes and
+computed nothing it will later consult.
+
+### 3.3 The fail-open path — two legs that degrade differently
+
+Entered from step 3 when a source is missing, unreadable, or fails to parse. Which leg is taken
+depends on how much survives, and the legs are not interchangeable:
+
+| Leg | Condition | Behavior |
+|---|---|---|
+| **Total** | **Every** source is unavailable | Fall back to the disabled behavior of REQ-DECLEDGER-02 — no index block, no rule text. The dispatch is as if the flag were off |
+| **Partial** | **One decision of several** fails to render | Omit that line; every other line renders; the index and rule text are present |
+
+Neither leg is a halt, and neither introduces an operator-facing failure class. Both degrade as
+`learningsInjection`'s fail-open path does. The direction is deliberate and safe in one direction
+only: a decision **absent** from the index is one a reviewer may freely challenge, whereas a
+decision rendered **wrongly** would suppress a legitimate challenge — which is why a line that
+cannot be rendered faithfully is dropped rather than rendered partially (BR-7).
+
+**A third case is not a leg of this path at all.** A source file that exists, reads, and parses but
+holds no decision record yields an **ordinary empty result** and takes neither leg — Baseline `M-4e`
+records that nothing in the corpus distinguishes an empty file from a failure to read, so the two
+are separated by construction. Two files in the standing corpus are in exactly this position
+(`M-4a`, `M-4b`), so this is the common case and not a curiosity (BR-8, E-4).
+
+### 3.4 What the reviewer does with it
+
+Outside the driver, and stated here only so the boundary is unambiguous. The reviewer reads the
+index and the rule, and decides whether a finding they were going to file re-opens an indexed
+decision. If it does, they file it only when it is High severity **and** cites evidence outside that
+decision's own record; otherwise they do not file it, or they record a repeat against the decision
+id (REQ-DECLEDGER-06).
+
+**A reviewer who files anyway is not intercepted.** The finding reaches the driver and is scored,
+deduped, routed and counted exactly as any other finding of its severity (BR-11, BR-14). Nothing in
+§3.2 or §3.3 gives the driver a decision id to consult, so no suppression is mechanically possible —
+this is what makes NG-4 falsifiable rather than aspirational.
+
 ## 4. Business Rules
 
 ## 5. Edge Cases & Error Scenarios
