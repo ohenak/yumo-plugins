@@ -82,11 +82,69 @@ v4 F-01 asked to strike — is the part that should go, on its own, without the 
 
 ## Positive Observations
 
-_pending_
+- **The erratum channel worked exactly as designed, in both directions.** TSPEC declined to edit a
+  REQ-owned default, measured it instead, and routed the measurement with the numbers attached
+  (§9.2 ERR-2). The REQ took the measurement, promoted it into Baseline v1.2 as `M-7b`/`M-7c` so the
+  figure is cited by id rather than restated, and adopted the recommended value. Neither document
+  invented a number the other owned. The residue this confirmation reports is the cost of that being
+  a two-step process, not a defect in it.
+- **ERR-1 resolved in FSPEC's favour, which is the outcome the tests needed.** `nonNegativeInt`
+  accepting `0` is now upstream doctrine rather than a documented divergence, so §7's F-13 case
+  (`maxEntries: 0` ⇒ block is `""`, not an error, not a fallback) is now testing the REQ instead of
+  testing against it. That is a strictly better position for the property in §7.5, whose bounds
+  "spanning `0`" clause no longer has to justify itself.
+- **D-10's oracle survives the default change untouched.** Its input is the 141-record fixture and
+  its conjuncts are set-equality on 41 ids, a transcribed 6,305, and a non-empty origin-partitioned
+  `omitted[]`. At 12,500 `maxEntries: 70` still binds at 141 records and `6,305 ≤ 11,300` still
+  holds, so all three conjuncts still hold and conjunct (3) is still falsifiable under a reversed
+  drop order. The assertion was built on quantities that do not move; only the prose explaining it
+  was built on one that did. That is the right way round, and it is why this confirmation is a
+  revision rather than a redesign.
+- **The framing pin (D-9, §4.3) is what makes this confirmation cheap.** Because ≤1,200 is pinned by
+  a unit test rather than assumed, every row of the table above is one subtraction. An unpinned
+  framing size would have made "does 12,500 still bind?" unanswerable without running the renderer.
 
 ## Recommendation
 
-_pending_
+**Needs revision.**
+
+Three High findings, all `delta` — the erratum introduced them by moving the value TSPEC computes
+from. None is a design defect: the mechanism, the seams, the oracles and the property are all
+correct at either value, exactly as §3.6:474 promised ("the bound is a parameter, the order is the
+mechanism, and both are correct at either value"). What is wrong is that nine sites still state the
+old parameter, and one argument reverses its truth value at the new one.
+
+The revision is bounded and mechanical, and I would expect it in one erratum round:
+
+1. **Substitute the default** at §4.1:496, §5.3:760 and §7.3:942 — `8000` → `12500`. §5.3 is the
+   urgent one: its test asserts `decisionLedger`'s key→value map by **set equality** against a
+   hand-transcribed literal of "C-5's declared defaults verbatim", so shipping this spec as written
+   pins 8000 into `.claude/pdlc.config.example.json` and into the assertion, and the example file
+   then disagrees with the REQ with every test green.
+2. **Re-derive §3.6's second argument.** The heading "the order is live under shipped defaults" is
+   false at 12,500 and must be replaced by what is now true: at the Baseline commit the bound is
+   **not** reached by any real dispatch (12,059 ≤ 12,500, 441 bytes spare), the order is live only
+   under growth or under an operator-lowered bound, and that is precisely REQ R-5's new growth-model
+   risk. Do not restore the retired "inert, therefore safe" framing — state the measured slack and
+   the id (`M-7c`) it comes from, and let D-10's pin carry the falsifiability as it already does.
+3. **Fix the derived figures that fall out of (2):** §3.6:435's `8000 − 1200 = 6,800`, the two
+   "~495 bytes / about three feature lines" statements (§3.6:435–437, §3.6:441–443), §7.3:958's
+   "6,800-byte allowance", §7.3:964's "roughly two", and §9.1's D-10 row, which reproduces the
+   ~495 figure inside the rationale column.
+4. **Keep AT-01's non-binding override, replace its reason.** §7.5:1187's justification — the 45/48
+   sets "exceed the `maxBytes` default of 8,000" — is now false (8,242 and 8,850 both fit under
+   12,500). The override should stay, because AT-01's subject is the recognition rule and it should
+   not go red when an operator moves a bound, but it must be justified as **insulation from the
+   bounds** rather than as unproducibility. Left as-is, an implementer who re-checks the arithmetic
+   deletes the override, and AT-01 silently starts depending on C-5's default.
+5. **Close ERR-1 and ERR-2 in §9.2** and drop §4.1:512–514's "diverges from REQ C-5's 'positive
+   integer' type label" — there is no divergence at HEAD. §9.3's T-2 closing note and §9.4's A-1
+   recital ("`maxBytes` 8000 is not measured", carried "unchanged") need the same one-clause
+   correction; A-1 at HEAD says both defaults are measured, and R-5's growth caveat should be picked
+   up where (2) lands.
+
+Nothing in §2, §4.2, §4.3, §5.1–§5.2, §6, §7.4, §7.5's property or §8 is touched by this, and I did
+not re-open any of it.
 
 ## Delta-Confirmation Findings
 
