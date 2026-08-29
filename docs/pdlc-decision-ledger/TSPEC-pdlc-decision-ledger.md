@@ -14,7 +14,41 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.7 | 2026-08-28 |
+| Draft | se-author | 0.8 | 2026-08-29 |
+
+**v0.8 erratum — Phase P's five items against §7, and nothing else.** Upstream is unmoved since v0.5
+(REQ **v1.9** `sha256:ce6b133f…3c7b7c`, FSPEC **v1.3** `sha256:2bd5c3ef…5aed39`, Baseline **v1.2**);
+both were re-read at HEAD before this edit, neither changelog names a new `BR-`/`E-`/`AC-` or
+vocabulary row since v0.5, so there is nothing to absorb and no pin advances. No corpus figure moves
+(6,305 / 10,859 / 12,059 / 441 unchanged) and no section outside §7 is touched. **Items 1 and 3
+(te-review, se-author) — §7's coverage-gate claim was false by omission.** "The gate is not evidence
+for this feature, and this spec does not rely on it" was true only of the *fourth* clause of `npm run
+test:coverage` (`c8 report --check-coverage --per-file --branches 85`). The **third** clause,
+`node scripts/check-wave-resume-delta-coverage.mjs`, is a live per-feature gate whose hard-coded
+`SUBJECT` is `pdlc/workflows/orchestrate-dev.js` — this feature's only production file (D-6) — and
+whose `resolveBase()` prefers the live `merge-base HEAD origin/main`, so it fails on **any** uncovered
+line inside the ranges this feature introduces. §7 now narrows the negative claim to the percentage
+clause, names the script, and records three consequences: fail-closed on a missing subject or missing
+report, empty-range set is a pass (its permanent state on `main`), not in the wave gate's
+`implementation.testCommand` (PLAN T-18 owns the per-wave run), and must be run against a committed
+subject because a dirty subject only warns. **Item 2 (se-author) — no live composition-root arm.**
+§4.5's seam installation and §5.4's closure were owed only §5.5's source census, which proves a
+string is present, never that a line runs (DC-07): a transposed argument, a wrong seam key, an
+un-`await`ed injector or a wiring block placed after the last `reviewerPrompt` call all leave a census
+green. §7.2 gains a `Composition root (live)` category and its three conjuncts (flag-on `_git`
+call-count spy ≥ 1; flag-on prompt **ends with** the rendered block; flag-off byte-identity to §7.4's
+committed recording plus two set-equalities), matching PLAN v0.2's T-10a. **Item 4 (se-author) —
+§7.5 was the only property owed.** §3.2/§3.3's recognition/last-wins invariant and §4.3's
+one-physical-line-per-decision invariant are already stated in quantified form and are what §7.3's
+transcribed byte literals rest on; both are promoted from example to property (`P-REC`, `P-LINE`),
+each with its falsifying mutations, under O-8's existing independent-model discipline. **Item 5
+(se-author) — `decisionLedger` was an unsatisfiable census token.** The shipped
+`learningsInjectionField` analogue threads its report field through `buildFinalReport` at sites far
+outside `main()`, so §5.4's equivalent sites fall in the scanned remainder; the token is **dropped**
+from `DECISION_LEDGER_CENSUS_TOKENS` rather than carving `buildFinalReport` out of the scan (the
+carve-out would blind a far larger surface, and the field is not an exported symbol, so dropping it
+also keeps the companion set-equality exact). The field's obligation becomes behavioural, on §7.2's
+live arm and §7.6's AT rows. No approved decision is re-litigated.
 
 **v0.7 erratum — round 7's three items, and nothing else.** Upstream is unmoved since v0.5 (REQ
 **v1.9**, FSPEC **v1.3**, Baseline **v1.2**), so no pin advances and no measured value moves; the
