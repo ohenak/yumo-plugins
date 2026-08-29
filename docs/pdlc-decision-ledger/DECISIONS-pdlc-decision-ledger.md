@@ -269,8 +269,8 @@ a reader arriving from that table lands here without guessing.
 | **DEC-DECLEDGER-11** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` | §4.2 / D-8 | BR-12 must be enforced against the bytes the prompt receives | Easy |
 | **DEC-DECLEDGER-12** | The four framing constants render to **≤ 1,200 bytes**, asserted by a pure unit test against that literal | §4.3 / D-9 | DEC-DECLEDGER-07 puts framing inside a measured budget | Easy to re-decide, deliberately noisy to breach |
 | **DEC-DECLEDGER-13** | "The promoted corpus is admitted whole" is a **measured, pinned** fact at the Baseline's commit — asserted at C-5's shipped defaults over the **whole** frozen fixture: the 41 project-level ids entire, their 6,305 bytes within `maxBytes − 1200`, and a non-empty `omitted[]` naming no project-level id | §3.6, §7.3 / D-10 | The claim is not a property of the mechanism, and `docs/_decisions/` grows by consolidation | Easy — the pin re-decides at fixture re-capture, which is the intended moment |
-| **DEC-DECLEDGER-14** | AT-03's change is applied to the scripted `_readFile` double's returned text, not to the fixture copy on disk | §7.6 / D-11 | AT-01's per-file digest guard makes the copy immutable | Easy — and routed upstream as an erratum rather than left as a silent divergence |
-| **DEC-DECLEDGER-15** | `maxEntries` / `maxBytes` are validated as **non-negative** integers, so `0` is a valid admits-nothing value | §4.1 / — | FSPEC E-7; `parseLearningsConfig`'s shipped `nonNegativeInt` | Easy — but reverting re-breaks E-7 |
+| **DEC-DECLEDGER-14** | AT-03's change is applied to the scripted `_readFile` double's returned text, not to the fixture copy on disk | §7.6 / D-11 | AT-01's per-file digest guard makes the copy immutable | Easy — and routed upstream as `ERR-3` (open, FSPEC-owned) rather than left as a silent divergence |
+| **DEC-DECLEDGER-15** | `maxEntries` / `maxBytes` are validated as **non-negative** integers, so `0` is a valid admits-nothing value | §4.1 / — | FSPEC E-7 and REQ v1.8's C-5, which now agree; `parseLearningsConfig`'s shipped `nonNegativeInt` | Easy — but reverting re-breaks E-7 |
 
 ## Consequences
 
@@ -295,7 +295,7 @@ a reader arriving from that table lands here without guessing.
 | DEC-DECLEDGER-04 | A harvest shows closed decisions being re-opened in *confirmation* rounds specifically; that is the only evidence that would justify paying the byte-identity cost of a wider surface |
 | DEC-DECLEDGER-06 | The first id recorded in two files at once appears at HEAD (`M-5a` currently records none) — precedence then acquires a live witness, and a uniqueness *report* becomes arguable, though a gate still is not |
 | DEC-DECLEDGER-08 | Any future feature earns an edit to `pdlc/engine/`, at which point `MODULE_NAMES` can grow and the one-file constraint — and the serial waves it costs — lifts for this code too |
-| DEC-DECLEDGER-10, DEC-DECLEDGER-12 | Either changes, and every byte figure in TSPEC §3.6 plus the erratum on the `maxBytes` default must be re-measured together, not one at a time |
+| DEC-DECLEDGER-10, DEC-DECLEDGER-12 | Either changes, and every byte figure in TSPEC §3.6 must be re-measured against C-5's `maxBytes` in one pass, not one figure at a time — REQ v1.8's raise to 12,500 (`ERR-2`, now closed) is the worked example of what a single-literal move costs downstream |
 | DEC-DECLEDGER-15 | **Fired and closed:** REQ v1.8 retyped both C-5 thresholds as non-negative, so REQ C-5 and FSPEC E-7 now agree and this decision spans no gap. Revisit only if a future REQ re-narrows either threshold to positive integers, which would re-break E-7 |
 
 ### Risks accepted
