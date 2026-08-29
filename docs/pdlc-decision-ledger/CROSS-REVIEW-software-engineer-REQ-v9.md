@@ -44,6 +44,31 @@ nonexistent-authority citation in this document.
 
 ## Delta-Confirmation Findings
 
+No High findings. The delta is three edits — a version cell, a new note, two pins — and it breaks
+nothing previously approved: every clause downstream of the two re-pinned sites (§4 C-5's
+threshold table, §5 REQ-DECLEDGER-01's expected value, §7 O-1's `M-1d`/`M-2e` constraint) reads
+correctly at v1.2 because v1.2 changed no fact those clauses depend on. The Mediums below are all
+carried from round 8, unchanged and out of this erratum's declared scope; they are recorded so the
+round-8 disposition is not lost when v9 supersedes v8 as the latest cross-review.
+
+| ID | Severity | Provenance | Locality | Section anchor |
+|----|----------|-----------|----------|----------------|
+| F-01 | Medium | inherited | nonlocal | Baseline *Cited by* (`baseline:6`) vs `REQ:339`, `REQ:368`, `REQ:386` — round 8's F-02 still open, and v1.8 widened it: `§6 R-5`, `§7 A-1` and `§7 O-6` cite `M-*` ids from a document the propagation list does not name |
+| F-02 | Medium | inherited | nonlocal | §4 C-5 `maxBytes` rationale (`REQ:182`) — round 8's F-01: the 3,204 slack is stated as per-record framing allowance, but the TSPEC's re-measured rendering leaves ~441 B of real headroom |
+| F-03 | Medium | inherited | nonlocal | §5 REQ-DECLEDGER-01 (`REQ:202-206`) — round 7's F-01 / round 8's F-03: the equality basis is still wider than the expected value backing it |
+| F-04 | Low | delta | local | v1.9 note (`REQ:23`) — the note names the two re-pinned sites as "§1 and §5", but the first is §2 G-1 (`REQ:74`, `REQ:93`); the Baseline's own propagation list calls the same site `§2 G-1` |
+| F-05 | Low | inherited | nonlocal | Header *Cross-Reviews* row (`REQ:13`) — still enumerates `v{1,2,3,4,5,6}`, now three rounds stale |
+
+FINDING: Medium | inherited | nonlocal | Baseline *Cited by* (baseline:6) against REQ:339, REQ:368, REQ:386 | Round 8's F-02, unresolved and now one site wider. The Baseline states its *Cited by* list "is the propagation path for a `Version` bump, so a new citation is added here in the same edit that mints it" (`baseline:6`). The list still reads `§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, §7 O-1, §7 O-5`, while the REQ cites `M-*` ids from three sites it omits: `§6 R-5` (`M-6b`/`M-6c`/`M-6d`/`M-7b`/`M-7c`/`M-7d`, minted by v1.8), `§7 A-1` (`M-6b`/`M-6c`/`M-7b`/`M-7c`) and `§7 O-6` (`M-4e`). This round is exactly the failure the rule exists to prevent — a version moved and a body site was missed — so the omission is no longer theoretical: R-5 and A-1 are precisely the clauses a re-measurement must move, since they are where both defaults are labelled revisable. Fix is three entries in the Baseline's list, no REQ change and no further `Version` bump, since the ids themselves are unchanged. Non-gating and repairable in the next edit that touches the Baseline.
+
+FINDING: Medium | inherited | nonlocal | §4 C-5 maxBytes rationale (REQ:182) | Round 8's F-01, untouched by this erratum and now corroborated from the TSPEC side. C-5 justifies `12500` as clearing `M-7b` "by 3,204 — 50 bytes per record of framing allowance", which reads as 3,204 bytes available for framing. The value is right; the slack is not. The te-review item routed into this round records the TSPEC re-measuring the same 63-record set at 11,300 rendered bytes with ~441 B of headroom against 12,500 — an order of magnitude less than the sentence implies, and about three records at the `M-7b` mean of 148. This matters because C-5 itself scopes the bound to "the index block as it appears in the prompt" (`REQ:184-185`), the form that includes block framing. Fix is one clause: state the allowance as covering both per-line and block framing, or cite the TSPEC's measured rendered figure as what is cleared. No value change; A-1's operator-revisability already absorbs a later re-size. Recorded here for continuity — the TSPEC-side re-measure is se-author's and is already routed.
+
+FINDING: Medium | inherited | nonlocal | §5 REQ-DECLEDGER-01 (REQ:202-206) | Round 7's F-01 and round 8's F-03, unchanged and correctly outside this erratum's scope. AC-01 asserts equality over each line's id, statement and citation, while the expected value it cites — `M-1d` project-level and `M-2e` per feature directory — supplies ids only, so for the great majority of lines two of the three compared fields have no stated source. The v1.7 note routes this to the FSPEC-opening edit and `FSPEC:52` now carries the same id-only basis, so the home is unchanged. No re-derivation is asked for here; recorded so the item survives the supersession of v8.
+
+FINDING: Low | delta | local | v1.9 erratum note (REQ:23) | The note says "§1 and §5 REQ-DECLEDGER-01 still read `v1.1`". The second is right (`REQ:205`), the first is off by a section: the re-pinned line is `REQ:93`, inside `## 2. Goals` (`REQ:74`) in the G-1 elaboration, not §1 Problem / Context (`REQ:45-73`), which cites the Baseline nowhere. The Baseline's own propagation list names that same site `§2 G-1`, so the note and the substrate now disagree about where the edit landed. The pin itself is correct, so nothing downstream is wrong — but under DEC-ERR-01 the change note *is* the sweep record, and a sweep record that misnames a swept site is the artifact a later re-measurement greps. One-character fix at the next edit.
+
+FINDING: Low | inherited | nonlocal | Header *Cross-Reviews* row (REQ:13) | The row still enumerates `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5,6}.md`; v7 and v8 exist on both sides and v9 lands with this file. Pure hygiene, carried from round 8, but this row is the REQ's only pointer to its own review history, so a reader following it silently misses the three rounds that produced the current thresholds and pins.
+
 ## Questions
 
 ## Positive Observations
