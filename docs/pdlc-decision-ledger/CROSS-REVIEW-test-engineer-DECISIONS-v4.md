@@ -57,4 +57,57 @@ authoring check the decision exists to be — and applied literally it reds soun
 | ID | Question |
 |----|---------|
 | Q-01 | Carried, third time, and still a one-clause fix: DEC-DECLEDGER-13 pins 41 ids / 6,305 bytes "at the Baseline's commit" (`8c673a09f`). Is §7.3's frozen fixture captured at that same commit? If it was captured at another, the transcribed expected values and the pinned corpus are two artifacts that can drift apart silently, and every byte figure in this document inherits the discrepancy. This is a TSPEC-side statement, not a DECISIONS edit — noting it here only so it is not lost at the phase boundary. |
-| Q-02 | DEC-DECLEDGER-16 is marked "Candidate for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at consolidation". Is the promoted form intended to be the directional statement F-01 describes? If so, fixing the wording now costs nothing and saves the constraint from shipping in a form the next feature has to re-derive.
+| Q-02 | DEC-DECLEDGER-16 is marked "Candidate for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at consolidation". Is the promoted form intended to be the directional statement F-01 describes? If so, fixing the wording now costs nothing and saves the constraint from shipping in a form the next feature has to re-derive. |
+
+## Positive Observations
+
+- **The re-grounding says "closed" without deleting the record of it having been open.** The Context
+  passage could have simply dropped the live-exception paragraph once TSPEC caught up; instead it
+  keeps the episode in past tense and names what it leaves behind (DEC-DECLEDGER-16's rule and the
+  one-pass trigger) rather than a standing divergence. That is the difference between a document a
+  future reviewer can audit and one that merely looks consistent: the quote/derive split v3 praised
+  is still legible, and now so is the moment it resolved.
+- **The DEC-DECLEDGER-03/-13 correction removed a false mechanism claim, not just a stale number.**
+  The prior text said `maxEntries` 70 "fires first and forces at least 71 omissions" — a staged
+  reading of a loop that has no stages. The revision states the disjunction, that both bounds are
+  exceeded from the outset, and that the *byte* bound sets the terminal survivor count, and then
+  keeps the conclusion that actually matters for testability: `omitted[]` is non-empty by a wide
+  margin at either default, so §7.3's conjunct cannot go vacuous. It replaced a wrong reason for a
+  right conclusion with the right reason — the shape a reviewer wants, because the wrong reason was
+  the part a test could have been built on.
+- **DEC-DECLEDGER-16 generalises the defect class instead of the instance, and its Consequences row
+  reaches the test author.** "A ceiling may not be a term in an asserted equality" refutes an entire
+  family of expectations at authoring time; the PROPERTIES row then binds it where it bites — pinned
+  expected values — which is precisely where the round-6/-7 halt would have been prevented. F-01 is
+  about the predicate's wording, not about the decision being wrong to record: the decision is the
+  right one and TSPEC §7.3's conjuncts (5)–(6) (`TSPEC:1074-1085`) already implement it correctly.
+- **The trigger row is now honest about its own expiry.** "Kept here as the worked example of the
+  shape a future one-pass re-measurement takes" is a durable statement; "one such re-measurement is
+  outstanding now" was one that had to be maintained. The revision converts a maintenance obligation
+  into reusable guidance without losing the enumeration.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No open High finding. v3's Medium is resolved at the root, and every claim the v1.3/v1.4 deltas make
+about upstream state was verified against TSPEC HEAD's bytes rather than accepted from the prose —
+version, pins, arithmetic, tensing and the §7.3 loop-condition reading all reconcile. The one new
+Medium is a wording defect in a new rule's predicate: the rule's *intent* is correct and is already
+correctly implemented upstream, but as written it is positional rather than directional and its
+scope over prose is ambiguous, so it cannot be run as the mechanical check it was recorded to be.
+That is recorded, not gating; it is best fixed before DEC-DECLEDGER-16 is promoted to
+`DOMAIN-CONSTRAINTS.md`, which is why it carries `Cross-Feature` scope.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | Medium | delta | local | § Decision, DEC-DECLEDGER-16 | The new provenance rule is stated positionally ("ceiling only on the larger side of an inequality") and over a scope that includes prose, so it over-rejects the equivalent sound form `10,859 + 1,200 ≤ 12,500` used at `TSPEC:47`, `TSPEC:513-514` and D-10 (`TSPEC:1430`), and is ambiguous about the descriptive prose equalities at `TSPEC:66` / `TSPEC:558`. Restate directionally (a ceiling may enter only where substituting the true smaller value preserves the claim) with an explicit assertion/pinned-value scope |
+
+FINDING: Medium | delta | local | § Decision, DEC-DECLEDGER-16 provenance rule | positional "larger side of an inequality" predicate over-rejects the equivalent sound form `measured + ceiling ≤ bound` used at TSPEC:47/:513-514/:1430, and the prose-vs-assertion scope is undefined against TSPEC:66/:558 — restate directionally with an explicit scope predicate
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
