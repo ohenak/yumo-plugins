@@ -885,7 +885,18 @@ the pinning that stops a re-capture silently satisfying AT-04.
   `MANIFEST.json`, and removes the worktree in a `finally`.
 - **Baseline identity:** `git merge-base origin/main HEAD` on `feat-pdlc-decision-ledger`, recorded
   as `mergeBaseSha` in the new
-  `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/MANIFEST.json`.
+  `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/MANIFEST.json`. **How that field is
+  guarded is the shipped shape, not a new one.** The load-bearing check is equality against a
+  **hand-transcribed literal** in the test file — `expect(manifest.mergeBaseSha).toBe(EXPECTED_MERGE_BASE_SHA)`
+  — because a re-capture rewrites the manifest, so a test reading the expected value *from* the
+  manifest checks nothing. `git merge-base --is-ancestor {recorded sha} HEAD` is kept only as a
+  documented **weaker second signal**, catching a manifest naming a sha that was never merged at
+  all; it cannot distinguish "pre-feature" from "mid-feature", since a later `main` commit is an
+  ancestor of HEAD too. This is precisely what `loopEconomicsBaselineGuard.test.js` already does,
+  including the reason in its own comment, and this feature reuses it verbatim rather than
+  redesigning it. Note what the shipped form avoids: it resolves ancestry against **`HEAD`**, never
+  against `origin/main`, so the assertion needs no fetch, is hermetic in CI, and cannot red on an
+  unrelated push to `main`.
 - **Scenario matrix:** `fixtures/decision-ledger-baseline/scenarios.mjs`, one definition imported by
   **both** the capture and the guard, differing only in which `orchestrate-dev.js` namespace is
   handed to it. It sits inside the fixture directory, not `__tests__/helpers/`, so the PLAN's
@@ -898,6 +909,27 @@ the pinning that stops a re-capture silently satisfying AT-04.
   additions (the new notices, the new report field) and would have to be re-transcribed mid-feature,
   proving nothing — the lesson `loop-economics-baseline/scenarios.mjs` records for its own narrow
   cases.
+
+  **This case cannot carry AT-05, and the split is stated rather than left to be discovered.**
+  `reviewLoop`'s parameter list takes seams and settings, never config text: the enablement gate
+  lives in `main()`, where `readLearningsConfigSafely` reads the file and
+  `parseDecisionLedgerConfig` resolves it, and `reviewLoop` receives only the already-built
+  `_injectDecisionLedger` seam. A case that drives `reviewLoop` directly therefore reaches all four
+  of AT-05's "not enabled" spellings — absent block, wrong-typed value, unparseable file, malformed
+  section — as the *same* input, `_injectDecisionLedger: null`. Every arm would pass by construction
+  of the harness, and the oracle would be vacuous: it would assert that four identical inputs produce
+  identical bytes.
+
+  So the two acceptance tests are given different entry points:
+
+  | AT | Entry point | What it actually falsifies |
+  |---|---|---|
+  | **AT-04** | `REVIEW-LOOP-REVIEWER-PROMPTS`, driving exported `reviewLoop` | Byte-identity of the reviewer-prompt stream against the merge-base recording, with the seam absent — the shipped disabled path |
+  | **AT-05** | A second case entering through the **config gate**: the four spellings are supplied as four `learningsConfigText` values, each run through `parseDecisionLedgerConfig` → `buildDecisionLedgerInjector` | That each of the four distinct config inputs resolves `enabled` to `false` and yields `buildDecisionLedgerInjector === null`, and hence the identical `""` block. The four inputs are genuinely different here, so an arm that resolved one of them to `true` reddens |
+
+  Stated as a rule for the implementer: **the recorded arm must consume the config text it is
+  varying.** A written config that never reaches the recorded path makes every arm pass for a reason
+  that has nothing to do with the property under test.
 - **Capture validity window:** the capture must be taken **before** any production change lands, at
   a point where `pdlc/workflows/orchestrate-dev.js` is byte-identical between merge base and branch
   HEAD. The PLAN must make this a real dependency edge (every production task carrying `Deps` on the
