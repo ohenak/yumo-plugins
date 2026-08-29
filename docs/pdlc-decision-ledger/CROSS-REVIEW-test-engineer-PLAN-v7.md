@@ -93,3 +93,33 @@ Acyclic over the touched sub-graph, ids unique, every dependency resolves to a d
 The PLAN now asserts something about the module surface that its upstream does not carry. I checked TSPEC for every occurrence of the constant: `DECISION_LEDGER_CENSUS_TOKENS` appears at `TSPEC-pdlc-decision-ledger.md:36`, `:89`, `:1296`, `:1297`, `:1300`, `:1318` and `:1329` — the overview/changelog lines and §7.3 (`### 7.3` opens at `:1153`, `### 7.4` at `:1342`). It appears in **no** module-surface section: not §4.1/§4.2/§4.4 (Interfaces, `:649`–`:875`), and not §5.2 Frozen catalogues (`:909`), which enumerates exactly three frozen constants — `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`, `DECISION_LEDGER_NOTICES`.
 
 So TSPEC requires a production top-level constant to exist (via §7.3's `DECISION_LEDGER_OWNED_DECLS` membership and its resolves-to-one conjunct) while specifying it in no interface or data-model section. The PLAN is right not to decide this itself, and right to route it: the revision-history paragraph already names it as `ERRATUM: TSPEC`. I am seconding that route rather than making it a PLAN finding — the PLAN's transcription is faithful to the upstream it pins, and the fix belongs in TSPEC §5.2, where the other three frozen catalogues are declared with their shapes.
+
+## Verification
+
+Every claim above was measured at HEAD, not read out of a document:
+
+| Claim | How verified |
+|---|---|
+| Delta is exactly four commits, 20 changed lines, five hunks | `git log --oneline a2bad6db6..HEAD -- …PLAN…`; `git diff a2bad6db6..HEAD -- …PLAN…` read in full |
+| Only the four routed sites plus header/revision-history changed | Hunk headers at `@@ -14`, `@@ -147`, `@@ -202`, `@@ -214`, `@@ -487`; no `Batch` or `Depends on` cell in any `+` line |
+| All fifteen owned members have a `[green]` owner in batches 3–8 | Per-name grep of each of the fifteen against the task table; table above |
+| `DECISION_LEDGER_CENSUS_TOKENS`'s owner is T-18 | `PLAN…md:158` (task row), `:219` (manifest row) — two independent sites agree |
+| T-18 depends on T-11 and un-skips it | `PLAN…md:158` `Depends on` column = T-10, T-10a, T-11, T-17; row text "Un-skips T-10, T-10a and T-11" |
+| T-18's batch is 8 and re-derives | T-17 at batch 7 (`Depends on` T-08, T-09, T-16); `max + 1 = 8` = declared |
+| `orchestrate-dev.js` exports inline, no trailing export block | `grep -n "^export" pdlc/workflows/orchestrate-dev.js` (`:48`, `:52`, `:88`, `:106`, …); `grep -n "^export {"` → no match |
+| No export-surface / unused-export guard exists that would flag a test-only production constant | `grep -rln "unused\|exportSurface\|Object.keys(mod)" pdlc/workflows/__tests__` — matches are unrelated (`advisoryDisabled`, `mergeObservations`, `devModeKinds`) |
+| TSPEC declares the constant in §7.3 only | `grep -n "DECISION_LEDGER_CENSUS_TOKENS" …TSPEC…` → `:36`, `:89`, `:1296`, `:1297`, `:1300`, `:1318`, `:1329`; section map puts `### 7.3` at `:1153` and `### 7.4` at `:1342` |
+| TSPEC §5.2 enumerates three frozen catalogues, none of them `CENSUS_TOKENS` | `…TSPEC…md:909` frozen-catalogue table read in full |
+| No same-batch same-new-file collision introduced | File-ownership manifest read in full (`PLAN…md:207`–`:219`); `orchestrate-dev.js` has one owner per batch 3–8 |
+| No stale `v0.8` TSPEC citation reintroduced | `grep -n "v0\.8" …PLAN…` → no TSPEC citation |
+
+**The implementation-echo question, and why it does not red.** The census's forbidden-token operand is now imported *from the module the census scans* — the one shape my lens normally files as an implementation echo, since an expectation must not derive its expected value from the code under test. Here it is neutralised, and by construction rather than by luck: the companion assertion is `CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS` with the two sub-sets disjoint, and both `CENSUS_EXEMPT` (nine names) and `OWNED_DECLS` (fifteen names) are frozen **test-file** literals of `decisionLedgerCensus.test.js`. That pins `CENSUS_TOKENS` to exactly `OWNED_DECLS \ CENSUS_EXEMPT` — six names, determined entirely by test-file literals. An implementer who quietly drops a token from the production constant to make the census pass reddens the partition instead. The oracle is therefore falsifiable in the direction that matters. What the PLAN does not say is that this is *why* the partition is load-bearing here, and the partition is the only thing standing between this design and a self-derived oracle — F-02 (Low) asks for that one clause.
+
+**Not verifiable at this altitude, correctly deferred:** the fixture shape of `decisionLedgerCensus.test.js`, whether `bodyOf`/`allTopLevelDecls` are cloned or imported from the precedent, whether the fifteen non-empty-slice assertions run in a loop or unrolled, and the exact `Object.freeze` shape of the new constant. Those are TSPEC/PROPERTIES and implementation concerns; the PLAN owes the operand contract and the ownership, and states both.
+
+## Positive Observations
+
+- **The author took the harder of the two resolutions I offered, and was right to.** v6 named dropping the member as one acceptable fix; v0.7 names it **rejected**, with a reason that survives checking — it would put the PLAN out of contract with the TSPEC it had just re-pinned, and would void §7.3's stated rationale. A reviewer's suggestion is not a specification, and pushing back on it with a grounded argument is the right move. The evidence the author cites for the intent — T-18's pre-existing "Add `DECISION_LEDGER_CENSUS_TOKENS`." fragment in the row whose source file is `orchestrate-dev.js` — is real; the design always meant production, and only the sentence was missing.
+- **Four sites, one contract, no residue.** The failure mode this document keeps having to defend against is a fix landing at the row but not at the manifest, or at the manifest but not at the DoD bullet. All four say the same thing in the same words, and the two manifest rows say it from both ends: the test-file row *disclaims* the operand and points at batch 8, the module row *claims* it. A reader arriving from either direction reaches the same owner.
+- **The conjunct that used to be red by construction is now red-before-green, and the PLAN says which.** "Satisfied at T-18's landing, not before, which is the ordinary red-before-green edge rather than red-by-construction" is exactly the right distinction, and it is backed by the dependency column rather than asserted in prose.
+- **The counts stayed put, which is itself evidence.** Six ∪ nine = fifteen is unchanged from v0.6; the fix moved a *home*, not an arithmetic. A fix that had quietly shifted the literals would have been the tell that the author was patching the symptom.
