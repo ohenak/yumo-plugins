@@ -62,6 +62,11 @@ FINDING: Low | delta | nonlocal | Baseline `Cited by` list (baseline:6) | FSPEC 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v3 Q-02 and now answerable as a fact rather than a worry: `8000` is gone from FSPEC but the **TSPEC still carries it** at six sites (`TSPEC:435`, `:473`, `:496`, `:760`, `:942`, `:1361`), two of them executable-adjacent (the example config block and the shipped-defaults assertion). The branch is therefore in an intermediate state where two documents state different C-5 defaults. That is expected mid-cascade and is the TSPEC round's work, not FSPEC's — I raise it only so the phase does not read this approval as "the cascade is complete". Is the TSPEC cascade already queued behind this confirmation? |
+| Q-02 | Also carried from v3, still not a finding: the `12500` derivation is a substance-byte floor **plus a declared framing allowance** — `M-7d` is explicit that substance bytes exclude every separator, prefix and newline because line format "belongs to the consuming TSPEC" (`baseline:112`), while FSPEC BR-12 scopes `maxBytes` to the rendered index text *as it appears in the prompt* (`FSPEC:273-275`), framing included. Those reconcile only if `M-7c`'s 50 bytes/record is the budget BR-12's rendered form must fit inside. The REQ now says this out loud in C-5's rationale (`REQ:173`), which is a better home than FSPEC, so I am content to leave FSPEC silent — flagging only that the obligation is now carried by a rationale cell rather than by an `O-*` obligation on the TSPEC's line format. |
+
 ## Positive Observations
 
 ## Recommendation
