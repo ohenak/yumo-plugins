@@ -8,7 +8,32 @@
 
 ## Overview
 
-_(pending)_
+This is a **delta confirmation**, not a re-review. I approved this TSPEC at v0.4 (round 5). The
+v0.5 erratum retires the 8,000-byte arithmetic, re-pins upstream to REQ v1.9 / FSPEC v1.3 /
+Baseline v1.2, closes ERR-1 and ERR-2 as resolved upstream, and restates §7.3's 141-record fixture
+as a deliberately over-sized basis rather than "what a real dispatch gathers".
+
+I read `git diff c115fa77d..HEAD` on the TSPEC (five commits, 345 diff lines), re-read REQ G-1,
+REQ C-5, REQ A-1/R-5, FSPEC §7's A-1 and Baseline v1.2's `M-6b`/`M-6c`/`M-7a`–`M-7d` at their
+current bytes, and re-derived every arithmetic claim the delta introduces.
+
+**Verdict in one line:** every routed item landed, and the arithmetic is correct — but the edit
+moved the load-bearing measured margin from a place an oracle pinned to a place no oracle pins.
+That is a delta-introduced testability regression against D-10's own stated standard, so this
+confirmation is non-approving with one High finding, tagged `delta`/`local` so it earns a bounded
+follow-up rather than a halt.
+
+Arithmetic re-derived and confirmed correct:
+
+| Claim | Check | Result |
+|---|---|---|
+| Line allowance `12500 − 1200` | REQ C-5 default 12,500; §4.3 framing budget ≤1,200 (D-5/DEC-DECLEDGER-07) | **11,300** ✓ |
+| Project-level headroom | `11,300 − 6,305` | **4,995** ✓ |
+| "about twenty-seven / nineteen lines" | `4,995 / 183` = 27.3; `4,995 / 261` = 19.1 | ✓ |
+| `M-6b` worst case rendered whole | `10,859 + 1,200 = 12,059 ≤ 12,500`; 63 ≤ 70 | ✓, margin **441** ✓ |
+| §7.3 feature-line survivor count | `maxEntries` 70 − 41 project = 29 cap, byte bound trims below | "roughly two dozen" ✓ |
+| Framing implied by `M-7b` | `10,859 − 9,296 = 1,563` over 63 records ≈ 24.8 B/record, inside `M-7c`'s 50 | ✓ |
+| Header pins | REQ file HEAD = v1.9, FSPEC HEAD = v1.3, Baseline HEAD = v1.2 | ✓ |
 
 ## Architecture
 
