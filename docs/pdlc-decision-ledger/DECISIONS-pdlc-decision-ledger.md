@@ -200,20 +200,31 @@ round and buys a single producer of ledger bytes.
 framing is an unmeasured quantity inside a measured budget and TSPEC §3.6's headroom arithmetic
 becomes unfalsifiable prose. *Rejected: measure the constants after they are written and pin that
 number.* The constants do not exist yet; 1,200 is a **budget the rule text must be drafted to fit**,
-and it is not free — §3.6's ~495 bytes of headroom shrink one-for-one with any raise. A drafting
-task that overruns must re-open the arithmetic together with the `maxBytes` default, not quietly
-raise the literal.
+and it is not free: block framing and per-record framing are drawn from the *same* 12,500, so a raise
+spends the margin twice over. Against REQ C-5's shipped `maxBytes` 12,500 the allowance left for
+records is 11,300, and the G-1-scoped worst standing case renders 10,859 (TSPEC §3.6, `M-7b`'s 63
+records) — **441 bytes of slack**, which any raise of this budget consumes one-for-one. Baseline
+`M-7c` allocates the 3,204 bytes by which 12,500 clears `M-7b` as ~50 bytes per record of *per-line*
+framing across 63 records; this 1,200 is *block* framing drawn from the same figure, not on top of
+it. A drafting task that overruns must re-open the arithmetic together with the `maxBytes` default,
+not quietly raise the literal.
 
 ### DEC-DECLEDGER-13 — how "the promoted corpus is admitted whole" is stated
 
 *Rejected: state it as a property of the mechanism.* It is not one. The order *prioritises* project-level
 records but drops them once feature-level lines are exhausted; what admits the promoted set whole
-today is ~495 bytes of measured headroom — about three more promoted decisions, in a directory this
-pipeline itself grows by consolidation. An unpinned "always" expires silently with every test
-green. *Rejected: build the pinning assertion over the project-level-only slice.* At 41 records
-against `maxEntries` 70 and 6,305 bytes against a 6,800-byte allowance nothing is omitted under
-*any* drop order, so the `omitted[]` conjunct would be vacuously true and could not falsify the
-re-ordering it exists to catch — the vacuous-green shape a prior feature's harvest already recorded.
+today is measured headroom, not a guarantee. Under REQ C-5's shipped `maxBytes` 12,500 that headroom
+is 4,995 bytes (6,305 rendered against an 11,300-byte allowance) — at the corpus's ~154-byte mean
+line, roughly 32 more promoted decisions — while `maxEntries` 70 admits only **29** more. So the
+**entry** bound, not the byte bound, is what would first stop admitting the promoted set whole, in a
+directory this pipeline itself grows by consolidation. Both figures are a corpus at one commit; an
+unpinned "always" expires silently with every test green. *Rejected: build the pinning assertion over
+the project-level-only slice.* At 41 records against `maxEntries` 70 and 6,305 bytes against the
+11,300-byte allowance nothing is omitted under *any* drop order — the raise widens that margin rather
+than closing it — so the `omitted[]` conjunct would be vacuously true and could not falsify the
+re-ordering it exists to catch, the vacuous-green shape a prior feature's harvest already recorded.
+Over the whole 141-record fixture the conjunct survives the raise, because `maxEntries` 70 alone
+forces at least 71 omissions.
 
 ### DEC-DECLEDGER-14 — how AT-03's "a record changes between two dispatches" is exercised
 
