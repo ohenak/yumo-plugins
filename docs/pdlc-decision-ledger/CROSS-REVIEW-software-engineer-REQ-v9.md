@@ -103,4 +103,21 @@ FINDING: Low | inherited | nonlocal | Header *Cross-Reviews* row (REQ:13) | The 
 
 ## Recommendation
 
+**Approved with minor changes** — no High findings.
+
+Both REQ-owned routed items are resolved, and resolved at the substrate rather than by rewording:
+the two body pins now agree with the header, the FSPEC and the Baseline itself, so the `M-7b`/`M-7c`
+ids C-5's default rests on resolve at the cited version. The three items belonging to se-author's
+TSPEC and DECISIONS are correctly routed rather than restated. Nothing previously approved
+regressed, and the REQ is now free of any live `v1.1` pin and of every 8,000-based figure.
+
+The three Mediums are all carried from earlier rounds and none is created by this edit: F-01 is
+three entries in the Baseline's propagation list, F-02 is one clause in C-5 that follows the TSPEC
+re-measure already routed to se-author, and F-03 is round 7's open item whose home remains the
+FSPEC-opening edit. F-04 and F-05 are one-line hygiene. None warrants another erratum round;
+folding them into the next edit that touches these files is proportionate.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 2}
