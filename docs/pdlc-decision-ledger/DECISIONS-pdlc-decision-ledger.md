@@ -128,6 +128,89 @@ arbitrarily larger than the operator asked for — the bound would be enforced a
 that never reaches the prompt. Diverging from the learnings precedent here is deliberate and is the
 one place this design does not clone it.
 
+### DEC-DECLEDGER-08 — where the new symbols land in the tree
+
+*Rejected: a new `pdlc/workflows/lib/` module.* Not available: `MODULE_NAMES`
+(`pdlc/engine/scripts/prepack.mjs:20`) is the frozen list the engine vendors at pack time, and
+adding a module means editing `pdlc/engine/`, which REQ NG-6 forbids. `DEC-LOOPECON-08` took the
+same refusal for the same reason and recorded the same cost: every implementation task writes one
+physical file, so waves serialise on it. That cost is taken knowingly and is the PLAN's to absorb
+with real `Deps` edges. *Rejected: land the symbols inside the
+`// === LEARNINGS INJECTION REGION ... ===` sentinel block.* It looks tidy — the code is a clone of
+what lives there — and it is exactly wrong: `advisoryDisabled.test.js` slices that region out
+before counting `/\.enabled\b/`, so landing inside would silently exempt this feature from
+PROP-DIS-06 and leave DEC-DECLEDGER-09's destructured-read discipline with no oracle behind it. The
+region belongs to `pdlc-learnings-injection`; this is not that feature.
+
+### DEC-DECLEDGER-09 — how the enablement flag is read
+
+*Rejected: `decisionLedgerConfig.enabled`, the obvious spelling.* PROP-DIS-06 pins the source-text
+count of dotted `enabled` reads to the advisory config's three gates alone, outside the sliced
+region; a fourth dotted read reddens a property this feature has no mandate over. The shipped
+`pinCheckEnabled` read is destructured for precisely this reason (`orchestrate-dev.js:15105`, with
+the comment saying so at 9266), so this is the shipped house style, not a workaround.
+*Rejected: truthiness (`if (config.enabled)`).* Every fail-open shape — absent block, wrong-typed
+value, unparseable file, malformed section — resolves to the `false` default, and `=== true`
+collapses all four spellings of "not enabled" into one outcome (FSPEC E-1, AT-05).
+
+### DEC-DECLEDGER-10 — the rendered citation format
+
+*Rejected: `[{sourcePath} § {heading}]`, which an earlier draft specified.* The heading *is* the id
+plus the statement, so that form rendered every statement twice — 9,371 bytes against 6,305 for the
+project-level set, about a third of the block spent on a duplicate (TSPEC §3.6; this author
+re-executed the recognition rule at HEAD and reproduced 41 ids and the 6,305-byte figure). Path
+plus id resolves the record at its own source, which is all BR-3 and AT-02 require, because the id
+is unique within its file (`M-1a`) and DEC-DECLEDGER-01's last-wins key makes it so by construction
+where it is not. *Not rejected but reclassified:* `DecisionRecord.heading` stays on the type as the
+verbatim text fixtures transcribe expected values from — it is simply not rendered.
+
+### DEC-DECLEDGER-11 — who computes the block's size
+
+*Rejected: let `selectDecisions` size the block from its own concatenation.* Two implementations of
+one format drift, and this drift is invisible in the worst direction: BR-12's bound would be
+enforced against a size the prompt does not have, with both functions individually looking correct
+and every test green. Having the selector call the renderer costs one extra render per selection
+round and buys a single producer of ledger bytes.
+
+### DEC-DECLEDGER-12 — the framing budget
+
+*Rejected: leave framing unmeasured.* DEC-DECLEDGER-07 charges framing to `maxBytes`, so unpinned
+framing is an unmeasured quantity inside a measured budget and TSPEC §3.6's headroom arithmetic
+becomes unfalsifiable prose. *Rejected: measure the constants after they are written and pin that
+number.* The constants do not exist yet; 1,200 is a **budget the rule text must be drafted to fit**,
+and it is not free — §3.6's ~495 bytes of headroom shrink one-for-one with any raise. A drafting
+task that overruns must re-open the arithmetic together with the `maxBytes` default, not quietly
+raise the literal.
+
+### DEC-DECLEDGER-13 — how "the promoted corpus is admitted whole" is stated
+
+*Rejected: state it as a property of the mechanism.* It is not one. The order *prioritises* project-level
+records but drops them once feature-level lines are exhausted; what admits the promoted set whole
+today is ~495 bytes of measured headroom — about three more promoted decisions, in a directory this
+pipeline itself grows by consolidation. An unpinned "always" expires silently with every test
+green. *Rejected: build the pinning assertion over the project-level-only slice.* At 41 records
+against `maxEntries` 70 and 6,305 bytes against a 6,800-byte allowance nothing is omitted under
+*any* drop order, so the `omitted[]` conjunct would be vacuously true and could not falsify the
+re-ordering it exists to catch — the vacuous-green shape a prior feature's harvest already recorded.
+
+### DEC-DECLEDGER-14 — how AT-03's "a record changes between two dispatches" is exercised
+
+*Rejected: mutate the frozen fixture file, as FSPEC AT-03 literally says.* The per-file digest guard
+that AT-01 requires makes the copy immutable, so a mutating test reddens the integrity guard — the
+two criteria contradict each other as written — and the mutation would also write to the working
+tree, which the frozen-copy discipline exists to prevent. Scripting the `_readFile` double's
+returned text preserves what AT-03 is *for* (re-gathering per dispatch, holding no snapshot; BR-9)
+and is the stronger falsifier, since it varies only the bytes the injector reads.
+
+### DEC-DECLEDGER-15 — threshold validation
+
+*Rejected: positive-integer validators, as REQ C-5's type label reads.* FSPEC E-7 requires
+`maxEntries: 0` to be a valid admits-nothing value, "not an error, not a fallback to the default,
+not a halt"; a positive-integer validator rejects `0` and falls it back to `70`, the opposite
+outcome. The shipped precedent already resolves the same tension the same way — `parseLearningsConfig`'s
+`nonNegativeInt` (`orchestrate-dev.js:2283`) exists so that `0` is a valid admits-nothing value.
+*Rejected: edit the REQ to match.* The type label is REQ-owned; it is routed as an erratum instead.
+
 ## Decision
 
 ## Consequences
