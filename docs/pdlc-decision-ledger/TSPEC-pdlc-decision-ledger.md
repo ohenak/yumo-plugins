@@ -14,7 +14,17 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.1 | 2026-08-28 |
+| Draft | se-author | 0.2 | 2026-08-28 |
+
+**v0.2 — addresses TSPEC cross-review round 1** (`CROSS-REVIEW-product-manager-TSPEC-v1.md`,
+`CROSS-REVIEW-test-engineer-TSPEC-v1.md`). Both reviewers independently falsified §3.6's
+"the bound is never reached" claim by executing the recognition rule and measuring the rendered
+bytes; I re-executed it and reproduce their figures exactly. The consequences run through §3.6
+(rationale restated on the measurement), §4.3 (citation shortened to `{sourcePath} § {id}`, framing
+budget pinned), §7.6 (AT-01's bounds configuration stated) and §9.2 (ERR-2 routes the REQ-owned
+default upstream with the measurement attached). §7 additionally gains a per-row coverage obligation,
+a source census specified the way its cited precedent actually works, an entry point for AT-05 that
+can fail, and the shipped merge-base guard shape. §9.3's T-2 is closed rather than deferred.
 
 ## 1. Overview
 
