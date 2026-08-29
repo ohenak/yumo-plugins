@@ -188,15 +188,58 @@ is still provable as the REQ asks.
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Is the `PLAN` re-pin (F-01) scheduled? At v11 I raised the same divergence as Medium and asked this; one round later `PROPERTIES` has converged on fourteen and `PLAN` has not, which reads as the cascade reaching PROPERTIES only. Given `PLAN`:19 argues *affirmatively* for the retired design and calls TSPEC's form "rejected", a PLAN revision round looks required — a pin refresh alone will not remove that paragraph. |
+| Q-02 | Does §4.3's header/trailer ship as top-level constants or inline literals (v11 F-03)? The answer changes the fourteen this erratum just single-sited, so it is worth resolving before `PLAN` is re-pinned rather than after — otherwise the re-pin lands a number that moves again. |
 
 ## Positive Observations
 
-_pending_
+- **The author solved the general problem instead of the reported one.** The routed items ask for a
+  re-pin; the edit asks *why the pin drifted* and installs a single-siting rule with a named
+  precedent. That is the difference between closing a finding and closing a failure mode.
+- **Stating the correction direction is the sharpest thing in this edit.** "Stale against this
+  section and not a competing design … downstream-to-here, never the reverse" is precisely the
+  sentence that was missing, because `PLAN`:19's argument is articulate enough to be mistaken for a
+  considered override. Naming the direction removes the ambiguity without overreaching into a
+  document this one does not own.
+- **Scope discipline under a frozen decision set was complete.** Two regions touched, 54/3 lines, no
+  corpus literal moved, no upstream pin advanced, no AT or traceability row disturbed, and my two
+  open non-routed findings left alone rather than opportunistically edited. I verified each of those
+  claims and every one held.
+- **The changelog is honest about what it could not fix.** It states plainly that the downstream
+  document still carries the fifteen-member list, rather than implying the erratum resolved it. A
+  changelog that had claimed closure would have cost me a round to disprove.
+- **v11 F-04 landed with its consequence stated.** The `DECL_RE` widening is paired with *why* the
+  non-empty-slice conjunct is the backstop, so a future editor who narrows the regex learns what
+  breaks. Same discipline as round 10's "a test-file constant can never be a member" sentence.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+To be precise about what that verdict is and is not saying: **this TSPEC's own bytes are correct.**
+The routed items are landed on the side this document controls, the arithmetic closes, upstream is
+unmoved and faithfully compressed, and the edit is better than the repair it was asked for. Nothing
+in the delta is wrong.
+
+The verdict is driven by F-01, which is tagged `inherited` / `nonlocal` precisely so it does **not**
+halt this phase: `PLAN` v0.7 still contradicts this pin in all six places, argues affirmatively for
+the retired design, and is the document implementation reads for a P0 oracle. The route is back to
+PLAN's phase, not a further edit here.
+
+What must change, in order:
+
+1. **`PLAN` re-pin (F-01, owned by PLAN's phase).** All six sites — `:19`, `:152`, `:158`, `:207`,
+   `:219`, `:490–495` — to TSPEC v1.1 §7.3's test-file home and six ∪ eight = fourteen. `:19`'s
+   "rejected resolution" paragraph must be withdrawn, not merely re-numbered, and T-18 must lose its
+   instruction to declare `DECISION_LEDGER_CENSUS_TOKENS` in `orchestrate-dev.js`. This must land
+   before batches 3–8 run.
+2. **§7.3 single-siting claim (F-02, one sentence, this document).** Reconcile "stated here and
+   nowhere else" with `:1388`, `:1387`, `:31` and `:53` — either soften the claim to name §7.3 as the
+   authority and the operand rows as its enumeration, or strike the numerals below it.
+3. **§4.3 "four constants" (F-03, one sentence, this document).** Say whether the header and trailer
+   are top-level constants or inline literals; the answer feeds the count in item 1.
 
 ## Delta-Confirmation Findings
 
