@@ -43,6 +43,36 @@ FINDING: Medium | delta | local | Context §"Measurements are cited, never resta
 
 ## Positive Observations
 
+- **DEC-DECLEDGER-03 did the harder thing.** I flagged that the raise had knocked out the ground the
+  rejection stood on. The easy repair was to find a new reason the order fires; the revision instead
+  *concedes* the order is inert again at the Baseline commit, names that the concession arrives for a
+  different reason than the falsified draft gave, and then rests the refusal on something the next
+  raise cannot take away — inertness is a measurement at one commit, and C-5's thresholds are
+  operator-configurable, so an unspecified order becomes unfalsifiable exactly when it goes live.
+  That is the shape a rejected alternative should have, and it is now the best-argued row here.
+- **The new DEC-DECLEDGER-09 PROPERTIES consequence pre-empts a silent-loss failure I had not
+  raised.** It records that PROP-DIS-06's `toHaveLength(3)` belongs to other features and that a
+  later re-baseline of that literal would let a dotted read here stop reddening anything, then
+  requires a positive, feature-owned assertion over this feature's own source region. I verified both
+  operands at HEAD: the count is `toHaveLength(3)` (`pdlc/workflows/__tests__/advisoryDisabled.test.js:742`),
+  its `sourceExcludingParser` slices on the two *learnings* literals only (`:738-739`), and this
+  feature's own `// === DECISION LEDGER WIRING START/END ===` region and census slices are specified
+  at `TSPEC-…:176-184` and `TSPEC-…:1007`, so the assertion the row asks for is buildable as written.
+  A borrowed oracle demoted to "useful second line, never the primary one" is exactly right.
+- **Every re-derived figure survived independent re-computation.** `12,500 − 1,200 = 11,300`;
+  `11,300 − 10,859 = 441`; `11,300 − 6,305 = 4,995`; `70 − 41 = 29` against `4,995 / 154 ≈ 32`;
+  `141 − 70 = 71`; `11,300 / 154 ≈ 73`. The conclusion the document draws from them — that the entry
+  cap, not the byte bound, is now what would first stop admitting the promoted set whole — follows,
+  and the trigger row was moved to **70** to match rather than left at the old ~44.
+- **DEC-DECLEDGER-12 answered my Q-02 in the document instead of in a reply.** *"Block framing and
+  per-record framing are drawn from the same 12,500, so a raise spends the margin twice over"*, with
+  `M-7c`'s 3,204 explicitly identified as per-line allowance that this 1,200 comes out of rather than
+  sits on top of. That was the one place two readings still fit; only one does now.
+- **The closures are recorded as closures, not quietly deleted.** DEC-DECLEDGER-15's trigger row says
+  *"Fired and closed"* and keeps a live re-open condition; the Risks bullet names `ERR-2` as the
+  worked example of what a single-literal move costs downstream. A ledger whose purpose is preserving
+  why something was refused should retire entries visibly, and this does.
+
 ## Recommendation
 
 ## Verdict
