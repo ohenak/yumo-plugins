@@ -128,6 +128,51 @@ needs the fix.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | If F-01 is resolved by shortening §4.3's citation to `[{sourcePath} § {id}]`, does anything in AT-02 still hold? My reading is yes — AT-02 requires each citation to resolve back at its own source, and a path plus an id locates the record as well as a path plus a heading does. Confirming this would let the fix land entirely inside this spec, with no REQ default change. |
+| Q-02 | §3.1 resolves the feature directory as "the first of `docs/{feature}/`, `docs/completed/{feature}/`, `docs/discarded/{feature}/` that the enumeration returned paths for". For the feature under active review the directory is `docs/{feature}/`, which is also where the growing corpus lives. Is it intended that a feature's *own* in-flight DECISIONS records are indexed to its own reviewers mid-feature? §3.5 notes this contributes nothing today only because the document does not exist yet. This is a product question about what "already-closed" means for a decision closed ten minutes ago in the same feature — worth one sentence either way. |
+| Q-03 | T-2 asks PLAN to "record the measured rendered size once the renderer exists". Given the size is measurable from the corpus and the format alone, is there a reason to defer it rather than fix the default now? |
+
+## Positive Observations
+
+- **The single named design risk is discharged with reproducible evidence, and the evidence holds.**
+  §1.3 names the recognition rule as the one thing the feature turns on, and §3.5 tabulates the
+  rule's output against the Baseline. I re-executed `DECISION_HEADING_RE` and `DECISION_CORPUS_ARGV`
+  over the tree at `8c673a09f` with §3.3's last-wins resolution and reproduced **every** figure:
+  41 project-level ids, 100 feature-level summed, 25 in-scope files, and each per-directory count
+  (headless-engine 22, advisory-tier 11, engine-distribution / learnings-injection / loop-economics
+  10 each, consolidation-agent / wave-resume 8 each, engineering-loop 7, orchestrate-dev-workflow 6,
+  advisory-wave-gate 4, rcv-budget-stop 4, plugin-retirement 0). A TSPEC that states a falsifiable
+  numeric claim and turns out to be right on re-execution is the strongest form this section can
+  take. Keep §3.5 exactly as it is (modulo F-04's one parenthetical).
+- **Each regex conjunct is justified against a named corpus instance rather than asserted.** §3.2's
+  five-conjunct table earns the optional ordinal prefix by naming the two directories that would
+  otherwise contribute 0 instead of 10 and 8, and earns the namespace segment against `M-4b` and
+  `M-4d`. This is the level of grounding that makes O-1's "a rule rendering a set differing from
+  `M-1d`/`M-2e` fails REQ-DECLEDGER-01" checkable rather than aspirational.
+- **§2.3 is right, and it is right for a non-obvious reason.** The claim that the enablement read
+  must be destructured rather than dotted, because `advisoryDisabled.test.js`'s PROP-DIS-06 pins the
+  source-text count of dotted `.enabled` reads, checks out: I re-ran the test's own computation and
+  the count is exactly 3, and the shipped `pinCheckEnabled` read at `orchestrate-dev.js:15105` is
+  indeed destructured for the same reason. Catching a cross-feature test coupling at TSPEC time,
+  rather than at a wave halt, is the kind of thing that saves a round.
+- **The disabled-path contract is defended at the right layer.** §4.5's defaulted parameters,
+  §2.3's `=== true`, §4.3's exactly-`""` contract and §7.4's merge-base baseline with
+  hand-transcribed digests and set-equality case-id checks together make REQ-DECLEDGER-02
+  falsifiable rather than merely claimed — and §7.4's insistence that the guard must *use* the
+  fixture and not only re-hash it is the right lesson carried forward.
+- **§6.3 discharges O-7 exactly as asked.** Separate `failedSources` / `emptySources` fields, stated
+  as write-only report data so BR-11 is not disturbed, give AT-10's classification conjunct a real
+  observable where the dispatch bytes cannot discriminate. And §7.5's prefix conjunct is the right
+  answer to a property that would otherwise be satisfied by a renderer emitting `""` for everything.
+- **Non-goals are held and shown to be held.** §8.3 pairs each with its mechanism, and NG-6's
+  single engine file is exactly the disclosure-test precedent the REQ carved out — I confirmed
+  all three precedent tests exist under `pdlc/engine/__tests__/`.
+- **The scope discipline on upstream defects is correct.** §9.2 raises REQ C-5's positive-integer
+  type label upstream rather than editing the REQ, and cites the shipped `parseLearningsConfig`
+  precedent. That is the right channel; I have re-emitted it as an erratum so it routes.
+
 ## Positive Observations
 
 ## Recommendation
