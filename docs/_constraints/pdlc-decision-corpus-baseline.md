@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-decision-ledger` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` (§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §7 O-1) |
-| Version | 1.0 · 2026-08-28 |
+| Cited by | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` (§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, §7 O-1, §7 O-5). This list is the propagation path for a `Version` bump, so a new citation is added here in the same edit that mints it. |
+| Version | 1.1 · 2026-08-28 |
 | Verified at | HEAD `8c673a09f` on `feat-pdlc-decision-ledger`, 2026-08-28 |
 
 **Why this file exists.** How many closed decisions this repository records, where they sit, and
@@ -25,10 +25,12 @@ belong in its own new section of this file, or in its own file, never interleave
 seven sections are **owned normative prose**: no table here is transcribed row-for-row into a
 downstream document, so no downstream oracle ranges over this file's markup. Consumers cite this
 file **at its `Version`**; a content change that is not accompanied by a version bump is itself a
-defect. Every number below was re-derived from the working tree at the `Verified at` commit, which
-differs from that commit only in
-`docs/pdlc-decision-ledger/POSTMORTEM-R-pdlc-decision-ledger.md`, a file holding no decision
-record.
+defect. Every number below was re-derived from the working tree at the `Verified at` commit —
+which *is* the post-mortem commit, `docs(pdlc-decision-ledger): Phase R post-mortem — round budget
+exhausted`. The measurement tree differed from that commit only by this file itself, then
+untracked, and the in-progress REQ v1.6; neither is a `DECISIONS-*.md`, so no number below moves.
+The distinction is worth stating precisely because a tree-walking measurement is exactly what an
+untracked local file perturbs.
 
 ## 1. What was measured, and by what reading
 
@@ -52,6 +54,7 @@ feature directories.
 | **M-1a** | `docs/_decisions/` holds **41** decision records, carrying **41** distinct ids. No id is recorded twice within that directory, so the raw carrier count and the distinct-id count coincide. |
 | **M-1b** | The per-file breakdown, in path order, is: `DECISIONS-advisory-wave-gate-questions.md` **0**, `DECISIONS-anchor-provenance.md` **1**, `DECISIONS-erratum-routing.md` **4**, `DECISIONS-loop-termination.md` **2**, `DECISIONS-model-availability.md` **2**, `DECISIONS-plugin-distribution.md` **7**, `DECISIONS-review-convergence.md` **2**, `DECISIONS-review-severity-bars.md` **12**, `DECISIONS-seam-defaults.md` **1**, `DECISIONS-spec-layer-boundary.md` **1**, `DECISIONS-test-oracle-mechanics.md` **6**, `DECISIONS-wave-gates.md` **3**. Sum: 41. |
 | **M-1c** | Eleven of the twelve project-level files contribute at least one record; one contributes none (M-4a). |
+| **M-1d** | **The 41 ids themselves**, in the M-1b path order, grouped by their file. `DECISIONS-advisory-wave-gate-questions.md` — *(none)*; `DECISIONS-anchor-provenance.md` — `DEC-ANCHOR-01`; `DECISIONS-erratum-routing.md` — `DEC-ERRROUTE-01`, `DEC-ERRROUTE-02`, `DEC-ERRROUTE-03`, `DEC-ERRROUTE-04`; `DECISIONS-loop-termination.md` — `DEC-TERM-01`, `DEC-TERM-02`; `DECISIONS-model-availability.md` — `DEC-MODEL-01`, `DEC-MODEL-02`; `DECISIONS-plugin-distribution.md` — `DEC-DIST-01`…`DEC-DIST-07`; `DECISIONS-review-convergence.md` — `DEC-CONV-01`, `DEC-DW-01`; `DECISIONS-review-severity-bars.md` — `DEC-SEV-01`, `DEC-SEV-02`, `DEC-SEV-03`, `DEC-ERR-01`, `DEC-BAR-01`, `DEC-BAR-02`, `DEC-ERR-02`, `DEC-ERR-03`, `DEC-DOC-01`, `DEC-FRZ-01`, `DEC-ERR-04`, `DEC-SEV-04`; `DECISIONS-seam-defaults.md` — `DEC-SEAM-01`; `DECISIONS-spec-layer-boundary.md` — `DEC-LAYER-01`; `DECISIONS-test-oracle-mechanics.md` — `DEC-ORACLE-01`…`DEC-ORACLE-06`; `DECISIONS-wave-gates.md` — `DEC-WAVE-01`, `DEC-WAVE-02`, `DEC-WAVE-03`. Note that two of these files hold more than one namespace — `DECISIONS-review-convergence.md` two, `DECISIONS-review-severity-bars.md` five, interleaved rather than grouped — so the list is not reconstructible from M-1b's counts. |
 
 ## 3. M-2 — feature-level records
 
@@ -61,6 +64,7 @@ feature directories.
 | **M-2b** | Distinct ids per feature **directory**: `pdlc-headless-engine` **22**, `pdlc-advisory-tier` **11**, `pdlc-engine-distribution` **10**, `pdlc-learnings-injection` **10**, `pdlc-loop-economics` **10**, `pdlc-consolidation-agent` **8**, `pdlc-wave-resume` **8**, `pdlc-engineering-loop` **7**, `orchestrate-dev-workflow` **6**, `pdlc-advisory-wave-gate` **4**, `pdlc-rcv-budget-stop` **4**, `pdlc-plugin-retirement` **0**. |
 | **M-2c** | **One feature directory holds two `DECISIONS-*.md` files.** `docs/completed/pdlc-headless-engine/` holds `DECISIONS-pdlc-headless-engine.md` (**14** records) and `DECISIONS-headless-engine-obligations.md` (**8** — `## DEC-HE-01`…`08` at `:11,37,62,87,108,130,155,184`). The eight `DEC-HE-*` ids are recorded nowhere else in the repository. Consequence for a consumer: a file-scope naming only `DECISIONS-{feature}.md` makes those eight invisible to their own feature; a directory glob over `DECISIONS-*.md` does not. The two readings differ by 8, and only on this feature. |
 | **M-2d** | The largest single feature **file** is `DECISIONS-pdlc-headless-engine.md` at **14** distinct ids. The largest feature **directory** is `docs/completed/pdlc-headless-engine/` at **22**. These are the two candidate feature-side terms for the floor in §7. |
+| **M-2e** | **The 100 feature-level ids themselves**, per directory, under the M-2b directory-glob reading. `pdlc-headless-engine` **22** — `DEC-ENG-01`…`DEC-ENG-14` and `DEC-HE-01`…`DEC-HE-08`; `pdlc-advisory-tier` **11** — `DEC-ADV-01`…`DEC-ADV-11`; `pdlc-engine-distribution` **10** — `DEC-EDIST-01`…`DEC-EDIST-10`; `pdlc-learnings-injection` **10** — `DEC-LI-01`…`DEC-LI-10`; `pdlc-loop-economics` **10** — `DEC-LOOPECON-01`…`DEC-LOOPECON-10`; `pdlc-consolidation-agent` **8** — `DEC-CONS-01`…`DEC-CONS-08`; `pdlc-wave-resume` **8** — `DEC-WVR-01`…`DEC-WVR-08`; `pdlc-engineering-loop` **7** — `DEC-LOOP-01`…`DEC-LOOP-07`; `orchestrate-dev-workflow` **6** — `DEC-ODW-01`…`DEC-ODW-06`; `pdlc-advisory-wave-gate` **4** — `DEC-A6-01`…`DEC-A6-04`; `pdlc-rcv-budget-stop` **4** — `DEC-BUD-01`…`DEC-BUD-04`; `pdlc-plugin-retirement` **0** — *(none; M-4b)*. Sum 100. Every namespace above is held by exactly one directory, which is the same fact M-5a states from the other side. |
 
 ## 4. M-3 — the one twice-opened id block
 
