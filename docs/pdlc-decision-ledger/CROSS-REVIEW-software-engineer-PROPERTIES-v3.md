@@ -54,6 +54,91 @@ OFF, TEXT, DISC — I re-checked only for dependence on the moved §7.3 text and
 
 ## Properties
 
+Only the **INV** family leans on the moved text. `PROPERTIES`:367 declares INV's trace set as
+`TSPEC` §5.5, **§7.3** — §7.3 is the section the erratum edited, so this family is where a cascade
+confirmation has to look.
+
+### PROP-INV-06 — the exclusion regions no longer match §7.3
+
+`PROPERTIES`:377 states the census as zero occurrences of any `DECISION_LEDGER_CENSUS_TOKENS` member
+
+> *"anywhere in `orchestrate-dev.js` **outside** the four regions this feature owns: the three
+> function bodies sliced by brace-matching from their declarations, and the `main()` wiring run…"*
+
+§7.3 at HEAD specifies neither operand that way, and the gap is not cosmetic:
+
+| Axis | `PROPERTIES`:377 | `TSPEC` §7.3 at HEAD |
+|---|---|---|
+| What is excluded | **three** function bodies | the body of **every** member of `DECISION_LEDGER_OWNED_DECLS` — six functions **plus eight top-level constants** |
+| How a body is sliced | **brace-matching** from the declaration | declaration's own line → **next top-level declaration of any name**, boundaries from *all* top-level declarations (`bodyOf` over `allTopLevelDecls`) |
+| Why | — | *"Slicing **every** owned declaration, not a hand-picked three, is what makes the census satisfiable"* |
+
+§7.3 does not merely prefer the wider exclusion — it names the narrow one as the defect it fixed.
+A test built to `PROPERTIES`:377 is **red by construction on conforming code**: `gatherDecisionCorpus`
+and `renderDecisionLedgerBlock` are named by their sibling declarations, and
+`DECISION_LEDGER_OMIT_REASONS` / `DECISION_LEDGER_CORPUS_OUTCOMES` are named inside
+`DECISION_LEDGER_DEFAULTS` and the §5.2 catalogues — none of which sit inside any of the three
+function bodies, all of which land in the scanned remainder. The slicing mechanism compounds it:
+**brace-matching cannot slice a constant at all**. `DECISION_HEADING_RE` and `DECISION_CORPUS_ARGV`
+have no brace body, so the very declarations that must be excluded are unreachable by the mechanism
+`PROPERTIES` names. This is the precise false-green-vs-false-red hazard PROP-INV-08 exists to guard,
+arriving through the operand definition instead.
+
+`PROPERTIES` also still carries "the three function bodies" implicitly in its post-table paragraph
+(`PROPERTIES`:383–384), which says PROP-INV-06's two operands "are both frozen and both
+set-equality-checked". The first conjunct survives v1.0; the second does not — see PROP-INV-07.
+
+**What must change:** restate PROP-INV-06's excluded regions as *the body of every member of the
+frozen `DECISION_LEDGER_OWNED_DECLS` (fourteen at TSPEC v1.0), sliced declaration-line-to-next-top-level-declaration
+over all the module's top-level declarations, plus the sentinel-bounded `main()` wiring run*. Drop
+"three" and drop "brace-matching".
+
+### PROP-INV-07 — states the assertion §7.3 rejects
+
+`PROPERTIES`:378:
+
+> *"`DECISION_LEDGER_CENSUS_TOKENS` must be **set-equal** to the module's exported decision-ledger
+> symbol names, so a symbol added later cannot escape the census by not being listed."*
+
+§7.3 at HEAD, on that exact comparison:
+
+> *"**Not** set equality against *all* of the module's decision-ledger exports — that comparison is
+> red by construction, since §3.1/§4.1/§4.2/§4.4/§5.2 declare roughly a dozen and only these six are
+> data-carrying."*
+
+`PLAN`:152 names the same form "the **rejected** form". PROP-INV-07 is therefore not a stale
+paraphrase of the contract — it is the contract's explicitly rejected alternative, standing as an
+owned property. An implementer discharging PROP-INV-07 literally writes a test that cannot pass.
+
+The replacement §7.3 specifies has **no property behind it anywhere in `PROPERTIES`**. Nothing in the
+INV table asserts the partition `CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS` with the two sub-sets
+disjoint, and nothing asserts §7.3's red-on-rename conjunct (*each owned member resolves to exactly
+one top-level declaration at HEAD*). PROP-INV-08 covers only the non-empty-slice conjunct. So the
+family simultaneously owns an unsatisfiable assertion and is missing the two that carry the design's
+anti-drift guarantee — the same shape as my v2 F-02, one level up.
+
+The second site is the upstream-obligation table at `PROPERTIES`:893, which discharges **BR-11 / NG-4**
+partly via *"PROP-INV-07 (token-set equality)"*. That gloss inherits the defect and must move with it.
+
+**What must change:** replace PROP-INV-07 with the partition property (union equals `OWNED_DECLS`,
+sub-sets disjoint, over the frozen fourteen-member list), add a property for the
+resolves-to-exactly-one-top-level-declaration conjunct, and re-word `PROPERTIES`:893's parenthetical
+from "token-set equality" to the partition. The `PROPERTIES`:383–384 paragraph's "both
+set-equality-checked" then needs the same correction: at v1.0 the owned list is kept honest by
+resolves-to-one, not by set equality.
+
+### What still holds
+
+- **PROP-INV-08** (every census slice asserted non-empty before counting) is exactly §7.3's
+  non-empty-slice conjunct at HEAD. Unaffected.
+- **PROP-INV-09** (`decisionLedger` must not be a census token) still matches §7.3, which retains the
+  `learningsInjectionField`-analogue rationale — `buildFinalReport` names the field far outside the
+  wiring sentinels, so including it would red the census on conforming code. Unaffected.
+- **PROP-INV-10**, and PROP-INV-01…05, are replay/driver properties that do not read §7.3's census
+  operands. Unaffected.
+- The six **token members** themselves are unchanged across v0.8 → v1.0, so PROP-INV-06's token list
+  is still correct; only its exclusion regions are wrong.
+
 ## Oracles
 
 ## Fixtures
