@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.3
+Version: 1.4
 Feature: pdlc-decision-ledger
 ---
 
@@ -14,6 +14,16 @@ Feature: pdlc-decision-ledger
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 # DECISIONS — pdlc-decision-ledger
+
+**v1.4 re-grounding — TSPEC's propagation has landed, and nothing else.** The upstream this
+document is derived from moved: `TSPEC-pdlc-decision-ledger.md` is now **v0.7** and pinned at REQ
+**v1.9** / FSPEC **v1.3** / Baseline **v1.2**, and its v0.5 erratum absorbed `ERR-2` — §3.6's
+retired 8,000-based arithmetic is gone and the 11,300 / 441 / 4,995 figures this document derived
+ahead of it are now carried upstream. Three passages written when that propagation was outstanding
+are re-grounded on HEAD: the Context measurement rule's live exception, DEC-DECLEDGER-10/-12's
+discharge list, and DEC-DECLEDGER-03/-13's "`maxEntries` fires first" reading of §7.3, which §7.3's
+own corrected rationale now states as a single or-conditioned loop. No standing decision is
+re-litigated and no other section moves.
 
 **v1.3 extension — DEC-DECLEDGER-16, and nothing else.** `POSTMORTEM-D-pdlc-decision-ledger.md`'s
 recommendation item 6: the byte-literal provenance rule that would have refuted the TSPEC erratum
