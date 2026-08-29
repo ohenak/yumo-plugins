@@ -124,3 +124,35 @@ claim about it.
   63-line in-scope set the whole time; attributing it to a directory made the directory look twice
   its size. The corrected form now also states the directory's own 4,553, so the upstream reader
   gets both quantities rather than a corrected one.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High finding stands. v3's High (§7.5's superseded model sentence) is deleted rather than
+overlaid, v3's Medium (D-10's vacuous `omitted[]`) is resolved with a stronger assertion than I
+asked for — set equality on the 41 ids, a non-empty guard, an origin partition — and both Lows are
+corrected in the sections that own the numbers. The test strategy in this document is sound enough
+to implement against: every oracle in §7 now names a mutation that reddens it, no expectation is
+derived from the code under test, and the two absence-shaped claims (§7.3's census, D-10's
+`omitted[]`) are each fenced by a non-emptiness guard.
+
+Two things to fix while the sections are open, neither gating:
+
+- **F-01 (Medium).** In §7.3:940–941, replace the 141-record whole-fixture input with the largest
+  **reachable** in-scope set — project-level ∪ `pdlc-headless-engine`, `M-6b`'s 63-line floor,
+  10,859 index bytes — which binds the byte bound just as hard and is an input a dispatch on that
+  feature actually produces. If the super-set is deliberate, keep it but strike "which is what a
+  real dispatch gathers" and label it a synthetic super-set chosen to force the drop loop, as §3.4
+  already does for the precedence corpus. Either edit removes the contradiction with §3.1:287–289.
+- **F-02 (Low).** §7.3:964's "roughly two" should say three at the mean, two at the largest
+  observed line, matching the §3.6 and ERR-2 wording corrected in the same round.
+
+Q-01 is worth a clause either way: say which bound does the cutting in the configuration the
+assertion runs, since the entry cap and the byte bound produce different `omitted[]` sets and only
+one of them is the regime §3.6's arithmetic describes.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}

@@ -43,3 +43,67 @@ Two issues, neither gating, both inside sections this round changed.
 |----|----------|-------|---------|----------------|
 | F-01 | Medium | Local | §7.3 justifies the whole-fixture input as "what a real dispatch gathers"; FSPEC §3.2 step 2 makes the in-scope set project-level **plus one feature**, so no dispatch ever gathers 141 records, and the largest real regime (63 records / 10,859 bytes) is still the one no test exercises | REQ-DECLEDGER-01, FSPEC §3.2 |
 | F-02 | Low | Local | §3.6/ERR-2 now say ~495 bytes is "about three" feature-level lines while §7.3's own note on the same quantity says "roughly two" — the two changed sections disagree, and only two whole lines fit | REQ-DECLEDGER-07, C-5 |
+
+### F-01 (Medium) — the input is right; the sentence describing it is not, and one real regime is still untested
+
+My v3 F-01 asked for an input where the byte bound binds so conjunct (3) could falsify a reversed drop
+order. This revision delivers that and more: three numbered conjuncts, the non-emptiness of `omitted[]`
+stated rather than assumed, an explicit refusal to pin the surviving feature-line *count* (right call —
+that count is renderer arithmetic and would churn without naming a defect), and PM Q-01 answered in the
+strict direction, both literals hand-transcribed. Conjuncts (1) and (2) are load-bearing and correct,
+and conjunct (3) now does work. The mechanism is fine.
+
+What is wrong is one clause of the justification. §7.3:940-941 reads "build the block over the **whole**
+frozen fixture — all 141 in-scope records, project-level and feature-level, *which is what a real
+dispatch gathers*". FSPEC §3.2 step 2 says otherwise, in the spec's own words: "The set is the project's
+closed decisions plus those of the feature whose document is under review... nothing about the document
+under review beyond its feature narrows the set." The 141-record union spans **every** feature directory
+at once. Under FSPEC that set is unreachable: the largest set any dispatch can produce is §3.6's own
+`M-6b` floor — 41 project-level + `pdlc-headless-engine`'s 22 — which is 63 records / 10,859 bytes.
+
+Two consequences, in order of product weight:
+
+1. **The sentence misstates the scope contract inside the section an implementer builds the oracle
+   from.** §3.2 step 2's derivability rule is a product commitment (it is what makes the index
+   explainable — "your feature plus the project's"), and a reader who meets this sentence while writing
+   the fixture builder learns the opposite. This is the correction that matters and it is one clause.
+2. **The largest *reachable* regime is still unexercised.** §3.6 and ERR-2 both make their claim about
+   real dispatches — "every reviewer receives the whole project-level corpus on every feature", "the
+   larger feature directories are partially omitted from the first enabled dispatch". The whole-fixture
+   assertion pressures the drop loop harder than reality ever will, so it does subsume the promise in
+   practice; but nothing pins the case ERR-2 actually asks REQ to re-decide on, which is 10,859 bytes of
+   in-scope material against a 6,800-byte allowance.
+
+Both close cheaply, and (2) is optional. The minimum fix is to delete or correct the "what a real
+dispatch gathers" clause — say instead that the whole fixture is a deliberate super-set of any reachable
+in-scope set, chosen because it is the smallest available input at C-5's shipped defaults under which
+`omitted[]` is non-empty. That keeps the assertion exactly as specified and stops the section
+contradicting FSPEC §3.2. If se-author wants (2) as well, the same conjuncts hold verbatim over the
+63-record `M-6b` set — project-level ids set-equal to the 41, 6,305 bytes, `omitted[]` non-empty and
+entirely feature-origin — because 10,859 > 6,800 makes the bound bind there too. That would be the
+reachable-regime pin, and it is a second parameterisation of one assertion, not a new oracle.
+
+### F-02 (Low) — "two" and "three" for the same 495 bytes, in two sections edited in the same round
+
+§3.6:435 now reads "~495 bytes of headroom — about **three** feature-level lines at the measured mean
+(495 / 183), two at the largest observed line", and ERR-2 carries the same wording upstream. §7.3's new
+note on the identical quantity reads "Under the shipped bound roughly **two** do (§3.6's ~495 bytes of
+headroom against a 152–261-byte feature line)". Both sentences were written this round; they disagree.
+
+On the arithmetic, "two" is the defensible word for feature-level lines: `2 × 183 = 366` fits in 495 and
+`3 × 183 = 549` does not, and at the largest observed line `261` only one fits. 495/183 = 2.7 rounds to
+three as a *ratio*, which is evidently the reading behind the change, but the quantity ERR-2 is reporting
+to REQ is how many lines the default admits, and that is a floor, not a round. Note §3.6's own
+project-level bullet is unaffected and correct — 495/153 = 3.2 admits three, which is where "~44 promoted
+records" (41 + 3) comes from, and that figure should not move.
+
+Suggested resolution: keep the ratio parenthetical, make both sections say "two feature-level lines at
+the measured mean (495 / 183 ≈ 2.7), one at the largest observed line", and carry the same words in
+ERR-2. Low because the parenthetical makes the figure checkable by any reader and because ERR-2's
+direction — 8000 is tight — is unchanged either way.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | If the 63-record `M-6b` parameterisation in F-01 (2) is taken, should its `omitted[]` expectation be a set-equality against the 22 hand-transcribed `pdlc-headless-engine` ids, or the weaker origin-partition assertion §7.3 specifies today? Set-equality is falsifiable against a drop loop that stops early, but it re-introduces the line-count sensitivity §7.3's "Note what conjunct (3) deliberately does not say" paragraph just argued against — I read that paragraph as deciding against it, and would rather have that read confirmed than assumed |
