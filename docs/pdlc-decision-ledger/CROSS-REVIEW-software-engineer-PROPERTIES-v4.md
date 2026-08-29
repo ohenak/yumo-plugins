@@ -235,3 +235,6 @@ document's §Gaps entry alone, and I note that until `PLAN` converges, an implem
 the ones to follow.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
