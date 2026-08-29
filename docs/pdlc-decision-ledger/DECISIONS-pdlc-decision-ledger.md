@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.2
+Version: 1.3
 Feature: pdlc-decision-ledger
 ---
 
@@ -14,6 +14,12 @@ Feature: pdlc-decision-ledger
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 # DECISIONS — pdlc-decision-ledger
+
+**v1.3 extension — DEC-DECLEDGER-16, and nothing else.** `POSTMORTEM-D-pdlc-decision-ledger.md`'s
+recommendation item 6: the byte-literal provenance rule that would have refuted the TSPEC erratum
+channel's round-6 and round-7 High findings mechanically at authoring time is recorded as a decision
+extending DEC-DECLEDGER-12/-13, with one Consequences row and one re-evaluation trigger. No standing
+decision is re-litigated and no other section moves.
 
 ## Context
 
@@ -257,6 +263,32 @@ terms that `0` is a valid admits-nothing value rather than a malformed one falli
 (REQ §6 C-5, and its v1.8 erratum note giving E-7 as the reason). FSPEC E-7 and REQ C-5 therefore
 now say the same thing, and no REQ edit is outstanding for it.
 
+### DEC-DECLEDGER-16 — provenance of byte literals
+
+*Rejected: leave each figure's provenance implicit in the prose around it.* This is what stood
+through rounds 5–7 of the TSPEC's erratum channel, and it produced the halt
+`POSTMORTEM-D-pdlc-decision-ledger.md` records: `12,059 = 10,859 + 1,200` is arithmetically true
+and dimensionally false — a Baseline measurement (`M-7b`'s 10,859) plus DEC-DECLEDGER-12's budget
+**ceiling**, asserted as an equality a test would transcribe — and neither the author nor two
+independent reviewers caught it at authoring time, because at prose altitude every operand is just
+"bytes". *Rejected: correct the defective site without a rule.* The literal stood in four coupled
+sites (TSPEC §0, §3.6, §7.3, D-10), and fixing one link of a coupled numeric chain per round is
+exactly what rounds 6 and 7 each did — one instalment per round, each leaving a stale pin elsewhere.
+A rule that classifies the operand refutes the whole defect class at authoring time instead of one
+instance per review round.
+
+The rule, extending DEC-DECLEDGER-12/-13: every byte literal in TSPEC carries one of three
+provenance classes — an **upstream decision** (C-5's 12,500), a **measurement** at a named Baseline
+version (`M-xx`, hand-transcribable from the frozen fixture), or a **budget ceiling** over
+constants that do not yet exist (DEC-DECLEDGER-12's 1,200) — and a budget ceiling may appear
+**only on the larger side of an inequality, never as a term in an asserted equality**. Derived
+figures inherit the weakest class of their operands: `12500 − 1200 = 11,300` is sound as an upper
+allowance, because `measured ≤ decision − ceiling` understates the margin and cannot go green
+falsely; `10,859 + 1,200 = 12,059` is not assertable at all, because the equality holds only when
+an implementation spends the ceiling to the last byte, so it reddens conforming implementations
+drafted under budget. Candidate for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at
+consolidation — the pattern is not specific to this feature.
+
 ## Decision
 
 Each row states the chosen form once. `TSPEC §` is where the mechanism is specified in full — this
@@ -280,6 +312,7 @@ a reader arriving from that table lands here without guessing.
 | **DEC-DECLEDGER-13** | "The promoted corpus is admitted whole" is a **measured, pinned** fact at the Baseline's commit — asserted at C-5's shipped defaults over the **whole** frozen fixture: the 41 project-level ids entire, their 6,305 bytes within `maxBytes − 1200`, and a non-empty `omitted[]` naming no project-level id | §3.6, §7.3 / D-10 | The claim is not a property of the mechanism, and `docs/_decisions/` grows by consolidation | Easy — the pin re-decides at fixture re-capture, which is the intended moment |
 | **DEC-DECLEDGER-14** | AT-03's change is applied to the scripted `_readFile` double's returned text, not to the fixture copy on disk | §7.6 / D-11 | AT-01's per-file digest guard makes the copy immutable | Easy — and routed upstream as `ERR-4` (open, FSPEC-owned) rather than left as a silent divergence |
 | **DEC-DECLEDGER-15** | `maxEntries` / `maxBytes` are validated as **non-negative** integers, so `0` is a valid admits-nothing value | §4.1 / — | FSPEC E-7 and REQ v1.8's C-5, which now agree; `parseLearningsConfig`'s shipped `nonNegativeInt` | Easy — but reverting re-breaks E-7 |
+| **DEC-DECLEDGER-16** | Every byte literal in TSPEC carries a provenance class — upstream decision, measurement at Baseline v{N} (`M-xx`), or budget ceiling (unwritten) — and a ceiling may appear only on the larger side of an inequality, never as a term in an asserted equality | §3.6, §4.3, §7.3 / D-9, D-10 | POSTMORTEM-D: rounds 6–7 each shipped a ceiling inside an asserted equality (`12,059`), red on conforming implementations and invisible at prose altitude | Easy — an authoring rule; relaxing it re-admits the round-6/-7 defect class |
 
 ## Consequences
 
@@ -294,6 +327,7 @@ a reader arriving from that table lands here without guessing.
 | PROPERTIES | DEC-DECLEDGER-13's assertion is built over the **whole** fixture at shipped defaults, with 41 ids and 6,305 transcribed as expected values, never captured from the renderer |
 | PROPERTIES | DEC-DECLEDGER-09 needs a **feature-owned** falsifier, not only the borrowed one. PROP-DIS-06's `toHaveLength(3)` count belongs to `pdlc-advisory-wave-gate`/`pdlc-learnings-injection`: if a later feature re-baselines that literal, a regression to a dotted read here stops reddening anything and the loss is silent. PROPERTIES must therefore carry a positive assertion over **this feature's own** source region (the `// === DECISION LEDGER WIRING START/END ===` run and the new function bodies, TSPEC §7.x's census slices) that the enablement flag is read destructured and compared `=== true`. PROP-DIS-06's count stays as a useful second line, never the primary one |
 | PROPERTIES | DEC-DECLEDGER-11 means the bounds property's model must use its **own** formatter; deriving the model from the production renderer makes the no-truncation conjunct unfalsifiable |
+| PROPERTIES | DEC-DECLEDGER-16 binds assertions the same way it binds TSPEC prose: a pinned equality may transcribe only upstream decisions and Baseline measurements; DEC-DECLEDGER-12's 1,200 — and any figure derived by adding it — appears in a property only as the larger side of an inequality |
 | IMPL | DEC-DECLEDGER-14 means no test writes to a fixture file; corpus variation is scripted at the `_readFile` seam |
 
 ### Re-evaluation triggers
@@ -306,6 +340,7 @@ a reader arriving from that table lands here without guessing.
 | DEC-DECLEDGER-08 | Any future feature earns an edit to `pdlc/engine/`, at which point `MODULE_NAMES` can grow and the one-file constraint — and the serial waves it costs — lifts for this code too |
 | DEC-DECLEDGER-10, DEC-DECLEDGER-12 | Either changes, and every byte figure in TSPEC §3.6 must be re-measured against C-5's `maxBytes` in one pass, not one figure at a time — REQ v1.8's raise to 12,500 (`ERR-2`, now closed) is the worked example of what a single-literal move costs downstream. **One such re-measurement is outstanding now**, and it is checkable rather than general: TSPEC is still pinned at REQ v1.7 / Baseline v1.1 and §3.6 still computes `8000 − 1200 = 6,800`, still reports *"~495 bytes of headroom"*, and still concludes *"the order is live under shipped defaults"*, with D-10 restating the 6,800-byte allowance and §7.3's rationale saying *"At 141 records the byte bound binds"*. Those five sites are the discharge list; they are TSPEC's to land under `ERR-2` and are not edited here |
 | DEC-DECLEDGER-15 | **Fired and closed:** REQ v1.8 retyped both C-5 thresholds as non-negative, so REQ C-5 and FSPEC E-7 now agree and this decision spans no gap. Revisit only if a future REQ re-narrows either threshold to positive integers, which would re-break E-7 |
+| DEC-DECLEDGER-16 | The framing constants are written and measured — at that point the 1,200 ceiling re-classes to a measurement with a fixture source, equalities over the measured figure become assertable, and the re-measurement travels with DEC-DECLEDGER-10/-12's one-pass trigger |
 
 ### Risks accepted
 

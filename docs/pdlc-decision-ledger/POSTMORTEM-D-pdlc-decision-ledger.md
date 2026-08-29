@@ -9,7 +9,23 @@
 | Author | se-author |
 | Date | 2026-08-28 |
 
-RESOLVED: no
+RESOLVED: yes
+
+**Resolution record (2026-08-29).** Every item in `## Recommendation` is addressed on
+`feat-pdlc-decision-ledger`:
+
+- **Items 1–5 (blocking, all TSPEC)** landed as the **v0.7 erratum** (commits `8d821b104`,
+  `4de976998`, `277db8b27`): §7.3 conjuncts (5)/(6) re-stated in measured units (10,859 pinned,
+  margin `10,859 ≤ 11,300`, difference 441); `12,059` swept from every asserting site (§0, §3.6,
+  §7.3, D-10), surviving only as labelled upper-bound prose; §3.6's retired-default sentence names
+  both retired inputs; §9.2 ERR-2's discharge pluralised; PM Q-01 answered in §7.3. Verified by
+  both reviewers: `CROSS-REVIEW-product-manager-TSPEC-v8.md` and
+  `CROSS-REVIEW-test-engineer-TSPEC-v8.md`, each `VERDICT: Approved with minor changes`, 0 High.
+- **Item 6** — `DECISIONS-pdlc-decision-ledger.md` **v1.3** adds **DEC-DECLEDGER-16**, the
+  byte-literal provenance rule (ceiling only ever on the larger side of an inequality), with a
+  Consequences row for PROPERTIES and a re-evaluation trigger.
+- **Item 7** — recorded in `LEARNINGS-pdlc-decision-ledger.md` §4.1 (re-derive reviewer-supplied
+  literals before they become normative).
 
 **Failure class:** ERRATUM-PROTOCOL. Phase D halted because the delta confirmation of the
 TSPEC erratum round did not pass — non-approving: `te-review` — and the follow-up budget of
@@ -267,3 +283,11 @@ round sufficient.
 - Follow-up budget: 1 round (spent)
 - TSPEC at halt: v0.6, `88fe6dbae`
 - Confirmations at halt: `72fd38c9d` (pm-review, Approved with minor changes), `25808e80f` (te-review, Needs revision)
+
+**Provenance**
+- Engine version: 0.2.4
+- Plugin version: 0.23.4
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
