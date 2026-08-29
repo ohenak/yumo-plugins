@@ -114,7 +114,47 @@ it.
 
 ## Data Model
 
-_pending_
+**I re-derived the partition rather than taking the paragraph's word for it.** Reading the two
+operand rows at HEAD and counting members by hand:
+
+- **Forbidden (`DECISION_LEDGER_CENSUS_TOKENS`) — six:** `selectDecisions`,
+  `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus` (four functions),
+  `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` (two of §5.2's catalogues).
+- **Exempt (`DECISION_LEDGER_CENSUS_EXEMPT`) — eight:** `parseDecisionLedgerConfig`,
+  `buildDecisionLedgerInjector` (two functions), `DECISION_LEDGER_DEFAULTS`, `DECISION_HEADING_RE`,
+  `DECISION_CORPUS_ARGV`, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`,
+  `DECISION_LEDGER_NOTICES` (six constants, the last being §5.2's third catalogue).
+- **Union — fourteen, disjoint.** No name appears in both lists; I checked pairwise.
+- **Owned (`DECISION_LEDGER_OWNED_DECLS`) — fourteen:** six functions (§4.1–§4.4, with the
+  renderer's §4.3 home now called out so TE F-02's mis-citation cannot reappear) plus eight top-level
+  constants (`DECISION_CORPUS_ARGV` §3.1, `DECISION_HEADING_RE` §3.2, `DECISION_LEDGER_DEFAULTS`
+  §4.1, `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT` §4.3, §5.2's three catalogues).
+
+Set equality holds, disjointness holds, and each of the fourteen resolves to a module-surface
+declaration site I can point at. The three census constants are correctly outside all of this, per
+the *Where the three census constants live* paragraph v1.0 added. The arithmetic is sound.
+
+**Where the edit under-delivers on its own promise (F-02).** The paragraph says the arithmetic "is
+stated here and nowhere else in this document: any other section … cites it rather than restating
+it". Grepping every count word in the file, that is not true as written:
+
+- `:1388` (*Scanned source*, the row immediately below) states "**eight of this feature's fourteen
+  owned declarations are top-level `const`s**" — a bare restatement of both operand sizes, not a
+  citation.
+- `:1387` (*Forbidden token set*) refers to "the fourteen the paragraph above counts" — closer to a
+  citation, but it still carries the numeral.
+- `:31` and `:53` in the revision history restate "eight … fourteen owned declarations" and
+  "six ∪ eight = fourteen".
+
+The paragraph half-concedes this in its last sentence ("this paragraph **and the row below** are the
+pin"), which is a two-site pin, not a one-site pin — and the changelog sites are not covered by that
+concession at all. This is not an arithmetic error and nothing is currently inconsistent; the count
+reads fourteen everywhere. It is a defect in the *anti-staleness mechanism* the erratum sells: the
+next edit to the partition must touch four sites, and the paragraph tells its editor there is one.
+Given that this whole erratum exists because a count went stale across documents, the mechanism
+being weaker than advertised is worth a Medium. The fix is one sentence — either rephrase the pin as
+"§7.3 is the sole authority for this count, and the operand rows below are its enumeration" and
+strike "nowhere else", or replace `:1388`'s numerals with a back-reference.
 
 ## Test Strategy
 
