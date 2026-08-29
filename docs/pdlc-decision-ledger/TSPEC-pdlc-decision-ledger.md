@@ -785,6 +785,27 @@ Suite: `pdlc/workflows/__tests__/` under jest (`cd pdlc/workflows && npm test`),
 `pdlc/engine/__tests__/` under `node:test` for the config disclosure. Both are gate checks
 (`Unit tests (ubuntu-latest, node 20)` and `Engine tests (ubuntu-latest)`).
 
+**Coverage obligation, stated because the shipped gate will not state it.** `pdlc/workflows`'
+coverage gate is `c8 ... --check-coverage --per-file --branches 85`, and its `include` list names
+`**/pdlc/workflows/orchestrate-dev.js` as a single file. Since every symbol this feature adds lands
+in that ~817 KB file (D-6), the new branches are averaged into a per-file ratio already dominated by
+~17k lines of shipped code: §6.1's **fourteen** failure rows could be entirely uncovered and the
+gate would not move. The gate is therefore not evidence for this feature, and this spec does not
+rely on it.
+
+The obligation is stated directly instead, and PLAN owns its discharge:
+
+> **Every row of §6.1's failure table has at least one test that exercises it**, named in the PLAN
+> task that implements the row. F-1…F-5 are covered by `parseDecisionLedgerConfig`'s pure unit
+> matrix; F-6, F-7 by the `_git` double's `!ok` and throwing arms; F-8, F-9 by the `_readFile`
+> double's `null` and zero-record arms (and their `failedSources`/`emptySources` split, §6.3);
+> F-10 by the total-leg assertion; F-11…F-13 by §7.5's property, whose bounds range spans `0`,
+> exactly-fitting and generous; F-14 by the no-directory corpus case.
+
+This is a stronger obligation than a percentage floor and a checkable one: the mapping is from a
+numbered spec row to a named test, so a missing row is visible by inspection of the PLAN rather than
+by a coverage delta that rounds to zero.
+
 ### 7.1 Test doubles
 
 No new double kind is invented. The two seams are the ones `gatherLearningsCorpus` already takes,
@@ -970,6 +991,22 @@ draws record sets spanning zero, one, and many records, line lengths spanning be
 inside the property's range rather than beside it. The model is built from the production line
 renderer applied per record, not from a re-implementation of the drop loop, so a bug in the loop
 cannot be mirrored into the oracle.
+
+**The model does not reuse the renderer, or the no-truncation conjunct would be an echo.** Building
+the expected line by calling the production line renderer would make "each rendered line is
+byte-identical to the line the renderer produced for that record" true by construction: a wrong line
+*format* — a dropped separator, a citation field rendered as `{heading}` instead of `{id}`, a
+truncated statement — would appear on both sides of the comparison and the conjunct could never
+fail. Only the prefix conjunct would carry any weight.
+
+So the property's model carries its **own** formatter, transcribed from §4.3's stated format
+(`{id} — {statement}  [{sourcePath} § {id}]`) and independent of production code. The four conjuncts
+then fail on four different mutations: dropping a line reddens the prefix conjunct, truncating one
+reddens no-truncation, mis-ordering reddens the prefix conjunct, and changing the citation field
+reddens no-truncation. This is the same discipline §7.3 applies to the corpus oracle — expected
+values transcribed from data, never captured from the code under test — applied to the property.
+The cost is one duplicated format literal, and §4.3's framing-budget pin plus AT-02's resolution
+check are what keep the duplicate honest.
 
 ### 7.6 Coverage of the FSPEC's acceptance tests
 
