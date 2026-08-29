@@ -202,7 +202,7 @@ parser ignores by design.
 | `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-09 | 2 |
 | `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` | T-10 | 2 |
 | `pdlc/workflows/__tests__/decisionLedgerMain.test.js` | T-10a | 2 |
-| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-11 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` (also the sole home of the two frozen test-file lists `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS`, TSPEC §7.3) | T-11 | 2 |
 | `pdlc/workflows/__tests__/documentOracles.test.js` | T-12a | 2 (disclosure oracle, skipped) |
 | `pdlc/workflows/orchestrate-dev.js` | T-13 | 3 |
 | `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-13 | 3 (un-skip) |
