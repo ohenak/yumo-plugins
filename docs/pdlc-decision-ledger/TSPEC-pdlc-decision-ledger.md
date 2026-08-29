@@ -967,8 +967,13 @@ the pinning that stops a re-capture silently satisfying AT-04.
   capture task), not a prose note.
 - **The pinning O-4 asks for, three clauses:** (a) per-file digest literals hand-transcribed into
   the guard, so a re-capture that rewrites `MANIFEST.json` does not also rewrite its checker;
-  (b) `mergeBaseSha` asserted against `git merge-base origin/main HEAD` computed at test time, so a
-  baseline captured from the wrong base fails loudly; (c) the case-id check written as **set
+  (b) `mergeBaseSha` asserted equal to a **hand-transcribed** `EXPECTED_MERGE_BASE_SHA` literal in
+  the test file — never read from the manifest it is checking — with `git merge-base --is-ancestor
+  {recorded sha} HEAD` kept as the documented **weaker second signal** described in the "Baseline
+  identity" bullet above. A form that computes `git merge-base origin/main HEAD` **at test time** is
+  specifically excluded: it makes a required check depend on the local `origin/main` ref being
+  current, so it can red on an unrelated push to `main` and needs a fetch to be meaningful in CI.
+  (c) the case-id check written as **set
   equality**, not containment, so both a deleted case and a silently added case fail — the two
   halves the loop-economics guard proved are not interchangeable.
 - **Mutation proof before commit,** the same three steps that guard proves: flip one byte in a
