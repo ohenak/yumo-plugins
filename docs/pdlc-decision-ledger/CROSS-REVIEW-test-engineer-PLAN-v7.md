@@ -123,3 +123,43 @@ Every claim above was measured at HEAD, not read out of a document:
 - **Four sites, one contract, no residue.** The failure mode this document keeps having to defend against is a fix landing at the row but not at the manifest, or at the manifest but not at the DoD bullet. All four say the same thing in the same words, and the two manifest rows say it from both ends: the test-file row *disclaims* the operand and points at batch 8, the module row *claims* it. A reader arriving from either direction reaches the same owner.
 - **The conjunct that used to be red by construction is now red-before-green, and the PLAN says which.** "Satisfied at T-18's landing, not before, which is the ordinary red-before-green edge rather than red-by-construction" is exactly the right distinction, and it is backed by the dependency column rather than asserted in prose.
 - **The counts stayed put, which is itself evidence.** Six ∪ nine = fifteen is unchanged from v0.6; the fix moved a *home*, not an arithmetic. A fix that had quietly shifted the literals would have been the tell that the author was patching the symptom.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | `DECISION_LEDGER_CENSUS_TOKENS` is now a production top-level constant of `orchestrate-dev.js` with **no production consumer** — its only importer is T-11's census test, and its purpose is to be sliced *out* of the scanned source. The module exports inline with no trailing `export { … }` block (`pdlc/workflows/orchestrate-dev.js:48`, `:52`, `:88`, `:106`), and no export-surface guard exists in `pdlc/workflows/__tests__/`, so nothing flags it. This is the dead-config shape: introduced in production, executed by no production path. It is intended, and it is TSPEC §7.3's choice rather than the PLAN's — but the PLAN does not say it is intended, so a DoD sweep reading the diff can file it as an unwired artifact and remediate it by deletion, silently re-opening the homeless-member defect v0.7 just closed. Ask: one clause in T-18 stating that the constant is production *solely* so its declaration is a sliceable region, that its only importer is the census test, and that this is deliberate. | §Batches → `T-18` (PLAN:158) |
+| F-02 | Low | Local | The census's forbidden-token operand is imported from the module the census scans — an implementation echo in shape. It is neutralised in fact, because the companion partition (`CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS`, disjoint) pins the six to `OWNED_DECLS \ CENSUS_EXEMPT`, both frozen **test-file** literals, so dropping a production token reddens the partition. But the PLAN presents the partition as a completeness check for *future* symbols only, and never says it is also what stops the six from being self-derived. An implementer who reads the partition as redundant and thins it leaves an oracle whose expected value comes from the code under test. Ask: one clause in T-11 naming the partition as the reason the imported operand is safe. | §Batches → `T-11` (PLAN:152) |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Once TSPEC §5.2 gains the constant (the routed erratum), will T-18's row cite `§5.2` alongside `§7.3` for its shape, or keep the single §7.3 citation? Not blocking — the instruction is executable either way — but the other three frozen catalogues are cited to §5.2 by their owning tasks (T-13, T-16, T-17), and this one would then be the odd row out. |
+
+## Recommendation
+
+**Approved with minor changes**
+
+v6's High is closed. `DECISION_LEDGER_CENSUS_TOKENS` has a production home, a green owner (T-18), a manifest row that claims it, a manifest row that disclaims it from the test file, and a DoD bullet that says the same thing — and I confirmed mechanically that all fifteen members of `DECISION_LEDGER_OWNED_DECLS` are written by a `[green]` task of batches 3–8, so the frozen list is no longer partly homeless and T-11's resolves-to-one and non-empty-slice conjuncts are satisfiable on conforming code. The satisfaction point is T-18's landing, which is an ordinary red-before-green edge declared in the dependency column, not red-by-construction.
+
+Nothing already approved broke: no batch, dependency or ownership assignment moved, the DAG re-derives, the pins are unchanged and still correct, no same-batch same-new-file collision was introduced, and the six/nine/fifteen arithmetic is unchanged. The author's rejection of my alternative resolution is reasoned and correct.
+
+The two remaining findings are non-gating and each cost one clause: F-01 asks T-18 to say the test-only production constant is deliberate, so a later DoD sweep does not delete it; F-02 asks T-11 to say the partition is what keeps the imported token operand from being a self-derived oracle. Both protect the fix from a future reader rather than from the current implementer.
+
+The residual upstream gap — TSPEC declares this production constant in §7.3 only, in no module-surface section, while §5.2 enumerates exactly three frozen catalogues — is routed as `ERRATUM: TSPEC`, as the PLAN itself proposes. The PLAN should not absorb it.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Medium | delta | local | The round's own fix makes `DECISION_LEDGER_CENSUS_TOKENS` a production constant with no production consumer (only importer is the census test); dead-config shape, unflagged by any export-surface guard, and undeclared as deliberate — a DoD sweep can remediate it by deletion and re-open the closed defect. | §Batches → `T-18` (PLAN:158) |
+| F-02 | Low | delta | local | The census's forbidden-token operand is now imported from the module under census; the partition against two test-file-frozen lists is what neutralises the echo, but the PLAN never says so, so thinning the partition would leave a self-derived oracle. | §Batches → `T-11` (PLAN:152) |
+
+FINDING: Medium | delta | local | §Batches → T-18 (PLAN:158) | DECISION_LEDGER_CENSUS_TOKENS is introduced as a production top-level constant of orchestrate-dev.js with no production consumer — its sole importer is T-11's census test and its purpose is to be sliced out of the scanned source; the module exports inline with no trailing export block (pdlc/workflows/orchestrate-dev.js:48,:52,:88,:106) and no export-surface guard exists in pdlc/workflows/__tests__, so nothing flags it, and the PLAN never states the dead-looking declaration is deliberate — a DoD sweep can delete it as an unwired artifact and re-open the homeless-member defect this round closed.
+FINDING: Low | delta | local | §Batches → T-11 (PLAN:152) | The census's forbidden-token operand is imported from the module the census scans; the companion partition against the test-file-frozen CENSUS_EXEMPT and OWNED_DECLS is what pins the six and stops the oracle being self-derived, but the PLAN presents the partition only as a future-symbol completeness check, so an implementer who thins it leaves an expectation derived from the code under test.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
