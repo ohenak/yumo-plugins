@@ -300,8 +300,57 @@ as a machine contract.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T-03's integrity guard asserts "equality on the fixture's path list". Is that a set-equality against a hand-transcribed 25-element literal, or an equality against a list generated at fixture-build time? Only the first would have caught F-01; the second echoes the fixture back at itself. Worth making explicit in the row. |
+| Q-02 | T-10a's flag-off arm asserts the reviewer prompt is "byte-identical to the flag-on prompt **minus** the block". Is that computed by string-subtraction from the flag-on prompt, or compared against T-02's committed merge-base recording? The first would be an implementation echo — the flag-off prompt would be defined by the code under test. I read the DoD bullet as intending the second; the row's wording admits the first. |
+
+
 ## Positive Observations
+
+- **All four v1 Highs are closed by adding rows, not by softening claims.** T-00a, T-10a and T-12a
+  are three new tasks that each carry a real falsifier; none of the four findings was answered with
+  a DoD checkbox.
+- **T-10a is the best-specified task in the document.** It names the four failure modes a source
+  census cannot see (transposed argument, wrong seam key, un-`await`ed injector, wiring block after
+  the last `reviewerPrompt` call), then states three arms that each defeat one class, including the
+  call-count runtime oracle that an outer-interface fake structurally cannot satisfy. That is DC-07
+  applied, not cited.
+- **T-12a derives rather than transcribes.** Set equality against `DECISION_LEDGER_OMIT_REASONS`,
+  `_NOTICES` and `_DEFAULTS`, plus a confinement conjunct keeping mechanics out of `README.md` and
+  `CLAUDE.md` — it clones a shipped family I verified exists, and it makes a deleted omission reason
+  fail rather than merely a changed one.
+- **The coverage-gate section is now the most accurate description of that gate anywhere in the
+  repository**, one timing sentence aside. Correcting a claim by reading the whole four-clause
+  command rather than defending the original conclusion is the right instinct.
+- **The manifest reshape is verifiable, and I verified it.** `lintPlanArtifact` returns `ok: true`
+  with zero diagnostics over the live document — the strongest form of evidence available for a
+  PLAN's machine contract, and it is now green.
+- **Both coverage tables are set-equal to their sources** (F-1…F-14; AT-01…AT-18), so a deleted row
+  fails rather than merely going unnoticed.
+
 
 ## Recommendation
 
+**Needs revision** — one High.
+
+To close:
+
+1. **F-01** — add `|docs/discarded/[^/]+/DECISIONS-[^/]*\.md` to T-03's transcribed grep so it
+   carries all four of `DECISION_CORPUS_ARGV`'s pathspecs, and re-state the reconciliation as the
+   measured 25 (frozen) / 26 (live), naming both deltas. Optionally strengthen the integrity guard
+   to a hand-transcribed 25-element path set (Q-01).
+
+That is a single-cell edit. The Mediums and Lows are recorded and non-gating: F-02 wants one
+sentence corrected and ideally a per-wave manual run added to T-18's row; F-03 wants the namespace
+count moved to a terminal conjunct in T-12a, or the claim softened to what it proves; F-04 and F-05
+are prose and rendering.
+
+Everything else in v0.2 holds under mechanical checking — the parser, the two coverage tables, the
+batch DAG, the same-file serialisation, the anti-echo commitments and all eight of my v1 findings.
+
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
