@@ -32,7 +32,33 @@ fails here is the PLAN's fidelity to the upstream text as it now reads.
 
 ## Batches
 
-_pending_
+Five PLAN sites carry the reversed contract. All five were written by v0.7 in direct response to my
+v7-round predecessor finding, and all five now contradict upstream.
+
+| # | Site | PLAN text at HEAD | TSPEC v1.0 §7.3 |
+|---|---|---|---|
+| 1 | `T-11` (PLAN:152) | `CENSUS_TOKENS` "is itself **declared in `pdlc/workflows/orchestrate-dev.js` as a production top-level constant, written by T-18**… That home is what makes it a member of `DECISION_LEDGER_OWNED_DECLS` — and therefore of `DECISION_LEDGER_CENSUS_EXEMPT`" | test-file constant of the census test; "a test-file constant is never a member of it" |
+| 2 | `T-11` (PLAN:152) | `CENSUS_EXEMPT` = "the **nine** plumbing declarations", enumerated with `DECISION_LEDGER_CENSUS_TOKENS` itself as the ninth; `OWNED_DECLS` = "the **fifteen** top-level declarations… all fifteen declared in `orchestrate-dev.js` by a `[green]` task of batches 3–8 (T-13…T-18)" | eight exempt members (`CENSUS_TOKENS` removed), fourteen owned |
+| 3 | `T-18` (PLAN:158) | "**Add the frozen `DECISION_LEDGER_CENSUS_TOKENS` declaration to `pdlc/workflows/orchestrate-dev.js`** as a top-level constant… production code, not a test operand" | the constant belongs in `decisionLedgerCensus.test.js`; no module-surface section (§3/§4/§5) declares it, and §5.2's frozen-catalogue table lists only `OMIT_REASONS`, `CORPUS_OUTCOMES`, `NOTICES` |
+| 4 | File-ownership manifest (PLAN:207, :219) | test-file row **disclaims** the third operand ("`DECISION_LEDGER_CENSUS_TOKENS` is **not** a test-file constant"); the `orchestrate-dev.js` row **claims** it for T-18, batch 8 | ownership is exactly inverted |
+| 5 | §Definition of Done census bullet (PLAN:487–502) | "`DECISION_LEDGER_CENSUS_TOKENS` (**six**) ∪ `DECISION_LEDGER_CENSUS_EXEMPT` (**nine**) = `DECISION_LEDGER_OWNED_DECLS` (**fifteen**)… but `DECISION_LEDGER_CENSUS_TOKENS` is **production**, declared by T-18 — which is what makes its slice non-empty and its resolves-to-one conjunct satisfiable" | six ∪ eight = fourteen; the non-empty-slice / resolves-to-one conjuncts no longer apply to `CENSUS_TOKENS` at all |
+
+The testing consequence, stated as the test that reds: T-11's companion assertion is an **exact set
+equality**. Written to PLAN's fifteen-member owned list and nine-member exempt list, against an
+implementation built to TSPEC v1.0 (where `CENSUS_TOKENS` is never declared in `orchestrate-dev.js`),
+two conjuncts fail on conforming code — the partition equality (a fifteenth member that does not
+exist) and §7.3's resolves-to-exactly-one-top-level-declaration conjunct for that member. This is
+red-by-construction, the precise failure mode §7.3 exists to prevent, and it is not detectable by
+the green gate because T-11 is committed skipped and un-skipped by T-18 in batch 8.
+
+The second-order effect is on T-18's scope: T-18's `[green]` instruction currently orders an edit
+to production `orchestrate-dev.js` that TSPEC v1.0 forbids. That instruction must be deleted, not
+merely re-worded, and the batch-8 un-skip edge it justifies re-examined — with `CENSUS_TOKENS`
+test-file-local, T-11's three operands are all resolvable at T-11's own landing, so the row's
+stated reason for the un-skip-at-T-18 timing ("the two conjuncts that read the owned list against
+HEAD are satisfied at **T-18's** landing, not before") is now only true of the *other* fourteen
+owned members, not of `CENSUS_TOKENS`. That is a real, if narrower, justification; it needs
+restating rather than deleting.
 
 ## Dependencies
 
