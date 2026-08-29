@@ -289,3 +289,6 @@ No Medium or Low findings this round.
 FINDING: High | delta | local | §Batches → T-11 (PLAN:150), file-ownership manifest (PLAN:202), §Definition of Done census bullet (PLAN:488) | The new partition counts DECISION_LEDGER_OWNED_DECLS as fifteen members, but DECISION_LEDGER_CENSUS_TOKENS is a test-file operand (like the precedent's ANCHOR_TOKENS at loopEconomicsAnchorGuard.test.js:114), not a declaration in orchestrate-dev.js — no PLAN green task creates it and no TSPEC module-surface section declares it — so T-11's "resolves to exactly one top-level declaration at HEAD" and "each slice non-empty" conjuncts both red on conforming code, re-introducing the red-by-construction defect on the [red] row T-18 depends on.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 0}
