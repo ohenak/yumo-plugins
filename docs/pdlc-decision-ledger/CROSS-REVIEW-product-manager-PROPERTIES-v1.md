@@ -18,12 +18,41 @@
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | §Coverage Matrix gives `AT-14` the properties `PROP-BND-08, -09, -10; PROP-FAIL-06`. `FSPEC:473`'s AT-14 is the empty/zero-bound case and `PROP-FAIL-06` is O-7's `failedSources`/`emptySources` split, which is an *observability* claim about a corpus that read successfully to zero records. Is PROP-FAIL-06 on that row deliberately (because E-6's byte outcome is shared), or is it a second instance of F-01's pattern? If deliberate, please say so in the row so the next reader does not re-raise it. |
+| Q-02 | `FX-BASELINE`'s `mergeBaseSha` is pinned by ORC-04 clause (b) against a hand-transcribed literal. `runCaptureScript` (`scripts/capture-learnings-baseline.mjs:122`) records `mergeBaseSha: mergeBaseRef` — whatever ref string the caller passed, not a resolved sha. Should ORC-04 (b) additionally require the capture be invoked with a **resolved** sha so the transcribed literal and the recorded value are the same kind of thing? This is a product-visible question only insofar as `REQ` O-4's "baseline identity" claim depends on it; the mechanism is se/te's call. |
+| Q-03 | PROP-DISC-07 says "still count `102` after this feature's twelve new modules exist", and §Coverage Matrix claims "All 12 modules are claimed and none is orphaned" — but the DISC row lists four modules and the twelve-module enumeration appears only in PROP-DISC-07's closing note. Would you consider making the twelve-module manifest a table in §Coverage Matrix, so the "none orphaned" claim is checkable in one place rather than assembled from two? |
 
 ## Positive Observations
 
-_(pending)_
+- **All eight `REQ-DECLEDGER-*` ids are traced, and all eighteen `FSPEC` acceptance tests appear in the map.** I enumerated both: `REQ-DECLEDGER-01`…`-08` each appear on at least one family's `Traces` line, and the AT map carries `AT-01`…`AT-18` with no omission. F-01 is about *which* property sits on three rows, not about a missing row — the shape of the traceability is right.
+- **The anti-echo discipline is stated as an operational rule, not a slogan, and it is stated where the implementer will be tempted.** ORC-03's "All four transcribed literals — the 41 ids and 6,305, the 63 ids and 10,859 — are hand-transcribed from the fixture, never derived at test time from the renderer or from a manifest", ORC-04 clause (a)'s refusal to read an expected digest *from* the manifest that a re-capture rewrites, PROP-DISC-03's refusal to import `DECISION_LEDGER_DEFAULTS` into the disclosure oracle, and PROP-BND-07's hand-transcribed model formatter all close the same hole from four different directions. ORC-01's "**If ORC-01 reddens, the correct response is never to trim the expected set to whatever the renderer emitted**" is the sentence I would most want a future implementer to read.
+- **Every absence-only oracle is paired with a positive assertion on the same path.** PROP-PRE-03 asserts its absence "over a block that is non-empty and carries the project-level statement"; PROP-FAIL-05 asserts absence positively via ORC-02 resolution; ORC-03's A3 explicitly rejects the 41-record slice because `omitted[]` would be empty under every drop order and the conjunct vacuously true; PROP-INV-03 states the difference rather than permitting it ("'Allowed to differ' is not asserted; the difference is"); PROP-INV-08 requires every census slice be asserted non-empty first. This is the failure mode this project has actually shipped before, and the document names it each time.
+- **Enumerated contracts are checked by set equality, not containment, and the exceptions are argued rather than assumed.** PROP-CFG-05, PROP-CFG-08, PROP-CFG-09, PROP-FAIL-09, PROP-INV-05, PROP-INV-07, PROP-OFF-05, PROP-DISC-02 and ORC-04 clause (c) all use set equality; PROP-DISC-01's containment carries its reason (the file is shared — verified: `.claude/pdlc.config.example.json`'s top-level keys are exactly the eight named, `dispatch`, `advisory`, `implementation`, `learningsInjection`, `cascade`, `review`, `loop`, `merge`); and ORC-06 refuses set equality over the five driver-side outcomes with a stated reason rather than by omission.
+- **The code claims hold at HEAD.** I checked every `file:line` anchor the document makes a behavioural claim on: the nine `orchestrate-dev.js` export anchors (`:2230`, `:2252`, `:2313`, `:2363`, `:2414`, `:2731`, `:2771`, `:2825`, `:9194`) are each the declaration named; `reviewerPrompt` is indeed module-private at `:11433` with the `findingGrammarPart` gate at `:11453` consumed on both return paths (`:11483`, `:11506`); `advisoryDisabled.test.js`'s `sourceExcludingParser` matches the sentinel by exact string at `:717`–`:719`; `documentOracles.test.js`'s filter and `expect(count).toBe(102)` sit at `:398`–`:420`; `fast-check": "^4.9.0"` is at `pdlc/workflows/package.json:13`; `plugin.json` is at `0.23.6`; and `runCaptureScript` exists at `scripts/capture-learnings-baseline.mjs:122`, materialising the worktree and removing it in a `finally`, writing `{caseId}/{n}.txt` plus `MANIFEST.json`. The `M-*` ids cited all exist in the v1.2 baseline. A properties document whose factual base survives that check is rarer than it should be.
+- **The two things put out of scope are the right two, and each is argued from an upstream clause rather than declined.** Reviewer compliance with the rule text (`REQ` R-3, unenforceable by construction) and `REQ` G-4's retrospective trend (non-binding, wider denominator) are both named as *not* generating properties, with the compensating control cited. Inventing a property for either would have produced an oracle with a human in it, which `FSPEC` AT-07 forbids.
+- **The three te-author obligations are discharged where the document says they are.** O-5 → FX-PRECEDENCE + PROP-PRE-01…05, O-6 → FX-CORPUS/FX-FAILOPEN/FX-REPLAY/FX-BASELINE, O-8 → PROP-BND-01…04 each with its own named falsifying mutation. FX-PRECEDENCE's three construction constraints in particular each earn their place — especially constraint 2, which exists so PROP-PRE-04's "every other line unchanged" is not asserted over an empty remainder.
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
+
+F-01 is a High finding, so the mandatory rule applies. What must change:
+
+1. **F-01 (High).** Repair the three AT map rows: PROP-BND-10 → AT-15, PROP-INV-04 → AT-17, and PROP-REND-03 + PROP-FAIL-05 → AT-02 (in place of, or alongside, PROP-REND-06). Where a pairing is deliberate, say so in the row.
+
+Recorded, not gating:
+
+2. **F-02 (Medium).** Re-point the `BR-11 / NG-4` obligation row from PROP-DISC-07 to PROP-INV-06…08.
+3. **F-03 (Medium).** Add `T-00a` and `T-20` to the Family → PLAN task table; attribute PROP-DISC-07 to `T-00a` (batch 1) rather than leaving `T-19` as its only owner, and give PROP-DISC-08 `T-20` as owner.
+4. **F-04 (Medium).** Fix the pyramid arithmetic and give the `OFF` and `DISC` families a level.
+5. **F-05 (Low).** Cite `TSPEC` §6.1 `F-14` on the FAIL family's `Traces` line.
+6. **F-06 (Low).** Reconcile ORC-01's `Decides` range with the AT-01 map row.
+
+None of these is a scope finding: the document adds no behaviour the `REQ` does not ask for, and narrows no acceptance criterion. Every finding above is a traceability repair inside §Coverage Matrix and the family `Traces` lines, and none requires re-deriving a property, a fixture or a byte literal.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 2}
