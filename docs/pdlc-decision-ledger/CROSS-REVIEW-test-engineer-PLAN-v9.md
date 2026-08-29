@@ -80,7 +80,7 @@ falsifiability half of the census, and it survived the count edit intact.
 The erratum edit does not touch T-10a's row. `git diff 3fb153a87~1 HEAD` mentions `T-10a` seven
 times, every one of them inside the *bodies* of the rewritten T-11 and T-18 rows; the T-10a row
 itself is byte-identical to v0.7. Both retired referents are still on disk, verbatim — see
-`## Delta-Confirmation Findings` F-01 and F-02.
+the delta-confirmation findings below, F-01 and F-02.
 
 ## Dependencies
 
@@ -152,20 +152,37 @@ sentence is false. Upstream believes this PLAN has already absorbed the correcti
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | When F-01 is fixed, does the *flag-on* arm also need its `report` key set measured explicitly? TSPEC §7.2 asserts the difference "in both directions", which implies both runs' key sets are captured in the same test. T-10a's arms (1) and (2) currently say nothing about `report` keys. Stating it once in conjunct 3 as "the two runs' key sets, compared both ways" is enough — I raise it only so the fix does not land as a one-sided flag-off assertion. |
+| Q-02 | §Definition of Done's census bullet says TSPEC §7.3 "is the sole home of that arithmetic; this bullet cites it and does not restate it" — yet the bullet does restate six / eight / fourteen. That is the right call for readability and I am not filing it, but is the intent that a future TSPEC count change must still edit this bullet? If so, the "does not restate it" clause reads as a promise the bytes do not keep. |
 
 ## Positive Observations
 
-_pending_
-
-## Delta-Confirmation Findings
-
-_pending_
+- **The re-grounding was done first, and it changed the answer.** The round found TSPEC had moved
+  v0.9 → v1.0 → v1.1 under reviews written against v1.0, re-derived against v1.1, and only then
+  edited. That is DEC-ERR-03 executed properly, and it is why v0.7's "fourteen is the rejected form"
+  reading was reversed rather than defended.
+- **The superseded v0.7 entry is retained and explicitly labelled** *"superseded in part by v0.8 …
+  retained as history"*. Rewriting history to hide a reversed decision is the tempting move; keeping
+  it labelled is the correct one and makes the next reviewer's diff legible.
+- **Items 2 and 3 landed at every site, including the two easy-to-miss manifest parentheticals.**
+  A six-site count correction that leaves one site stale is the common failure mode here; this one
+  did not.
+- **The widened-`DECL_RE` conjunct came along with the count.** Absorbing "eight of fourteen owned
+  declarations are `const`s, so the precedent's `function`-anchored regex must be widened" is what
+  keeps the census from passing on a slice it never took — the count edit could easily have landed
+  without it.
+- **T-18's un-skip edge was re-argued, not merely left standing**, after its original justification
+  was deleted.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
 
-## Verdict
-
-_pending_
+The census correction (routed items 2 and 3) is complete, and I would approve it on its own. The
+block is routed item 1: T-10a's conjunct 3 is untouched, and T-10a is the *only* live execution of
+the composition root — the arm DC-07 requires, and the sole home of the `report.decisionLedger`
+proof (TSPEC §7.3 names it as such). Leaving it stating a tautology and an assertion against a
+non-existent array means the one test that can catch a never-wired seam is specified in a form an
+implementer cannot write. Fix F-01 and F-02 together, re-read F-03, and this converges.
