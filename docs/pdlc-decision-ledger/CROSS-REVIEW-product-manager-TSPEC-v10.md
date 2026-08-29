@@ -120,3 +120,71 @@ exclusion", with the non-empty-slice assertion retained so the census cannot go 
 positive assertions guarding an absence oracle, which is the right pairing: the census asserts zero
 occurrences, and these two assertions are what stop that zero from being achieved by an over-wide
 exclusion or an empty one.
+
+## Verification
+
+The two smaller TE items are transcriptions, and both check out at HEAD.
+
+**TE F-04 — the per-file denominator.** §7 now reads "the **18,509** lines of shipped code the file
+measures at HEAD" in place of "~17k". `wc -l pdlc/workflows/orchestrate-dev.js` returns exactly
+18,509. The figure is measured, and re-measuring it was the right response to a remembered number: the
+whole point of that paragraph is that this feature's fourteen failure rows are swamped by the
+denominator, and a stale denominator would eventually be a stale argument.
+
+**TE F-05 — the superseded recital.** The v0.6 changelog entry's `12,059 ≤ 12,500` reading is now
+marked "*superseded in v0.7*" inline, with the pointer to §7.3's 10,859 index pin and the note that
+the v0.6 text "is history, not a live reading of the section". The v0.8 entry likewise gains a
+superseding note for its two clauses that v0.9 overtook (the set-equality-against-all-exports form,
+and §7.6 as a home for the report field). Marking superseded recitals *in place* rather than
+rewriting them keeps the changelog an accurate record of what each round believed — which is what
+makes a delta confirmation cheap for the next reviewer.
+
+**The precedent citation for slicing is where I found this round's one issue.** §7.3 says the
+declaration bodies are "sliced the precedent's way: from a declaration's own line to the **next
+top-level declaration of any name**, boundaries taken from *all* of the module's top-level
+declarations rather than from the owned subset, which is `loopEconomicsAnchorGuard.test.js`'s `bodyOf`
+over `allTopLevelDecls`". The design statement in its own words is correct and satisfiable. The
+citation is not: the shipped helper's `allTopLevelDecls` is built from
+`DECL_RE = /^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/`
+(`pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js:60-67`), which matches **function
+declarations only**. Nine of the fifteen members of `DECISION_LEDGER_OWNED_DECLS` are top-level
+`const`s. Cloned as shipped, the helper would not treat a `const` as a boundary or as a sliceable
+body, and a constant such as `DECISION_LEDGER_OMIT_REASONS` could land in the scanned remainder — the
+same "red on a conforming implementation" class TE F-01 raised. The design intent is unambiguous, so
+this is a citation that under-describes a required extension rather than an unsatisfiable design, and
+PLAN T-11 owns the census. Recorded as F-01, Medium, non-gating. See also the DEFERRED line below.
+
+**Property coverage is unchanged and still sound.** §7.5's three properties (O-8's bounds invariant,
+P-REC's recognition invariant, P-LINE's one-physical-line invariant) are byte-untouched by this
+delta, and each still carries its falsifying mutation and O-8's independent-model discipline — the
+model transcribes §4.3's format rather than importing the production renderer, so no property echoes
+the code under test. The new §7.2 conjunct likewise takes its expected value from the two runs' own
+key sets rather than from any production constant.
+
+## Risks and Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §7.3 now freezes a fifteen-member owned list whose members must each resolve to exactly one top-level declaration. That is the right guard, but it means the census test and the wiring task (PLAN T-18) must land the declarations in agreement on spelling. Is it worth T-11's acceptance stating that the owned list is transcribed from §7.3 by hand rather than derived, so a rename in T-18 reddens loudly? Not gating — the "exactly one declaration" assertion already produces that redness, this is only about the error being legible. |
+
+The one risk I would repeat for the implementer, unchanged from v9 and still the sharpest edge in the
+document: the delta-coverage gate is **fail-closed on empty ranges**, and PLAN T-18's per-wave manual
+run is the only thing standing between a wave-3 mistake and a batch-8 discovery.
+
+## Positive Observations
+
+- Both of my round-9 findings were fixed on the referent rather than by deleting the sentence, and the
+  fix for F-01 came back **stronger** than the finding asked for: a two-sided symmetric-difference
+  assertion that reddens on a stray key on either arm, not just a missing key on one.
+- §7.3 now states the *satisfiability predicate* rather than only the repaired operand list. That is a
+  durable fix — it tells a future editor how to test the next census member before adding it, which is
+  the difference between fixing a defect and fixing the class.
+- Every new repository-grounded number and symbol in this delta is measured rather than remembered:
+  18,509 lines is exact, the five `/Decision/i` false-positive declarations all exist, and the two
+  upstream digests match the recital digit-for-digit. The one exception is a precedent's capability,
+  not a value — F-01.
+- Superseded changelog recitals are annotated in place instead of rewritten, so each round's entry
+  still records what that round believed while pointing at what overtook it.
+
+DEFERRED: PLAN T-11 still carries §7.3's pre-v0.9 operand wording (three sliced bodies, set equality against exported names) and needs the ordinary downstream re-pin against v0.9 — the TSPEC's own changelog already names this, and PLAN is downstream, so it is not an erratum against this document.
+DEFERRED: §7.3's "roughly a dozen" decision-ledger declarations reads low against the fifteen its own partition enumerates; a later editor may want the exact figure.
