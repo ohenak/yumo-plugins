@@ -60,7 +60,110 @@ baseline rather than a same-branch comparison.
 
 ## 2. Architecture
 
-*(pending)*
+### 2.1 Module dependency graph
+
+All new symbols are added to `pdlc/workflows/orchestrate-dev.js`. Arrows are "calls".
+
+```
+main()
+ ├─ readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH)   [SHIPPED, reused — one read]
+ │    └─ parseDecisionLedgerConfig(text)                            [NEW, pure]
+ ├─ buildDecisionLedgerInjector({config, sink, _git, _readFile, _log})  [NEW]
+ │    └─ (returns) injectDecisionLedger({feature}) ──┐
+ └─ wrapperSeams._injectDecisionLedger ──────────────┘
+      └─ reviewLoop({..., _injectDecisionLedger})    [SHIPPED, one new param]
+           └─ (per round, before reviewer dispatch)
+                injectDecisionLedger({feature})
+                 ├─ gatherDecisionCorpus({feature, _git, _readFile})  [NEW, IO]
+                 ├─ selectDecisions({entries, feature, thresholds})   [NEW, pure]
+                 │    └─ recogniseDecisionRecords(text, path)         [NEW, pure — §3]
+                 └─ renderDecisionLedgerBlock({selected})             [NEW, pure]
+           └─ reviewerPrompt(doc, phase, feature, iteration, reviewer,
+                             docType, frozen, findingGrammar, ledgerBlock)  [SHIPPED + 1 param]
+```
+
+The shape is a deliberate clone of the shipped learnings-injection shell: a pure recogniser and a
+pure selector wrapped in one IO gatherer, all three behind an injector closure built once per run
+and called once per dispatch. Every impure operation is confined to `gatherDecisionCorpus`, which
+takes `_git` and `_readFile` as injected seams exactly as `gatherLearningsCorpus` does — that is
+what makes §7's oracles driver-free.
+
+### 2.2 Config read: one read, three parsers, now four
+
+`main()` already reads `.claude/pdlc.config.json` **once** into `learningsConfigText` via
+`readLearningsConfigSafely`, then hands the same text to `parsePinCheckConfig` and
+`parseDerivativeStopConfig` — the comment at that site states the intent explicitly ("threaded
+through the SAME already-read `learningsConfigText`, never a second read of `MERGE_CONFIG_PATH`,
+which is byte-identical to `LEARNINGS_CONFIG_PATH`"). `LEARNINGS_CONFIG_PATH` is defined as
+`MERGE_CONFIG_PATH`, itself `".claude/pdlc.config.json"`.
+
+`parseDecisionLedgerConfig(learningsConfigText)` is the fourth consumer of that same text. It adds
+**no** read. Two run-level notices are pushed on the same run-level `notices` channel the shipped
+blocks use, with ids following the established `NTC-{BLOCK}-{KIND}` convention:
+
+| Notice id | Fires when |
+|---|---|
+| `NTC-DECLEDGER-MALFORMED` | the `decisionLedger` value is present but not a plain object |
+| `NTC-DECLEDGER-KEYTYPE` | one or more keys are wrong-typed; each named in the detail, each falling back to its own default |
+
+A **missing** block emits no notice — the common case, and the shipped `cascade.pinCheck` /
+`review.derivativeStop` sites take the same care so that the disabled-state report stays
+byte-identical.
+
+### 2.3 The enablement read is destructured, not dotted
+
+`main()` reads the flag as `const { enabled: decisionLedgerEnabled } = decisionLedgerConfig;`
+rather than `decisionLedgerConfig.enabled`. This is not style. `advisoryDisabled.test.js`'s
+PROP-DIS-06 pins the source-text count of dotted `enabled` member reads over
+`orchestrate-dev.js` to the advisory config's three gates alone; the shipped `pinCheckEnabled`
+read is destructured for exactly this reason and says so in a comment. A dotted read here would
+redden a property this feature has no mandate over.
+
+`buildDecisionLedgerInjector` returns `null` when the flag is not `true`. That is the gate
+(FSPEC §3.2 step 1, BR-4): with the injector `null`, `wrapperSeams._injectDecisionLedger` is
+`null`, `reviewLoop` passes `""` as the ninth `reviewerPrompt` argument, and the prompt is
+constructed by the identical expression it is today.
+
+**`=== true`, not truthiness.** Every fail-open shape — absent block, wrong-typed value,
+unparseable file, malformed section — resolves `enabled` to the `false` default, and the read
+site compares with `=== true`, so all four spellings of "not enabled" collapse to one outcome
+(FSPEC E-1, AT-05).
+
+### 2.4 Where the block is placed in the prompt
+
+`reviewerPrompt` gains one parameter, `ledgerBlock` (a string, `""` when the feature contributes
+nothing). It is rendered as `const ledgerPart = ledgerBlock ? "\n" + ledgerBlock : ""` and
+appended **last**, after `oraclePart` and `findingGrammarPart`, on both the iteration-1 and the
+iteration-≥2 return paths — the two paths `reviewerPrompt` already has. Appending last matches
+the shipped `findingGrammarPart` placement and keeps the diff to two string concatenations.
+
+The **rule text is part of the same block**, emitted by `renderDecisionLedgerBlock` immediately
+after the index lines and inside the same header/trailer framing. This is what makes FSPEC BR-1
+and E-6 structurally true rather than separately enforced: because there is exactly one string,
+"no index ⇒ no rule text" cannot be violated by an ordering mistake — `renderDecisionLedgerBlock`
+returns **exactly `""`** when `selected` is empty, the same total-emptiness contract
+`renderLearningsBlock` carries.
+
+### 2.5 Scope of "review dispatch": the review loop's reviewer prompt only
+
+`orchestrate-dev.js` builds several reviewer-facing prompts. The index attaches to
+`reviewerPrompt` — the review-loop reviewer dispatch — and to no other. The delta-confirmation
+prompt and the finding-restatement prompt are explicitly **not** re-reviews (the confirmation
+prompt says "Do not re-review the whole document"; the restatement prompt says "Do NOT re-review
+anything. Do NOT change your verdict, and do not raise anything new"), so an index inviting the
+reader not to re-open closed decisions has nothing to act on there, and adding bytes to those
+prompts would enlarge the byte-identity surface for no behavioural gain. This is a real
+alternative, weighed and rejected; it is recorded for DECISIONS (§9, D-2).
+
+### 2.6 Freshness
+
+`injectDecisionLedger` re-gathers the corpus on **every call**; nothing is memoised across calls,
+and the injector holds no corpus state between dispatches. This is BR-9 / REQ-DECLEDGER-01's
+recompute-at-dispatch contract, and it is the same construction `buildLearningsInjector` uses
+(its closure holds only `previousObservation`, used for reporting, never for reuse of material).
+The injector is called once per round inside `reviewLoop`, immediately before the two reviewer
+prompts are built, so both reviewers of a round see the same index and successive rounds each
+re-derive it.
 
 ## 3. The Recognition Rule (O-1)
 
