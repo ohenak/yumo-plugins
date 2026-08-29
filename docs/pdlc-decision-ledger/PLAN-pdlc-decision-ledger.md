@@ -493,15 +493,18 @@ required not to:
 - [ ] The census (T-11) is green with every slice asserted non-empty; its scanned source is
       `orchestrate-dev.js` minus the body of **every** member of `DECISION_LEDGER_OWNED_DECLS` plus
       the sentinel-bounded wiring run, and its companion assertion is the partition
-      `DECISION_LEDGER_CENSUS_TOKENS` (**six** members) ∪ `DECISION_LEDGER_CENSUS_EXEMPT` (**nine**)
-      = `DECISION_LEDGER_OWNED_DECLS` (**fifteen**), the two sub-sets disjoint, with each owned member
-      resolving to exactly one top-level declaration at HEAD (TSPEC v0.9 §7.3). All fifteen owned
+      `DECISION_LEDGER_CENSUS_TOKENS` (**six** members) ∪ `DECISION_LEDGER_CENSUS_EXEMPT` (**eight**)
+      = `DECISION_LEDGER_OWNED_DECLS` (**fourteen**), the two sub-sets disjoint, with each owned member
+      resolving to exactly one top-level declaration at HEAD (TSPEC §7.3, which is the sole home of
+      that arithmetic; this bullet cites it and does not restate it). All fourteen owned
       members are declarations in `orchestrate-dev.js` written by a `[green]` task of batches 3–8;
-      `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` are test-file constants of
-      `decisionLedgerCensus.test.js`, but `DECISION_LEDGER_CENSUS_TOKENS` is **production**, declared
-      by T-18 — which is what makes its slice non-empty and its resolves-to-one conjunct satisfiable. Set equality against
+      all three of `DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT` and
+      `DECISION_LEDGER_OWNED_DECLS` are test-file constants of `decisionLedgerCensus.test.js`, and
+      none is production code or a member of the owned list. The precedent's declaration regex is
+      widened to recognise top-level `const` and `let` alongside `function`, since eight of the
+      fourteen owned declarations are `const`s. Set equality against
       all of the module's decision-ledger exports is the rejected form — §7.3 names it red by
-      construction. `decisionLedger` is **not** a token (TSPEC v0.9 §7.3: the report field is
+      construction. `decisionLedger` is **not** a token (TSPEC §7.3: the report field is
       threaded through `buildFinalReport` outside `main()`, so the token is unsatisfiable, and being
       a field rather than a declaration it is absent from `DECISION_LEDGER_OWNED_DECLS` too, leaving
       the partition unaffected); its obligation is discharged behaviourally by T-10a's live arm, not
