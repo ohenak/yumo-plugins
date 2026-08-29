@@ -219,6 +219,7 @@ generator draws record sets spanning **zero, one and many** records; line length
 | **PROP-BND-04** | **Prefix conjunct (non-vacuity):** the rendered set must be a prefix of the unbounded set under `TSPEC` §3.6's omission order — feature-level dropped before project-level, and within an origin, reverse enumeration order (last enumerated dropped first). | Data Integrity | the loop drops from the front (project-level first) instead of the back |
 | **PROP-BND-05** | Both bounds must be applied by **one** loop with a **disjunctive** condition — *while the block exceeds `maxEntries` lines **or** `maxBytes` bytes, drop the next line in omission order* — so there is no "which bound binds first" stage; each drop must be recorded in `omitted[]` with `reason` in `{RSN-ENTRIES, RSN-BYTES}`. | Functional | the loop applies one bound then the other, leaving a set that satisfies the second and violates the first |
 | **PROP-BND-06** | Enumeration order must be **deterministic**: repeated selection over the same corpus must produce byte-identical `selected`, `omitted` and block, with no dependence on clock, locale, or filesystem walk order (`TSPEC` §3.6). | Idempotency | the loop iterates an unordered map |
+| **PROP-BND-07** ✖ | **The property's model must not reuse the renderer.** The model that computes the expected line set must carry its **own** formatter, hand-transcribed from `TSPEC` §4.3's stated format (`{id} — {statement}  [{sourcePath} § {id}]`), and must **not** call `renderDecisionLedgerBlock` or any production line renderer. | Contract | the model builds its expected line by calling `renderDecisionLedgerBlock` — whereupon a dropped separator, a citation rendered as `{heading}` or a truncated statement appears on **both** sides of the comparison and PROP-BND-03 can never fail |
 
 **PROP-BND-04 is what makes the family non-vacuous, and it is stated as a positive.** A renderer
 returning `""` for every input satisfies PROP-BND-01, -02 and -03 trivially. Only the prefix
@@ -226,14 +227,12 @@ conjunct fails it. Every one of the four therefore carries its own named mutatio
 be **applied, observed red, reverted, and the observed failure transcribed into the test file's
 header** (`PLAN` §Definition of Done, `TSPEC` §7.5).
 
-**PROP-BND-07 — the model must not reuse the renderer.** ✖ The property's model must carry its
-**own** formatter, transcribed by hand from `TSPEC` §4.3's stated format
-(`{id} — {statement}  [{sourcePath} § {id}]`), and must **not** call
-`renderDecisionLedgerBlock` or any production line renderer. Building the expected line from the
-production renderer makes PROP-BND-03 true by construction — a dropped separator, a citation
-rendered as `{heading}`, or a truncated statement appears on **both** sides of the comparison and
-the conjunct can never fail. The cost is one duplicated format literal; PROP-REND-08's framing pin
-and the ORC-02 resolution check are what keep the duplicate honest.
+**Why PROP-BND-07 is a numbered row and not a note.** It is the family's anti-echo conjunct: without
+it PROP-BND-03 is true by construction, so an implementer working from the table alone would silently
+not write it. The cost it buys is one duplicated format literal; PROP-REND-08's framing pin and the
+ORC-02 resolution check are what keep the duplicate honest. It is the **seventh row of the conjunct
+table above** — counted in the BND family's **12**, discharged at `FSPEC` AT-13 alongside
+PROP-BND-01…03, and cited as part of O-8's discharge in §Coverage Matrix.
 
 **Boundary properties, held as examples alongside the property** (`FSPEC` AT-13/AT-15 regression
 anchors, `TSPEC` §7.6):
