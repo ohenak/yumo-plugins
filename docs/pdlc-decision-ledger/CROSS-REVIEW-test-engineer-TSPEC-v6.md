@@ -88,7 +88,33 @@ That is a genuine improvement the erratum earns and does not claim.
 
 ## Data Model
 
-_(pending)_
+`DecisionLedgerConfig` and `parseDecisionLedgerConfig` (§4.1) are unchanged except for the default
+literal and the comment. Contract-fidelity diff against REQ C-5 at HEAD, which is the check this
+lens owes on every type/enum/numeric change:
+
+| Field | TSPEC §4.1 | REQ C-5 | Agreement |
+|---|---|---|---|
+| `enabled` | `boolean`, default `false` | boolean, default `false` | ✓ |
+| `maxEntries` | non-negative integer, default `70` | non-negative integer, default `70` | ✓ |
+| `maxBytes` | non-negative integer, default `12500` | non-negative integer, default `12500` | ✓ |
+
+The ERR-1 divergence is genuinely gone, not merely relabelled: §4.1's prose now says the
+`nonNegativeInt` choice **agrees with** C-5 rather than diverging from it, which is the correct
+reading now that v1.8 retyped both thresholds. `maxEntries: 0` remains a valid admits-nothing
+value per FSPEC E-7, so the falsifying test that matters here — `0` is not coerced to `70` — is
+still owed and still specified. `DEC-DECLEDGER-15` in the sibling DECISIONS doc records the same
+closure, so the two documents agree.
+
+§5.3's config recital moves in lockstep
+(`"decisionLedger": { "enabled": false, "maxEntries": 70, "maxBytes": 12500 }`), and
+`decision-ledger-config-example.test.js` asserts the example file parses and matches the declared
+defaults — so the recital literal *is* oracle-covered and will redden if C-5 and the example
+diverge again. That is the right shape and it survived the edit intact.
+
+One numeric consequence worth stating explicitly, because it feeds F-01: the transcribed **6,305**
+is unchanged (correctly — Baseline v1.2 records `M-1`…`M-6` at the same `Verified at` commit, so no
+measured value moves), but the *threshold it is compared against* in §7.3 conjunct (2) moved from
+6,800 to 11,300. The literal stayed; the slack around it grew almost tenfold.
 
 ## Test Strategy
 
