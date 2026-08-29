@@ -1044,19 +1044,32 @@ in-scope set REQ G-1 can produce at that commit — at the same **shipped** defa
 
 4. **Nothing is omitted.** `omitted[]` is **empty**, and the rendered id set is set-equal to the
    slice's 63 ids, transcribed as a literal.
-5. **The total size is pinned, not bounded.** The whole block as it appears in the prompt —
-   10,859 index bytes with §4.3's framing charged (D-5) — is the transcribed literal **12,059**
-   bytes.
-6. **The margin is stated as arithmetic.** `12,059 ≤ 12,500`, at C-5's resolved default.
+5. **The index size is pinned, not bounded.** The 63 rendered index lines joined by `\n` are the
+   transcribed literal **10,859** bytes — a measurement of the frozen fixture, mirroring conjunct
+   (1)'s shape. This is deliberately *not* an equality over the whole 12,059-byte block: §4.3 fixes
+   framing as a **≤ 1,200-byte budget the rule text must be drafted to fit, not a measurement of
+   drafted text** (D-9), and the constants do not exist yet, so a conforming implementation whose
+   framing renders under budget produces a block smaller than 12,059 and an equality on that figure
+   would redden for no defect. 12,059 is arithmetic over a bound, and unlike the 63 ids and 10,859
+   it is not transcribable from the fixture, which holds records and not framing constants.
+6. **The margin is stated as arithmetic, against the same allowance conjunct (2) uses.**
+   `10,859 ≤ maxBytes − 1200` — at C-5's resolved default, `10,859 ≤ 11,300`, whose difference is
+   §3.6's **441** bytes. §4.3's framing pin (D-9) is the other half of this sum, exactly as in (2),
+   so the two halves of `12,059 ≤ 12,500` are each asserted where they are measurable and neither is
+   asserted against a constant that has not been written yet.
 
-Conjuncts (4)–(6) are the falsifiable form of §3.6's headroom sentence: (5) reddens on corpus growth
-of 441 bytes or a line-format regression, (6) reddens if an operator-facing default moves below the
+Conjuncts (4)–(6) are the falsifiable form of §3.6's headroom sentence: (5) reddens on any corpus
+growth or line-format regression that moves the rendered index off 10,859 — in particular on the 441
+bytes that would consume the margin — (6) reddens if an operator-facing default moves below the
 standing case, and (4) reddens if either does. This is the **only** assertion in the design that
 exercises the shipped configuration over a set the size a dispatch really builds — the whole-fixture
 assertion exists to make the *drop order* falsifiable, this one to make the *inertness measurement*
-falsifiable, and neither substitutes for the other (D-10). Like the pair above, 12,059 and the 63 ids
-are hand-transcribed from the fixture, never derived at test time; the same re-capture moment is
-where all four literals are re-measured together.
+falsifiable, and neither substitutes for the other (D-10). Like the pair above, 10,859 and the 63
+ids are hand-transcribed from the fixture, never derived at test time; the same re-capture moment is
+where all four literals are re-measured together. §4.3's framing size is *not* a fifth literal on
+that list (PM Q-01): it is pinned separately by D-9's ≤ 1,200-byte unit test, so a rule-text edit
+inside that budget re-opens neither (5) nor (6) — which is precisely why the pin was split this
+way.
 
 Note what conjunct (3) deliberately does **not** say: it does not pin *how many* feature-level lines
 survive. Under the shipped bounds roughly two dozen do — `maxEntries` 70 less the 41 project-level
@@ -1064,7 +1077,7 @@ lines caps it at 29, and §3.6's ~4,995 bytes of headroom against a 152–261-by
 few more — and that count is a renderer-arithmetic detail that would churn on any line-format
 change without naming a defect. The falsifier lives in the origin partition, not in the count.
 
-All four transcribed literals — the 41 project-level ids and 6,305, the 63 `M-6b` ids and 12,059 —
+All four transcribed literals — the 41 project-level ids and 6,305, the 63 `M-6b` ids and 10,859 —
 are **hand-transcribed from the fixture, never derived at test time from the renderer or from a
 manifest** (PM Q-01). Deriving either would make the
 assertion an echo of the code under test, and re-deriving 6,305 from the fixture would defeat the
