@@ -1354,6 +1354,43 @@ values transcribed from data, never captured from the code under test — applie
 The cost is one duplicated format literal, and §4.3's framing-budget pin plus AT-02's resolution
 check are what keep the duplicate honest.
 
+**Two further invariants are owed as properties, not as examples.** O-8 was the only property this
+section carried, but it is not the only universally quantified claim the design makes, and the other
+two are *load-bearing for §7.3's transcribed byte literals* — those literals are only meaningful if
+the two invariants below hold for every input, not merely for the frozen fixture. An invariant stated
+in quantified form and checked by example is a stated-but-untested claim; both are promoted here.
+
+**P-REC — the recognition and resolution invariant (§3.2, §3.3).** Quantified over arbitrary file
+text:
+
+> For any input text, `recogniseDecisionRecords` yields one record for **exactly** those lines
+> satisfying all five of §3.2's conjuncts with a non-empty statement remainder, and no others; each
+> yielded record's `statement` is a **verbatim substring** of the line it came from; and where two
+> qualifying lines in the same file carry the same id, §3.3's last-wins resolution keeps the **later**
+> one and yields exactly one record for that id.
+
+Generators draw texts mixing qualifying headings, near-miss headings (wrong ATX depth, missing
+separator, empty statement), duplicate ids at varying distances, and non-heading lines that contain
+the carrier markup mid-line. Falsifying mutations, one per conjunct: admit an out-of-depth heading;
+admit an empty-statement heading; normalise or trim the statement instead of slicing it verbatim;
+resolve duplicates first-wins instead of last-wins.
+
+**P-LINE — one physical line per decision (§4.3).** Quantified over arbitrary selected sets:
+
+> For any non-empty selected record set, the rendered block's index region contains **exactly** one
+> physical line per selected record, in §3.6's order, and **no** rendered line contains an embedded
+> newline. Equivalently: the index region's `split("\n")` length equals the selected set's cardinality.
+
+This is precisely the assumption §7.3's literals rest on — "the 63 rendered index lines joined by
+`\n` are 10,859 bytes" is a statement about 63 *physical* lines, and a single record whose statement
+carried a newline would change both the line count and the byte total without any test noticing.
+Falsifying mutations: render a statement containing `\n` unescaped; join two records onto one line;
+emit the set in an order other than §3.6's.
+
+Both properties share O-8's discipline above — an independent model, never the production renderer or
+recogniser, and a recorded observed red per named mutation. They cost no new seam and no new double:
+both target pure functions §7.1 already tests with no doubles at all.
+
 ### 7.6 Coverage of the FSPEC's acceptance tests
 
 | AT | Level | Notes |
