@@ -37,7 +37,51 @@ property is re-derived, no fixture or byte literal moves, and no acceptance crit
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | PROP-DISC-09 asserts the nine HEAD symbols by **set equality** against a hand-transcribed list. I verified the list matches `PLAN`:98 exactly (eight from `orchestrate-dev.js`, plus `runCaptureScript`). Set equality here means the test also fails if the module *gains* an export — is that intended, or is the intent one-directional ("all nine are importable")? `PLAN` T-00 says "existence only", which reads one-directional. Not a finding either way; the property is falsifiable under both readings, but the implementer will have to pick one. |
+| Q-02 | The module manifest gives `decisionLedgerBaselineGuard.test.js` the properties "ORC-04; PROP-OFF-01's referent", while the OFF family row routes `PROP-OFF-01` to `decisionLedgerMain.test.js` and `PROP-OFF-02…06` to `decisionLedgerLoop.test.js`. That is consistent — the guard pins the recording, the comparisons consume it — but "PROP-OFF-01's referent" is the only cell in the manifest that names something other than a property id. Would spelling it "the recording PROP-OFF-01 compares against (no property claims this module directly)" close the loop for a reader checking the none-orphaned claim? |
+
 ## Positive Observations
+
+- **The AT-map repair was done by the right method, not the cheap one.** Each of the five re-pointed
+  rows now leads with the property that *states* the criterion and demotes the supporting properties
+  to a named role — "the one-loop disjunction, determinism and no-abort guarantees the drop relies
+  on" (AT-15), "the no-suppressed-state and census guarantees that make it unevadable" (AT-17). That
+  is strictly more useful than swapping ids, because the next reader can tell whether a future edit
+  broke the stating property or a supporting one.
+- **The count reconciliation is now a partition and says so.** `10+11+9+6+12+11+5+10+11+6+10 = 101`
+  by family and `36+12+37+6+10 = 101` by level both check out, OFF and DISC have level buckets, and
+  the document names its own prior error ("the earlier '47 / 11 / 37' reading double-counted BND
+  across the pure-unit and generator buckets"). Recording *why* the old number was wrong is what
+  stops it being re-derived the same way next round.
+- **Two genuine coverage gaps were closed, not just re-labelled.** PROP-DISC-09 and PROP-DISC-10 give
+  the two previously property-less modules real falsifiable content — a nine-name set equality that
+  reddens batch 1 rather than batch 3, and a two-way FX-CORPUS integrity pin (25-path set equality
+  plus per-file digests) that makes a re-synced fixture red *there* rather than silently moving
+  ORC-01's transcribed expectations. The second is the more valuable: it protects the corpus oracle's
+  own anti-echo discipline.
+- **Q-02 was answered by strengthening the property rather than by explaining it away.** ORC-04 (b)
+  now requires a resolved 40-hex sha and asserts the shape of the recorded value. I checked the
+  mechanism and the concern was real: `scripts/capture-learnings-baseline.mjs:96` writes
+  `mergeBaseSha: mergeBaseRef` verbatim, so `origin/main` would have been recorded as a ref string
+  and the transcribed literal would have stopped being the same kind of thing as the recorded value.
+- **PROP-CFG-06's positive conjunct names the stub it excludes.** "Without this positive return
+  conjunct a stub returning `undefined` satisfies all three **not** clauses" is the absence-only
+  oracle failure mode stated at the point of temptation, and the row goes on to explain why
+  `sectionMalformed` is `false` on every input in its range rather than asserting it flatly.
+- **Anti-echo discipline held through the revision.** Every literal added this round is
+  hand-transcribed by construction — PROP-DISC-09's nine names, PROP-DISC-10's 25 paths and digests,
+  PROP-BND-07 promoted to a numbered row precisely so an implementer working from the table alone
+  cannot skip the no-renderer-reuse conjunct. Nothing new derives an expectation from the code under
+  test.
+- **The claims I spot-checked against the repository are accurate.** `documentOracles.test.js`
+  filters on the `learnings`/`waveResume`/`loop`/`escalationView` prefixes and asserts
+  `expect(count).toBe(102)` at `:398–420`; `plugin.json` is at `0.23.6` and `pdlc/engine/package.json`
+  declares `"pdlcPluginCompat": "^0.23.0"`, so the `0.23.7` target is constrained as stated;
+  PROP-DIS-06 is a real shipped id in `advisoryDisabled.test.js:711`, referenced by name at
+  `orchestrate-dev.js:9263`, which settles the "not a misspelling of PROP-DISC-06" note in the
+  document's favour.
 
 ## Recommendation
 
