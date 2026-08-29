@@ -753,4 +753,78 @@ reaches it transitively through T-10's `Deps`.
 
 ## Coverage Matrix
 
+Three mappings, each in the direction someone will actually read it: family → where the code goes;
+`FSPEC` acceptance test → which property discharges it; upstream obligation → discharge.
+
+### Family → PLAN task → test module
+
+Every module named below is one of the **12** `decisionLedger*.test.js` modules `PLAN` v0.3 names,
+verified by enumeration against `PLAN`'s own blast-radius prose; no property here invents a file.
+Every task id is one of `PLAN`'s **24**.
+
+| Family | Count | Level | Red task | Green task | Test module |
+|---|---|---|---|---|---|
+| CFG | 10 | unit (pure) | T-04 | T-13 | `decisionLedgerConfig.test.js` |
+| REC | 11 | unit (pure) | T-05 | T-14 | `decisionLedgerRecognise.test.js` |
+| REND | 9 | unit (pure) | T-06 | T-15 | `decisionLedgerRender.test.js` |
+| TEXT | 6 | unit (pure) | T-06 | T-15 | `decisionLedgerRender.test.js` |
+| BND | 11 | unit + `fast-check` property | T-07 | T-16 | `decisionLedgerBounds.test.js` |
+| FAIL | 11 | integration (seam-doubled) | T-08 | T-17 | `decisionLedgerInjector.test.js` |
+| PRE | 5 | integration (fixture corpus) | T-09 | T-17 | `decisionLedgerCorpus.test.js` |
+| INV | 10 | integration (recorded replay) | T-10 | T-18 | `decisionLedgerLoop.test.js` |
+| WIRE | 11 | integration (`main()` live) | T-10a | T-18 | `decisionLedgerMain.test.js` |
+| OFF | 6 | recorded byte-identity | T-02 | T-13 | `decisionLedgerBaselineGuard.test.js` |
+| DISC | 8 | repo/document oracle | T-00, T-03, T-11, T-12, T-12a | T-19 | `decisionLedgerPreflight.test.js`, `decisionLedgerFixtureGuard.test.js`, `decisionLedgerCensus.test.js`, `pdlc/engine/__tests__/decision-ledger-config-example.test.js` |
+
+**All 12 modules are claimed and none is orphaned.** The count reconciles: 98 properties over 11
+families, three of which (REND/TEXT, PRE/FAIL) share a module or a green task, and one of which
+(DISC) spans four.
+
+**Pyramid shape, as promised in `## Overview`:** 47 pure-unit properties needing no seam, 11 under a
+generator, 37 integration properties across **three** seam boundaries (`_git`/`_readFile`, the
+recorded reviewer envelope, the live `main()` composition root), **zero** end-to-end. Nothing here
+drives a real model or a real network.
+
+### FSPEC acceptance test → discharging properties
+
+| AT | Subject | Discharged by | Fixture |
+|---|---|---|---|
+| AT-01 | index renders the Baseline enumeration, whole lines | ORC-01; PROP-REC-01…11, PROP-REND-01…09 | FX-CORPUS |
+| AT-02 | every citation resolves at its own source | ORC-02; PROP-REND-06 | FX-CORPUS |
+| AT-03 | derived fresh, not carried forward | PROP-WIRE-06, -07, -08 | live `main()` |
+| AT-18 | id in two files renders exactly one line | PROP-PRE-01…05 | **FX-PRECEDENCE** |
+| AT-04 | disabled dispatch byte-identical to baseline | PROP-OFF-01, -04, -06 | FX-BASELINE |
+| AT-05 | four not-enabled spellings collapse to one outcome | PROP-OFF-02, -03; PROP-CFG-01…04 | FX-BASELINE (`CONFIG-GATE-SPELLINGS`) |
+| AT-06 | rule text carries both conjuncts and both exemplars | PROP-TEXT-01…04 | none (frozen constant) |
+| AT-07 | exemplars are decidable as text | PROP-TEXT-05, -06 | none |
+| AT-12 | reopening key and driver identity key both intact | PROP-INV-01, -02 | FX-REPLAY |
+| AT-08 | nothing surviving → total leg | PROP-FAIL-01, -02, -09 | FX-FAILOPEN |
+| AT-09 | surviving proper subset → partial leg | PROP-FAIL-03, -04, -10 | FX-FAILOPEN |
+| AT-10 | empty file contributes nothing, costs nothing | PROP-FAIL-06, -07, -08 | FX-FAILOPEN |
+| AT-11 | per-key fallback over the full enumeration | PROP-CFG-05…10 | none (pure) |
+| AT-13 | both bounds hold on index text alone | PROP-BND-01…04 (O-8 property) | generated |
+| AT-14 | empty and zero cases collapse to the baseline bytes | PROP-BND-08, -09, -10; PROP-FAIL-06 | generated + FX-BASELINE |
+| AT-15 | a single oversized line is omitted whole | PROP-BND-05, -06, -11 | generated |
+| AT-16 | replay agrees on every driver-side outcome | PROP-INV-03, -04 | FX-REPLAY |
+| AT-17 | a filed reopening scores as any other High finding | PROP-INV-05…10 | FX-REPLAY |
+
+**Every one of AT-01…AT-18 is claimed**, and each row's fixture column is satisfied by `## Fixtures`.
+The three ATs whose fixture is `none` are the ones asserting properties of a **frozen string
+constant**, where a fixture would only restate the constant.
+
+### Upstream obligation → discharge
+
+| Obligation | Owner | Discharged here by |
+|---|---|---|
+| **O-5** — cross-file precedence has no HEAD instance; owed a constructed corpus | te-author | **FX-PRECEDENCE** + PROP-PRE-01…05 |
+| **O-6** — E-2/E-3/E-4, the frozen corpus copy and AT-16's replay are all owed constructed fixtures | te-author | **FX-FAILOPEN**, **FX-CORPUS**, **FX-REPLAY** + PROP-FAIL-*, PROP-INV-* |
+| **O-8** — bounds invariant is universally quantified | te-author | PROP-BND-01…04 under `fast-check`, with PROP-BND-07 forbidding renderer reuse |
+| **O-7** — empty-vs-failed needs a driver-internal observable | se-author (`TSPEC` §6.3) | **consumed**, not owed: PROP-FAIL-06 is the oracle that makes §6.3's fields load-bearing |
+| **O-4** — baseline identity and re-capture pinning | se-author (`TSPEC`) | **consumed**: ORC-04 pins `mergeBaseSha`; PROP-OFF-06 |
+| **DC-07** — composition-root wiring | `DECISIONS` | PROP-WIRE-01…11 via T-10a's live `main()` arm |
+| **BR-11 / NG-4** — no second source of decision text | `FSPEC`/`REQ` | PROP-DISC-07 census, cloning `loopEconomicsAnchorGuard.test.js` |
+
+The three obligations `FSPEC` §7 assigns to **te-author** — O-5, O-6, O-8 — are each discharged by a
+named fixture and a named property family above. That is this document's completion condition.
+
 ## Gaps, Risks and Routed Items
