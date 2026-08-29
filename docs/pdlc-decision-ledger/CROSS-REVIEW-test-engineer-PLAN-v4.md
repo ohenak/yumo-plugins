@@ -168,7 +168,35 @@ is blocked, and the drop itself is correct against upstream.
 
 ## Verification
 
-_pending_
+How each conclusion in this confirmation was established, so the next round can re-run it:
+
+| Claim | Method |
+|---|---|
+| T-00a / T-12a unchanged | `diff` of the `^\| T-00a \|` and `^\| T-12a \|` rows between `git show 665eb44a8:…PLAN…` and HEAD — both empty |
+| Delta scope is the four commits listed | `git log --oneline 665eb44a8..HEAD -- …PLAN…` |
+| Upstream digests | `shasum -a 256` over the four upstream files at HEAD, compared to the dispatch digests and to the header pins |
+| Upstream version claims | REQ:22, FSPEC:19, TSPEC:19 front-matter erratum lines |
+| P-REC / P-LINE mutation counts | enumerated from TSPEC §7.5 lines 1397–1427 and matched name-for-name against the T-05 / T-06 rows |
+| Six census tokens | TSPEC line 1234 operand table vs the T-11 row |
+| §5.5 misattribution | enclosing-heading scan: TSPEC line 1253 sits under `### 7.3` (line 1091); `### 5.5` is at line 902 |
+
+### What I re-confirmed as still sound
+
+The v3 approval rested on the batch-DAG re-derivation, the red-before-green pairings, the
+`[Fake first]` ordering and the file-ownership manifest's same-batch same-new-file disjointness.
+This delta touches none of those: the changed rows (T-05, T-06, T-11) kept their batch columns
+(2, 2, 2), their dependency edges (`T-00, T-01` for T-05/T-06 and T-11), their owned test files and
+their `[red]`/`[green]` labels. No new file was introduced into any batch, so the same-batch
+same-new-file guard is undisturbed. Re-derivation confirms the batch column still equals
+`max(dep batch) + 1` for every changed row. ✅
+
+### The gap that remains open
+
+There is still **no falsifying test anywhere in this PLAN for the terminal `102` count**. That is
+the whole content of the routed item, and it survives this delta untouched. Until one task id owns
+it, a wave that deletes or adds a non-`decisionLedger` test module ships green — T-12a's namespace
+set census cannot see it, and T-00a's batch-1 evaluation cannot reach the state in which its own
+second conjunct is meaningful.
 
 ## Delta-Confirmation Findings
 
