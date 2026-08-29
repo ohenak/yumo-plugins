@@ -134,6 +134,56 @@ absorption as faithful at all three sites.
 
 ## Best-Guess Root Cause
 
+**The TSPEC asserts equalities over byte literals whose operands come from different
+provenance classes, and prose altitude makes the mismatch invisible — every number is "bytes".**
+
+Five literals participate in the argument, and they are not the same kind of thing:
+
+| Literal | Provenance class | Can a test transcribe it? |
+|---|---|---|
+| `12500` | upstream **decision** (REQ C-5 resolved default) | yes — read from the shipped default |
+| `1200` | **budget ceiling** on constants that do not exist yet (§4.3 / D-9) | **no** — it bounds drafted text, it does not measure it |
+| `6,305`, `10,859` | **measurements** at frozen Baseline v1.2 (`M-1d`, `M-6b`) | yes — hand-transcribed from the fixture |
+| `11,300` | derived: `12500 − 1200`, decision **minus ceiling** | as an upper bound only |
+| `12,059` | derived: `10,859 + 1200`, measurement **plus ceiling** | **no** — has no fixture source |
+
+`11,300` is sound because the ceiling is used conservatively: `measured ≤ default − ceiling`
+understates the margin and cannot go green falsely. `12,059` is unsound because the same
+ceiling is used **additively inside an equality**: it overstates the block, and it can only be
+satisfied by an implementation that spends its framing budget to the last byte. §4.3 states
+this in its own words — 1,200 is *"a budget the rule text must be drafted to fit, not a
+measurement of drafted text"* — one section away from the assertion that treats it as a size.
+The document contains its own refutation and neither the author nor the reviewer who proposed
+the wording noticed, because at prose altitude `10,859 + 1,200 = 12,059` is arithmetically
+true. It is only *dimensionally* false.
+
+Three contributing causes made this a halt rather than a caught typo:
+
+1. **A reviewer's suggested literal was transcribed as a specification.** The round-6 finding
+   proposed the remedy in concrete numbers; the author landed the numbers rather than
+   re-deriving them. The author's contract is to address the finding, not to adopt its
+   suggested wording verbatim — a suggested remedy is evidence about the defect, not a
+   verified fact about the design. The same discipline the TSPEC applies to its own citations
+   ("every claim about existing code cites file and line") was not applied to a number a
+   reviewer supplied.
+2. **The upstream cascade re-opened an approved document's arithmetic wholesale.** REQ's own
+   erratum moved `C-5` from `8000` to `12500` after TSPEC v0.4 was approved by both reviewers.
+   That single upstream change invalidated a derivation stated in three coupled sites (§3.6,
+   §4.3, §7.3) plus two decision records (D-5, D-9/D-10), and every subsequent round had to
+   re-derive all of them together. Rounds 5, 6 and 7 are one re-derivation performed in three
+   instalments — which is exactly what a **1-round follow-up budget** cannot absorb.
+3. **The erratum channel's confirmation budget is sized for independent items, not for a
+   coupled numeric chain.** Round 7 landed five of five routed items correctly; it failed on a
+   sixth that could not exist until the fifth landed. A budget of one follow-up round assumes
+   remedies are terminal. For a chain where each remedy is itself a new derivation, the
+   expected number of rounds is not one.
+
+**What is *not* the cause:** reviewer quality (both re-executed everything against HEAD),
+scope creep (no section outside the declared diff moved in rounds 6 or 7), upstream
+faithfulness (both reviewers verified the REQ v1.9 / FSPEC v1.3 pins and the E-7 absorption),
+or design soundness. The `M-6b`-slice assertion is the right assertion; one of its six
+conjuncts is written in the wrong units.
+
 ## Recommendation
 
 ## Provenance
