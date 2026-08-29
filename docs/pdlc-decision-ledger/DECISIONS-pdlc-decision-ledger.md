@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.1
+Version: 1.2
 Feature: pdlc-decision-ledger
 ---
 
@@ -10,7 +10,7 @@ Feature: pdlc-decision-ledger
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** |
 | Downstream | PLAN, PROPERTIES, IMPL |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
-| Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v{N}.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 # DECISIONS — pdlc-decision-ledger
@@ -57,7 +57,16 @@ Baseline's re-measurement to **v1.2** exercised exactly that path and this docum
 it: the `M-7` block (`M-7a` project-level substance bytes, `M-7b` the 63-record worst standing case,
 `M-7c` the cap that clears it) is the measured authority behind REQ C-5's shipped `maxBytes`
 **12,500**, and every byte figure below is derived against that value, never against the retired
-8,000.
+8,000. **One exception is live and is stated so a reader is not surprised by it:** TSPEC §3.6, the
+cited site for byte figures, has not yet taken REQ v1.8 — it is pinned at REQ v1.7 / Baseline v1.1
+and its *derived* headroom figures (the 6,800-byte allowance, the ~495 bytes of headroom, the
+conclusion that the order is live under shipped defaults) are pre-raise, pending `ERR-2`'s
+propagation. The figures this document *quotes* from §3.6 are unaffected, because they are
+measurements of the corpus rather than of the bound: 10,859 and 6,305 are current as cited. The
+figures this document *derives* — the 11,300-byte allowance, DEC-DECLEDGER-12's 441 bytes of slack
+and DEC-DECLEDGER-13's 4,995 — are the current ones and have no upstream home until §3.6 is
+re-measured. That re-measurement is TSPEC's to land, is listed site-by-site in DEC-DECLEDGER-10/-12's
+re-evaluation trigger, and is not taken here.
 
 ## Options Considered
 
