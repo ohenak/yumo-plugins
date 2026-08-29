@@ -162,8 +162,8 @@ not left to TSPEC to invent:
 | Key | Default | Type | Config owner | Rationale |
 |---|---|---|---|---|
 | `decisionLedger.enabled` | `false` | boolean | operator, `.claude/pdlc.config.json` → `decisionLedger` | Tier 3: off by default per proposal §6 |
-| `decisionLedger.maxEntries` | `70` | positive integer | operator, same block | Floor taken once against the Baseline's named commit and cited, not re-derived here: `M-6b` (63), with `M-6c` recording that 70 clears it by 7. A default below `M-6b` drops a line against the standing corpus on day one |
-| `decisionLedger.maxBytes` | `8000` | positive integer | operator, same block | Author default by analogy to `learningsInjection.maxBytesPerDocument` (6000) / `maxTotalBytes` (20000); vetoable per A-1 |
+| `decisionLedger.maxEntries` | `70` | non-negative integer | operator, same block | Floor taken once against the Baseline's named commit and cited, not re-derived here: `M-6b` (63), with `M-6c` recording that 70 clears it by 7. A default below `M-6b` drops a line against the standing corpus on day one. **Non-negative**, not positive: `0` is a valid admits-nothing value, not a malformed one, so it does not fall back to `70` |
+| `decisionLedger.maxBytes` | `12500` | non-negative integer | operator, same block | Measured, not analogised: the Baseline's `M-7c` records that 12,500 clears the `M-7b` worst standing case (9,296 substance bytes over 63 records) by 3,204 — 50 bytes per record of framing allowance — while 8,000 sits *below* `M-7b` and drops lines on day one. Non-negative for the same reason as the row above |
 
 `maxBytes` bounds **the rendered index text alone** — the index block as it appears in the
 prompt, not its contribution to total dispatch size, nor the underlying records. When the
