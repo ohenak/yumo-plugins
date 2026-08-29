@@ -42,6 +42,30 @@ below: the two derivations agree on the value but not on how much slack it buys.
 
 ## Delta-Confirmation Findings
 
+No High findings. Nothing in the delta breaks anything previously approved: the edit touches
+four sites, all inside C-5's blast radius, and every previously-approved clause that depends on
+these thresholds (§5 REQ-DECLEDGER-07's bound-pinning, §5's Then-clause at `REQ:286-290`, §7 O-1's
+omission-order obligation) reads correctly at the new values without change. The three Mediums
+below are one-clause edits; none reopens the erratum.
+
+| ID | Severity | Provenance | Locality | Section anchor |
+|----|----------|-----------|----------|----------------|
+| F-01 | Medium | delta | local | §4 C-5, `maxBytes` rationale (`REQ:173`) — the 3,204 slack is described as per-record framing allowance, but ~1,200 B of it is a fixed block budget, so real headroom is 441 B, not 3,204 |
+| F-02 | Medium | delta | local | §7 A-1 (`REQ:377-380`) / Baseline *Cited by* (`baseline:6`) — this edit mints `M-7b`/`M-7c` citations at A-1, a site the Baseline's own propagation list still omits, in the same edit that bumps its `Version` |
+| F-03 | Medium | inherited | nonlocal | §5 REQ-DECLEDGER-01 (`REQ:185-189`) — round 7's F-01 is untouched: the comparison basis is still wider than the expected value backing it |
+| F-04 | Low | inherited | nonlocal | Header *Cross-Reviews* row (`REQ:13`) — still enumerates `v{1,2,3,4,5,6}`, now two rounds stale |
+| F-05 | Low | delta | nonlocal | `FSPEC:111` and `FSPEC:545` — the cascade the v1.8 note declares is owed, not yet taken: FSPEC still recites `maxBytes` `8000` and the retired analogy claim |
+
+FINDING: Medium | delta | local | §4 C-5 `maxBytes` rationale (REQ:173) | The value is right but the slack it claims is not. C-5 justifies 12500 as clearing `M-7b` "by 3,204 — 50 bytes per record of framing allowance", which reads as 3,204 bytes available for framing. The TSPEC's measured rendering of the same 63-record set charges two different things against the same bound: per-line framing of 10,859 − 9,296 = 1,563 (≈25 B/record), *plus* a fixed block framing budget of ≤1,200 B (TSPEC:434, TSPEC:1312). Total 2,763, leaving 441 B of real headroom — roughly three records at the M-7b mean, not the 50-B-per-record cushion the sentence implies. This matters because C-5 itself scopes the bound to "the index block as it appears in the prompt" (REQ:175-176), which is the form that includes the block framing. Fix is one clause: state the allowance as covering both per-line and block framing, or cite `TSPEC:472`'s 12,059 directly as the figure cleared. No value change, and A-1's operator-revisability already absorbs a later re-size.
+
+FINDING: Medium | delta | local | §7 A-1 (REQ:377-380) and Baseline *Cited by* (baseline:6) | Round 7's F-02 is not just still open, this round re-minted it. The Baseline states its *Cited by* list "is the propagation path for a `Version` bump, so a new citation is added here in the same edit that mints it". This edit mints `M-7b`/`M-7c` citations at §7 A-1 and bumps the Baseline to v1.2 — and the list at `baseline:6` still reads `§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, §7 O-1, §7 O-5`, with no `§7 A-1` and no `§7 O-6` (`REQ:368`, cites `M-4e`). A-1 is precisely the clause a future re-measurement must move, since it is where both defaults are justified as revisable, so the omission costs exactly what the rule exists to prevent. Fix is two entries in the Baseline's list, no REQ change and no Baseline `Version` bump beyond the one already taken.
+
+FINDING: Medium | inherited | nonlocal | §5 REQ-DECLEDGER-01 (REQ:185-189) | Round 7's F-01, unchanged and correctly out of this erratum's scope — recorded so the round-7 disposition is not lost when v8 supersedes v7 as the latest cross-review. AC-01 still asserts equality over id, statement and citation while the expected value it cites (`M-1d`/`M-2e`) supplies ids only, so for 62 of 63 lines two compared fields have no stated source. The v1.7 note routes this to the FSPEC-opening edit; that remains the proportionate home. Non-gating, and no re-derivation is asked for here.
+
+FINDING: Low | inherited | nonlocal | Header *Cross-Reviews* row (REQ:13) | The row enumerates `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5,6}.md`; v7 exists on both sides and v8 lands with this file. Pure hygiene, but the row is the only pointer from the REQ to its own review history, so a reader following it silently misses the two rounds that produced the current thresholds. One-character fix at the next edit.
+
+FINDING: Low | delta | nonlocal | FSPEC §3.3 (FSPEC:111) and §7 (FSPEC:545) | The v1.8 note says "FSPEC §3.3's recital of the default cascades", and it has not cascaded yet: `FSPEC:111` still reads "`maxEntries` `70`, `maxBytes` `8000` (REQ C-5)", and `FSPEC:545` still carries "`maxBytes` (8000) is a `learningsInjection` analogy". Neither is a REQ defect — the REQ correctly declares the debt — and both are downstream-owned, so this is recorded to name the exact two lines the cascade must reach rather than to contest the REQ. Filed Low because the pin machinery owns it; it would be High if it were still open when FSPEC is next approved.
+
 ## Questions
 
 ## Positive Observations
