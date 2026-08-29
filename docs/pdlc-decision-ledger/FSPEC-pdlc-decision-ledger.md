@@ -117,7 +117,7 @@ block-level condition. Each key is resolved independently:
 | The whole `decisionLedger` block absent or malformed | All three keys take their C-5 defaults, which means `enabled` is `false` |
 
 Resolution of one key never affects another key, another config block, or the run (BR-10). Defaults
-are `enabled` `false`, `maxEntries` `70`, `maxBytes` `8000` (REQ C-5).
+are `enabled` `false`, `maxEntries` `70`, `maxBytes` `12500` (REQ C-5).
 
 ### 3.2 Constructing a review dispatch — the enabled path
 
@@ -550,9 +550,9 @@ gated block ships undisclosed, so the antecedent the REQ left unstated is decide
 
 ### Assumptions
 
-Carried from REQ §7 unchanged, operator-vetoable before TSPEC authoring: **A-1** `maxEntries` (70)
-is measured against the Baseline (`M-6b`/`M-6c`), `maxBytes` (8000) is a `learningsInjection`
-analogy and is not measured; **A-2** rollout matches `pdlc-loop-economics` — config-gated, default
+Carried from REQ §7 unchanged, operator-vetoable before TSPEC authoring: **A-1** both defaults are
+measured once against the Baseline's named commit and cited by id, not re-derived here —
+`maxEntries` (70) from `M-6b`/`M-6c`, `maxBytes` (12500) from `M-7b`/`M-7c`; **A-2** rollout matches `pdlc-loop-economics` — config-gated, default
 off; **A-3** reviewer-side enforcement is the intended reading of the proposal's R3-2, vetoable
 before TSPEC since a mechanical gate would change the feature.
 
