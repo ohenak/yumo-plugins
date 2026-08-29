@@ -115,7 +115,51 @@ same shas my v3 `UPSTREAM-STATE` recorded, and the one that moved — `TSPEC`
 
 ## Verification
 
-_pending_
+**The routed item did not land.** The erratum was dispatched with exactly one item — T-00a's
+two-sided acceptance carries a conjunct ("the filtered count is still `102` after this PLAN's twelve
+new modules exist") that cannot be evaluated in batch 1 where T-00a lands and only three of twelve
+modules exist, while the same row sends the terminal obligation to T-12a, which explicitly disclaims
+being a count. The dispatch asked the author to **state which task carries the terminal `102`
+assertion**.
+
+Evidence that it is unlanded, not merely relocated:
+
+- `git diff 665eb44a8..HEAD -- PLAN` contains **no hunk touching T-00a**. The single `T-00a` string
+  in the diff is a leading-space context line — the *T-12a* row, quoting T-00a in its dependency
+  column. Both rows are byte-identical to the bytes I reviewed at v3.
+- `grep -n "102" PLAN` returns the same four sites as at v3: `:114` (T-00a), `:268` (the
+  green-at-both-ends prose), `:445` (DoD), and `:119`'s T-12a row referring to the literal it is
+  *not* re-pinning. None is new.
+- T-00a still reads "Acceptance is two-sided: the exclusion lands **and** the filtered count is
+  still `102` after this PLAN's twelve new modules exist … The namespace's own census is a
+  **terminal** obligation and lives in T-12a"; T-12a still reads "one conjunct asserting the **set**
+  of … module names is **set-equal** to the twelve names … **It is a set, not a count**". The two
+  sentences still contradict each other about where the count lives.
+
+The document is not silent on the terminal count — DoD:444–445 carries it ("`documentOracles.test.js`'s
+`*.test.js` census excludes the `decisionLedger` namespace and **still counts `102`** (T-00a's
+positive control)"). That is the real terminal home, and it is the answer the erratum should have
+written into T-00a. As the PLAN stands, a batch-1 implementer reading T-00a's acceptance literally
+cannot discharge it — twelve modules do not exist at batch 1 — and following the row's own pointer
+lands on a task that disclaims the assertion.
+
+This is not a hypothetical misreading. It has already produced a wrong downstream artifact:
+`CROSS-REVIEW-product-manager-PROPERTIES-v2.md` F-01 records that PROP-DISC-07 relocated the
+terminal `102` conjunct to "`PLAN` **T-12a → T-19**, batch 9" — a task the PLAN says does not carry
+it — and that the relocation left T-12a's actual twelve-name set census with no property at all. An
+acceptance criterion that misdirects its reader has now misdirected one. That is why this is High
+rather than a wording nit, and why one bounded follow-up is worth spending: the fix is one clause in
+T-00a naming the DoD checkbox (or a named task) as the home of the terminal count, and dropping or
+qualifying "lives in T-12a". (F-01)
+
+**Nothing I previously approved was broken.** I re-checked the four regions this edit did touch
+against my v3 approval: the header keeps every field (Upstream, Downstream, Baseline v1.2,
+Cross-Reviews); the revision-history block appends v0.4 without rewriting v0.3's entry; T-05, T-06
+and T-11 retain every conjunct, exclusion and citation v3 approved; the DoD bullets amended are
+strictly additive except for the census bullet, which narrows correctly to six tokens per `TSPEC`
+v0.8. My two v3 findings (F-01, T-03's shell-pipe escaping; F-02, the delta-coverage instruction's
+delivery to batches 3–7) were Medium and non-gating, and this erratum was not scoped to them; they
+remain open in the ordinary loop and I do not re-raise them here.
 
 ## Delta-Confirmation Findings
 
