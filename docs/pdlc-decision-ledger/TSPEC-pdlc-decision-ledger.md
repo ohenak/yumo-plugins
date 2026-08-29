@@ -1052,10 +1052,20 @@ truncated statement — would appear on both sides of the comparison and the con
 fail. Only the prefix conjunct would carry any weight.
 
 So the property's model carries its **own** formatter, transcribed from §4.3's stated format
-(`{id} — {statement}  [{sourcePath} § {id}]`) and independent of production code. The four conjuncts
-then fail on four different mutations: dropping a line reddens the prefix conjunct, truncating one
-reddens no-truncation, mis-ordering reddens the prefix conjunct, and changing the citation field
-reddens no-truncation. This is the same discipline §7.3 applies to the corpus oracle — expected
+(`{id} — {statement}  [{sourcePath} § {id}]`) and independent of production code. Each of the four
+conjuncts is owed **its own** falsifying mutation, and the mapping is stated rather than assumed
+(TE Q-02 — the generator's `0`/exactly-fitting/generous range alone does not discharge the two bounds
+conjuncts, since a drop loop that stops one line late still lands inside that range for most draws):
+
+| Conjunct | Mutation that must red it |
+|---|---|
+| ≤ `maxEntries` lines | drop-loop tests `>` instead of `≥` on the line count — emits `maxEntries + 1` lines |
+| ≤ `maxBytes` bytes | the loop charges index lines only, omitting framing — D-5's charge removed |
+| no truncation | a line is truncated to the remaining byte budget instead of being dropped whole |
+| prefix under §3.6's order | the loop drops from the front (project-level first) instead of the back |
+
+Each is applied and reverted during implementation, with the observed red recorded in the test file's
+header, the same discipline §7.4's mutation proof follows. This is the same discipline §7.3 applies to the corpus oracle — expected
 values transcribed from data, never captured from the code under test — applied to the property.
 The cost is one duplicated format literal, and §4.3's framing-budget pin plus AT-02's resolution
 check are what keep the duplicate honest.
