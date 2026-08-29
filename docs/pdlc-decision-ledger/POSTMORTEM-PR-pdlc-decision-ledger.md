@@ -136,4 +136,83 @@ document and itself, and the erratum round was supposed to settle it.
 
 ## Best-Guess Root Cause
 
+**Primary: the erratum round had no mechanical check that a routed item changed any bytes.**
+
+The `DEC-ERRROUTE-01` channel routes a bounded set of residual findings into a targeted-edit round,
+and the delta confirmation asks reviewers — *after the fact, by reading* — whether the set landed.
+Nothing between dispatch and confirmation compares the routed loci against the diff. A round that
+edits three of four routed loci and silently drops the fourth is indistinguishable, at dispatch
+time, from one that lands all four. Here the dropped locus was the only High in the set.
+
+Why *that* locus specifically, and not one of the cosmetic ones: T-00a's item is the only routed
+item that could not be fixed by an edit confined to the row it names. Landing it requires a
+**decision** — pick one of the four candidate homes in §Disagreement — and then a **coordinated**
+edit across T-00a, T-12a and the DoD bullet, with `PROP-DISC-07` downstream needing the same
+decision. The other three items are single-span text fixes. Under a per-section pacing contract and
+a byte budget, the item that needs a cross-row decision is exactly the item most likely to be
+deferred to "the next write" that never comes. **The erratum channel is shaped for local text
+fixes and was handed a nonlocal design decision.** PM-1's `nonlocal` class label says precisely
+this, and it is the most load-bearing word in the whole finding set.
+
+**Contributing: the ownership question was never adjudicated, only relocated.** T-00a says the
+terminal obligation "lives in T-12a"; T-12a disclaims it; the DoD asserts it and credits T-00a. That
+loop existed in v0.3 and was *approved* — both reviewers signed off with it in place and downgraded
+it to an erratum item. So the loop survived a full approval before the erratum round inherited it.
+The approval bar let a genuine unresolved ownership question through as "minor", and the erratum
+channel, which cannot make design decisions, was the wrong instrument to inherit it.
+
+**Contributing: no oracle stands behind any hand-transcribed anchor.** The `DECISIONS` digest and
+the `TSPEC §5.5` citation are both hand-typed and both wrong. Both are checkable in one line —
+`shasum -a 256` for the first, a grep of the cited section's body for the claim's keywords for the
+second. Neither check runs anywhere. The document-oracle machinery this very feature is building
+(T-12a's disclosure family, derived-not-restated expectations) is the right answer applied to
+production docs; it has never been pointed at the pipeline's own artifact headers.
+
+**Not a cause:** reviewer strictness, budget exhaustion, or model quality. Rounds 1–3 converged
+cleanly; the confirmers were correct on every finding, including the two I verified independently.
+
 ## Recommendation
+
+Ordered by leverage. Items 1–2 unblock this feature; 3–5 are pipeline changes that prevent the
+class.
+
+**1. Adjudicate the ownership question explicitly, then re-run the erratum round.** Before any
+edit, record the decision — as a `DEC-DECLEDGER-*` entry in `DECISIONS-pdlc-decision-ledger.md`, not
+inline in a PLAN row, since it binds three documents. My recommendation on the merits: **make the
+terminal `102` assertion an explicit obligation of `T-19`**, the last task that writes any of the
+twelve modules' namespace, and have `T-00a` state a **one-sided** acceptance (the exclusion lands;
+the batch-1 suite is green) with an explicit forward pointer naming `T-19` and the DoD bullet. Then
+fix `T-12a`'s disclaimer to name `T-19` too, and correct the DoD bullet at `PLAN:444–445` to credit
+`T-19` rather than `T-00a`. This is what `PROP-DISC-07` already guessed, so it also un-strands the
+downstream artifact — but it must be *stated*, and T-12a's twelve-name obligation must be given an
+owner in the same edit rather than left behind.
+
+**2. Land the three cosmetic items in the same pass, each verified by re-reading its whole span.**
+Re-derive the `DECISIONS` pin mechanically (`shasum -a 256`, transcribe the head and tail from the
+command output, never from memory); re-point the census-exemption citation from `TSPEC §5.5` to
+`TSPEC §7.3` at both sites (T-11 row and §Definition of Done); and repair T-11's split sentence by
+reading the *entire* row after the edit, not the inserted paragraph.
+
+**3. Add a routed-locus diff gate to the erratum channel.** Before delta confirmation is dispatched,
+the engine should compare each routed item's named locus against the round's diff and fail closed if
+any routed locus is byte-unchanged. This is cheap — the routed list already names loci — and it
+converts a two-reviewer round trip into an immediate, un-arguable local failure. It would have
+caught this halt before a single reviewer token was spent.
+
+**4. Refuse `nonlocal` items into the erratum channel.** If a routed finding's class is `nonlocal`,
+or if landing it requires editing a document other than the one under erratum, it should escalate to
+a full review round (or a DECISIONS entry) rather than a targeted edit. The channel's economy comes
+from locality; a nonlocal item spends the economy and returns nothing.
+
+**5. Oracle the artifact headers.** Add a document oracle that, for every `docs/{feature}/*.md`
+lineage header, re-derives each `sha256:…` pin from the named file and fails on mismatch, and that
+resolves each `§N.M` citation to an existing heading. Both defects in this round are in that class,
+and the same class has cost previous features rounds (`version-skew-oracle-evidence-prose`). This
+is the highest-leverage item on the list for the pipeline as a whole, and it is independent of this
+feature.
+
+**Gap named for the record (testing lens):** the erratum channel's delta confirmation is currently
+an *absence-shaped* oracle — reviewers assert "nothing routed remains unreflected". Per this repo's
+own falsifiability checklist, an absence check needs a positive conjunct, and here the positive
+conjunct is trivially available: **each routed locus changed bytes.** Recommendation 3 is that
+conjunct. The channel has been shipping without it.
