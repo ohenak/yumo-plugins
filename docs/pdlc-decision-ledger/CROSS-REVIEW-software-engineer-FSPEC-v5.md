@@ -61,7 +61,27 @@ FINDING: Low | inherited | nonlocal | `docs/_constraints/pdlc-decision-corpus-ba
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried unchanged from round 4, and still not a finding against this document: `12500` is now the C-5 default in the REQ and in the FSPEC, but `TSPEC-pdlc-decision-ledger.md` still carries the retired `8000` at ten sites, several inside executable-adjacent blocks that assert shipped defaults. The branch is therefore mid-cascade, with two documents stating different C-5 defaults. That is the TSPEC round's work, not the FSPEC's — I raise it only so this approval is not read as "the cascade is complete". Is the TSPEC re-derivation already queued behind this confirmation? |
+| Q-02 | `M-7d` is explicit that substance bytes exclude every separator, prefix and newline, and that the line format "belongs to the consuming TSPEC" (`baseline:112`), while the FSPEC's BR-12 scopes `maxBytes` to the rendered index text as it appears in the prompt, framing included. The two reconcile only if `M-7c`'s 50-bytes-per-record allowance covers whatever framing the TSPEC picks. REQ C-5's rationale cell now says this out loud (`REQ:182`), so the FSPEC staying silent is defensible — but the obligation currently rides in a rationale cell rather than on an `O-*` obligation binding the TSPEC's line format. Deliberate? |
+
 ## Positive Observations
+
+- **The one FSPEC edit this round is the good kind of erratum edit.** v1.3 widens E-7 and AT-14 to the
+  `maxBytes` axis and touches nothing else. It did not reopen a settled section to do it, and it does not
+  invent an outcome: it states the outcome, then shows the derivation already available from E-8 and E-6,
+  so a reader can check it without leaving the table. That makes O-8's bounds property total over either
+  bound, which is what the round-3 finding was actually about.
+- **An advancing pin with nothing following from it is spelled out rather than left ambiguous.** The v1.3
+  changelog says REQ v1.9 moved no measured value and that the pin therefore advances alone. That is the
+  sentence a later reader needs when they diff `v1.8 → v1.9` and expect a cascade; without it the pin bump
+  looks like an incomplete edit.
+- **The upstream fixes went where the defect was.** Both of my round-4 findings named upstream text — a
+  changelog aimed at the wrong FSPEC section, a `Cited by` list missing a site it had just minted — and
+  both were fixed there in one insertion each, with no compensating edit in the FSPEC. Fixing a
+  mis-pointing changelog by adjusting the document it mis-points at is the tempting wrong move, and it
+  was not made.
 
 ## Recommendation
 
