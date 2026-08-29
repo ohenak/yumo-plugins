@@ -6,7 +6,7 @@ feature: pdlc-decision-ledger
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` **v1.8** |
+| Upstream | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` **v1.9** |
 | Downstream | TSPEC, DECISIONS, PLAN, PROPERTIES |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2** — cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
@@ -14,7 +14,14 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.2 | 2026-08-28 |
+| Draft | pm-author | 1.3 | 2026-08-28 |
+
+**v1.3 — `maxBytes` `0`, and nothing else.** REQ v1.9 moved no measured value (it corrected two
+Baseline pins in the REQ's own body), so the pin above advances and nothing here follows from it.
+What does follow from v1.8's retyping is that `maxBytes` `0` is now a **valid** operator value
+rather than a wrong-typed one falling back: E-7 and AT-14 previously named only the `maxEntries`
+counterpart, leaving §7 O-8's bounds property without a stated outcome on the `maxBytes` axis. Both
+now cover either bound, with the same outcome. Nothing else moves.
 
 **v1.2 erratum — the `maxBytes` default recital, and nothing else.** REQ moved to **v1.8**, which
 retypes C-5's `maxEntries`/`maxBytes` as **non-negative** integers and replaces the `maxBytes`
@@ -321,7 +328,7 @@ constructed fixture — O-5/O-6, a coverage obligation on PROPERTIES, not a defe
 | # | Case | Outcome |
 |---|---|---|
 | **E-6** | The in-scope set is **empty** — zero decisions, whether because none exist or because all were omitted | **No index block at all.** Not an empty block, not a header with no rows, and rule text does not stand alone without an index. The dispatch is byte-identical to BR-4's disabled dispatch, which is the positive form AT-14 asserts |
-| **E-7** | `maxEntries` resolves to `0` | Treated as zero in-scope decisions — E-6's outcome. **Not an error**, not a fallback to the default, not a halt |
+| **E-7** | **Either** bound resolves to `0` — `maxEntries` `0`, or `maxBytes` `0` | Treated as zero in-scope decisions — E-6's outcome, for both keys. **Not an error**, not a fallback to the default, not a halt. `0` is a valid operator value on either key (REQ C-5 types both **non-negative**); on the `maxBytes` axis the same outcome also follows from E-8 then E-6, since every line exceeds `0`. Stated for both so O-8's bounds property is total over either bound |
 | **E-8** | A **single line by itself** exceeds `maxBytes` | That line is omitted whole. It is never truncated mid-line, and its omission does not abort the rest: the remaining lines render if they fit (BR-13). Where it was the only line, E-6 follows |
 
 ### Two non-cases, stated so they are not invented
@@ -464,11 +471,11 @@ BR-10, E-5)*
 aborted. *(-07; BR-12, BR-13)*
 
 **AT-14 — the empty and zero cases.** *Who:* the driver. *Given:* the flag resolves `true`; first a
-zero-decision in-scope set, then `maxEntries` resolved to `0`. *When:* the index is rendered.
-*Then:* in both cases the dispatch stream is **byte-identical to AT-04's committed baseline** — the
+zero-decision in-scope set, then `maxEntries` resolved to `0`, then `maxBytes` resolved to `0`. *When:* the index is rendered.
+*Then:* in all three cases the dispatch stream is **byte-identical to AT-04's committed baseline** — the
 positive assertion, which pins in one comparison that there is no index block (not an empty block,
 not a header without rows), **no rule text standing alone above a missing index** (E-6), and no
-added or removed whitespace. A build emitting the rule text without an index fails. `maxEntries` of
+added or removed whitespace. A build emitting the rule text without an index fails. Either bound at
 `0` is additionally not an error, not a fallback to the default, and not a halt. *(-07; E-6, E-7,
 BR-1, BR-4)*
 
