@@ -685,7 +685,7 @@ defaults verbatim:
 
 `pdlc/engine/__tests__/decision-ledger-config-example.test.js` asserts (a) the file parses, (b) the
 top-level section set **contains** `decisionLedger` — containment, because the file is shared with
-four other blocks, exactly as `loop-config-example.test.js` reasons about the same file — and (c)
+eight other blocks (`dispatch`, `advisory`, `implementation`, `learningsInjection`, `cascade`, `review`, `loop`, `merge`), exactly as `loop-config-example.test.js` reasons about the same file — and (c)
 `decisionLedger`'s own key→value map by **set equality** against a literal transcription of C-5's
 three keys and defaults, so a fourth key or a different spelling fails. The literal is transcribed
 by hand rather than imported from `DECISION_LEDGER_DEFAULTS`, so the example is checked against the
