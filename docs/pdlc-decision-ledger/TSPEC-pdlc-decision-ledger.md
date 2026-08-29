@@ -119,6 +119,18 @@ PROP-DIS-06 pins the source-text count of dotted `enabled` member reads over
 read is destructured for exactly this reason and says so in a comment. A dotted read here would
 redden a property this feature has no mandate over.
 
+**This depends on where the new symbols land, so the placement is stated here rather than
+left to the implementer.** `advisoryDisabled.test.js`'s `sourceExcludingParser` slices the
+sentinel-bounded learnings-injection region (`// === LEARNINGS INJECTION REGION START ===` /
+`... END ===` in `orchestrate-dev.js`) out of the source **before** counting `/\.enabled\b/`,
+because that region belongs to a different feature's config. Every symbol this feature adds
+therefore lands **outside** that region — the region is `pdlc-learnings-injection`'s, and this
+is not that feature. The consequence is the point: outside the region the count is live, so the
+destructured read is load-bearing and a dotted read reddens PROP-DIS-06. Had the symbols landed
+inside the region they would be sliced out, the pin would not see them, and §2.3 would be a
+discipline with no oracle behind it. PLAN owns the placement; §7.3's source census is what
+checks it.
+
 `buildDecisionLedgerInjector` returns `null` when the flag is not `true`. That is the gate
 (FSPEC §3.2 step 1, BR-4): with the injector `null`, `wrapperSeams._injectDecisionLedger` is
 `null`, `reviewLoop` passes `""` as the ninth `reviewerPrompt` argument, and the prompt is
@@ -154,6 +166,18 @@ anything. Do NOT change your verdict, and do not raise anything new"), so an ind
 reader not to re-open closed decisions has nothing to act on there, and adding bytes to those
 prompts would enlarge the byte-identity surface for no behavioural gain. This is a real
 alternative, weighed and rejected; it is recorded for DECISIONS (§9, D-2).
+
+**The asymmetry this creates, recorded where the decision is taken.** REQ G-4 measures the
+intended effect over *committed `CROSS-REVIEW-*` artifacts on the branch*, and confirmation-round
+cross-reviews are committed under those same names and do carry `FINDING:` lines — including
+`inherited` ones, which is exactly the shape a re-opened closed decision takes. So G-4's
+denominator is **wider than this mechanism's injection surface**: it counts rounds whose prompts
+never carried the rule text at all. A later reader must therefore not read a G-4 trend as a clean
+measurement of this mechanism's effect — the mechanism is applied to a proper subset of what G-4
+observes, and the untreated remainder moves the number for reasons unrelated to it. G-4 is
+explicitly non-binding in the REQ and carries no acceptance criterion (§7.7), so this is a
+disclosure, not a defect to design around; narrowing G-4 or widening the injection surface would
+each cost more than the signal is worth.
 
 ### 2.6 Freshness
 
