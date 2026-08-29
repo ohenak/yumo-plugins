@@ -33,3 +33,53 @@ I re-read only the changed sections and re-executed the numbers the revision mov
 | F-03 (Low) — 12,059 attributed to `pdlc-headless-engine` rather than to the 63-line in-scope set | **Resolved** | ERR-2 (§9.2:1309–1312) now reads "The largest feature directory is `pdlc-headless-engine` at **22 lines / 4,553 bytes**; the in-scope set that directory produces — project-level plus itself, which is `M-6b`'s 63-line floor — is 10,859 index bytes, and **12,059** with framing charged". Both figures are now attached to the objects that carry them |
 | F-04 (Low) — "~495 bytes ≈ two feature-level lines" was retired arithmetic | **Resolved in §3.6 and ERR-2, and this is what F-02 above is about** | §3.6:435–437 and ERR-2:1305–1308 both say three at the mean, two at the largest observed line. §7.3's new note still says two |
 | Q-01 — should §2.3 say that "sentinel region" names two different regions? | **Answered in place** | §2.3:176–184 is new and it answers by citing the mechanism, not by reassurance: `advisoryDisabled.test.js:718–719` matches `"// === LEARNINGS INJECTION REGION START ==="` by exact string, not by sentinel *shape*, so this feature's `DECISION LEDGER WIRING` sentinels are invisible to PROP-DIS-06's slice and the wiring stays inside its `/\.enabled\b/` count. I verified both operands: `sourceExcludingParser` at `pdlc/workflows/__tests__/advisoryDisabled.test.js:718–719` uses `source.indexOf` on the two full literals, and `orchestrate-dev.js:2184` / `:2892` are the only sentinel pair in the file today |
+
+## F-01 in detail — and it is partly my own wording coming back
+
+My v3 F-02 said: "Run the assertion over the **whole** frozen fixture — project-level plus
+feature-level, as a real dispatch gathers — at shipped defaults." The revision adopted that
+faithfully, including the clause that is wrong. §3.1 is unambiguous about what a dispatch gathers:
+
+> **In-scope set** = every record recognised under `docs/_decisions/` (project-level, always),
+> **union** every record recognised in the single directory belonging to the feature whose document
+> is under review … No other feature's directory is in scope, which is what AT-01's "a build
+> rendering all 100 feature-level ids fails" pins.
+> — §3.1:283–289
+
+141 records is 41 + all 100 feature-level ids: the exact set AT-01 exists to red on. The D-10
+assertion does not go through the gather — it builds the block from a record set — so it does not
+*violate* AT-01. But two things follow that are worth one edit:
+
+1. **The gap D-10 exists to close is not closed by an unreachable input.** §7.3's own framing is
+   "AT-01 deliberately runs with the bounds non-binding, so without this the shipped configuration
+   is never exercised anywhere." Exercising `maxEntries: 70` / `maxBytes: 8000` over a 141-record
+   set exercises the shipped *constants* over an input no dispatch can present. The reachable
+   maximum already binds, so nothing is bought by leaving the reachable space.
+2. **"In-scope" is a defined term in this document, and §7.3 uses it for a set §3.1 excludes.**
+   An implementer reading §7.3 first could reasonably build the fixture gather over all four globs
+   at once — which is the state AT-01 pins as a failure.
+
+**The substitution.** Build over project-level ∪ `pdlc-headless-engine` — `M-6b`'s 63-line floor,
+which §3.6's own table already sizes at **10,859** index bytes. Everything the whole-fixture build
+was chosen for survives:
+
+| Property D-10 needs | 141-record build | 63-record build (`M-6b`'s floor) |
+|---|---|---|
+| Byte bound binds | yes (10,859 → 6,800 also cuts, but `maxEntries` 70 cuts first) | yes — 10,859 against 6,800, and `maxEntries` 70 is slack, so `maxBytes` is the sole cutter |
+| `omitted[]` non-empty | yes | yes — 22 feature-level lines compete for ~495 bytes |
+| Conjunct (3) reddens under reversed drop order | yes | yes |
+| Conjunct (1)'s 41 ids / 6,305 bytes unchanged | yes | yes |
+| Input is one a real dispatch produces | **no** | yes — it is AT-01's own largest case |
+
+If the whole-fixture build is deliberate for some reason I have not seen, then the fix is smaller
+still: strike "which is what a real dispatch gathers" and say plainly that the input is a
+**synthetic super-set of any reachable in-scope set, chosen so the drop loop is forced**, in the
+same spirit §3.4 already uses a constructed two-file corpus for the precedence rule. That is an
+honest description and it stops the sentence contradicting §3.1. What should not stay is a
+falsehood about the production gather sitting inside the one assertion that claims to pin the
+shipped configuration.
+
+Severity Medium, not High, and deliberately: the assertion as written still fails on the mutation
+it exists to catch, still pins 6,305 by transcription, and still asserts set equality over the 41
+ids. Nothing in it is unfalsifiable. What is wrong is the input's provenance and one sentence's
+claim about it.
