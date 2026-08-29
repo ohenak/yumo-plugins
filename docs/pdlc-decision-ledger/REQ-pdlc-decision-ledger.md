@@ -33,7 +33,7 @@ and are routed there, not restated here.
 back to `70` — the opposite outcome. `maxBytes` `8000` was an unmeasured `learningsInjection`
 analogy, falsified by measurement as below the standing corpus; it becomes **`12500`**, derived
 from Baseline **v1.2**'s new `M-7b`/`M-7c` by id. R-5 and A-1 carried the retired analogy claim
-and are decided, not reconciled. FSPEC §3.3's recital of the default cascades; nothing else moves.
+and are decided, not reconciled. FSPEC's recitals of the default cascade — §3.1's defaults sentence and §7 A-1, not §3.3, which carries no bound literal; nothing else moves.
 
 **v1.7 disposition — the Baseline gained the enumeration §5 needed.** Round 6's one High is fixed in
 the substrate this REQ owns, not by another clause: Baseline v1.1 adds `M-1d` and `M-2e`,

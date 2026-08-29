@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-decision-ledger` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` (§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, §7 O-1, §7 O-5); `docs/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md` (header, §1, §3.3, §4 BR-2/BR-8/BR-10, §5 E-4/E-9/E-10/E-11, §6 AT-01, §7 O-5). This list is the propagation path for a `Version` bump, so a new citation is added here in the same edit that mints it. |
+| Cited by | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` (§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, §7 O-1, §7 O-5); `docs/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md` (header, §1, §3.3, §4 BR-2/BR-8/BR-10, §5 E-4/E-9/E-10/E-11, §6 AT-01, §7 O-5, §7 Assumptions A-1). This list is the propagation path for a `Version` bump, so a new citation is added here in the same edit that mints it. |
 | Version | 1.2 · 2026-08-28 |
 | Verified at | HEAD `8c673a09f` on `feat-pdlc-decision-ledger`, 2026-08-28 |
 
