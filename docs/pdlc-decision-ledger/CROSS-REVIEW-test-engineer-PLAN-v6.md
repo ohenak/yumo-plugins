@@ -208,6 +208,37 @@ ownership, and it states both.
 
 ## Positive Observations
 
+- **The routed item landed at every site it touched, and the round found the sites itself.** v5 named
+  four obligations; v0.6 discharged all four and additionally corrected the token gloss from
+  "exported names" to "top-level declaration names that carry decision-record data", which nothing
+  asked for but which removes the last residue of the framing §7.3 repudiated. Four consistent sites,
+  no dangling prose contradicting the new contract.
+- **The partition is a real completeness oracle, and it is the right shape.** `CENSUS_TOKENS ∪
+  CENSUS_EXEMPT = OWNED_DECLS`, disjoint, is set equality over the full enumeration — a symbol added
+  later must be classified into one list or the other or the test reddens. That is strictly stronger
+  than the containment check a weaker author would have written, and it preserves the "cannot escape
+  by omission" property the repudiated exports form was reaching for, without that form's
+  red-by-construction defect.
+- **The enumerate-don't-pattern-match pin is a durable piece of test design.** Deriving the owned
+  list from `/Decision/i` would have been the obvious shortcut; the row names five shipped
+  declarations that rule would wrongly exclude, and I confirmed all five exist. That is the
+  difference between an exclusion list that blinds the census and one that documents itself.
+- **The `decisionLedger` field's two-sided argument is complete.** It is not a token (unsatisfiable
+  in the remainder via `buildFinalReport`) *and* not a declaration (so absent from `OWNED_DECLS`),
+  hence the partition is unaffected in both directions — the second half is new in v0.6 and is
+  exactly the conjunct that stops the new set-equality acquiring a spurious member. The field's
+  obligation is then discharged behaviourally by T-10a's live `main()`-driven arm, with the flag-off
+  absence paired to a positive set-equality on the report's key set rather than left as an
+  absence-only oracle.
+- **The revision history is honest about what kind of pass this was.** It says plainly that v0.6
+  responds to upstream movement rather than to a defect in v0.5's bytes, enumerates the three
+  consequences, and states that the six token members, the `decisionLedger` rationale and every
+  batch/dependency/ownership assignment are unchanged. That is a reviewer's map of the diff, and it
+  matched the diff exactly.
+- **F-01 was findable because the document states its counts.** Writing **six**, **nine** and
+  **fifteen** as literals is what let one decomposition against TSPEC:1297 expose the member with no
+  home. A row that had said "the owned declarations" without the arithmetic would have shipped this.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
