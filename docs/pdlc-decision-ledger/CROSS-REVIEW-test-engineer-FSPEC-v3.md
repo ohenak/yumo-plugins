@@ -52,10 +52,53 @@ authoring, which is why they gate rather than ride along.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: the REQ's v1.8 erratum note (`REQ:26`) says "FSPEC §3.3's recital cascades; nothing moves." I cannot reproduce that scoping — §3.3 carries no bound literal (grep for `8000`/`maxBytes` puts the recitals at `:111` and `:545`, and §3.3 holds neither). Was §3.3 a mis-citation for §3.1, and was §7 Assumptions simply missed? If the erratum author walked only §3.3, that explains why both live sites survived, and the same walk should be re-run against the anchor list rather than from memory. |
+| Q-02 | On F-03: is `maxBytes` `0` intended to be reachable at all, or is non-negativity on `maxBytes` only a symmetry with `maxEntries` that nobody means to exercise? Either answer is fine and cheap to state; what I cannot do today is write the bounds property over "any resolved bounds" without knowing which. |
+| Q-03 | On F-01's downstream: TSPEC ERR-2 already derived `12,500` independently and the REQ then adopted it, but TSPEC `:496`/`:760`/`:942` still carry `8000`. Is the TSPEC's own correction already queued in its erratum channel, or does fixing the FSPEC leave those three sites to be caught separately? I raise it only so it is not assumed handled by this round — it is outside this document. |
+
 ## Positive Observations
+
+- **The cascade was contained where it counts.** Baseline v1.2 added measurement rows without moving `Verified at` or re-deriving `M-1d`/`M-2e`. That discipline — additive bump, frozen commit — is why every corpus fixture and all of AT-01's arithmetic survives untouched, and why this confirmation is four small edits rather than a re-review. `M-7d` saying out loud that substance bytes are "a floor, not a rendering" and leaving framing to the consuming TSPEC is the same good boundary-keeping.
+- **The REQ erratum improved testability in exactly the way I would have asked for.** Retyping to non-negative because "*positive* rejected `0`, which FSPEC E-7 requires as a valid admits-nothing `maxEntries`" is upstream being corrected *by* a downstream edge case — E-7 was right and the type was wrong. That is the cascade working in the healthy direction.
+- **R-5 got better, not just shorter.** Replacing "the bound is an unmeasured analogy" with "the bounds are measured but at one commit, and the corpus grows" swaps an unfalsifiable worry for a monitorable one with named evidence (`M-6d`/`M-7d`) — a re-evaluation trigger something could actually observe.
+- **`12500` is derived and shown, not asserted.** C-5 carries the whole chain — 9,296 over 63 records, clears by 3,204, 50 bytes per record of framing allowance. A reviewer can re-check the arithmetic without leaving the row, which is what let me confirm the number rather than take it.
 
 ## Recommendation
 
+**Needs revision**
+
+Two open High findings, both `delta` — the FSPEC's own bytes did not change, but the REQ moved out from under two of its sentences. F-01 leaves the definition site of the shipped defaults naming the one value the REQ documents as day-one-lossy, under a `(REQ C-5)` attribution that no longer holds, and TSPEC `:942` has already turned that number into an assertion that would go green on the wrong build. F-02 leaves §7 asserting a retired risk under the words "carried unchanged", in front of an operator whose veto is invited before TSPEC authoring.
+
+Neither is expensive: one literal at `:111`, one restated assumption at `:545`. F-03 (one clause extending E-7 to both bounds) and F-04 (three version labels plus one Baseline anchor) are non-gating and can ride the same edit. Nothing in my v2 approval of the FSPEC's structure, flows, edges or test design is disturbed — the document is right about everything it decides for itself, and wrong only where it quotes.
+
+I want to be explicit that this is not a re-opening of settled ground: after these four edits I expect to confirm without further findings.
+
 ## Delta-Confirmation Findings
 
+All four are **delta**: the FSPEC's own bytes are unchanged since my v2 approval, and each defect
+exists only because the REQ erratum moved and its cascade was not carried into this document.
+F-01/F-02 are **local** — they sit in the recitals the erratum's own subject matter (C-5, §7 A-1,
+§6 R-5) propagates into. F-03/F-04 are **nonlocal** — the retyping and the Baseline bump reach
+sections the erratum never recites.
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|------------|----------|-------------|----------------|
+| F-01 | High | delta | local | §3.1 `:111` recites `maxBytes` `8000` "(REQ C-5)"; C-5 now says `12500` and records `8000` as below the `M-7b` floor, dropping lines day one | §3.1 `:111` |
+| F-02 | High | delta | local | §7 Assumptions `:545` recites the retired `learningsInjection` analogy as "carried from REQ §7 unchanged"; A-1 and R-5 both retired it | §7 Assumptions `:545` |
+| F-03 | Medium | delta | nonlocal | Non-negative retyping makes `maxBytes: 0` a valid value with no stated outcome; E-7 covers `maxEntries` only | §5 E-7 `:317` |
+| F-04 | Low | delta | nonlocal | Header/§1/§6 pin Baseline `v1.1`, REQ now pins `v1.2`; no fixture impact (`Verified at` unmoved) | §1 `:11`, `:43`; §6 `:331` |
+
+FINDING: High | delta | local | §3.1 `:111` | The shipped-defaults recital states `maxBytes` `8000` and attributes it to REQ C-5, which now specifies `12500` and records `8000` as sitting below the `M-7b` standing floor and dropping lines on day one; TSPEC `:496`/`:760`/`:942` have already propagated `8000`, including an AT asserting it as "C-5's shipped defaults", so the stale literal is a live false-green oracle.
+
+FINDING: High | delta | local | §7 Assumptions `:545` | §7 states "Carried from REQ §7 unchanged" and then recites A-1 as "`maxBytes` (8000) is a `learningsInjection` analogy and is not measured", but REQ A-1 `:378` now records both bounds re-derived and measured (`70` from `M-6b`/`M-6c`, `12500` from `M-7b`/`M-7c`) and R-5 `:327` retired the analogy in favour of the commit-growth risk; the content is stale and the "unchanged" provenance claim is false in front of an operator veto point.
+
+FINDING: Medium | delta | nonlocal | §5 E-7 `:317` | REQ C-5 retyped both bounds to non-negative, so `maxBytes: 0` is now a valid operator value rather than a wrong-typed one falling back, but E-7 names only `maxEntries` `0` and no section states the `maxBytes` `0` outcome; it is derivable via E-8 then E-6 but unstated, leaving O-8's bounds property unwritable on the `maxBytes` axis.
+
+FINDING: Low | delta | nonlocal | §1 `:11`, `:43`; §6 `:331` | FSPEC pins Baseline `v1.1` while REQ v1.8 depends on `v1.2`; no test is affected because v1.2 left `Verified at` (`8c673a09f`), `M-1d` and `M-2e` byte-identical, but the Baseline `Cited by` row (`baseline:6`) still omits §7 Assumptions, which is why the v1.2 bump failed to route to the site that went stale in F-02.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
