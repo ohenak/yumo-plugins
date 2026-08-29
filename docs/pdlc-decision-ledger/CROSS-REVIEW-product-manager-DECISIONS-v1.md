@@ -36,5 +36,49 @@
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
 
+Two High findings, and they share one root cause: this document was authored roughly half an hour
+after REQ v1.8 landed (`4e197abe5`, 18:50 vs. this document's 19:21–19:22) and did not pick it up.
+The REQ and the FSPEC have both absorbed that erratum — FSPEC v-current says so in as many words
+(*"both are corrected to REQ HEAD, and the Baseline pin moves to v1.2"*, `FSPEC-…:25`) — so this
+document is the odd one out among its siblings, not the leader of a change still in flight.
+
+I want to be clear about what is **not** wrong: I did not find a decision whose *outcome* is wrong.
+Every chosen form in the `## Decision` table still looks like the right call to me, and the
+verification I ran (eight code anchors, eight `M-*` citations, thirteen FSPEC ids, an independent
+re-count of the 41 project-level ids) came back clean. What has gone stale is the **justification**
+layer — and for a document whose entire stated purpose is to preserve *"the reason it was refused"*
+for a later agent (lines 20-24), a stale justification is the defect that matters most. A reader who
+checks DEC-DECLEDGER-15 against REQ C-5 today finds the REQ saying the opposite of what the
+rationale claims it says.
+
+Exactly what must change:
+
+1. **F-01 — DEC-DECLEDGER-15.** Re-state the rationale against REQ C-5's current `non-negative
+   integer` typing (`REQ-…:172-173`), drop *"routed as an erratum instead"*, and replace the
+   re-evaluation trigger row (line 261) with the closed state.
+2. **F-02 — DEC-DECLEDGER-03, -12, -13.** Re-derive every byte figure against `maxBytes` 12,500:
+   the allowance is 11,300, the headroom 4,995, and the DEC-DECLEDGER-13 trigger's *"~44 promoted
+   records"* moves accordingly. Then re-state **DEC-DECLEDGER-03**'s rejection of *"relying on the
+   order being inert"* on a ground that survives the raise, since a real G-1-scoped dispatch
+   (≤63 records, 10,859 bytes) now fits inside the bound with nothing omitted.
+3. **F-03** — move the Baseline pin (line 12) to v1.2, so `M-7b`/`M-7c` resolve.
+4. **F-04** — reconcile *"Two errata are open"* with the four ids it enumerates, and mark ERR-1 and
+   ERR-2 closed.
+5. **F-05** — rest DEC-DECLEDGER-08's refusal on the frozen `MODULE_NAMES` list rather than on a
+   literal reading of NG-6, which forbids engine *runtime* changes and explicitly permits
+   engine-side tests.
+
+F-02 additionally has a dependency I have routed upstream rather than folded into this verdict: the
+TSPEC still pins Baseline v1.1 (`TSPEC-…:11`, `:376`, `:917`) and still hardcodes `maxBytes: 8000`
+in §7.3, and its §7.3 claim that a real dispatch gathers 141 records conflicts with REQ G-1. Those
+are the TSPEC's to fix; Q-01 is the part this document should answer once they are.
+
+None of this is a large edit — it is five citations and one paragraph of arithmetic — and the
+document is well-built underneath it.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 2}
