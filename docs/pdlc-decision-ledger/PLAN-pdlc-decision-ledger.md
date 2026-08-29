@@ -210,7 +210,7 @@ parser ignores by design.
 | `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-09 | 2 |
 | `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` | T-10 | 2 |
 | `pdlc/workflows/__tests__/decisionLedgerMain.test.js` | T-10a | 2 |
-| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` (also the sole home of the two frozen test-file lists `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS`, TSPEC §7.3; the third census operand, `DECISION_LEDGER_CENSUS_TOKENS`, is **not** a test-file constant — it is production, declared in `orchestrate-dev.js` by T-18, see the batch-8 row) | T-11 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` (the sole home of **all three** frozen census lists — `DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` — which TSPEC §7.3 declares to be declarations of the census test file itself, never of `orchestrate-dev.js`) | T-11 | 2 |
 | `pdlc/workflows/__tests__/documentOracles.test.js` | T-12a | 2 (disclosure oracle, skipped) |
 | `pdlc/workflows/orchestrate-dev.js` | T-13 | 3 |
 | `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-13 | 3 (un-skip) |
@@ -222,7 +222,7 @@ parser ignores by design.
 | `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | T-16 | 6 (un-skip) |
 | `pdlc/workflows/orchestrate-dev.js` | T-17 | 7 |
 | `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-17 | 7 (un-skip) |
-| `pdlc/workflows/orchestrate-dev.js` (the sentinel-bounded `main()` wiring run, the `reviewLoop` / `reviewerPrompt` parameters, **and the `DECISION_LEDGER_CENSUS_TOKENS` declaration** — the one member of `DECISION_LEDGER_OWNED_DECLS` no earlier batch writes) | T-18 | 8 |
+| `pdlc/workflows/orchestrate-dev.js` (the sentinel-bounded `main()` wiring run and the `reviewLoop` / `reviewerPrompt` parameters; it declares **no** census constant — all three are test-file constants owned by T-11, TSPEC §7.3) | T-18 | 8 |
 | `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` `pdlc/workflows/__tests__/decisionLedgerMain.test.js` `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-18 | 8 (un-skip) |
 | `.claude/pdlc.config.example.json` | T-19 | 9 |
 | `pdlc/OPERATIONS.md` `pdlc/README.md` `CLAUDE.md` | T-19 | 9 |
