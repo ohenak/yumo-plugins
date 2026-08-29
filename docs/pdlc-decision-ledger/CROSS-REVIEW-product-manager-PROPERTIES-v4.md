@@ -72,3 +72,39 @@ unimplementable oracle; this document knows why it is unimplementable and does n
 tests are its §6 and its §7 is Open Questions (`FSPEC`:344, `:512`). The substance is correct — no
 AT row's Notes column mentions `report.decisionLedger` (`TSPEC`:1553–1560) — only the document name
 is wrong, and PROP-WIRE-12 one section earlier says "no `FSPEC` AT row" for the same fact.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | PROP-WIRE-12 and PROP-OFF-05 both assert the flag-off notice set is set-equal to empty. That is deliberate (each is anchored in a different `TSPEC` conjunct and a different test module) and costs one duplicated assertion, but should PROP-OFF-05's copy cite PROP-WIRE-12 as its live-arm twin so a future editor deleting one knows the other exists? |
+
+## Positive Observations
+
+- **The revision is precisely scoped.** Every changed byte traces to a round-3 finding or to the
+  arithmetic those findings moved. No unrelated family was touched, no fixture literal re-derived,
+  and no acceptance criterion narrowed — the cheap kind of cascade repair.
+- **PROP-WIRE-12 is the right shape for a DC-07 obligation.** It names the arm the field's sole
+  proof, says so explicitly, and makes deletion of the arm visibly a spec change rather than a
+  silent loss of coverage. That is the failure mode the pipeline has been burned by before, closed
+  at property level rather than left to reviewer memory.
+- **The census constants' home is now recorded where a reader will hit it.** The module manifest
+  paragraph explains why PROP-INV-07's partition is coherent only under the test-file home, and why
+  T-11 → T-18's red→green edge is ordinary rather than red-by-construction — answering round 3's
+  Q-01 with the reasoning, not just the fact.
+- **The document routes rather than adjudicates the `PLAN` conflict.** Re-pinning to the deeper
+  upstream and raising an erratum is the correct move for a document that owns neither task row.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High findings: all three round-3 Highs are landed and faithfully transcribed against `TSPEC`
+v1.0. Two non-gating items for the next touch of this document:
+
+1. **F-07 (Medium)** — add `PLAN` T-10a's baseline-notices / flag-off-key-set referent to the
+   §Gaps routed item, so both halves of the `PLAN`↔`TSPEC` divergence reach `PLAN`'s author.
+2. **F-08 (Low)** — change PROP-INV-09's "`FSPEC` §7.6" to "`TSPEC` §7.6".
+
+`REQ` BR-11 / NG-4, `REQ` C-2 and `REQ` NG-5 are untouched by this revision; product scope is
+unchanged.
