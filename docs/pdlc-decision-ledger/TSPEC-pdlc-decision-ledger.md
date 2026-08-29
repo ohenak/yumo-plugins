@@ -838,11 +838,39 @@ discriminating case; `M-4d`'s eight non-record headings and `M-4b`'s twelve name
 the pinned exclusion cases.
 
 **Source census for BR-11 / §5.5.** Alongside the behavioural replay of AT-16, one oracle reads
-`orchestrate-dev.js`'s source and asserts that no identifier from the ledger's output types
-(`DecisionRecord`'s `id`, `selectDecisions`' return) appears inside the convergence, dedupe,
-derivative-stop, erratum-mint or confirmation-presence regions. The precedent for pinning an
-*absence* with a source census rather than new production code is `DEC-LOOPECON-07`, and it is the
-right instrument here because BR-11 is a claim that a coupling does not exist.
+`orchestrate-dev.js`'s source and pins an *absence*. The precedent is `DEC-LOOPECON-07`, and it is
+the right instrument here because BR-11 is a claim that a coupling does not exist. An earlier draft
+of this paragraph specified the census in terms that cannot be implemented, and the correction is
+the substance of this section.
+
+**Why the earlier wording was unimplementable, stated so it is not re-attempted.** It asked for "no
+identifier from the ledger's output types (`DecisionRecord`'s `id`, …)" to appear "inside the
+convergence, dedupe, derivative-stop, erratum-mint or confirmation-presence regions". Both operands
+fail:
+
+- **The token set was ubiquitous.** `id` is one of the most common identifiers in an ~817 KB file;
+  a census forbidding it forbids essentially everything and could never go green.
+- **The regions do not exist as source objects.** `orchestrate-dev.js` carries exactly **one**
+  sentinel-bounded region, `// === LEARNINGS INJECTION REGION START ===` / `... END ===`. There are
+  no delimiters marking "the convergence region" or "the dedupe region", so a scan cannot address
+  them. `DEC-LOOPECON-07`'s own census — the cited precedent — does not scan regions either: it
+  asserts **zero occurrences of named literal tokens over the whole file**.
+
+**The census, specified the way the precedent actually works.** Both operands are named, frozen and
+set-equality-checked, so neither can drift silently:
+
+| Operand | Definition | How it is kept honest |
+|---|---|---|
+| **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose members are the *distinctive, unambiguous* exported names this feature introduces: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`, `decisionLedger` | A companion test asserts **set equality** between `DECISION_LEDGER_CENSUS_TOKENS` and the module's exported decision-ledger symbol names, so a symbol added later cannot escape the census by not being listed. Generic tokens like `id` are excluded by construction — the set holds only names that are unique to this feature |
+| **Scanned source** | The whole of `orchestrate-dev.js`, **minus** the four regions this feature legitimately owns: `parseDecisionLedgerConfig`'s body, `buildDecisionLedgerInjector`'s body, `selectDecisions`/`recogniseDecisionRecords`/`renderDecisionLedgerBlock`'s bodies, and the `main()` wiring block. Each is sliced by brace-matching from its declaration, exactly as `advisoryDisabled.test.js`'s `sourceExcludingParser` slices `parseAdvisoryConfig` | The slicing helper is the shipped one's shape, and the test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous |
+
+The assertion is then the precedent's: **zero occurrences** of any member of
+`DECISION_LEDGER_CENSUS_TOKENS` in the scanned remainder. This is implementable, non-vacuous, and it
+falsifies exactly what BR-11 claims — if a future edit reads a decision id inside convergence,
+dedupe, derivative-stop or erratum-mint code, that code sits outside the four owned regions and the
+census reddens. What it deliberately does **not** attempt is to prove the absence of a coupling
+routed through a generically-named local; that residue is covered behaviourally by AT-16's replay
+(§7.6), and the two together are the compensating control §7.7 records against R-3.
 
 ### 7.4 O-4 — the byte-identity baseline and its pinning
 
