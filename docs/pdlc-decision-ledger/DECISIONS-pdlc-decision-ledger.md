@@ -237,12 +237,16 @@ and is the stronger falsifier, since it varies only the bytes the injector reads
 
 ### DEC-DECLEDGER-15 — threshold validation
 
-*Rejected: positive-integer validators, as REQ C-5's type label reads.* FSPEC E-7 requires
+*Rejected: positive-integer validators*, the typing an earlier REQ draft carried. FSPEC E-7 requires
 `maxEntries: 0` to be a valid admits-nothing value, "not an error, not a fallback to the default,
 not a halt"; a positive-integer validator rejects `0` and falls it back to `70`, the opposite
 outcome. The shipped precedent already resolves the same tension the same way — `parseLearningsConfig`'s
 `nonNegativeInt` (`orchestrate-dev.js:2283`) exists so that `0` is a valid admits-nothing value.
-*Rejected: edit the REQ to match.* The type label is REQ-owned; it is routed as an erratum instead.
+This decision is now **aligned with, not spanning a gap in, its upstream**: REQ v1.8 types both
+`decisionLedger.maxEntries` and `decisionLedger.maxBytes` as **non-negative** integers and states in
+terms that `0` is a valid admits-nothing value rather than a malformed one falling back to `70`
+(REQ §6 C-5, and its v1.8 erratum note giving E-7 as the reason). FSPEC E-7 and REQ C-5 therefore
+now say the same thing, and no REQ edit is outstanding for it.
 
 ## Decision
 
