@@ -68,8 +68,46 @@ FINDING: Low | delta | nonlocal | FSPEC §3.3 (FSPEC:111) and §7 (FSPEC:545) | 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: is `maxBytes` intended to bind the index block *including* the ≤1,200 B framing the TSPEC charges (in which case standing headroom is 441 B), or the joined index lines alone (1,641 B)? C-5:175-176 reads as the former and the TSPEC's 12,059 assumes the former, so I have reviewed it that way — but the two readings differ by 1,200 B, which is ~8 records, and only C-5 can settle it. |
+| Q-02 | `maxBytes` is now non-negative, so `0` is admissible — under E-8 plus E-6 that composes to "no line fits, therefore no index block", the same terminal outcome E-7 gives for `maxEntries: 0`. Is that the intended reading, or is a symmetric `maxBytes: 0` edge owed in the FSPEC alongside E-7? I did not file it as a finding because the composition is already derivable from REQ:289-290. |
+
 ## Positive Observations
+
+- **The fix is reproducible, which is the whole point of the erratum.** Round 7 approved a
+  `maxBytes` value that no one could check; v1.8 replaced it with one I could re-derive from the
+  tree in a single pass, byte-exact against `M-7a`/`M-7b` including the mean and the maximum.
+  The move from "author analogy" to "cited measured fact by id" is exactly the pattern this
+  feature is trying to institutionalise, applied to itself.
+- **R-5 was re-aimed, not deleted.** The easy erratum would have struck the risk once the value
+  became measured. Instead R-5 now names the risk that genuinely survives — a default sized to
+  one commit's floor is outgrown as the corpus grows — and cites `M-6d`/`M-7d`, the two Baseline
+  facts that say so. That is a strictly better risk register than v1.7 had, and it keeps A-1's
+  revisability load-bearing rather than decorative.
+- **The type fix is stated in the consuming document's own terms.** C-5 does not merely say
+  "non-negative"; it says why `0` is admissible in the same vocabulary FSPEC E-7 uses. An
+  implementer reading C-5 alone now cannot write the positive-integer validator that produced
+  the inversion, which is the failure mode `parseLearningsConfig` already solved once.
+- **Blast radius was bounded and the bound held.** Four sites changed; I checked every clause
+  downstream of the thresholds inside the REQ (REQ-DECLEDGER-07, the §5 Then-clause, O-1) and
+  none needed to move. The v1.8 note's "nothing else moves" is accurate, and it names the one
+  thing that does move outside this document (F-05) instead of leaving it silent.
 
 ## Recommendation
 
+**Approved with minor changes** — no High findings.
+
+The delta resolves every routed item and breaks nothing previously approved. Both thresholds are
+now measured facts cited by id, the type inversion against FSPEC E-7 is closed, and R-5/A-1 no
+longer carry the retired analogy. The three Mediums are all one-clause or one-list-entry edits:
+F-01 corrects how much slack 12,500 buys without changing the value, F-02 adds two entries to the
+Baseline's propagation list, and F-03 is round 7's open item recorded for continuity, already
+routed to the FSPEC-opening edit. None of them warrants another erratum round — folding F-01 and
+F-02 into the next edit that touches these files is proportionate, and F-05 belongs to the FSPEC
+cascade the REQ itself declares.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 2}
