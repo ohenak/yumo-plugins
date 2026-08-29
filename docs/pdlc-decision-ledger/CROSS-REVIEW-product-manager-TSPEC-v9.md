@@ -27,6 +27,38 @@ were introduced along the way, both inside §7.3's new closing paragraph, both n
 
 ## Design
 
+**Items 1 and 3 — the coverage-gate claim (landed, and verified against the live gate).** v0.7's §7
+said flatly that "the gate is not evidence for this feature, and this spec does not rely on it".
+v0.8 splits the claim by clause and I confirmed the split against `pdlc/workflows/package.json`:
+`test:coverage` is a four-clause `&&` chain, and the **fourth** clause
+(`c8 report --check-coverage --per-file --branches 85 …`) is the one whose per-file percentage is
+swamped by a ~817 KB file — that clause, and only that clause, is what the old sentence was true of.
+The **third** clause, `node scripts/check-wave-resume-delta-coverage.mjs`, is now named, and every
+factual claim §7 makes about it checks out at HEAD: its exported `SUBJECT` is hard-coded to
+`pdlc/workflows/orchestrate-dev.js` (this feature's only production file, D-6); `resolveBase()`
+prefers the live `merge-base HEAD origin/main` with a `PINNED_BASE_SHA` fallback only where neither
+`origin/main` nor `main` resolves; it exits non-zero on any uncovered line inside the post-image hunk
+ranges; and it only *warns* on a dirty subject, which is why §7's "commit, then run" instruction is
+the right one rather than a stylistic preference.
+
+The framing v0.8 chose — "two facts sit together rather than in tension: the percentage clause is
+insensitive to this feature, the delta clause is sensitive to nothing else in it" — is the honest
+reading, and it is the one an implementer can act on. The three consequences it then draws (the
+fail-closed empty-range reading nothing may rest on; the gate's absence from the wave gate's
+`implementation.testCommand`, with the per-wave manual run routed to PLAN T-18; and the delta clause
+as mechanical backstop for §6.1's "every failure row owes a named test") are each a real obligation,
+each assigned to a named owner rather than left as narrative.
+
+**Item 2 — the live composition-root arm (landed, DC-07 satisfied).** §7.2 now carries a
+`Composition root (live)` row and a paragraph stating why §5.5's source census cannot discharge
+§4.5/§5.4's wiring: a census proves a string is present, never that a line runs. That is exactly
+DC-07's reading in `docs/_constraints/DOMAIN-CONSTRAINTS.md`, and the three conjuncts the design owes
+— a call-count assertion on the scripted `_git` seam (the conjunct a fake of the outer interface
+cannot satisfy), a positive "ends with the rendered block" presence assertion rather than
+"differs from baseline", and a flag-off arm stated as three *positive* conjuncts — are the shape
+DC-07's builder-not-wired sweep asks for. PLAN T-10a already owns it, so design and plan agree on the
+obligation; they disagree only on one referent, recorded as F-01 below.
+
 ## Interfaces
 
 ## Data structures
