@@ -186,14 +186,21 @@ material (O-1).
 **When:** a dispatch prompt for a document under review is constructed.
 **Then:** the prompt includes a rendered index with one line per decision in G-1's in-scope set,
 each line carrying the decision id, a one-line statement and a source citation as G-1 defines it,
-and no other required field. The check is **set equality, not containment** — but over a *pinned*
-corpus, not over a predicate re-derived from this document: the expected set is the measured
-extent recorded in the Baseline (`M-1`, `M-2`, `M-3`) at that file's `Verified at` commit, and
-equality is asserted against those ids. Membership on any other corpus follows from the
-recognition rule TSPEC owns (O-1) and is not asserted here, so nothing in this criterion obliges
-the REQ to state that rule. Over-budget omission is REQ-DECLEDGER-07's alone. The index reflects records as they exist at
-dispatch-construction time, never a snapshot carried forward within the round window (mirrors
-the shipped `REQ-LOOPECON-01b` recompute-at-dispatch contract).
+and no other required field. The check is **equality of the rendered line
+set — not containment, and not equality over ids alone**: the runs agree only where each line's
+id, statement and citation all agree. Ids alone would be blind to the twice-opened block Baseline
+`M-3c` records, where both openings carry one id and only the second states what was decided; G-1's
+field contract distinguishes them, so this criterion must too. The expected value is the Baseline's
+**enumeration**, cited by id — `M-1d` project-level, `M-2e` per feature directory, at v1.1's
+`Verified at` commit — transcribed, not re-derived from any predicate in this document. It is
+asserted against a **frozen fixture copy** of that pinned corpus, never against the live
+repository: the live corpus grows, on this branch included, and an acceptance test keyed to it
+would drift on decisions unrelated to this feature (O-6). Membership on any other corpus follows
+from the recognition rule TSPEC owns (O-1) and is not asserted here, so nothing in this criterion
+obliges the REQ to state that rule. Over-budget omission is REQ-DECLEDGER-07's alone. In
+production the index reflects records as they exist at dispatch-construction time, never a
+snapshot carried forward within the round window (mirrors the shipped `REQ-LOOPECON-01b`
+recompute-at-dispatch contract); the frozen copy above is the test's corpus, not the driver's.
 
 ### REQ-DECLEDGER-02 Disabled path is byte-identical to today (P0)
 
