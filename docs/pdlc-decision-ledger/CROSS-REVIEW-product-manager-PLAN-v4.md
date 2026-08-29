@@ -79,7 +79,39 @@ row and the `report.decisionLedger` DoD bullet fifteen lines above. No double-co
 
 ## Dependencies
 
-_pending_
+Upstream re-derivation at HEAD (DEC-ERR-03). v0.4's header is the first version of this PLAN to pin
+its upstream by sha, so the pins themselves are new bytes and in scope for this confirmation. I
+computed all four:
+
+| Upstream | Header pin | Measured (`shasum -a 256`) | |
+|---|---|---|---|
+| `REQ` v1.9 | `ce6b133f…3c7b7c` | `ce6b133f…d3c7b7c` | ✓ |
+| `FSPEC` v1.3 | `2bd5c3ef…5aed39` | `2bd5c3ef…35aed39` | ✓ |
+| `TSPEC` **v0.8** | `28d25518…32cb49` | `28d25518…f32cb49` | ✓ |
+| `DECISIONS` | `13aba061…4bb89f` | `13aba061…**4fb89a**` | ✗ |
+
+Three of four match the dispatched shas exactly. The `DECISIONS` pin does not: every other pin
+abbreviates as first-8 + last-6, and the last six characters of
+`DECISIONS-pdlc-decision-ledger.md` are `4fb89a`, not `4bb89f`. Two digits are transposed and one is
+wrong. No `DECISIONS` version on any branch hashes to a suffix `4bb89f`, so the pin cannot be
+satisfied by re-pointing it — it is a transcription slip in bytes this edit introduced.
+
+Why it is a finding rather than a typo: the header pin is the staleness mechanism. A reader
+checking whether this PLAN still compresses the current `DECISIONS` compares the pin against the
+file and gets a mismatch on an *unchanged* upstream — the pin manufactures a false drift signal on
+every future check, which is the failure mode the pins exist to prevent. Fix: `13aba061…4fb89a`.
+(F-02)
+
+`TSPEC` **v0.8** is the correct version literal — `TSPEC-pdlc-decision-ledger.md`:19 opens
+"**v0.8 erratum — Phase P's five items against §7, and nothing else.**" — and v0.4's
+revision-history claim that v0.8's other items (§7's coverage-gate narrowing, §7.2's live
+composition-root category) were already absorbed at v0.2/v0.3 checks out against T-18 and T-10a,
+which state both and predate v0.8. The direction of citation the row claims ("v0.8 cites this
+PLAN's T-18 and T-10a, not the reverse") is the honest reading.
+
+No upstream text this PLAN leans on has moved under it: `REQ`, `FSPEC` and `DECISIONS` are at the
+same shas my v3 `UPSTREAM-STATE` recorded, and the one that moved — `TSPEC`
+`1f1d7752…` → `28d25518…` — is exactly what this edit re-grounds on, correctly.
 
 ## Verification
 
