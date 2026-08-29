@@ -186,4 +186,74 @@ conjuncts is written in the wrong units.
 
 ## Recommendation
 
+Address the items below on the branch, then set `RESOLVED: yes` in this file with a commit
+message naming what addressed each one. Re-invoke with `forcePhases: "D"`.
+
+The corrective work is **small and fully specified** — both reviewers converged on the same
+remedy, no alternative was left open, and no product or threshold question is in dispute. One
+round should close it.
+
+**1. Rewrite §7.3's `M-6b`-slice conjuncts (5) and (6) in the units the document already
+   defines (blocking).**
+Take `te-review` F-01's prescription, which `pm-review` F-02 endorses in weaker form — mirror
+conjunct (2)'s shape:
+
+  - **(5)** pin the 63 rendered index lines at the transcribed **`10,859`** (a real fixture
+    measurement, `M-6b`, exactly as (2) pins `6,305`).
+  - **(6)** state the margin as `10,859 ≤ maxBytes − 1200` → `10,859 ≤ 11,300` at C-5's
+    resolved default, **441 bytes**.
+
+  This keeps both falsifiers round 6 asked for — (5) reddens on 441 bytes of corpus growth or a
+  line-format regression, (6) reddens if the operator-facing default drops below the standing
+  case — without depending on a constant that has not been written. Do **not** substitute
+  `≤ 12,059` for the equality as a first choice: it is sound but it re-imports the unwritten
+  constant into the assertion for no falsifying power.
+
+**2. Sweep `12,059` out of every site that asserts it, not just §7.3 (blocking).**
+The literal is load-bearing in the §0 changelog, §3.6's headroom paragraph and closing
+arithmetic, §7.3's conjuncts and its "all four transcribed literals" paragraph, and the
+**D-10** row. Leaving it in one place while §7.3 pins 10,859 reproduces exactly the round-6
+defect (a pin and a claim that no longer watch the same number). `12,059` may survive as
+*prose* describing the worst-case block under the full framing budget — clearly labelled as an
+upper bound — but nothing may assert it and nothing may call it transcribed.
+
+**3. Name both retired inputs in §3.6's retired-default sentence (blocking — `pm-review` F-01).**
+The sentence *"8,000 less ≤1,200 of framing left under 6,800 bytes for lines, below the
+project-level set alone"* is true only under the **retired long line format** (9,371) and false
+against the shipped form the adjacent table bolds (6,305 < 6,800). Tense both inputs — the
+`8000` default *and* the long line format — or delete the sentence; its only remaining job is
+historical, and the adjacent table already carries the live numbers.
+
+**4. Pluralise §9.2 ERR-2's discharge paragraph (`te-review` F-02, Low).**
+*"the only test that reads the value"* is stale by one: round 6 added a second shipped-default
+assertion over the `M-6b` slice, and both read C-5's default. Name both.
+
+**5. Answer `pm-review` Q-01 in §7.3 while you are there.**
+Q-01 asks whether a rule-text edit inside the ≤1,200 budget re-opens the pin. Under item 1 the
+answer becomes structural and should be stated: the transcribed literals move **only** with a
+Baseline re-capture, and framing size is deliberately not among them — which is precisely why
+it must not appear inside a pinned total.
+
+**6. Adopt a provenance rule for byte literals — the durable fix (strongly recommended,
+   extend DECISIONS).**
+Add to `DECISIONS-pdlc-decision-ledger.md` (as an extension of D-9/D-10) a rule that every byte
+literal in the TSPEC carries its provenance class — *upstream decision*, *measured at Baseline
+v{N} (`M-xx`)*, or *budget ceiling (unwritten)* — and that **a budget ceiling may appear only
+on the larger side of an inequality, never as a term in an asserted equality**. That single
+rule refutes both the round-6 and the round-7 High mechanically, at authoring time, and it is
+the only item here that stops the chain rather than fixing its current link. Consider promoting
+it to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at consolidation: the pattern is not specific to
+this feature.
+
+**7. Process, for the harvest — do not transcribe a reviewer's numbers (non-blocking).**
+Round 7's High is round 6's own suggested remedy landed verbatim. When a finding supplies a
+concrete literal, re-derive it before it becomes normative, and state the derivation next to it
+so the next confirmation can check it. Record this in `LEARNINGS-pdlc-decision-ledger.md`.
+
+**Budget note for the re-entry.** If the erratum channel is re-opened for this document, the
+follow-up budget of 1 round is the binding constraint, not reviewer patience: rounds 5–7 were a
+single re-derivation split across three instalments. Landing items 1–5 as **one** edit — with
+item 6's rule applied to that edit before submission — is what makes a single confirmation
+round sufficient.
+
 ## Provenance
