@@ -14,7 +14,25 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.5 | 2026-08-28 |
+| Draft | se-author | 0.6 | 2026-08-28 |
+
+**v0.6 erratum — round 6's five items, and nothing else.** Upstream is unmoved since v0.5 (REQ
+**v1.9**, FSPEC **v1.3**, Baseline **v1.2**; the dispatch's hashes are HEAD's), so no pin advances
+and no measured value moves. One re-grounding delta the item list did not carry is absorbed with
+them: FSPEC v1.3 widened **E-7** to the `maxBytes` axis, so §4.1's admits-nothing sentence, §6.1's
+F-13 and §7.6's AT-14 row now read `0` on **either** threshold rather than on `maxEntries` alone.
+The five raised items: §3.6's "`maxBytes` binds first in every case" is tensed to the retired
+`8000` default it was computed against and its retirement at `12500` stated (PM F-01); §7.3 gains a
+**second** shipped-default assertion over the **`M-6b` slice** — `omitted[]` empty, the transcribed
+**12,059**, and `12,059 ≤ 12,500` — because the whole-fixture assertion pins ~4,995 bytes of
+project-level headroom while §3.6's "no line is omitted on any real dispatch" rests on 441, and
+§3.6 and D-10 now say which pin carries which claim (TE F-01, High); §7.3's whole-fixture rationale
+stops describing a staged "`maxEntries` binds first, forcing 71 omissions" and describes the single
+or-conditioned loop — both bounds exceeded at 141 records from the outset, the byte bound setting
+the terminal survivor count (TE F-02); §9.4's assumptions record that A-1's veto windows (REQ:
+before FSPEC authoring; FSPEC: before TSPEC authoring) have **closed** (TE F-03); and §9.2's ERR-2
+argument above **Resolution** is past-tensed, with its A-1 appeal corrected to REQ A-1's windowed
+wording (TE F-04). No approved decision is re-litigated and no section outside this list moves.
 
 **v0.5 erratum — the retired 8,000-byte arithmetic, the stale upstream pins, and nothing else.**
 Upstream moved twice while this document stood: REQ **v1.8** retyped C-5's two thresholds
