@@ -181,3 +181,77 @@ The owned list is introduced as "§4.1/§4.2/§4.4's six functions". `renderDeci
 declared in **§4.3** (TSPEC:759), not in any of the three sections named. The list's *content* is
 right — the six reconcile exactly with the partition — only the section citation is short by one.
 F-02, Low.
+
+## Open Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | For F-03: are `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` intended as test-file literals (the precedent's `FROZEN_CENSUS` / `ANCHOR_TOKENS` shape), with only `DECISION_LEDGER_CENSUS_TOKENS` shipping in the module? That is the only one of the three placements under which both the partition and the census are green, and it is what I assumed when approving. One clause in the operand row settles it |
+| Q-02 | Not a finding, an offer: §7.2's conjunct 3 asserts the key-set symmetric difference is exactly `{decisionLedger}`. Would you also want the flag-on run's `report.decisionLedger` **value** shape pinned in the same conjunct (the `dispatches[]` / `thresholds` keys of §5.1's interface) rather than only in the separate presence-and-shape assertion? The two are adjacent and the pairing reads more obviously complete |
+
+## Positive Observations
+
+- **The repair is general, not another exception.** The cheap fix to round 9's F-01 was to add
+  `gatherDecisionCorpus` and §5.2's catalogues to the carve-out list and move on — a third
+  hand-picked exclusion, red again on the fourth member. Instead §7.3 subtracts every owned
+  declaration and then states the predicate that makes the choice checkable. The census's token set
+  is now selected for what it watches rather than for what survives; that is the difference between
+  a fixed round and a fixed section.
+- **The predicate is written down for the next editor, not just applied.** "A token is unsatisfiable
+  exactly when a conforming implementation mentions it in the scanned remainder … any future member
+  must be checked against that predicate before it is added, not after a round finds it red." Two
+  rounds of this feature were spent discovering that fact; it now costs the next one nothing.
+- **The set equality became a partition without becoming a containment.** The easy escape from a
+  set equality that is red by construction is to relax it to "contains", which silently drops the
+  escape-by-omission guard. The partition keeps the guard and states its two halves — a symbol added
+  later must be classified or the test reddens.
+- **The name-pattern alternative was rejected with evidence, not taste.** Naming
+  `MERGE_MAX_DECISION_STEPS`, `renderDecisionEntry`, `escalationDecision`, `erratumGateDecision` and
+  `parseDecisionsWarranted` as the shipped declarations a `/Decision/i` rule would wrongly swallow is
+  the kind of concrete counter-example that stops the idea being re-proposed. All five exist at HEAD.
+- **A vacuous oracle was caught before it shipped.** PM F-01's key-set referent would not have gone
+  red — it would have compared against a recording with no `report` keys at all. Fixing it to the
+  arm's own paired runs, with the two-directional set equality, replaces a check that could not fail
+  with one that can.
+- **Round 9's downstream consequence was answered honestly.** The changelog neither claims T-11 is
+  fully re-pinned nor ignores it: it states what T-11 already discharges and what it still owes to
+  the ordinary PLAN re-pin. Precision about which document owns which residue is what keeps the
+  cascade from re-litigating settled ground.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both of round 9's High findings are resolved, and resolved in the stronger of the two available
+forms: the census is satisfiable over its whole token set on conforming code, and the companion
+check is an exact partition rather than a comparison that could never go green. F-03 (Medium) is
+discharged downstream and correctly attributed; F-04 and F-05 are landed. The delta breaks nothing
+that was approved — I re-derived the partition arithmetic, re-checked every seam the new text leans
+on against HEAD, and confirmed the upstream digests are byte-identical to the approved pins.
+
+What remains is one Medium precision item on the slicer citation (the cited helper's declaration
+regex is function-only while nine of fifteen owned members are constants) and two Lows (list
+placement, and a section citation short by one). None of the three changes what the section
+requires, and none is a reason to hold the phase.
+
+DEFERRED: PLAN T-11 still carries §7.3's pre-v0.9 operand wording (three sliced bodies, set equality against exported names) and needs the ordinary downstream re-pin against TSPEC v0.9.
+DEFERRED: consider pinning `report.decisionLedger`'s value shape inside §7.2's conjunct 3 alongside the key-set difference (Q-02).
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §7.3 cites `loopEconomicsAnchorGuard.test.js`'s `bodyOf` over `allTopLevelDecls` as the slicer, but that file's `DECL_RE` (:61) matches `function` declarations only, while nine of the fifteen `DECISION_LEDGER_OWNED_DECLS` members are top-level `const`s. Cloned verbatim it throws on a constant; boundaries from functions alone make a constant's exclusion an accident of source order. Add a clause requiring the declaration regex to match top-level `const` too | §7.3, Scanned source operand row |
+| F-02 | Low | delta | local | The owned list is cited as "§4.1/§4.2/§4.4's six functions"; `renderDecisionLedgerBlock` is declared in §4.3 (TSPEC:759). Contents are right, the section citation is short by one | §7.3, Scanned source operand row |
+| F-03 | Low | delta | local | Placement of `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` (module vs test file) is unstated; two of the three readings are red — module-side leaves their token-name literals unsliced in the remainder, all-test-side makes the owned list fourteen against a fifteen-member union. State that only `DECISION_LEDGER_CENSUS_TOKENS` ships in the module | §7.3, both operand rows |
+
+FINDING: Medium | delta | local | §7.3, Scanned source operand row | The cited slicer `loopEconomicsAnchorGuard.test.js`'s `bodyOf`/`allTopLevelDecls` resolves only `function` declarations (its `DECL_RE` at :61), while nine of the fifteen owned members are top-level `const` declarations; the spec's own "declaration of any name" rule is right but the citation needs a clause widening the declaration regex to `const`.
+
+FINDING: Low | delta | local | §7.3, Scanned source operand row | The owned declaration list is cited as "§4.1/§4.2/§4.4's six functions", but `renderDecisionLedgerBlock` is declared in §4.3 (TSPEC:759).
+
+FINDING: Low | delta | local | §7.3, both operand rows | Where `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` live is unstated, and only the reading in which they are test-file literals (with `DECISION_LEDGER_CENSUS_TOKENS` alone shipping in the module) leaves both the partition and the census green.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
