@@ -269,7 +269,7 @@ a reader arriving from that table lands here without guessing.
 | **DEC-DECLEDGER-11** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` | §4.2 / D-8 | BR-12 must be enforced against the bytes the prompt receives | Easy |
 | **DEC-DECLEDGER-12** | The four framing constants render to **≤ 1,200 bytes**, asserted by a pure unit test against that literal | §4.3 / D-9 | DEC-DECLEDGER-07 puts framing inside a measured budget | Easy to re-decide, deliberately noisy to breach |
 | **DEC-DECLEDGER-13** | "The promoted corpus is admitted whole" is a **measured, pinned** fact at the Baseline's commit — asserted at C-5's shipped defaults over the **whole** frozen fixture: the 41 project-level ids entire, their 6,305 bytes within `maxBytes − 1200`, and a non-empty `omitted[]` naming no project-level id | §3.6, §7.3 / D-10 | The claim is not a property of the mechanism, and `docs/_decisions/` grows by consolidation | Easy — the pin re-decides at fixture re-capture, which is the intended moment |
-| **DEC-DECLEDGER-14** | AT-03's change is applied to the scripted `_readFile` double's returned text, not to the fixture copy on disk | §7.6 / D-11 | AT-01's per-file digest guard makes the copy immutable | Easy — and routed upstream as `ERR-3` (open, FSPEC-owned) rather than left as a silent divergence |
+| **DEC-DECLEDGER-14** | AT-03's change is applied to the scripted `_readFile` double's returned text, not to the fixture copy on disk | §7.6 / D-11 | AT-01's per-file digest guard makes the copy immutable | Easy — and routed upstream as `ERR-4` (open, FSPEC-owned) rather than left as a silent divergence |
 | **DEC-DECLEDGER-15** | `maxEntries` / `maxBytes` are validated as **non-negative** integers, so `0` is a valid admits-nothing value | §4.1 / — | FSPEC E-7 and REQ v1.8's C-5, which now agree; `parseLearningsConfig`'s shipped `nonNegativeInt` | Easy — but reverting re-breaks E-7 |
 
 ## Consequences
@@ -309,7 +309,9 @@ a reader arriving from that table lands here without guessing.
   under the DEC-DECLEDGER-10 line format, 6,306 counting a trailing newline on the final line).
 - **Serial implementation waves** (DEC-DECLEDGER-08), taken knowingly, as `DEC-LOOPECON-08` did.
 - **Two of the four errata TSPEC §9.2 carries are still open: `ERR-3` and `ERR-4`, both
-  FSPEC-owned.** DEC-DECLEDGER-14 is the design-side half of `ERR-3`. The other two are **closed**:
+  FSPEC-owned.** DEC-DECLEDGER-14 is the design-side half of `ERR-4` — AT-03's fixture mutation,
+  which TSPEC's D-11 routes as `ERR-4` in terms; `ERR-3` is the separate AT-02 citation-format
+  correction and no decision here pairs with it. The other two are **closed**:
   `ERR-1` (C-5's thresholds retyped positive → non-negative) and `ERR-2` (the `maxBytes` default
   raised from an analogised 8,000 to a measured 12,500, Baseline `M-7c`) both landed in REQ v1.8, so
   DEC-DECLEDGER-15 records a settled alignment rather than an open divergence. That raise has already
