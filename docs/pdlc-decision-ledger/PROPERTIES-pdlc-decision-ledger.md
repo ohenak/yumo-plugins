@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES**` (`REQ-pdlc-decision-ledger.md` v1.9, `FSPEC-pdlc-decision-ledger.md` v1.3, `TSPEC-pdlc-decision-ledger.md` v0.7, `DECISIONS-pdlc-decision-ledger.md`, `PLAN-pdlc-decision-ledger.md` v0.3) |
+| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES**` (`REQ-pdlc-decision-ledger.md` v1.9, `FSPEC-pdlc-decision-ledger.md` v1.3, `TSPEC-pdlc-decision-ledger.md` v1.0, `DECISIONS-pdlc-decision-ledger.md`, `PLAN-pdlc-decision-ledger.md` v0.7) |
 | Downstream | IMPL tests |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,software-engineer}-PROPERTIES-v{N}.md` |
@@ -10,7 +10,36 @@
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | te-author | 1.1 | 2026-08-29 |
+| Draft | te-author | 1.2 | 2026-08-29 |
+
+**v1.2 — cross-review round 3, upstream-cascade confirmation** (`CROSS-REVIEW-product-manager-PROPERTIES-v3.md`,
+`CROSS-REVIEW-software-engineer-PROPERTIES-v3.md`). Round 2 was a cascade confirmation that owed no
+edit; round 3 re-pins this document to `TSPEC` **v1.0**, whose erratum edit rewrote §7.3's census
+operands and §7.2's conjunct 3 after this document's v1.1 was written against §7.3 at v0.7/v0.8.
+Nothing outside the INV, WIRE and OFF families moved; no fixture literal, no corpus digest and no
+acceptance criterion changed. (1) **PROP-INV-06** now excludes the body of **every** member of the
+frozen `DECISION_LEDGER_OWNED_DECLS` — fourteen at v1.0 — sliced declaration-line-to-next-top-level-declaration
+over *all* the module's top-level declarations, replacing "three brace-matched function bodies",
+which §7.3 names as the defect it fixed and which cannot slice a constant at all (PM F-01, SE F-01).
+(2) **PROP-INV-07** replaced: the export-set-equality it asserted is the form §7.3 rejects as red by
+construction; it now carries §7.3's partition, `CENSUS_TOKENS` ∪ `CENSUS_EXEMPT` = `OWNED_DECLS`,
+disjoint, both directions (PM F-02, SE F-02). (3) **PROP-INV-11** added for §7.3's red-on-rename
+conjunct — each owned member resolves to exactly one top-level declaration at HEAD, asserted as a
+count of `1`, so zero- and two-resolution both fail; PROP-INV-08's non-emptiness catches neither
+(PM F-04). (4) **PROP-WIRE-12** added for §7.2's rewritten conjunct 3 — the live arm's own paired
+flag-off/flag-on `main()` runs, symmetric difference of the two `report` key sets exactly
+`{decisionLedger}`, set equality in both directions, notice set empty; §5.4 names that arm the
+report field's sole evidence (PM F-03, PM F-05). (5) **PROP-OFF-05** retired its FX-BASELINE
+referent for `report` keys and notices — the recording holds neither — keeping the empty-notice-set
+conjunct and routing the key-set half to PROP-WIRE-12; §FX-BASELINE gained the matching
+non-referent note (PM F-03). (6) The INV rationale paragraph's "both operands set-equality-checked"
+corrected, and the three census constants' **test-file** home recorded there and in the module
+manifest, where the census module's T-11 → T-18 red→green rationale no longer rests on a production
+`CENSUS_TOKENS` (PM F-06, SE F-02, SE F-03). (7) Counts follow: INV 10 → 11, WIRE 11 → 12, partition
+total 101 → **103**, pyramid integration 37 → 39. (8) §Gaps gained a second routed item —
+`PLAN` v0.7 states the opposite census-constant home in five places and a fifteen-member owned list;
+this document re-pins to `TSPEC` v1.0 and routes the divergence rather than adjudicating it
+(SE Q-01).
 
 **v1.1 — cross-review round 1** (`CROSS-REVIEW-product-manager-PROPERTIES-v1.md`,
 `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md`). Traceability and falsifiability repairs only; no
