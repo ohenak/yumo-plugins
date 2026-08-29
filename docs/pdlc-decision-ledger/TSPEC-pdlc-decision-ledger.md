@@ -14,7 +14,27 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.6 | 2026-08-28 |
+| Draft | se-author | 0.7 | 2026-08-28 |
+
+**v0.7 erratum — round 7's three items, and nothing else.** Upstream is unmoved since v0.5 (REQ
+**v1.9**, FSPEC **v1.3**, Baseline **v1.2**), so no pin advances and no measured value moves; the
+corpus figures 6,305 / 10,859 / 12,059 / 441 are unchanged, only *which* of them a test asserts and
+in what form. **TE F-01 (High) / PM F-02:** §7.3's `M-6b`-slice conjunct (5) asserted the whole
+block equal to the transcribed literal 12,059, but 12,059 is `10,859 + the full 1,200-byte framing
+**ceiling**`, and §4.3/D-9 fix framing as a budget the not-yet-written constants must fit — so a
+conforming implementation drafted under budget would redden the assertion for no defect, and 12,059
+is not fixture-transcribable in the sense conjuncts (1)/(2)'s literals are. (5) now pins the 63
+rendered **index** lines at the transcribed **10,859** bytes and (6) states the margin as
+`10,859 ≤ maxBytes − 1200` (`10,859 ≤ 11,300`, difference 441), mirroring conjunct (2); §3.6's
+recital and D-10 follow, and PM Q-01 is answered in §7.3 — the framing size is not a fifth
+re-captured literal, it is D-9's separate pin. **PM F-01 (Medium):** §3.6's retired-default
+arithmetic tensed only the `8000` default, leaving the equally retired long `§ {heading}` line
+format unnamed, so "below the project-level set alone" read false against the shipped 6,305 the
+adjacent table bolds; both retired inputs are now named and the shipped-form figure stated. The
+same paragraph's 441-byte headroom is marked as a floor, since framing is charged at its ceiling.
+**TE F-02 (Low):** §9.2's ERR-2 discharge said "the only test that reads the value"; there are two
+since round 6, and both are now named. No approved decision is re-litigated and no section outside
+this list moves.
 
 **v0.6 erratum — round 6's five items, and nothing else.** Upstream is unmoved since v0.5 (REQ
 **v1.9**, FSPEC **v1.3**, Baseline **v1.2**; the dispatch's hashes are HEAD's), so no pin advances
@@ -1407,7 +1427,7 @@ what remains genuinely open.
 | **D-8** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` (§4.2) | Letting `selectDecisions` compute the size from its own concatenation. Two implementations of one format drift, and the drift is invisible in the worst direction — BR-12's bound enforced against a size the prompt does not have, with both functions individually looking right and every test green |
 | **D-9** | The framing constants are pinned to a ≤1,200-byte budget by a unit test (§4.3) | Leaving framing unmeasured. D-5 charges framing to `maxBytes`, so an unpinned framing size is an unmeasured quantity inside a measured budget, and §3.6's headroom arithmetic would be unfalsifiable prose |
 | **D-10** | §3.6's "the promoted corpus is admitted whole" is stated as a **measured, pinned** fact at the Baseline's commit, with **two** assertions at C-5's shipped defaults in §7.3's corpus oracle — one over the whole
-fixture, one over the `M-6b` slice | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is measured headroom — ~4,995 bytes at C-5's resolved default, with `M-6b`'s worst standing case clearing the bound by 441 — in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision. **Building the assertion over the project-level-only slice is also rejected** (round 3): at 41 records against `maxEntries` 70 and 6,305 bytes against an 11,300-byte allowance nothing is omitted under *any* drop order, so the `omitted[]` conjunct would be vacuously true and could not falsify the re-ordering it exists to catch. The whole-fixture build costs the byte pin nothing — it is stated over the rendered project-level lines within that block — and buys a bound that actually binds. **It does not, however, reach the margin the live conclusion rests on:** the whole-fixture pin watches ~4,995 bytes of project-level headroom, while "no line is omitted on a real dispatch" clears the bound by 441. That is why the `M-6b`-slice assertion is a second assertion rather than a restatement — it pins `omitted[]` empty, 12,059, and `12,059 ≤ 12,500` over the largest set G-1 can actually produce |
+fixture, one over the `M-6b` slice | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is measured headroom — ~4,995 bytes at C-5's resolved default, with `M-6b`'s worst standing case clearing the bound by 441 — in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision. **Building the assertion over the project-level-only slice is also rejected** (round 3): at 41 records against `maxEntries` 70 and 6,305 bytes against an 11,300-byte allowance nothing is omitted under *any* drop order, so the `omitted[]` conjunct would be vacuously true and could not falsify the re-ordering it exists to catch. The whole-fixture build costs the byte pin nothing — it is stated over the rendered project-level lines within that block — and buys a bound that actually binds. **It does not, however, reach the margin the live conclusion rests on:** the whole-fixture pin watches ~4,995 bytes of project-level headroom, while "no line is omitted on a real dispatch" clears the bound by 441. That is why the `M-6b`-slice assertion is a second assertion rather than a restatement — it pins `omitted[]` empty, the rendered index at the transcribed 10,859, and the margin as `10,859 ≤ maxBytes − 1200` (441 bytes at the resolved default) over the largest set G-1 can actually produce. The block total 12,059 is not asserted as an equality: §4.3's framing is a ≤1,200-byte budget the not-yet-written constants must fit, not a measured size, so an equality on 12,059 would redden a conforming implementation drafted under budget; each half of `12,059 ≤ 12,500` is instead pinned where it is measurable (D-9 for framing, this conjunct pair for the index) |
 | **D-11** | AT-03's mutation is applied to the scripted `_readFile` double's returned text, not to the fixture copy FSPEC AT-03's Given names (§7.6) | Mutating the fixture file, as AT-03 literally says. §7.3's per-file digest guard makes the copy immutable and AT-01 requires it, so the two clauses are contradictory as written; mutating on disk also writes to the working tree, which §7.3 exists to prevent. The double's return preserves what AT-03 is *for* — re-gathering per dispatch, holding no snapshot (§2.6, BR-9) — and is a stronger falsifier, since it varies only the bytes the injector reads. Raised at the FSPEC as ERR-4 rather than left as an unexplained divergence |
 
 These are load-bearing and a future reader will otherwise reconsider them confidently:
@@ -1459,7 +1479,7 @@ predicted below.
 
 *No PLAN task turned on which way ERR-2 resolved* (PM Q-02), and none is owed now. The change is one
 literal in C-5's row and the same literal in the config parser's default, both inside tasks the PLAN
-already owes; the only test that reads the value is §7.3's shipped-default assertion. ERR-2 was
+already owes; the only tests that read the value are §7.3's two shipped-default assertions — the whole-fixture one (conjunct (2)) and the `M-6b`-slice one (conjunct (6)), both of which express it as `maxBytes − 1200` rather than as a transcribed literal. ERR-2 was
 raised at the TSPEC rather than at implementation precisely so it would resolve **before** those
 tasks are written, and it did.
 
