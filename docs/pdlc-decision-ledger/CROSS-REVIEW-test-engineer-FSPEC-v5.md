@@ -40,3 +40,44 @@ measured value moved. Checked against that:
 - §3.3 keeps its Baseline citations (`M-4e`, `M-4a`, `M-4b`), so its entry on the propagation row is
   a real site and not the stale pointer REQ v1.9 retired.
 
+## Testing-lens check on the delta itself
+
+The broadening is testable as written, and it does not weaken any oracle v4 approved:
+
+- **E-7 states one outcome for both keys, with the mechanism named** (`:331`): `maxEntries` `0` is
+  E-6 directly; `maxBytes` `0` reaches the same outcome via E-8 then E-6, "since every line exceeds
+  `0`". An implementer does not have to guess which path applies, and a reviewer can falsify either.
+- **AT-14's oracle stayed positive** (`:473`–`:479`). The third case is asserted the same way as the
+  first two — byte-identity to AT-04's committed baseline — not as an absence check (`no index
+  block`, `status != error`). It keeps the explicit failing condition ("A build emitting the rule
+  text without an index fails"), so the added case inherits a falsifiable oracle rather than a
+  weaker one.
+- **BR-1 already generalises over the delta.** Its third conjunct is "at least one rendered line
+  survives the bounds of §3.2 step 5" (`:210`) — bounds, not `maxEntries` — so `maxBytes` `0`
+  suppressing the whole block is an instance of BR-1, not a new exception, and §3.2 step 6's
+  unconditional "attach the rule text" cannot be read as emitting standalone rule text. The delta
+  needed no BR edit and correctly made none.
+- **§7 O-8 is now total over its own quantifier** (`:533`). The property is parameterised over "set
+  size × line sizes × **both bounds**"; with `maxBytes` `0` specified, PROPERTIES can state the
+  boundary on both axes instead of inheriting an unspecified one. This was v4 F-01's whole cost and
+  it is paid.
+- **Traceability held**: REQ-DECLEDGER-07's row (`:90`) still binds BR-12/BR-13 → E-6/E-7/E-8 →
+  AT-13/AT-14/AT-15, and O-8's "AT-13 exercises exactly two examples" is still accurate, since the
+  third case went to AT-14, not AT-13.
+
+## Questions
+
+None. Nothing in the delta requires an answer before PROPERTIES authoring.
+
+## Positive Observations
+
+- **The changelog states the negative explicitly.** "REQ v1.9 moved no measured value … the pin
+  above advances and nothing here follows from it" (`:19`–`:20`) — a scope claim a reviewer can
+  falsify mechanically in under a minute, which is what makes a delta-confirmation round cheap.
+- **The fix was made at the edge case, not at the AT.** E-7 carries the rule and AT-14 carries the
+  witness; the mechanism sentence lives once, in E-7, and the AT cites it. That is the shape that
+  survives the next bound change.
+- **The `0`-on-either-key rule names why it is stated** ("Stated for both so O-8's bounds property
+  is total over either bound"), so a future editor tempted to compress it back knows the obligation
+  it discharges.
+
