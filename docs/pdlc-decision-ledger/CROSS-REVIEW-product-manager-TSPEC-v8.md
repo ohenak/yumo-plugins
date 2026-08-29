@@ -32,6 +32,23 @@ for a claim REQ C-5's default rests on.
 
 ## Repository grounding
 
+I checked the changed sections' load-bearing figures against the repository rather than against the
+TSPEC's own prose, since the whole point of this round is that a measured claim must be re-derivable
+at the re-capture moment.
+
+| Claim (changed section) | Verified against | Result |
+|---|---|---|
+| Baseline commit `8c673a09f` exists and is the corpus basis (TSPEC:1015–1016) | `git cat-file -t 8c673a09f` | **Confirmed** — a commit object on this branch's history |
+| "the 41 project-level ids" — conjunct (1), and the 41 the `M-6b` slice is built from (TSPEC:1031–1038, 1076) | Record headings across `docs/_decisions/DECISIONS-*.md` at `8c673a09f` | **Confirmed exactly**: 12 (`DECISIONS-review-severity-bars.md`) + 7 (`-plugin-distribution`) + 6 (`-test-oracle-mechanics`) + 4 (`-erratum-routing`) + 3 (`-wave-gates`) + 2 (`-review-convergence`) + 2 (`-model-availability`) + 2 (`-loop-termination`) + 1 (`-spec-layer-boundary`) + 1 (`-seam-defaults`) + 1 (`-anchor-provenance`) + 0 (`-advisory-wave-gate-questions`) = **41** |
+| "`pdlc-headless-engine`'s 22", giving the 63-record worst standing G-1 case (TSPEC:1075–1077) | `docs/completed/pdlc-headless-engine/DECISIONS-pdlc-headless-engine.md` (14) + `DECISIONS-headless-engine-obligations.md` (8) at `8c673a09f` | **Confirmed exactly**: 22, and 41 + 22 = **63** |
+| The re-pinned byte figures are mutually consistent with §3.6's measured line ranges | 6,305 / 41 = 154 B mean, inside §3.6's stated project-level range 109–200 (mean 153); (10,859 − 6,305) / 22 = 207 B mean, inside the stated feature-level range 152–261 | **Consistent** — 10,859 is not a figure that contradicts the ranges the same section publishes |
+| §5.3's config-example test target file exists to be amended | `.claude/pdlc.config.example.json` is the file `loop-config-example.test.js` reasons about, as §5.3 states | **Confirmed** — and it is the site F-01 below says the ERR-2 census omits |
+
+The two figures this round newly pins — **10,859** and the 63-id set — therefore rest on a corpus
+that is real and countable at the named commit, which is what makes conjunct (5) a transcription
+rather than an estimate. That matters for the product claim it serves (REQ C-5's default "admits the
+worst standing case with headroom"): a reviewer can re-derive 63 from the repository in one command.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
