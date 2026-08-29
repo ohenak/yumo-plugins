@@ -391,19 +391,36 @@ this document, and it is taken.
 **Second, the order is live under shipped defaults, and this section no longer claims otherwise.**
 Even in the shipped form, with §4.3's framing budget of ≤1,200 bytes charged, the byte bound leaves
 `8000 − 1200 = 6,800` bytes for lines. Project-level alone (6,305) fits with ~495 bytes of
-headroom, or roughly **two** feature-level lines at the measured 137–160 bytes/line. So on the
-shipped default:
+headroom, or roughly **two** feature-level lines. Per-line sizes, measured at the same commit under
+the shipped format: project-level lines run **109–200** bytes (mean 153); feature-level lines run
+**152–261** bytes (means 183 for `pdlc-advisory-wave-gate`, 191 for `pdlc-engineering-loop`, 206 for
+`pdlc-headless-engine`), which is the figure ERR-2 carries upstream. So on the shipped default:
 
-- every reviewer receives the **whole** project-level corpus, on every feature, always;
+- **at the Baseline's `Verified at` commit**, every reviewer receives the whole project-level
+  corpus on every feature, with ~495 bytes of headroom — about **three** project-level lines at the
+  measured mean;
 - feature-level lines are admitted until the bound, and the larger feature directories are
   partially omitted from the first enabled dispatch.
 
 That is the omission order doing exactly the job it was designed for, on day one rather than in
 some future regime — which is precisely why the order is **feature-level first**. The safety
-property the earlier draft wanted from inertness is instead delivered by the order itself: the
-shared, promoted material every reviewer is measured against is the material the bound never
-reaches. The order is therefore load-bearing from the first dispatch and is tested as such
-(§7.5's property, whose prefix conjunct is what makes the order falsifiable, and AT-13/AT-15).
+property the earlier draft wanted from inertness is instead delivered by the order itself: the order
+**prioritises** the promoted corpus, dropping every feature-level line before it touches a
+project-level one. It does not *guarantee* the project-level set is admitted whole, and this section
+does not claim it does: once the feature-level lines are exhausted, project-level lines are dropped
+like any other. What admits the promoted set whole today is the measured headroom, and
+`docs/_decisions/` grows by exactly the mechanism this pipeline runs — consolidation promotes
+decisions into it — so at ~44 promoted records the headroom is spent under C-5's current default.
+
+**That is a measured quantity, so it gets a pin rather than a sentence.** §7.3's corpus oracle
+carries an assertion over the frozen fixture, at C-5's *shipped* defaults, that the rendered
+project-level block fits within `maxBytes − 1200` and `omitted[]` names no project-level id, with
+6,305 transcribed as the expected size. It reddens when the promise stops being true — at the
+deliberate moment the fixture is re-captured, which is the right moment to re-decide ERR-2's
+default — instead of expiring silently. This is the same discipline §4.3 applies to the framing half
+of the identical arithmetic (D-9), applied to the corpus half (D-10). The order itself is load-bearing
+from the first dispatch and is tested as such (§7.5's property, whose prefix conjunct is what makes
+the order falsifiable, and AT-13/AT-15).
 
 **The `maxBytes` default value is not this spec's to set.** It is REQ C-5's, and A-1 already records
 it as the unmeasured threshold an operator may revise without a REQ revision. The measurement A-1
