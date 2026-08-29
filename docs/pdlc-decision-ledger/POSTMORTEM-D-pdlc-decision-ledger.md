@@ -64,6 +64,31 @@ five fixes.**
 
 ## Reviewers
 
+| Role | File series | Terminal verdict | Open at halt |
+|---|---|---|---|
+| product-manager | `CROSS-REVIEW-product-manager-TSPEC-v{1..7}.md` | Approved with minor changes | F-01 Medium (§3.6 retired-default sentence names one of two retired inputs), F-02 Medium (§7.3 conjunct (5) pins the framing *ceiling*), Q-01 open (what re-opens the 12,059 pin) |
+| test-engineer | `CROSS-REVIEW-test-engineer-TSPEC-v{1..7}.md` | Needs revision | F-01 **High** (§7.3 conjunct (5) / D-10 — same defect as PM F-02), F-02 Low (§9.2 ERR-2 "the only test that reads the value" is stale by one) |
+
+**The reviewers agree on the facts.** PM F-02 and TE F-01 are the same finding, arrived at
+independently, with the same diagnosis (`12,059 = 10,859 + 1,200`, where `1,200` is §4.3/D-9's
+framing **budget ceiling** over constants that do not exist yet, not a measurement) and
+compatible remedies. The only divergence is the severity bar:
+
+- `te-review` scored it **High**: a conforming implementation whose framing renders under
+  budget reds the assertion on day one, and `12,059` is not hand-transcribable from the fixture
+  (the fixture holds decision records, not `DECISION_LEDGER_PREAMBLE` / `DECISION_LEDGER_RULE_TEXT`).
+- `pm-review` scored it **Medium** and wrote the gate reasoning explicitly into its
+  recommendation: *"Both findings are Medium, neither High, so this confirmation does not halt
+  the phase."*
+
+That is the whole disagreement. Neither reviewer was wrong on the merits and neither was
+low-quality: both re-executed the arithmetic against HEAD, both confirmed the five routed items
+landed, both refused to re-litigate approved sections, and both filed **Positive Observations**
+noting the round-6 remedy was structurally the right shape (a second assertion over the
+`M-6b` slice, not a restatement of the whole-fixture pin). This was not a reviewer-quality
+failure and not a substantive disagreement — it is a severity-calibration difference on a
+defect nobody disputes.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
