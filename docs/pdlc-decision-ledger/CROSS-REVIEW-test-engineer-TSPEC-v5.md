@@ -44,7 +44,41 @@ citation, it has to be re-executed.
 
 ## Arithmetic re-executed at the new default
 
-_pending_
+Every figure below is recomputed from TSPEC's own measured quantities (§3.6, §4.3's ≤1,200-byte
+framing pin) with `maxBytes = 12500` substituted for `8000`. Nothing else changed.
+
+| Quantity | TSPEC says (at 8000) | At C-5's default as it now stands (12500) |
+|---|---|---|
+| Line allowance `maxBytes − 1200` | 6,800 | **11,300** |
+| Headroom above the 41-line project-level set (6,305) | ~495 bytes ≈ three feature lines at mean 183 | **4,995** bytes ≈ **27** feature lines at mean 183, 19 at the largest observed 261 |
+| Worst standing case, `M-6b`'s 63-line set (10,859 index + 1,200 framing = 12,059) | exceeds the bound; lines dropped | **fits, with 441 bytes spare** — nothing is dropped |
+| AT-01's two dispatches (7,042 and 7,650 index bytes + 1,200) | 8,242 / 8,850 both **exceed** 8,000 ⇒ expected sets unproducible under defaults | 8,242 / 8,850 both **fit** under 12,500 ⇒ the stated reason for the override is falsified |
+| §7.3's 141-record whole-fixture build | byte bound binds | still binds, and `maxEntries` 70 binds first at 141 records — **the D-10 oracle itself survives** |
+
+The consequence that matters most is the third row, and it is a reversal, not a drift. §3.6:433 is
+headed **"the order is live under shipped defaults, and this section no longer claims otherwise"** —
+a heading written to retire an earlier draft's inertness claim that a previous round had already
+found and killed. At 12,500 the inertness claim is **true again**: at the Baseline's `Verified at`
+commit, no real dispatch — not even the largest, `M-6b`'s 63-record worst standing case — reaches
+the bound. The drop loop runs on no production input. The section now asserts the opposite of HEAD,
+in a section whose whole purpose is to have stopped asserting the opposite of HEAD.
+
+That is a testing finding, not a prose one, because §3.6's paragraph is what D-10 cites as its
+justification (§9.1's D-10 row reproduces "~495 bytes of headroom — about three more promoted
+decisions") and what §7.3's shipped-default assertion is built to pin. The pin can survive; its
+stated warrant cannot.
+
+One further consequence has to be written down before the next revision, because it would otherwise
+be applied as stale advice from my own last round. **My v4 F-01 must be withdrawn, not carried.**
+That Medium asked for §7.3's D-10 input to be rebuilt over the largest *reachable* in-scope set —
+project-level ∪ `pdlc-headless-engine`, `M-6b`'s 63 lines / 10,859 bytes — instead of the 141-record
+super-set, on the grounds that the byte bound binds there too. At 8,000 that was right (10,859 >
+6,800). At 12,500 it is **wrong**: 10,859 ≤ 11,300 and 63 ≤ 70, so that build omits nothing,
+`omitted[]` is empty under every drop order, and conjunct (3) becomes exactly the vacuous
+empty-by-construction assertion D-10's rejected alternative exists to prevent. The 141-record
+whole-fixture build is now the *only* build of the three considered across rounds 3–5 that keeps
+conjunct (3) falsifiable, and its "which is what a real dispatch gathers" clause — the sentence my
+v4 F-01 asked to strike — is the part that should go, on its own, without the input changing.
 
 ## Positive Observations
 
