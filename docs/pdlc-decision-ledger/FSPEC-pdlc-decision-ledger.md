@@ -14,7 +14,7 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.0 | 2026-08-28 |
+| Draft | pm-author | 1.1 | 2026-08-28 |
 
 ## 1. Overview
 
@@ -35,27 +35,17 @@ flag off, no behavior in this document happens at all** and the dispatch stream 
 the pre-feature baseline — that is REQ-DECLEDGER-02, and it is the reason every flow below opens with
 the same gate check.
 
-**What this spec deliberately does not describe.** Three things behavioral complexity might seem to
-demand, which are routed rather than decided here:
+**What this spec deliberately does not describe**, because O-1 owns all three as TSPEC material:
+the **recognition rule** (what markup makes a heading a record, the id grammar, the key resolving an
+id opened twice in a file, cross-file precedence); the rendered line's **concrete format** (the REQ
+fixes its field content, not its byte shape); and **which lines are omitted** at a bound
+(REQ-DECLEDGER-07 fixes the outcome, not the selection). This spec states the in-scope set's extent
+only by citing `M-1d` / `M-2e` at Baseline v1.1's `Verified at` commit.
 
-1. **The recognition rule** — what markup makes a heading a decision record, the id grammar, the key
-   that resolves an id opened more than once in a file, and precedence across files. REQ §7 O-1 owns
-   this as TSPEC material. This spec describes what the driver does *with* the in-scope set, and
-   states the set's extent only by citing the Baseline's `M-1d` / `M-2e` enumerations at v1.1's
-   `Verified at` commit.
-2. **The rendered line's concrete format** — field order, separators, and the byte-level shape of a
-   line. The REQ fixes the line's *field content* (id, one-line statement, source citation naming
-   record file and heading); the rendering is TSPEC's, consistent with O-1's ownership of the
-   omission order that shares the same renderer.
-3. **Which lines are omitted** when the set exceeds a bound. REQ-DECLEDGER-07 fixes the *outcome*
-   (never over bound, never truncated mid-line, never aborted); the selection is O-1's.
-
-An FSPEC is warranted here despite that routing, because the parts this spec does own are genuinely
-branching and an engineer should not decide them alone: a three-way gate (enabled / disabled /
-malformed), a fail-open path with **two distinct legs** that degrade differently (nothing survives
-versus a proper subset surviving), a boundary case where an empty file must take
-the *ordinary* leg rather than the failure leg, and two size bounds whose interaction at the
-single-oversized-line case has a stated outcome. §5 is the substance of this document.
+An FSPEC is warranted despite that routing because what remains is genuinely branching: a three-way
+gate, a fail-open path with **two legs** that degrade differently, an empty source that must take
+the ordinary path rather than a failure one, and two bounds whose interaction has a stated outcome.
+§5 is the substance of this document.
 
 **Precedent — two axes, two different shipped channels.** For **per-key independent config
 fallback** and **fail-open-to-silence**, the model is `learningsInjection`, and only there: its
@@ -84,18 +74,11 @@ without a row here.
 | **REQ-DECLEDGER-07** | Rendered index stays within both declared bounds | BR-12, BR-13; E-6, E-7, E-8, N-1; AT-13, AT-14, AT-15 |
 | **REQ-DECLEDGER-08** | Driver-side scoring identical whether the flag is on or off | BR-11, BR-14, N-2; AT-16, AT-17 |
 
-**User stories** (REQ §8, unchanged here): US-01 reviewer re-litigation — REQ-DECLEDGER-01/-03/-06;
-US-02 operator currency and bounded size — REQ-DECLEDGER-04/-07; US-03 operator safe-to-enable —
-REQ-DECLEDGER-02/-05/-08.
-
-**Non-goals carried through.** This spec adds no behavior outside the REQ's non-goals. In
-particular it specifies **no** driver-side reading of a decision id (NG-4), **no** change to
-`MAX_REVIEW_ROUNDS`, `MAX_LIFETIME_ROUNDS` or `MAX_ERRATUM_FOLLOWUP_ROUNDS` (NG-5), and **no**
-new record file type or new field on any existing record shape (REQ §2 G-1).
-
-**G-4 has no row**, by REQ design: it is a non-binding rationale note measured retrospectively from
-committed `CROSS-REVIEW-*` artifacts, and no gate, test, flow or acceptance test in this document
-depends on it.
+**User stories** (REQ §8, unchanged): US-01 — -01/-03/-06; US-02 — -04/-07; US-03 — -02/-05/-08.
+**Non-goals carried through:** no driver-side reading of a decision id (NG-4), no change to
+`MAX_REVIEW_ROUNDS` / `MAX_LIFETIME_ROUNDS` / `MAX_ERRATUM_FOLLOWUP_ROUNDS` (NG-5), no new record
+file type or field (G-1). **G-4 has no row** by REQ design: a non-binding rationale note measured
+retrospectively from committed `CROSS-REVIEW-*` artifacts, on which nothing here depends.
 
 ## 3. Behavioral Flow
 
@@ -179,12 +162,11 @@ holds no decision record yields an **ordinary empty result**: it contributes no 
 counted as a failure (`M-4e`; BR-8, E-4). Two standing-corpus files are in exactly this position
 (`M-4a`, `M-4b`), so this is the common case and not a curiosity.
 
-Being explicit about what that buys, because the legs above are stated over the surviving subset: an
-empty source and a failed source contribute the same zero lines, so the classification has **no
-dispatch-visible consequence** in either direction. BR-8 is therefore a construction rule, not a
-byte-level one — it forbids treating emptiness as an error or as a cause of the total leg — and the
-observable that distinguishes the two is driver-internal and owed by TSPEC (O-7). AT-10 asserts the
-part that is visible in the dispatch bytes and cites O-7 for the part that is not.
+Because the legs above are stated over the surviving subset, an empty source and a failed source
+contribute the same zero lines, so this classification has **no dispatch-visible consequence** in
+either direction. BR-8 is a construction rule, not a byte-level one — it forbids treating emptiness
+as an error or as a cause of the total leg — and the observable distinguishing the two is
+driver-internal, owed by TSPEC (O-7). AT-10 asserts the visible part and cites O-7 for the rest.
 
 ### 3.4 What the reviewer does with it
 
@@ -298,10 +280,9 @@ are omitted is TSPEC's (O-1); that the bounds hold afterwards is this rule. *(-0
 
 ## 5. Edge Cases and Error Scenarios
 
-Rendering is **total**: every case below has one stated outcome, and no case is left to an
-engineer's discretion. Cases marked *(no HEAD instance)* have no witness in the standing corpus and
-are owed a constructed fixture — REQ O-5/O-6 record that as a coverage obligation on PROPERTIES, not
-as a defect here.
+Rendering is **total**: every case below has one stated outcome, and none is left to an engineer's
+discretion. Cases marked *(no HEAD instance)* have no witness in the standing corpus and are owed a
+constructed fixture — O-5/O-6, a coverage obligation on PROPERTIES, not a defect here.
 
 ### Configuration edges
 
@@ -346,10 +327,9 @@ the driver: the finding is **absent**, not marked, not counted, not carried. No 
 
 ## 6. Acceptance Tests
 
-Who / Given / When / Then. Each test names the criterion and the rules it exercises. Tests asserting
-against the standing corpus assert against a **frozen fixture copy** of it at Baseline v1.1's
-`Verified at` commit, never the live repository — which grows, on this branch included, and would
-otherwise drift the test on unrelated decisions (REQ-DECLEDGER-01, O-6).
+Who / Given / When / Then. Each test names its criterion and rules. Tests over the standing corpus
+assert against a **frozen fixture copy** at Baseline v1.1's `Verified at` commit, never the live
+repository — which grows, on this branch included (REQ-DECLEDGER-01, O-6).
 
 ### Index rendering
 
@@ -360,23 +340,21 @@ place. Two dispatches are constructed, differing only in the feature whose docum
 review dispatch prompt is constructed. *Then:* the rendered line set equals the expected set —
 **equality of rendered lines, not containment and not equality over ids alone**.
 
-The expected set for each dispatch is `M-1d`'s project-level enumeration (41 ids) **union the one
-`M-2e` row for that dispatch's feature** — 4 for (a), 7 for (b) — giving 45 and 48 lines, both
-inside `maxEntries` `70`, which is what the *Given* means by within bounds. No other feature's
-`M-2e` row is in scope for either dispatch; a build rendering all 100 feature-level ids fails.
+The expected set is `M-1d`'s 41 project-level ids **union the single `M-2e` row for that dispatch's
+feature** — 4 for (a), 7 for (b) — so 45 and 48 lines, both inside `maxEntries` `70`. No other
+feature's `M-2e` row is in scope for either dispatch; a build rendering all 100 feature-level ids
+fails.
 
-Two conjuncts ride on the choice of those two features, and both are the point of choosing them:
-(a)'s corpus includes `M-4d`'s mixed file, whose **8** non-record headings must contribute **no**
-line while its 4 real records render normally (E-9); (b)'s includes `M-3c`'s twice-opened block,
-where each of `DEC-LOOP-01`…`06` renders exactly one line whose statement is the **second**, deciding
-opening (E-10, BR-2). Ids alone are blind to both, which is why the comparison ranges over id,
-statement and citation together.
+Those two features are chosen for what each pins: (a)'s corpus holds `M-4d`'s mixed file, whose **8**
+non-record headings must contribute **no** line while its 4 real records render (E-9); (b)'s holds
+`M-3c`'s twice-opened block, where each of `DEC-LOOP-01`…`06` renders exactly one line whose
+statement is the **second**, deciding opening (E-10, BR-2). Ids alone are blind to both, which is why
+the comparison ranges over id, statement and citation together.
 
-**Where the expected statement and citation values come from.** They are transcribed from the frozen
-fixture's own heading text and record location — data — and never captured from the renderer's
-output, which would derive the expectation from the code under test and could not fail for a wrong
-statement. `M-3c`'s verbatim second-opening heading is the pinned discriminating case. *(-01; BR-1,
-BR-2, BR-3; E-9, E-10)*
+Expected statements and citations are transcribed from the frozen fixture's own heading text and
+record location — data — never captured from the renderer's output, which would derive the
+expectation from the code under test and could not fail for a wrong statement. `M-3c`'s verbatim
+second-opening heading is the pinned discriminating case. *(-01; BR-1, BR-2, BR-3; E-9, E-10)*
 
 **AT-02 — every rendered citation resolves at its own source.** *Who:* the driver. *Given:* as
 AT-01. *When:* the index is rendered. *Then:* for each line, the cited record file exists and
@@ -502,13 +480,12 @@ parseable `FINDING:` line are all identical. The dispatch-construction leg diffe
 asserted way**: the `false` run's dispatch is byte-identical to AT-04's baseline and the `true`
 run's carries the rendered index.
 
-Invariance alone would pass a driver broken identically in both runs, so at least one of the five
-outcomes is additionally **anchored to a value transcribed from the fixture** — the open-finding
-ledger, whose expected content the recorded reviewer outputs already determine — and the test fails
-if that anchor moves, not only if the two runs diverge. The five are asserted individually and the
-list is **not** claimed exhaustive of driver-side accounting: a sixth mechanism added later is
-covered by extending this list, not by a set equality that would red on sight. The recorded fixture
-is a constructed-fixture obligation of the O-6 class. *(-08; BR-14)*
+Invariance alone passes a driver broken identically in both runs, so at least one of the five is
+additionally **anchored to a value transcribed from the fixture** — the open-finding ledger, which
+the recorded reviewer outputs already determine — and the test fails if that anchor moves, not only
+if the runs diverge. The five are asserted individually; the list is **not** claimed exhaustive of
+driver-side accounting, so a sixth mechanism is covered by extending it, not by a set equality. The
+recorded fixture is a constructed-fixture obligation of the O-6 class. *(-08; BR-14)*
 
 **AT-17 — a filed reopening is scored as any other High finding.** *Who:* the driver. *Given:* the
 flag resolves `true`; a reviewer files a High finding re-opening an indexed decision. *When:* the
@@ -518,8 +495,8 @@ index fails. *(-08; BR-11, BR-14, N-2)*
 
 ## 7. Open Questions
 
-Nothing here blocks TSPEC authoring. Items O-1…O-6 are the REQ's, carried forward unchanged and not
-re-litigated; Q-1…Q-3 are this spec's own, and each names its owner.
+Nothing here blocks TSPEC authoring. O-1…O-6 are the REQ's, carried unchanged; O-7, O-8 and Q-1…Q-3
+are this spec's own, each naming its owner.
 
 ### Carried forward from REQ §7 — routed, not open to this spec
 
@@ -530,42 +507,44 @@ re-litigated; Q-1…Q-3 are this spec's own, and each names its owner.
 | **O-3** | se-author (TSPEC) | How a decision id is minted and kept unique across `docs/_decisions/*` and per-feature records, which are independent namespaces today |
 | **O-4** | se-author (TSPEC) | The identity of C-2's committed baseline, and the pinning that stops a re-capture silently satisfying AT-04 |
 | **O-5** | te-author (PROPERTIES) | Cross-file precedence has no HEAD instance (`M-5a`), so E-11 is owed a **synthetic** two-file fixture recording one id in both a project-level and a feature-level file |
-| **O-6** | te-author (PROPERTIES) | E-2, E-3 and E-4 likewise have no HEAD instance and are owed constructed fixtures, as is the frozen corpus copy AT-01 asserts against |
+| **O-6** | te-author (PROPERTIES) | E-2, E-3 and E-4 likewise have no HEAD instance and are owed constructed fixtures, as are the frozen corpus copy AT-01 asserts against and AT-16's recorded round of reviewer outputs |
+
+### Raised by this spec — obligations
+
+| Id | Owner | Substance |
+|---|---|---|
+| **O-7** | se-author (TSPEC) | BR-8's empty-versus-failed classification has **no dispatch-visible consequence** (§3.3), so TSPEC must expose a driver-internal observable — a count or record of failed sources, distinct from sources that read empty — for AT-10's classification conjunct to be assertable at all. Without it BR-8 is unfalsifiable |
+| **O-8** | te-author (PROPERTIES) | BR-12/BR-13's bounds invariant is universally quantified — for **any** in-scope set and **any** resolved bounds, at most `maxEntries` lines, at most `maxBytes` bytes, no partial line — and AT-13 exercises exactly two examples. It is owed as a **property**, parameterised over set size × line sizes × both bounds, not as further examples |
 
 ### Raised by this spec
 
-**Q-1 — the rendered line's concrete format is TSPEC's, and this spec deliberately does not fix it.**
-*(Owner: se-author.)* The REQ fixes the line's field **content** (BR-3); field order, separators and
-byte-level shape are not stated here, because the renderer that lays out a line is the same one O-1
-already owns for omission order, and splitting it across two documents is how a single clause ends up
-restated in two places. Flagged rather than silently omitted: AT-01 compares whole rendered lines, so
-TSPEC's format choice is what makes that comparison concrete, and TSPEC must fix it before PROPERTIES
-can transcribe an expected value.
+**Q-1 — the rendered line's concrete format is TSPEC's.** *(Owner: se-author.)* The REQ fixes the
+line's field **content** (BR-3); field order, separators and byte shape are not stated here, because
+the renderer laying out a line is the one O-1 already owns for omission order. Flagged rather than
+silently omitted: AT-01 compares whole rendered lines, so TSPEC must fix the format before
+PROPERTIES can transcribe an expected value — the values themselves come from the fixture, not from
+the renderer (AT-01).
 
-**Q-2 — "the feature whose document is under review" needs a definite resolution for a document with
-no feature directory.** *(Owner: se-author, TSPEC.)* §3.2 step 2 scopes the set to project-level
-decisions plus the reviewed document's feature. Every document the pipeline reviews today sits under
-a feature directory, so this has no HEAD instance and is not a defect; but the in-scope set must be
-total, and a dispatch that cannot name a feature should resolve to the project-level set alone rather
-than to a failure. Recorded so TSPEC states it rather than leaving it to fall out of an
-implementation.
+**Q-2 — a document whose feature contributes nothing, or that has no feature directory at all.**
+*(Owner: se-author, TSPEC — mechanism only; the outcome is decided in §3.2 step 2.)* Both resolve to
+the project-level set alone, never to a failure: this is the same answer for both, and it is what
+makes the in-scope set total. Neither has a HEAD instance today. Recorded so TSPEC states the
+resolution rather than letting it fall out of an implementation.
 
-**Q-3 — whether this feature discloses its block in `.claude/pdlc.config.example.json`, and
-therefore whether an engine-side disclosure test is in scope.** *(Owner: se-author, TSPEC.)* REQ NG-6
-forbids engine **runtime** changes but explicitly preserves the shipped per-block
-config-disclosure precedent (`pdlc/engine/__tests__/learnings-config-example.test.js`,
-`loop-config-example.test.js`): if the block is disclosed, the matching disclosure test is in scope.
-The REQ leaves the antecedent unstated. Both shipped gated blocks — `cascade.pinCheck` and
-`review.derivativeStop` — are disclosed in the example config today, so the precedent points one way,
-but it is TSPEC's call and PLAN's task count depends on it.
+**Q-3 — settled, not open: the block is disclosed, and its disclosure test is in scope.** *(Owner:
+se-author, TSPEC — to record, not to decide.)* Every gated block shipped to date is disclosed in
+`.claude/pdlc.config.example.json` with a matching engine-side disclosure test, three for three
+(`learningsInjection`, `cascade.pinCheck`, `review.derivativeStop`), and REQ NG-6 forbids engine
+**runtime** changes while explicitly preserving that precedent. There is no reading under which a
+gated block ships undisclosed, so the antecedent the REQ left unstated is decided here: the
+`decisionLedger` block is disclosed and the disclosure test is in PLAN's task count.
 
 ### Assumptions
 
-Carried from REQ §7 unchanged and operator-vetoable before TSPEC authoring: **A-1** `maxEntries`
-(70) is measured against the Baseline (`M-6b`/`M-6c`) while `maxBytes` (8000) is a
-`learningsInjection` analogy, not measured; **A-2** the rollout posture matches
-`pdlc-loop-economics` — config-gated, default off; **A-3** reviewer-side enforcement is the intended
-reading of the proposal's R3-2, and an operator wanting a mechanical gate should veto before TSPEC
-authoring, since it changes the feature.
+Carried from REQ §7 unchanged, operator-vetoable before TSPEC authoring: **A-1** `maxEntries` (70)
+is measured against the Baseline (`M-6b`/`M-6c`), `maxBytes` (8000) is a `learningsInjection`
+analogy and is not measured; **A-2** rollout matches `pdlc-loop-economics` — config-gated, default
+off; **A-3** reviewer-side enforcement is the intended reading of the proposal's R3-2, vetoable
+before TSPEC since a mechanical gate would change the feature.
 
 This spec adds no new assumption of its own.
