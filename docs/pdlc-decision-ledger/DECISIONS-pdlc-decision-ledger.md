@@ -128,9 +128,12 @@ draws for the promoted set — and C-5's thresholds are operator-configurable no
 (DEC-DECLEDGER-15), so any operator who lowers either one fires the order on the very next dispatch,
 at which point an unspecified order is unfalsifiable exactly when it goes live. Which bound fires
 first is corpus-dependent and is not assumed anywhere: over the G-1-scoped 63 records the entry cap
-has slack, so a lowered `maxBytes` fires first; over TSPEC §7.3's whole 141-record fixture
-`maxEntries` 70 fires first and forces at least 71 omissions before the byte bound is reached, which
-is why §7.3's `omitted[]` conjunct does not go vacuous under the raise. *Rejected: project-level omitted
+has slack, so a lowered `maxBytes` fires first; over TSPEC §7.3's whole 141-record fixture there is
+no "first" at all — §7.3's corrected rationale records that the drop loop's condition is a single
+disjunction, so at 141 records **both** bounds are exceeded from the outset (141 lines against
+`maxEntries` 70, rendered bytes far above the 11,300-byte allowance) and the loop runs until both
+hold, with the **byte** bound setting the terminal survivor count. Either way `omitted[]` is
+non-empty by a wide margin, which is why §7.3's conjunct does not go vacuous under the raise. *Rejected: project-level omitted
 first, or plain enumeration order.* Dropping promoted material before feature material inverts what
 the corpus is for. *Rejected: truncating or abbreviating a line to fit.* Whole-line omission keeps
 "which decisions were shown" answerable; a truncated statement is a decision misquoted to a
@@ -252,8 +255,10 @@ the project-level-only slice.* At 41 records against `maxEntries` 70 and 6,305 b
 11,300-byte allowance nothing is omitted under *any* drop order — the raise widens that margin rather
 than closing it — so the `omitted[]` conjunct would be vacuously true and could not falsify the
 re-ordering it exists to catch, the vacuous-green shape a prior feature's harvest already recorded.
-Over the whole 141-record fixture the conjunct survives the raise, because `maxEntries` 70 alone
-forces at least 71 omissions.
+Over the whole 141-record fixture the conjunct survives the raise, because both bounds are exceeded
+from the outset — 141 lines against `maxEntries` 70 and rendered bytes far above the 11,300-byte
+allowance — so the loop drops until both hold and `omitted[]` cannot be empty at either default
+(TSPEC §7.3).
 
 ### DEC-DECLEDGER-14 — how AT-03's "a record changes between two dispatches" is exercised
 
