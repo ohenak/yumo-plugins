@@ -137,6 +137,60 @@ acted on. The one requiring an engine change is the one that recurred.**
 
 ## Pattern of Disagreement
 
+**There is no disagreement on substance, and this time there is none on the remedy either.**
+
+Both reviewers independently produced the same High from independent lenses — PM-1 and TE-1 are one
+defect seen twice — for the third round running on this document. Neither contested the plan's
+design, batching, decomposition or oracle strategy; rounds 1–7 settled all of that, and round 9's
+census corrections were accepted without comment. What remains is one unlanded instruction and its
+bookkeeping tail.
+
+The contrast with edition 1's halt is the important finding. That halt had a **latent ownership
+disagreement underneath it**: four candidate homes for the terminal `102` assertion, no decision, and
+a downstream artifact that had already guessed. The erratum channel could not land the item because
+nobody had decided what the item should say. **This halt has no such gap.** Both confirmers specify
+the same replacement, in the same terms:
+
+| | pm-review (PM-1) | te-review (TE-1) |
+|---|---|---|
+| Report-key oracle | symmetric-difference-equals-`{decisionLedger}` against the arm's own paired flag-on run | symmetric difference against the flag-on run's key set, **asserted in both directions** |
+| Notices oracle | an `NTC-DECLEDGER-*` set equal to empty | the `NTC-DECLEDGER-*` notice set set-equal to empty |
+| Authority | TSPEC §7.2 / §7.4 | TSPEC v0.9, re-forbidden by v1.1 §7.3 |
+
+The remedy is fully specified by the confirmers, drawn from the same upstream, and needs no
+adjudication. Nothing blocks landing it except landing it.
+
+Three shapes generalise out of the six findings.
+
+**Shape A — the routed item that was never applied (PM-1, TE-1). Recurrence of edition 1's Shape A.**
+The round produced a v0.8, landed routed items 2 and 3 across five sites, re-grounded to a
+twice-moved upstream, and did not touch the one row routed item 1 named. The author emitted
+`REVISION-COMPLETE` regardless, because nothing between the round's dispatch and its confirmation
+compares the routed loci against the round's diff. A round that lands two of three routed items is,
+at dispatch time, indistinguishable from one that lands three.
+
+**Shape B — the inherited twin (TE-2). New, and it defeats the obvious fix.** The routed list named
+T-10a. The claim it asked to retire lives at *two* sites: T-10a and the §Definition of Done bullet.
+The erratum channel routes **loci**, not **claims** — so a claim that is sited twice gets routed once,
+and even a perfect routed-locus diff gate would have passed a round that fixed T-10a and left the DoD
+bullet asserting the retired referents. TE-2's class label `inherited` is the channel admitting it has
+no vocabulary for this: the finding is real, correct, and formally out of scope for the round that
+caused it to matter.
+
+**Shape C — the discipline that does not apply to itself (PM-2, TE-4).** Round 9's entire purpose was
+single-siting: state the arithmetic once, in TSPEC §7.3, and cite it everywhere else. Three PLAN sites
+now declare that they do not restate the arithmetic *in the same sentence in which they restate it*,
+and the header opens its changelog twice with the literal prefix "Revision history:". No contract
+defect — every count agrees — but a round about stating things once produced four new redundant
+statements. The discipline was applied to the payload and not to the prose asserting the payload.
+
+**The through-line.** Edition 1 concluded that this feature's document set had outgrown reliable hand
+maintenance of cross-references, and cited PLAN at 67 KB, TSPEC at 129 KB, PROPERTIES at 96 KB. Those
+are now **83 KB, 150 KB and 110 KB** — every one larger, none smaller. Shapes A, B and C are all
+consequences of the same underlying fact: at this size, a human-or-agent pass over a document reliably
+does *most* of what it was asked, and which part it drops is not random — it is whichever part needs
+the most thought.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
