@@ -65,6 +65,37 @@ which is what BR-14's per-family enumeration actually does. The `CODE_REVIEW-{fe
 clause and the harvest-asymmetry rationale are carried across unchanged.
 ## Acceptance Tests
 
+AT-15 is the only acceptance test carrying a diff line. The edit adds a
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` file to the *Given*'s neither-list and extends the *Then* with
+the assertion that its bytes reach neither side. I applied the three oracle bars to the new leg:
+
+- **Not an absence-only oracle.** The negative — "adding a file on neither list leaves both
+  unchanged" — is not asserted alone. It sits on a path that also asserts the positive: the two
+  totals equal **the literal sums of their members**. An implementation that globbed
+  `CROSS-REVIEW-*` into the process total moves that literal sum and fails, which the edit says in
+  as many words. Correctly paired.
+- **No implementation echo.** The expected values are literal sums of fixture file sizes chosen by
+  the test, not values derived from the code under test.
+- **Set-equality, not containment.** The removal probe survives the edit intact — removing any one
+  of the nine changes its side's total by exactly that file's size — and the edit does not disturb
+  the note that the enumeration and removal legs are non-skippable while the symlink leg is. The
+  `nine` remains arithmetically right: six BR-14 spec documents plus three process families, and
+  the newly added file is on the neither-list, so it is deliberately outside the nine. Adding it
+  did not silently invalidate the count.
+
+The new leg is also the right test for the half TE v7 F-03 identified as unpinned: BR-16's claim
+that a `CROSS-REVIEW-`-prefixed basename outside BR-09's six types contributes no bytes had no
+falsifying test, and now it has one on the byte-ratio path.
+
+**AT-09 not disturbed, and independently re-grounded.** AT-09 is unchanged by the diff but is the
+test that consumes the same real directory, so I re-checked its two repository claims at HEAD: all
+four out-of-catalogue basenames are present as it asserts, and its `TSPEC` row expectation of `6`
+is right — the grammatical TSPEC cross-reviews there run `v1`…`v6` per role, highest index 6. AT-09
+is correct as written; it is BR-16's new sentence that disagrees with it, not the reverse. That
+matters for the fix direction in F-01: **BR-16 moves to four, AT-09 and BR-06 stay.**
+
+No other `AT-*` definition carries a diff line — AT-16, AT-17 and the AT-12 malformed-count legs
+are byte-identical, so the round did not move an oracle while rewording the rule it pins.
 ## Edge Cases and Error Scenarios
 
 ## Delta-Confirmation Findings
