@@ -438,7 +438,33 @@ artifacts".
 
 ## 5. Edge Cases and Error Scenarios
 
-*(pending)*
+Every row states an observable outcome and an exit code. No row's outcome is "undefined" or
+"implementation's choice": an edge case with no decided behavior is a defect generator, and the
+non-numeric states exist precisely so that none of these has to be a crash.
+
+| ID | Situation | Behavior | Exit |
+|---|---|---|---|
+| EC-01 | Feature argument matches no directory under `docs/{feature}/` or `docs/completed/{feature}/`, including a repository with no `docs/completed/` at all. | Reported by name as not found. Human mode: message on stderr. JSON mode: a well-formed error object on stdout — never a partial success document (BR-30). | 1 |
+| EC-02 | The feature exists under **both** `docs/{feature}/` and `docs/completed/{feature}/`, mid-archival. | Reported once, from `docs/{feature}/`. The archived copy is not read (BR-02). The header names the directory used, so the operator can see which snapshot the numbers came from. | 0 |
+| EC-03 | Feature directory exists but is empty. | Every metric reports its zero state: all six review-round rows `0`, DoD `0`, halts none, ratio `n/a` (spec bytes are zero). Not a gap and not an error — an empty directory is a real, reportable state. | 0 |
+| EC-04 | Feature directory contains a subdirectory (for example `_evidence/`). | Ignored entirely; no file inside it contributes to any metric (BR-03). | 0 |
+| EC-05 | A basename begins `CROSS-REVIEW-` but fails the grammar (`-v0`, `-v01`, an unknown role, trailing junk). | Excluded from every round count, listed as malformed under the review-rounds metric, naming the basename (BR-06). The rest of the report is unaffected. | 0 |
+| EC-06 | One role has two files claiming round 1 for the same document type (the un-suffixed form and `-v1` together). | That document type reports `unmeasurable`, naming the colliding role. Other document types in the same feature still report their measured values (BR-07). | 0 |
+| EC-07 | `LEARNINGS-{feature}.md` present, some cross-reviews deleted and others surviving (an interrupted or partial harvest). | Per-document-type split: `harvested` for the types with no file, a measured index for the types with one (BR-08). The DoD metric and the ratio are evaluated on their own evidence, independently (BR-11, BR-16). | 0 |
+| EC-08 | An unknown flag, or a value flag with no value, or a second positional argument. | Usage error naming the offending token on stderr. Nothing on stdout in either mode — a JSON-mode caller must not receive half a document (BR-01). | 1 |
+| EC-09 | The `docs/` root is missing or unreadable. | Reported as such on stderr. This is fleet mode's only non-zero exit (BR-27); in single-feature mode it presents as EC-01's not-found when the root is merely absent. | 1 |
+| EC-10 | A directory appears at the `docs/` root that is in neither the exclusion set nor recognizable as a feature. | The report still prints, and the directory is reported as an unclassified entry naming it (BR-26). It is neither silently excluded nor silently counted as a feature. | 0 |
+| EC-11 | A feature directory exists but cannot be read (permissions). | Fleet mode: a gap row naming the feature and the reason (BR-27), exit unchanged. Single-feature mode: reported on stderr, exit 1 — a caller that asked about one feature gets no report at all rather than a report with a silently missing metric. | 0 / 1 |
+| EC-12 | Spec-side byte total is zero while process-side files exist (mid-authoring, or a harvested tree with the spec documents archived elsewhere). | Ratio is `n/a` (JSON `unavailable`), with both byte totals still reported (BR-15). Never a division by zero, an infinity or `NaN`. | 0 |
+| EC-13 | `LEARNINGS-{feature}.md` present **and** spec bytes are zero. | `harvested`, not `n/a`: BR-16's test is evaluated first, because it is the more specific explanation of the same absence. | 0 |
+| EC-14 | A post-mortem file whose `RESOLVED:` marker is absent, duplicated, or unparseable. | The halt is tagged `open`, matching the driver's fail-closed reading (BR-12). Not an error and not a malformed entry: this command never adjudicates a marker. | 0 |
+| EC-15 | A `POSTMORTEM-` file whose basename does not match `POSTMORTEM-{phase}-{feature}.md` (for example a post-mortem carrying another feature's name). | Contributes no halt entry, exactly as an unrelated file. Halts have no malformed bucket — REQ-STATS-05 defines none, and inventing one here would be an independent parsing rule (REQ C-5). | 0 |
+| EC-16 | A `CODE_REVIEW-` basename that does not match the version grammar. | Contributes nothing, exactly as an unrelated file, and is **not** reported as malformed: the driver draws no malformed distinction on the DoD side, so neither does this command (REQ-STATS-04, REQ C-5). The asymmetry against EC-05 is deliberate. | 0 |
+| EC-17 | A feature directory holding artifacts but no `REQ-{feature}.md` (this repository has one: `docs/pdlc-halt-hardening/` carries only a PLAN). | Reported as a normal feature with whatever metrics its files support — a missing REQ is not a discovery criterion. Its spec-side total simply omits the absent documents. | 0 |
+| EC-18 | Two features whose names differ only in case, on a case-insensitive filesystem. | Whatever the filesystem presents as distinct directory entries are distinct features; the command performs no case folding of its own (BR-04). Ordering stays lexicographic and therefore stable. | 0 |
+| EC-19 | A file in the feature directory that is a symbolic link. | Its byte size is the size the filesystem reports for the path as read; links are not followed outside the feature directory to gather additional files, because discovery is by directory listing (BR-03), not by traversal. | 0 |
+| EC-20 | Fleet mode over a repository with `docs/` present but containing only excluded directories. | An empty report — a header and no feature rows — and exit 0. Empty is a valid measurement; the operator sees that the query ran. | 0 |
+| EC-21 | Any unexpected failure while computing one feature's metrics in fleet mode. | Degrades to that feature's gap row; the remaining features are still reported (BR-27). One unreadable feature never suppresses the fleet report. | 0 |
 
 ## 6. Acceptance Tests
 
