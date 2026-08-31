@@ -201,7 +201,27 @@ authoring, in the two places a test author looks to decide how hard to pin an ex
 
 ## Open Questions
 
-_pending_
+**Q-01.** §8.3 lists a second open erratum item that is now discharged. Does the phase treat §8.3 as
+an authoritative routing list? If so, the closure edit should land before PROPERTIES/PLAN are
+re-read, so no downstream phase re-routes a settled question upstream. I have not treated this as
+gating because the resolution direction is unambiguous and requires no decision — only a re-stamp.
+
+**Q-02.** §8.3's first bullet (FSPEC BR-26/EC-10's circular "unclassified" predicate, `TSPEC:1300-1305`)
+is untouched by this delta and remains genuinely open. It is inherited, not raised here, and it is
+FSPEC-owned — I flag only that closing the REQ-STATS-06 bullet must not be done by deleting §8.3
+wholesale, since the BR-26 item still needs to travel.
+
+**Assumption recorded.** I read the v1.6 and v1.5 changelog paragraphs (`TSPEC:41-63`) as historical
+record, not live claims, and did not file their now-superseded description of REQ v1.6's survivor
+clause as a separate defect beyond the pin. The v1.3 precedent in this same document — where a
+superseded count was *neutralised in place* rather than deleted, and which I praised at v9 — is the
+right template if the author wants to apply it here too.
+
+**Not re-reviewed.** Everything outside the harvest predicate and its narration: §2.1's ten
+co-change sites, the packed and copied vendoring classes, §5's types, §6.2's seamed-unit level,
+§7's remaining acceptance rows, §8.4's DECISIONS questions. Those were approved at v9 against an
+FSPEC that has not moved and a REQ whose only change is the clause above, and I re-litigated none
+of them.
 
 ## Recommendation
 
