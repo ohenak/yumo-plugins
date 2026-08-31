@@ -107,10 +107,20 @@ adding a few hundred lines of pure computation to it puts the feature's entire c
 outside every gate the repo has.
 
 **D rejected — and it is the option worth naming, because a `pdlc/workflows/lib/` member can in fact
-skip the vendoring co-change.** `pdlc/workflows/lib/document-oracles.mjs` is such a member: it
-appears in none of the four vendoring enumerations, only in `pdlc/workflows/package.json`'s
-`c8.include`. The reason it can is that its only importers are tests
+skip the vendoring co-change.** `pdlc/workflows/lib/document-oracles.mjs` is such a member, and the
+measured state at HEAD is stronger than the first draft of this paragraph claimed: it appears in
+none of the four vendoring enumerations **and in no coverage include set either** — `c8.include` is
+the seven `**/`-anchored entries listed in the site table above, and `document-oracles.mjs` is not
+among them. (The completed sibling that added the other two `lib/` members records the same state:
+`docs/completed/pdlc-engineering-loop/`'s PLAN file-state table says `lib/document-oracles.mjs` is
+**not** in the include list.) The reason it can skip both is that its only importer is a test
 (`pdlc/workflows/__tests__/documentOracles.test.js`) — it is never reached by a shipped code path.
+
+The two axes are separate and separately forgettable, and lining them up is the point of the
+example: **runtime reachability decides vendoring**, while **membership in `c8.include` is an
+independent edit that nothing derives**. `document-oracles.mjs` is therefore a precedent for
+skipping *neither* obligation on a runtime-reachable module — a `lib/` member outside every gate is
+what D actually produces, which sharpens the rejection rather than softening it.
 `lib/stats.mjs` is reached by `pdlc stats` on an installed engine, where `resolveWorkflowRoot()`
 resolves to the vendor tree; unvendored, the command would work in a checkout and fail only for
 installed users. D is therefore not a cheaper A, it is a broken A, and the asymmetry with
