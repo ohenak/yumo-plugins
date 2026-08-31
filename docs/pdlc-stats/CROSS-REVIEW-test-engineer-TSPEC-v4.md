@@ -86,3 +86,33 @@ sites are `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs` and `_ts
 and the remaining four of the nine are the pinning tests themselves, which cannot be covered by an
 oracle because they *are* the oracles. The row's demotion from "the exact failure" to "not the first
 thing that reds" is honest and matches HEAD.
+
+## Seams
+
+No seam moved this round. `StatsIo`'s four keys, `StatsParsers`'s four members, the injection
+rationale in §2.5 and the no-write oracle are byte-identical to the approved v1.1 text, and I
+re-read them only to confirm the purity oracle does not implicitly widen the bundle. It does not:
+the oracle is asserted over the same four exports the identity oracle already covers, at the same
+production construction site (`statsParsers()` in `bin/cli.mjs`), so it adds a property to an
+existing seam rather than a seam.
+
+One seam-adjacent observation supports F-01 rather than standing alone. §6.4's purity row says the
+recording double of §6.1 "wraps the real parsers and would silently inherit the shared state rather
+than expose it". That is correct and it is the reason the oracle must run against a freshly-imported
+*driver* module and not through `fakeStatsIo` or the recording double — the double is transparent to
+exactly the state being hunted. The TSPEC says this; I flag it only because an implementer reading
+§6.1 first might reach for the double out of habit, and the sentence that forbids it lives in §6.4.
+A cross-reference from §6.1's double description back to §6.4's purity row would close that, but it
+is a readability nicety, not a finding.
+
+## Data structures
+
+Unchanged and still faithful. `ReviewParse`, `RoundWindow` and `ResolvedMarker` are transcribed
+correctly from the driver, and the two load-bearing details §3.2 calls out — `deriveRoundWindow`
+returning early on a collision without a `skipped` array, and `not_cross_review` being BR-06's "not
+a cross-review at all" bucket — still match `orchestrate-dev.js` at HEAD.
+
+The only data-structure-relevant change is the one F-01 turns on: `deriveDodRoundIndex`'s `number`
+return type was already in §3.2 at approval and is unchanged, so the purity conjunct's overreach is
+a delta-side error, not an upstream drift. §3.2 is the document that already holds the fact the new
+§6.4 text contradicts, which is why the repair is local to §6.4 and needs no type edit.
