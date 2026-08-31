@@ -137,4 +137,25 @@ document, and under DECISION FREEZE it is not a blocking finding here. Recorded 
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | Measurement basis is implicit. K-3 and the site table say "at HEAD" but measure the pre-feature tree (`main`: seven `c8.include` entries, P9-02 title "six"); branch HEAD already carries the implementation (eight entries). Both readings of "HEAD" appear in one document. Non-gating: every arithmetic claim is true on the intended basis, and naming the basis explicitly is a one-line repair owed at the next DECISIONS touch. | K-3 obligation row; site table, `pdlc/workflows/package.json` row |
+| F-02 | Low | inherited | nonlocal | Fourth consecutive round in which an `UPSTREAM-STATE` TSPEC pin resolves to no revision on the branch (`512a9fcf…`, `235fd3dd…`, `f2261510…` ×2). v1.7 now records this as a workflow-side defect routed to harvest and states no conclusion rests on it, which is the correct and complete disposition available to this document — hence de-escalated from v11's Medium to Low. The fix belongs in the workflow (emit the body's measurement; treat a non-resolving pin as fail-closed). | `UPSTREAM-STATE` trailers (cascade mechanism, not document bytes) |
+
+DEFERRED: name the measurement basis explicitly in K-3 and the site table ("pre-feature `main`", not bare "HEAD") at the next DECISIONS touch.
+DEFERRED: implementation defect at `pdlc/workflows/__tests__/coverageInstrumentation.test.js:264` — title says "seven" while the asserted literal holds eight; `:260–261` comment still reads "six-member" / "three entries" against a four-entry `REQUIRED_INCLUDES`. Exactly the mis-sizing K-3 predicted; belongs to the implementation phase.
+DEFERRED: workflow fix for the non-resolving `UPSTREAM-STATE` pin — emit the body's measurement and treat a pin that resolves to no revision as fail-closed for the round.
+
+FINDING: Medium | inherited | nonlocal | K-3 obligation row and site table `package.json` row | "at HEAD" is used for two different trees — the pre-feature `main` the arithmetic is measured against (seven `c8.include` entries, P9-02 title "six") and branch HEAD, which already carries the implementation (eight entries). Claims are true on the intended basis; the basis is never named. Non-gating, one-line repair owed at the next touch.
+FINDING: Low | inherited | nonlocal | UPSTREAM-STATE trailers (cascade mechanism, not document bytes) | Fourth round with a TSPEC pin resolving to no revision on the branch; v1.7 records it as a workflow-side defect routed to harvest with no conclusion resting on it, so the document-side disposition is complete — de-escalated from Medium to Low, fix belongs in the workflow.
+
+## Recommendation
+
+**Approved with minor changes** — all four v11 findings resolved, no High findings, no defect
+introduced by the delta.
+
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
