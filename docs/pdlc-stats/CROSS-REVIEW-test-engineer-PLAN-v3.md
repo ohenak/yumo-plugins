@@ -78,7 +78,46 @@ ten rows and does not include the sibling documents; they are T-22's work under 
 
 ## Dependencies
 
-_pending_
+**Batch column and dependency edges: untouched by this delta, not re-derived.** The TSPEC delta
+changes no seam, no test level, no fixture ownership and no "reds first" mechanism, so no edge in the
+PLAN DAG has a new predecessor. The batch arithmetic I checked mechanically at v1 and confirmed
+unmoved at v2 still stands.
+
+**One narration line is now looser than its upstream — F-01.** PLAN's batch-10 gate note reads that
+on entry to the batch, `loop-distribution.test.js`'s `assertAdditiveOnly` "goes red as soon as the
+first enumeration moves", and calls that `K-1`'s expected mid-batch red signal. TSPEC §6.4, as edited
+at v1.4/v1.5, now names that trigger precisely: the oracle fires on **the four enumerations
+`assertAdditiveOnly` reads** — §2.1's sites 1–4, `prepack.mjs`, `publish-preflight.mjs`,
+`fixture-machine.mjs` and `_tspec-packed-set.mjs` — and TSPEC adds, in the same edit, the sentence
+"'Four' here is the subset this oracle reaches, not §2.1's ten-site total". It made that edit
+*because* the unqualified phrasing was being misread.
+
+PLAN's unqualified "the first enumeration" now reads wider than its upstream: batch 10 also contains
+T-24, which moves `package.json`'s `c8.include` — an enumeration in every ordinary sense, and one
+`assertAdditiveOnly` does **not** read. An implementer who lands T-24 first and sees green would be
+reading a green that PLAN's sentence told them to expect red.
+
+The consequence is bounded, which is why this is Low and not Medium:
+
+- The tasks that move sites 1–4 — T-21 (`prepack.mjs`), T-22 (`_tspec-packed-set.mjs`), T-25
+  (`publish-preflight.mjs`, `fixture-machine.mjs`) — are **all** in batch 10 alongside T-24, so the
+  red does arrive within the batch whatever the intra-batch order.
+- The batch is a green gate measured at its **end**, not per-task, so a transiently-green
+  `assertAdditiveOnly` cannot let a partial co-change through.
+
+The fix is one parenthetical on the batch-10 row: name the subset (sites 1–4 / T-21, T-22, T-25) the
+way §6.4 now does. **F-01, Low, delta, nonlocal.**
+
+**Batch 9's split gate — held.** T-20's `stats-vendoring.test.js` is still the only permitted red,
+still for the single stated reason (no enumeration names `lib/stats.mjs` yet). §6.4's rename of the
+four-enumeration subset does not change which oracle is permitted red in batch 9, nor the ordering
+argument that puts the HEAD-resident `assertAdditiveOnly` ahead of the new derived oracle.
+
+**T-26's mutation task — held.** TSPEC §6.6's `unmeasurable`/`harvested` mutant and its
+single-owner fixture (T-04's `LEARNINGS`-sibling configuration, the only one in which the two branch
+orders disagree) are untouched by this delta. The BR-16/REQ-STATS-06 dispute is about which *files*
+count as surviving cross-reviews, not about the branch **order** the mutant probes, so T-26's killer
+survives either reconciliation outcome.
 
 ## Verification
 
