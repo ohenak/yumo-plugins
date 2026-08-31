@@ -468,7 +468,101 @@ non-numeric states exist precisely so that none of these has to be a crash.
 
 ## 6. Acceptance Tests
 
-*(pending)*
+Each test names Who / Given / When / Then. Fixtures are constructed artifact directories unless a
+test names a real path in this repository; where it does, the named path is what makes the
+expectation checkable against a tree that already exists.
+
+### 6.1 Single-feature reporting
+
+**AT-01 — the four metrics print.**
+*Who:* pipeline operator. *Given:* a feature directory holding cross-reviews, `CODE_REVIEW` files
+and a post-mortem. *When:* `pdlc stats {feature}`. *Then:* stdout carries one block naming the
+feature and the directory it was read from, followed by review rounds (six document-type rows in
+catalogue order), DoD rounds, halts, and the byte ratio, in that order; exit 0.
+
+**AT-02 — the live directory wins over the archive.**
+*Who:* pipeline operator. *Given:* the same feature name exists under both `docs/{feature}/` and
+`docs/completed/{feature}/`, with different artifacts in each. *When:* `pdlc stats {feature}`.
+*Then:* every reported number derives from `docs/{feature}/` alone, the header names that path,
+and no metric equals the sum of the two directories (EC-02).
+
+**AT-03 — a subdirectory contributes nothing.**
+*Who:* pipeline operator. *Given:* a feature directory containing a subdirectory whose files carry
+artifact-shaped names. *When:* `pdlc stats {feature}`. *Then:* the report is byte-identical to the
+report for the same directory with that subdirectory absent (EC-04).
+
+### 6.2 JSON mode
+
+**AT-04 — stdout is exactly one JSON document.**
+*Who:* automated caller. *Given:* any reportable feature. *When:* `pdlc stats {feature} --json`.
+*Then:* stdout parses as a single JSON document with no surrounding text; any diagnostic output
+appeared on stderr; exit 0.
+
+**AT-05 — top-level key set is set-equal to the printed metric set plus the schema version.**
+*Who:* automated caller. *Given:* a feature whose report exercises a malformed basename and at least
+one non-numeric state. *When:* `pdlc stats {feature} --json`. *Then:* the top-level keys are exactly
+`schemaVersion`, `reviewRounds`, `dodRounds`, `halts`, `byteRatio` — five, no more — and the
+malformed list and the `harvested` / `unmeasurable` states appear **inside** their own metric's
+value, not as additional top-level keys (BR-21, BR-22).
+
+**AT-06 — human and JSON agree metric for metric.**
+*Who:* automated caller. *Given:* the same feature. *When:* both modes are run over an unchanged
+tree. *Then:* every value shown in the human table is recoverable from the JSON document, and the
+ratio's two-decimal rendering matches the JSON number (BR-15); a metric present in one mode and
+absent from the other fails this test.
+
+### 6.3 Review rounds
+
+**AT-07 — highest index across roles, not a sum and not per role.**
+*Who:* pipeline operator. *Given:* a document type with a test-engineer cross-review at round 5 and
+a product-manager cross-review at round 3. *When:* the report is produced. *Then:* that row reads
+`5`; no `8` and no per-role breakdown appear anywhere in either mode (BR-05).
+
+**AT-08 — the un-suffixed form is round 1.**
+*Who:* pipeline operator. *Given:* a document type whose only cross-review is
+`CROSS-REVIEW-{role}-{DOCTYPE}.md`, with no `-v` suffix. *When:* the report is produced. *Then:*
+that row reads `1`, not `0` (BR-05).
+
+**AT-09 — malformed is excluded and named; a non-cross-review is neither.**
+*Who:* pipeline operator. *Given:* a directory containing one grammatical cross-review, one
+`CROSS-REVIEW-`-prefixed basename that fails the grammar, and unrelated artifacts
+(`LEARNINGS-*.md`, `HANDOFF-PROMPT.md`). *When:* the report is produced. *Then:* the round count
+reflects only the grammatical file; the failing basename is listed as malformed by name; and no
+unrelated artifact appears in the malformed list (BR-06, EC-05).
+
+**AT-10 — partial harvest splits per document type.**
+*Who:* pipeline operator. *Given:* `docs/completed/pdlc-headless-engine/` — `LEARNINGS` present,
+one surviving TSPEC cross-review, no cross-review for the other five types. *When:*
+`pdlc stats pdlc-headless-engine`. *Then:* the TSPEC row carries the measured index derived from
+the surviving file, and the other five rows read `harvested`; no row reads `0` (BR-08, EC-07).
+
+### 6.4 DoD rounds
+
+**AT-11 — highest version, not the next round index and not a file count.**
+*Who:* pipeline operator. *Given:* `docs/completed/pdlc-loop-economics/`, which carries
+`CODE_REVIEW-pdlc-loop-economics-v1.md` and `-v2.md`. *When:* the report is produced. *Then:* DoD
+rounds reads `2` — not `3` (the pipeline's next-round derivation) and not a count that would
+disagree with the highest version on a partially harvested directory (BR-10).
+
+**AT-12 — DoD harvested only when its own evidence is gone.**
+*Who:* pipeline operator. *Given:* two directories, both with `LEARNINGS-{feature}.md`: one with a
+surviving `CODE_REVIEW` file, one with none. *When:* both are reported. *Then:* the first reports
+the measured highest version and the second reports `harvested`; neither reports `0` in place of
+the other's state (BR-11).
+
+### 6.5 Halts
+
+**AT-13 — one entry per phase, resolution as the driver classifies it.**
+*Who:* pipeline operator. *Given:* `docs/completed/pdlc-wave-resume/`, which carries
+`POSTMORTEM-PR-pdlc-wave-resume.md`. *When:* the report is produced. *Then:* exactly one halt entry
+appears, for phase `PR`, tagged with the resolution the pipeline's own `RESOLVED:` rule yields for
+that file's bytes; the report states no marker-matching rule of its own (BR-12).
+
+**AT-14 — no post-mortem is zero halts, and an unreadable marker is `open`.**
+*Who:* pipeline operator. *Given:* one feature with no post-mortem file, and one whose post-mortem
+carries a duplicated `RESOLVED:` marker. *When:* both are reported. *Then:* the first shows an
+explicit "none" (human) / empty array (JSON) and exits 0; the second shows that phase tagged `open`
+and exits 0 (BR-13, EC-14).
 
 ## 7. Open Questions
 
