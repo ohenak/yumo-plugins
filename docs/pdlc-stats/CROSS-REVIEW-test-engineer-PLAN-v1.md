@@ -77,7 +77,46 @@ measured at batch end" are both correct readings of `assertAdditiveOnly`'s behav
 
 ## Dependencies
 
-_(batch-DAG re-derivation, acyclicity, ordering rationale)_
+**Batch-column arithmetic — re-derived independently, all 27 rows agree.**
+
+| Task(s) | Deps → batches | `max + 1` | Column |
+|---|---|---|---|
+| T-01, T-02 | source | 1 | 1 ✓ |
+| T-03 … T-11 | T-01 (1), T-02 (1) | 2 | 2 ✓ |
+| T-12 | T-03 (2), T-08 (2) | 3 | 3 ✓ |
+| T-13 | T-12 (3), T-04 (2) | 4 | 4 ✓ |
+| T-14 | T-13 (4), T-05 (2) | 5 | 5 ✓ |
+| T-15 | T-14 (5), T-06 (2) | 6 | 6 ✓ |
+| T-16 | T-15 (6), T-07 (2) | 7 | 7 ✓ |
+| T-17 | T-16 (7), T-09/T-10/T-11 (2) | 8 | 8 ✓ |
+| T-18, T-19, T-20 | T-17 (8) | 9 | 9 ✓ |
+| T-21 … T-25 | T-20 (9) | 10 | 10 ✓ |
+| T-26 | T-18 (9), T-19 (9), T-21 (10) | 11 | 11 ✓ |
+| T-27 | T-21 (10) | 11 | 11 ✓ |
+
+No understated batch, no overstated batch, ids unique, every `Deps` token resolves, graph acyclic
+(every edge points strictly downward in batch number). The dispatcher reads the column and the
+column is right.
+
+**Ordering rationale — one internal contradiction.** The rationale for "T-18 depends on T-17, not on
+T-16" is that T-18's "end-to-end conjunct runs the shipped command and therefore the production
+`statsIo` — the real-fs seam that no workflows-side double exercises". But T-18's own row places the
+file at `pdlc/workflows/__tests__/statsRealPaths.test.js` and lists only real-path AT legs
+(AT-09/10/11/13/14b/18), no CLI invocation; and the Overview's arrangement rule says "tests that
+drive `bin/cli.mjs` live in the engine suite". Two of these three statements can be true, not all
+three. The edge itself is harmless (it over-constrains rather than understates, so no batch-column
+desync), but the implementer is told two different things about what T-18 asserts and where the
+production seam is proved. F-06.
+
+**Everything else in the rationale holds up.** T-20 gating the batch-10 cluster is the correct
+closure of `DEC-STATS-01` `K-1`: `stats-vendoring.test.js` is red *before* any enumeration moves, so
+a cluster that lands four of five edits cannot go green. T-22/T-23 being separate tasks in the same
+batch is forced by `loop-distribution.test.js`'s P7-02 oracle, which derives
+`vendoredClassSize` from `tspecPackedCount` and greps the sibling documents for the matching
+number-word (`const vendoredClassWord = vendoredClassSize === 5 ? "five" : String(...)`) — the PLAN's
+instruction to replace that ternary with a number-word map is exactly right, since
+`String(6)` would never match the word T-22 writes. T-21/T-24 staying unmerged because their file
+sets straddle different required checks is a genuine falsifiability argument, not a preference.
 
 ## Verification
 
