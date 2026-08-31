@@ -13,7 +13,7 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.1 | 2026-08-31 |
+| Draft | pm-author | 1.2 | 2026-08-31 |
 
 **ID:** `FSPEC-STATS-01`
 
@@ -879,6 +879,7 @@ no oracle.
 
 | D-7 | Does fleet human mode carry the same metric set as the JSON document, or a summary? | The same set, with exactly two reductions: malformed basenames as a count, halts as `{n} ({r} resolved)` (BR-18). | REQ-STATS-07 requires REQ-STATS-01's metric set per feature, so no metric may be dropped — but a row cannot carry a list. A count and a resolved-tally preserve the two signals an operator scans a fleet for (a round count that is *wrong* rather than absent; a halt still open) while staying one line. AT-06's fleet half pins the reduction as exactly these two. |
 | D-8 | A `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file, written by the pipeline's own Phase CR, is rejected by the driver's basename parse. Malformed, or its own bucket? | Malformed, named, counted in no row (BR-06). | REQ-STATS-03 disposes of every `CROSS-REVIEW-`-prefixed basename that fails the grammar as malformed, and C-5 binds this command to the driver's per-file rejection. A third bucket would be an independent rule and a divergence in one move. The cost — a pipeline-authored artifact reading as "malformed" — is a defect of the upstream criterion and is raised as an erratum (§7.3), not repaired downstream. |
+| D-9 | A repository with no `docs/` root at all satisfies REQ-STATS-09's *Given* — the feature is absent under both roots — so the criterion demands a not-found report. Not-found, or a root failure? | A root failure: EC-09's message and `no_docs_root` error object, not EC-01's not-found (§3.1 A2 exits before A3 can resolve a feature). | REQ-STATS-09's *Given* sweeps this case in without meaning to: its subject is a feature that does not exist in a repository that does, and "there is no `docs/` root here" is both true and more useful than "feature X not found", which invites the operator to check a spelling when the repository is the problem. The behaviour is the better one and stands; the criterion's wording is what needs the carve-out, so it is raised as an erratum (§7.3) rather than left as an unexplained contradiction with a P1 criterion. BR-30's two `reason` values keep both answers machine-distinguishable, so a caller loses nothing by the choice. |
 
 ### 7.2 Open — for TSPEC
 
@@ -918,6 +919,21 @@ Two further errata are raised by this round's cross-reviews:
   `docs/completed/pdlc-advisory-wave-gate/` and are, under the criterion as written, reported to an
   operator as malformed. D-8 follows the REQ literally rather than diverging; whether that is the
   intended operator-facing wording is the REQ's to decide.
+
+Two more are raised by this round's cross-reviews, both against criterion *wording* whose behaviour
+this FSPEC decides differently and deliberately:
+
+- **REQ-STATS-09's *Given* sweeps in the no-`docs/`-root case** (software-engineer FSPEC v2 F-02,
+  Medium). A repository with no `docs/` root satisfies "absent under both `docs/{feature}/` and
+  `docs/completed/{feature}/`", so the criterion as written demands a not-found report on the one
+  path EC-09 refuses one. D-9 decides the root failure and says why; the criterion needs the
+  carve-out, and until it has one the two documents disagree on a P1 path.
+- **REQ-STATS-07's "reports it by name as missing/malformed" does not describe a zero-state row**
+  (software-engineer FSPEC v2 F-04, Medium). BR-27 narrows *missing artifacts* out of the gap
+  branch: a readable but empty directory is a measured row, and only unreadability is a gap. Nothing
+  the criterion protects is lost — the feature is still reported by name, never omitted — but "as
+  missing" is not what that row says, and the narrowing is what resolved the v1 empty-directory
+  contradiction, so it is the wording that should move.
 
 - **REQ-STATS-02's state enumeration over-distributes across the ACs it names** (test-engineer v3
   F-03, Low) and **REQ-STATS-08's conjunct (b) lost its list separator** (both reviewers, Low).
