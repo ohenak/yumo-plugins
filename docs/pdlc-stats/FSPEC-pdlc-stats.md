@@ -394,12 +394,16 @@ without either re-deriving the vocabulary; REQ O-1 assigns that choice to this d
 
 ### 4.4 JSON rendering
 
-**BR-20 (stdout carries the document and nothing else).** In `--json` mode, on every path that
-produces a report or a not-found result, stdout is exactly one well-formed JSON document. The one
-path that produces neither is a usage error, where stdout is empty (EC-08, BR-01): the command has
-not accepted the invocation, so there is nothing it could be a report *of*, and a caller that
-mis-spelled a flag learns it from exit 1 and stderr rather than from a document body. Progress notes, warnings and error text go to stderr in both modes, so a
-caller can parse stdout unconditionally. The human table never appears in JSON mode, and the JSON
+**BR-20 (stdout carries the document and nothing else).** In `--json` mode stdout is exactly one
+well-formed JSON document on **every** path but one: a report, a not-found result (BR-30), and a
+`docs/`-root failure (EC-09, BR-30's `no_docs_root` reason) all emit one. The single exception is a
+usage error, where stdout is empty (EC-08, BR-01): the command has not accepted the invocation, so
+there is nothing it could be a report *of*, and a caller that mis-spelled a flag learns it from exit
+1 and stderr rather than from a document body. The rule is stated as always-but-one rather than
+path-by-path because the enumeration is what rots: a failure path added later with no stdout
+decision silently breaks the guarantee this rule exists to give. Progress notes, warnings and error
+text go to stderr in both modes, so a caller can parse stdout unconditionally on any path it did not
+itself mis-invoke. The human table never appears in JSON mode, and the JSON
 document never appears in human mode.
 
 **BR-21 (single-feature top-level key set).** The single-feature JSON document has exactly five
@@ -487,11 +491,18 @@ unknown feature, unreadable `docs/` root. `2` is never emitted: the existing CLI
 pipeline halt (`pdlc/engine/bin/cli.mjs`, exit-code header), and a reporting command has no halt to
 signal.
 
-**BR-30 (not-found is reported in both modes).** An unknown feature exits 1 and says so by name. In
-human mode that is a message on stderr; in `--json` mode stdout carries a well-formed error object,
-never a truncated document and never a partial success document with empty metrics — a caller that
-parses stdout must be able to tell "this feature does not exist" from "this feature has no
-artifacts".
+**BR-30 (refusals are reported in both modes, under one error shape).** An unknown feature exits 1
+and says so by name; so does a `docs/`-root failure (EC-09). In human mode that is a message on
+stderr. In `--json` mode stdout carries a well-formed error object with exactly three top-level
+keys — `schemaVersion`, `error`, `feature` — set-equal and no longer, never a truncated document and
+never a partial success document with empty metrics. `error` is an object with exactly `reason` and
+`message`; `reason` is one of `not_found` and `no_docs_root`. `feature` is the name the caller
+supplied, `null` where none was (a fleet-mode root failure). Two things follow, and both are the
+point: a caller can tell "this feature does not exist" from "there is no `docs/` root here" without
+parsing prose, and can tell both from "this feature has no artifacts" — which is a *success*
+document with zero states, not an error. `schemaVersion` is hoisted exactly as BR-21 hoists it, so a
+consumer reads the version before it branches on shape; the error object is a released shape under
+REQ R-5 and BR-24's increment rule governs it as it governs the success document.
 
 ## 5. Edge Cases and Error Scenarios
 
