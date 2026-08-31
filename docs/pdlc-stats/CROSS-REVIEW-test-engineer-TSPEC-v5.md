@@ -141,10 +141,54 @@ that claim rather than accept it.
 
 ## Positive Observations
 
+- **The derivation is now re-runnable, and I re-ran it.** Sweep → 24, filter → −14, residue → 10,
+  and the ten match §2.1's table row-for-row. A count a reviewer can reproduce in one command is a
+  different artifact from a count a reviewer must trust; `DEC-STATS-03`'s trigger and RK-1's residue
+  argument both rest on this number, so making it falsifiable was the right target for the round.
+- **The filter is stated as a property, not a list.** "An enumerator needs an edit when a new member
+  is added; a consumer does not" is a rule a future reader can re-apply to a changed repo, which is
+  what keeps the number alive rather than a snapshot.
+- **The un-oracled site is named, not absorbed.** `pdlc/README.md` enters as a row and as RK-1
+  residue (ii) with an owning task, and §6.4's coverage claim stays at "four of the ten directly and
+  a fifth indirectly" instead of drifting upward with the count. Growing a co-change set without
+  growing the claimed coverage is the honest move.
+- **The copied-class / packed-class distinction is called out before anyone can conflate it.** 4 → 5
+  and 5 → 6 are genuinely different numbers at HEAD (`VENDOR-MANIFEST.json` is in one class and not
+  the other), and the row says so in bold. That is a trap defused in advance.
+- **The purity split trades an unfalsifiable conjunct for a falsifiable one and says which is which.**
+  Naming what A-B-A cannot catch (a correct memo) alongside what it can (accumulating state) is the
+  behaviour I want from an oracle description. The alternative repairs — keep a conjunct that reds
+  on correct code, or delete the detector entirely — were both worse, and the document argues that
+  explicitly.
+
 ## Open Questions
+
+None. Nothing in the delta requires clarification before implementation begins; every claim it makes
+is checkable against HEAD, and I checked each one.
+
+For the record, not as a question and not as a finding: the sweep's `24` is a measurement of this
+repository at this commit, in the same way §6.1's real-path literals are measurements of
+`docs/completed/`. If a future feature adds a `loop*` consumer test, the candidate count moves and
+the dropped count moves with it while the residue stays at ten. The document already frames the
+number as "re-runnable" rather than fixed, so this is the intended reading, not a gap.
 
 ## Recommendation
 
+**Approved.**
+
+Both routed items land. The §2.1 derivation is reproducible end-to-end and I reproduced it; the
+`coverageInstrumentation.test.js` row now names P9-02's title and is symmetric with its
+`learningsPremises.test.js` sibling. The collateral corrections that rode the same erratum break
+nothing previously approved: the tenth site is real and honestly un-oracled, the eighth assertion
+edit is a genuine oracle that would otherwise red, and the §6.4 purity split removes a conjunct that
+would have failed correct code while preserving `DEC-STATS-03`'s only mechanical detector. Upstream
+REQ v1.4 / FSPEC v1.4 are unmoved, so the document still derives from this upstream state.
+
 ## Delta-Confirmation Findings
 
+No findings.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
