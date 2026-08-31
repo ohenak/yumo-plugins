@@ -99,7 +99,7 @@ TSPEC §6.2's six (`unit-pure`, `unit-seamed`, `unit-render`, `integration-fake`
 | PROP-DISC-01 | When `docs/{feature}/` exists, the report must be computed from it and the archived copy must not be read at all: the report over a tree carrying both locations must be **byte-identical** to the report over the same tree with `docs/completed/{feature}/` removed, and the header must name `docs/{feature}`. Byte-identity, not a negative probe — a merged read that deduplicates by basename would pass an "archive not mentioned" check. | Data Integrity | integration-fake | REQ C-2, BR-02, AT-02, EC-02; PLAN T-05/T-14 |
 | PROP-DISC-02 | When `docs/{feature}/` is absent and `docs/completed/{feature}/` exists, the report must be produced from the archived directory and the header must name it. | Functional | integration-fake | BR-02; PLAN T-05 |
 | PROP-DISC-03 | Only files **directly in** the resolved directory may contribute to any metric: the report over a feature directory carrying a subdirectory of artifact-shaped names must be byte-identical to the report over the same directory with that subdirectory absent. The real shape exists — `docs/completed/pdlc-loop-economics/_evidence/` — so this is not hypothetical. | Data Integrity | integration-fake | BR-03, AT-03, EC-04; TSPEC §4.3; PLAN T-07 |
-| PROP-DISC-04 | Fleet discovery must consider immediate **directories** only. A loose file at either root must yield no row, whatever its basename claims — `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/completed/REQ-completed.md` and `docs/completed/QUEUE-HISTORY-rows-0-1.md` are all present at HEAD and none may appear. | Functional | integration-fs | BR-25, AT-18; TSPEC §4.4; PLAN T-05/T-18 |
+| PROP-DISC-04 | Fleet discovery must consider immediate **directories** only. A loose file at either root must yield no row, whatever its basename claims — `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/completed/REQ-completed.md` and `docs/completed/QUEUE-HISTORY-rows-0-1.md` are all present at HEAD and none may appear. Conversely, a *directory* whose artifacts include no `REQ-{feature}.md` must appear as an ordinary measured row — `docs/pdlc-halt-hardening/`, which holds only `PLAN-pdlc-halt-hardening.md` at HEAD, must be present with its metrics, because a missing REQ is not a discovery criterion (EC-17). Both halves in one test: an implementation that admits loose files, and one that requires a REQ, each fail. | Functional | integration-fs | BR-25, AT-18, EC-17; TSPEC §4.4; PLAN T-05/T-18 |
 | PROP-DISC-05 | `NON_FEATURE_DIRS` must be set-equal to `["_queue","_constraints","_decisions","design","requirements","ideas","discarded","completed"]`, asserted against a hand-transcribed literal (never against the module's own export), **and** set-equal to the non-feature directories actually present at this repository's `docs/` root, partitioned by an independent artifact-naming witness rather than by the leading-underscore predicate under test. | Contract | integration-fs | REQ-STATS-07, BR-25, BR-26; TSPEC §6.4; PLAN T-08 |
 | PROP-DISC-06 | `completed` must be excluded **as a feature** and traversed **as a container**: no fleet row may be named `completed`, and every directory under `docs/completed/` must appear as a row exactly once. | Functional | integration-fs | BR-25, AT-18; PLAN T-05/T-18 |
 | PROP-DISC-07 | A directory at the `docs/` root that is in neither `NON_FEATURE_DIRS` nor recognisable as a feature must surface as an `unclassified` entry — named in the human report's feature list in the same order and marked as such, and a member of the JSON document's top-level `unclassified` array — and must **not** appear as a key of `features`. It must be neither silently reported as a feature nor silently dropped. | Functional | integration-fake | BR-26, AT-19, EC-10; TSPEC §4.4; PLAN T-05/T-06 |
@@ -387,9 +387,9 @@ Gaps are named in §Gaps and Open Items rather than left for a reader to discove
 | REQ-STATS-04 (DoD rounds) | PROP-DOD-01…04, PROP-NEG-04 |
 | REQ-STATS-05 (halts) | PROP-HALT-01…08 |
 | REQ-STATS-06 (byte ratio) | PROP-RATIO-01…10, PROP-NEG-04 |
-| REQ-STATS-07 (fleet, explicit gaps) | PROP-DISC-04…09, PROP-ERR-05, PROP-ERR-06, PROP-ERR-07, PROP-RENDER-06, PROP-NEG-06 |
+| REQ-STATS-07 (fleet, explicit gaps) | PROP-DISC-04…10, PROP-ERR-05, PROP-ERR-06, PROP-ERR-07, PROP-RENDER-06, PROP-NEG-06 |
 | REQ-STATS-08 (read-only, both conjuncts) | PROP-RO-01…06, PROP-NEG-01 |
-| REQ-STATS-09 (unknown feature) | PROP-ERR-01, PROP-ERR-02, PROP-ERR-03, PROP-NEG-05 |
+| REQ-STATS-09 (unknown feature) | PROP-ERR-01, PROP-ERR-02, PROP-ERR-03, PROP-ERR-10, PROP-NEG-05 |
 | C-1 read-only surface | PROP-RO-05, PROP-RO-06, PROP-NEG-01 |
 | C-2 directory preference | PROP-DISC-01, PROP-DISC-02, PROP-NEG-03 |
 | C-3 spec-document set | PROP-RATIO-01, PROP-RATIO-02 |
@@ -399,11 +399,14 @@ Gaps are named in §Gaps and Open Items rather than left for a reader to discove
 | R-2 double counting | PROP-DISC-01, PROP-NEG-03 |
 | R-3 `git` reach | PROP-RO-06, PROP-RO-05 |
 | R-4 zero denominator | PROP-RATIO-07 |
-| R-5 JSON field drift | PROP-JSON-03, PROP-JSON-09 |
+| R-5 JSON field drift | PROP-JSON-03, PROP-JSON-09, PROP-ERR-10 |
 | R-6 harvested reads as zero | PROP-RR-09, PROP-RR-10, PROP-DOD-03, PROP-RATIO-08, PROP-NEG-04 |
 | A-1 literal basename | PROP-DISC-08 |
 | A-2 computed fresh, no cache, no persisted stats file | PROP-NEG-01, PROP-RO-05 (no write seam exists, so no stats file can be persisted) |
+| O-2 no divergence from the driver's classification | PROP-DRIFT-01…04, PROP-RR-13, PROP-NEG-07 |
 | O-3 subcommand of the `pdlc` entry point | PROP-CLI-04, PROP-CLI-05, PROP-CLI-06 |
+
+Three REQ ids carry no property row, by design rather than by omission: **A-3** ("authored in an orchestrated, non-interactive dispatch") is an assumption about this document's own production, not about the command; **O-1** routes JSON field spellings, column layout and rendering tokens to FSPEC/TSPEC, and the properties assert those documents' settled spellings rather than the routing decision itself; **O-4** places payload size, cross-repo aggregation and dispatch count out of scope, so there is nothing to falsify. Every other REQ id — the nine `REQ-STATS-*`, `C-1…C-5`, `R-1…R-6`, `A-1`, `A-2`, `O-2`, `O-3` — has at least one row above.
 
 ### FSPEC business rules
 
@@ -447,15 +450,15 @@ Gaps are named in §Gaps and Open Items rather than left for a reader to discove
 | AT-15 | PROP-RATIO-01…04 | EC-16 | PROP-DOD-04 |
 | AT-16 | PROP-RATIO-07 | EC-17 | PROP-DISC-04 |
 | AT-17 | PROP-RATIO-08, PROP-RATIO-09 | EC-18 | PROP-DISC-08 |
-| AT-18 | PROP-DISC-04, PROP-DISC-06, PROP-DISC-08 | EC-19 | PROP-RATIO-04, PROP-RATIO-05 |
-| AT-19 | PROP-DISC-05, PROP-DISC-07, PROP-JSON-07 | EC-20 | PROP-DISC-04 |
+| AT-18 | PROP-DISC-04, PROP-DISC-06, PROP-DISC-08, PROP-DISC-10 | EC-19 | PROP-RATIO-04, PROP-RATIO-05 |
+| AT-19 | PROP-DISC-05, PROP-DISC-07, PROP-JSON-07 | EC-20 | PROP-DISC-10 |
 | AT-20 | PROP-ERR-05, PROP-ERR-06, PROP-JSON-08 | EC-21 | PROP-ERR-06 |
 | AT-21 / AT-22 | PROP-RO-01…04, PROP-RO-06, PROP-NEG-01 | | |
-| AT-23 | PROP-ERR-01, PROP-ERR-02 | | |
+| AT-23 | PROP-ERR-01, PROP-ERR-02, PROP-ERR-10 | | |
 | AT-24 | PROP-CLI-01…04, PROP-JSON-02 | | |
 | AT-25 | PROP-RR-07, PROP-RR-08 | | |
 | AT-26 | PROP-ERR-07 | | |
-| AT-27 | PROP-ERR-03, PROP-ERR-04, PROP-ERR-05 | | |
+| AT-27 | PROP-ERR-03, PROP-ERR-04, PROP-ERR-05, PROP-ERR-10 | | |
 | AT-28 | PROP-DOD-04 | | |
 
 
@@ -502,12 +505,12 @@ assumed-existing; the five files this feature *amends* were confirmed **present*
 | unit-pure | PROP-CLI-01, -05; PROP-RR-13; PROP-DRIFT-04, -07 | 5 |
 | unit-seamed | PROP-RR-01…-02, -04, -06…-09, -11; PROP-DOD-02…-04; PROP-HALT-03, -05, -07; PROP-RATIO-01…-03, -06…-09; PROP-ERR-08; PROP-PBT-01, -02, -04; PROP-NEG-02, -04 | 27 |
 | unit-render | PROP-RR-12; PROP-RENDER-01…-06; PROP-JSON-03…-10; PROP-RATIO-10 | 16 |
-| integration-fake | PROP-DISC-01…-03, -07…-09; PROP-ERR-01…-07, -09; PROP-CLI-07; PROP-PBT-03; PROP-NEG-03, -05, -06 | 19 |
+| integration-fake | PROP-DISC-01…-03, -07…-10; PROP-ERR-01…-07, -09, -10; PROP-CLI-07; PROP-PBT-03; PROP-NEG-03, -05, -06 | 21 |
 | integration-fs | PROP-DISC-04…-06; PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04 | 13 |
 | process | PROP-CLI-02…-04, -06, -08; PROP-JSON-01, -02; PROP-RO-01…-06; PROP-RATIO-05; PROP-DRIFT-01…-03, -05, -06; PROP-NEG-01, -07, -08 | 22 |
 | E2E (spawned) | none | 0 |
 
-The shape is the intended pyramid: 67 properties falsifiable without a filesystem or a process, 13
+The shape is the intended pyramid: 69 properties falsifiable without a filesystem or a process, 13
 needing the real archive because `lstat` semantics and real basenames are the claim, 22 at the CLI
 edge because flag closure, stdout emptiness, exit codes, wiring identity and the read-only stance
 are not observable below it, and no spawned end-to-end test at all.
