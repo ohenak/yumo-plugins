@@ -117,6 +117,17 @@ None. The one open item is F-01, which is a one-word correction with an unambigu
 a question needing a decision.
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | delta | local | BR-16's new provenance sentence says `docs/completed/pdlc-advisory-wave-gate/` "carries **two**" out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files. It carries **four** at HEAD (pm v1/v2, te v1/v2, present on `origin/main`), and §4.2 BR-06 in this same document says "Four such files sit in" that directory, while AT-09 asserts "all four basenames appear in the malformed list". The round's edit introduces both a false repository claim and an internal contradiction with the oracle that consumes the same directory. Fix: `two` → `four`; BR-06 and AT-09 are correct and must not move. | §4.2 BR-16 |
+
+FINDING: High | delta | local | §4.2 BR-16 provenance sentence | Says the cited directory carries "two" out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files; HEAD carries four, and §4.2 BR-06 and AT-09 in this same document both say four — fix the count to four in BR-16 only
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | BR-16's new provenance sentence undercounts the cited real directory as "two" out-of-catalogue cross-reviews where HEAD has four, contradicting §4.2 BR-06 ("Four such files sit in…") and AT-09's "all four basenames" oracle. One document, two counts of the same directory; a reader who trusts BR-16 and "corrects" AT-09 breaks a passing oracle. Change `two` to `four` in BR-16; leave BR-06 and AT-09 as they are. | §4.2 BR-16 |
 ## Findings
 
 ## Open Questions
