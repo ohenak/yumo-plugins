@@ -195,3 +195,41 @@ stays a question.
 FINDING: Low | inherited | nonlocal | K-3 / DEC-STATS-01 site table, coverageInstrumentation.test.js row | TSPEC section 2.1 still states P9-02's title moves six to seven; re-measured at HEAD, REQUIRED_INCLUDES holds four entries and c8.include holds seven today, so this feature moves it seven to eight. DECISIONS carries the correct arithmetic and records the divergence; the repair belongs upstream in TSPEC and must not be matched into agreement with a number known wrong. Carried from v6 F-05, v7 F-02 and v8 F-01, and untouched by TSPEC v1.5 and v1.6.
 
 FINDING: Low | inherited | nonlocal | v1.6 changelog upstream grounding line | The grounding attestation is written in the present tense and was true at the commit where it was written, but REQ, FSPEC and TSPEC have all moved since, so it reads false at HEAD; version-scoped past tense would prevent a superseded pin being misread as live. Not gating, since a changelog records the document at its own version.
+
+## Positive Observations
+
+- **The document survived three upstream revisions without owing a round.** REQ moved twice, FSPEC
+  twice and TSPEC twice since this document was last written, and none of it reaches what DECISIONS
+  decides. That is not luck — it is the seam holding. A decisions document scoped to module
+  boundaries and co-change cost *should* be insensitive to upstream churn in predicate semantics,
+  and this one demonstrably is. I looked for the coupling and could not find it.
+
+- **Its grounding attestation was honest, and I verified that rather than assuming it.** TSPEC v1.6
+  had just corrected a false "upstream did not move" claim in its own v1.5 changelog, which made the
+  same claim in DECISIONS worth testing rather than reading past. I reconstructed the upstream hashes
+  at `7adc9666` and all three matched what the document said it had grounded on. The document did the
+  check it claimed to do.
+
+- **Upstream converged on this document's partition, not the other way round.** TSPEC v1.5 corrected
+  §1 and RK-1 to place the sibling-feature carve-out outside the ten — the scoping DECISIONS had
+  already adopted at its own v1.5 and defended through the v6 High. The two documents now describe
+  one co-change contract, from both directions, and PLAN reads a set that partitions the same way in
+  either document.
+
+- **The carried erratum is still carried honestly.** It would have been cheap, and invisible, to
+  quietly restate TSPEC's *six → seven* and let the two documents agree. The document instead keeps
+  the correct arithmetic, names the divergence, names its direction, names its owner, and says why
+  TSPEC is not edited from this dispatch. Two rounds later that decision still looks right: I
+  re-measured, and DECISIONS is the one holding the true number.
+
+- **The freeze was respected from both sides.** TSPEC routed its new REQ-versus-FSPEC conflict to
+  §8.3 as an open erratum rather than promoting it into §8.4's *Questions for DECISIONS*. That
+  routing is what let this round stay a confirmation instead of reopening a decision, and it is
+  worth naming as good upstream discipline rather than treated as the default.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | K-9 covers three sites, two with falsifiers and one (`pdlc/README.md`'s prose enumeration) without. Will PLAN's task carry an explicit review checkpoint for that edit? A green `run.test.js` and `learningsPremises.test.js` can read as "K-9 done" while the prose member list and its count word go stale in silence — the partial-co-change shape `RK-1` exists to prevent. Carried unanswered from v7 and v8. |
+| Q-02 | Three consecutive rounds now, the dispatch's TSPEC pin has been either unresolvable (`sha256:512a9fcf…`, matching no revision on the branch) or absent. The document has handled it correctly by re-grounding on HEAD under `DEC-ERR-03`, but where is that hash produced? If it names a version that never existed rather than an older one, the staleness check is not lagging but broken, and no document-side discipline can compensate. Pipeline observation, not a document defect. |
