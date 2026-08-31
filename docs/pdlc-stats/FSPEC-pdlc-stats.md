@@ -480,7 +480,7 @@ increment it. Its presence is one of REQ R-5's two observable stability guarante
 **BR-25 (fleet discovery: directories only, fixed exclusion set).** Discovery considers immediate
 **directories** only. A loose file at either root is never a feature, whatever its basename claims:
 `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/completed/REQ-completed.md` and
-`docs/completed/QUEUE-HISTORY-rows-0-1.md` are all present here and none of the three is one.
+`docs/completed/QUEUE-HISTORY-rows-0-1.md` are all present here and none is a feature.
 The excluded directory names, fixed by REQ-STATS-07 and not configurable, are `_queue`,
 `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded` and `completed`.
 `completed` is excluded **as a feature** and traversed **as a container**: its children are
