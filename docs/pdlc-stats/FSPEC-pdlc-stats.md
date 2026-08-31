@@ -16,9 +16,9 @@ feature: pdlc-stats
 | Draft | pm-author | 1.4 | 2026-08-31 |
 
 Erratum round (v1.4): re-grounded on REQ v1.4. BR-11 and BR-16 state their harvested conditions over
-the documented basename grammars REQ-STATS-04/06 name, not bare globs, so BR-16 and BR-14 read one
-file set; BR-25 names the archive root's second loose file; §7.3's harvested-predicate errata are
-absorbed, the REQ having decided them. No other change.
+the basename grammars REQ-STATS-04/06 name, not bare globs, so BR-16 and BR-14 read one file set;
+BR-25 names the archive root's second loose file; §7.3's harvested-predicate errata are absorbed.
+No other change.
 
 **ID:** `FSPEC-STATS-01`
 
@@ -927,10 +927,10 @@ no oracle.
 
 ### 7.3 Upstream errata raised, not folded in
 
-Wording findings left open in the REQ text are raised as errata against it rather than silently
-resolved here, and this FSPEC records which reading it derived from.
+Wording findings left open in the REQ text are raised as errata against it rather than resolved
+here; this FSPEC records which reading it derived from.
 
-The three harvested-predicate errata this section carried are **closed**: REQ v1.3 and v1.4 scoped
+The three harvested-predicate errata this section carried are **closed**: REQ v1.3/v1.4 scoped
 REQ-STATS-04's and REQ-STATS-06's harvested tests to the documented basename grammars. BR-11, BR-16,
 AT-12 and AT-17 state and pin that form; nothing about them is routed upstream now. Two errata
 remain:
