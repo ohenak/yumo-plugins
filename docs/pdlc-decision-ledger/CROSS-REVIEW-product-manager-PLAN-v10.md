@@ -124,7 +124,50 @@ a convenience — and that dependency is unchanged.
 
 ## Verification
 
-_pending_
+**The §Definition of Done checklist now matches the task rows.** The v9 round's real hazard was a
+half-fix: correcting T-10a while leaving the DoD bullet an implementer signs off against carrying
+the two retired referents. Both flag-off bullets were restated in the same edit, and the census
+bullet carries the same operand nouns and the same §7.3 citation as T-11. I checked the three
+mirrored sites against each other — T-10a's row, the flag-off DoD bullet, and the census DoD bullet
+— and they now state one contract in one vocabulary. That matters beyond tidiness: a checklist that
+disagrees with its own plan is the artefact that gets signed off, and the disagreement surfaces at
+batch 8 with a confusing diagnosis.
+
+**Upstream faithfulness at HEAD, beyond the item list (DEC-ERR-03).** TSPEC v1.2 touched §7.3 and
+§4.3. §7.3 is covered above. §4.3 is the one the item list does *not* mention, so I re-read it and
+traced it downstream:
+
+- §4.3 v1.2 answers "four constants" normatively: `DECISION_LEDGER_PREAMBLE` and
+  `DECISION_LEDGER_RULE_TEXT` are top-level constants, while the header and trailer sentinel lines
+  **ship as inline string literals inside `renderDecisionLedgerBlock`'s body**, not as top-level
+  bindings — because hoisting either would introduce a feature-declared name absent from
+  `DECISION_LEDGER_OWNED_DECLS` and fire §7.3's classify-or-redden guard.
+- The PLAN does not contradict this at any site. T-15's owned declarations are `PREAMBLE` and
+  `RULE_TEXT` only — no header or trailer constant is assigned to any task. T-06 and the DoD budget
+  bullet speak of "header + preamble + rule text + trailer" as rendered **pieces** measured against
+  the ≤ 1,200-byte literal, never as four top-level constants. The fourteen therefore stands
+  unmoved downstream, which is exactly the invariant §4.3 v1.2 was protecting.
+
+So the one upstream movement outside the routed item's scope lands in this PLAN as a no-op, and it
+is a no-op for the right reason rather than by luck.
+
+**Requirement traceability re-checked on the moved bytes only.**
+
+| Moved site | Requirement it serves | Preserved? |
+|---|---|---|
+| T-10a conjunct 3, clause 1 (prompt byte-identity vs T-02's committed recording) | REQ-DECLEDGER-02 (P0), FSPEC AT-04 | Untouched, including the anti-subtraction guard AT-04's "not a same-branch comparison" demands |
+| T-10a conjunct 3, clauses 2–3 (symmetric difference, empty notice set) | REQ-DECLEDGER-02's no-residue guard; TSPEC §7.2 | Replaced with falsifiable forms; nothing narrowed |
+| T-10a conjuncts 1–2 (`_git` call-count spy; prompt ends with the block) | DC-07 builder-not-wired; REQ-DECLEDGER-03's rendered rule text | Untouched |
+| T-11 companion assertion | BR-11 / REQ NG-4 (the driver never reads a decision id) | Untouched in substance; operands named, authority cited |
+| §DoD flag-off + census bullets | as above | Restated to match, no criterion dropped |
+
+No requirement lost a task, no out-of-scope behaviour appeared, and no acceptance criterion was
+narrowed, broadened or re-triggered by this edit. My **builder-not-wired** concern for this feature
+is discharged by T-10a rather than weakened by it: the arm still drives the real `main()`, still
+asserts `gatherDecisionCorpus`'s `_git` seam is invoked **≥ 1** on the served reviewer flow, and is
+still named the home file for T-18's `report.decisionLedger` assertion — so the flag-on direction of
+the symmetric-difference clause is pinned by a positive presence assertion, not left to the set
+identity alone.
 
 ## Delta-Confirmation Findings
 
