@@ -13,7 +13,40 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.4 | 2026-08-31 |
+| Draft | se-author | 1.5 | 2026-08-31 |
+
+**v1.5 (erratum round 6 — upstream re-grounding).** Targeted versioned edit; no restructuring, no
+re-litigation. **Upstream moved: TSPEC v1.2 → v1.4** (HEAD `sha256:cb351bb3…`; the dispatch's cited
+`sha256:512a9fcf…` matches no revision of TSPEC on this branch, so re-grounding was done against HEAD
+per DEC-ERR-03). REQ v1.4 and FSPEC v1.5 were re-read and carry no decision this document owes.
+
+Two upstream decisions absorbed ahead of the raised items. (1) **TSPEC §2.1's co-change set is ten,
+not nine** — `pdlc/README.md`'s prose member list is a row there. This document had argued it out of
+the table on a falsifiers-only membership rule; that divergence is settled in upstream's favour and
+the rule restated, because PLAN reads both tables and a set that is nine in one and ten in the other
+partitions into K-rows that do not cover it. The README row carries "pinned by no oracle" in place of
+a falsifier. (2) **TSPEC §6.4 split the classifier-purity conjunct on return type**, and the erratum
+routing it there has landed: non-aliasing is scoped to the three object-returning classifiers, and
+`deriveDodRoundIndex` (typed `=> number`) gets an A-B-A conjunct instead. As this document had it —
+non-aliased results for all four — the named detector would have redded a correct, wholly pure
+implementation. What A-B-A does and does not falsify is now stated: accumulating state reds, a memo
+table does not, so the *Residuals* row is **narrowed rather than closed**.
+
+Following from those: the site table gains its tenth row and the narrative counts move nine → ten
+throughout; K-1's partition covers site 10 (K-9's); K-8's headline moves **seven → eight** assertion
+edits, folding P7-02's `vendoredClassWord` ternary inside the total as TSPEC counts it rather than
+holding it beside; K-9's promoted constraint now travels **with its pathspec**, and the 25-vs-24
+candidate totals are reconciled as probe-variant routes to the same ten transcribers; the
+re-evaluation trigger moves to **sixteen lists across ten files** and retracts v1.4's *"cannot
+disagree again"* claim, which a shared sweep does not buy across two documents. K-3 re-measures
+`c8.include` at HEAD (`REQUIRED_INCLUDES` is **four**, so the literal is seven and this feature makes
+it eight) and records TSPEC §2.1's *"six → seven"* as an **erratum owed upstream**, keeping the
+correct arithmetic here rather than matching a number known to be wrong.
+
+Per `DEC-DOC-01`, `coverageInstrumentation.test.js:264` / `:261` and `pdlc/README.md:231` are replaced
+by test-title, comment-text and section citations: a line anchor into a file this feature itself edits
+is invalidated by that edit. Verdicts, options, `DEC-STATS-01/02/03` and every behavioural claim are
+unchanged.
 
 **v1.4 (cross-review round 4).** Fixes the sweep's **scope** and its **tool**, and the one cost claim
 that depended on both. Scope: the sweep is restated over tracked sources (`git grep -l "escalation-view"
@@ -393,10 +426,16 @@ each reversal costs what the original cost.
   `coverageInstrumentation.test.js`'s expected include literal, `loop-distribution.test.js`'s
   `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`, `D2_D3_BASELINE` and
   `D5_BASELINE`, `run.test.js`'s two manifest `deepEqual` lists and its `scratchWorkflows` copy list,
-  and `learningsPremises.test.js`'s P-1 literal: **fifteen hand-written lists across nine files**
-  (twelve distinct member facts — `D1_BASELINE` and `D5_BASELINE` hold identical content, as do
-  `run.test.js`'s three lists; the transcription cost is nonetheless paid per list, not per fact).
-  This count and the site table are now derived from the same sweep, so they cannot disagree again.
+  `learningsPremises.test.js`'s P-1 literal, and `pdlc/README.md`'s prose member list: **sixteen
+  hand-written lists across ten files** (thirteen distinct member facts — `D1_BASELINE` and
+  `D5_BASELINE` hold identical content, as do `run.test.js`'s three lists; the transcription cost is
+  nonetheless paid per list, not per fact).
+
+  This count and the site table are derived from the same sweep and move together. Note that v1.4
+  asserted they *"cannot disagree again"*, and they promptly did — not with each other, but with
+  TSPEC §2.1, which had already moved to ten. The guarantee a shared sweep buys is internal
+  consistency within one document; it does not bind two documents, and the mechanism that actually
+  catches that drift is the erratum round, not the query.
   The five inside `loop-distribution.test.js` are
   transcriptions of the same membership facts as the first four, and their own comment says so —
   *"transcribed once, here … never derived from a directory listing"* — so they are precisely what a
