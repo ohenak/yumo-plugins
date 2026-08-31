@@ -810,7 +810,7 @@ export function parseDecisionLedgerConfig(text: string | null): {
 
 Validation mirrors `parseLearningsConfig` exactly: `boolField` for `enabled`, `nonNegativeInt`
 for the two thresholds. `nonNegativeInt` — not positive-int — is deliberate, because
-`0` is a **valid** admits-nothing value on **either** threshold: FSPEC v1.3's E-7 requires
+`0` is a **valid** admits-nothing value on **either** threshold: FSPEC **E-7** requires
 `maxEntries` `0` *and* `maxBytes` `0` alike to be treated as zero in-scope decisions rather than as
 an error or a fallback to the default (on the `maxBytes` axis the same outcome also arrives by
 E-8 then E-6, since every line exceeds `0`). This **agrees with** REQ
@@ -1131,7 +1131,7 @@ and nothing introduces an operator-facing failure class (REQ-DECLEDGER-04, G-3).
 | F-10 | Every in-scope decision fails to render for any mixture of F-8/F-9 reasons | `selected.length === 0` | Total leg — same bytes as F-6/F-7. This is why §6.2 partitions on *what survives*, never on *what failed* |
 | F-11 | Rendered index exceeds `maxEntries` and/or `maxBytes` | §3.6's drop loop | Whole lines dropped in omission order until both bounds hold; each drop recorded in `omitted[]`. Never truncated, never aborted, never oversized (BR-13, N-1) |
 | F-12 | A single line alone exceeds `maxBytes` | same loop | Dropped whole; the remaining lines render if they fit; if it was the only line, `selected` is empty and the block is `""` (E-8 ⇒ E-6) |
-| F-13 | **Either** bound resolves to `0` — `maxEntries` `0`, or `maxBytes` `0` | `nonNegativeInt` accepts `0` on both keys; the drop loop empties `selected` (on the `maxBytes` axis every line exceeds the bound, E-8 ⇒ E-6) | Block is `""` — E-6's outcome, identically on either key. Not an error, not a fallback to the default, not a halt (FSPEC v1.3's E-7) |
+| F-13 | **Either** bound resolves to `0` — `maxEntries` `0`, or `maxBytes` `0` | `nonNegativeInt` accepts `0` on both keys; the drop loop empties `selected` (on the `maxBytes` axis every line exceeds the bound, E-8 ⇒ E-6) | Block is `""` — E-6's outcome, identically on either key. Not an error, not a fallback to the default, not a halt (FSPEC **E-7**) |
 | F-14 | The feature under review has no directory among the three globs, or its directory yields zero records | §3.1's union over one operand | Project-level set alone. Not a failure, not an empty-set error (Q-2) |
 
 Nothing in this table throws past `dispatchAndVerify`, and nothing writes to disk.
@@ -1699,7 +1699,7 @@ both target pure functions §7.1 already tests with no doubles at all.
 | AT-11 | pure unit | set equality over C-3 × §3.1's condition space, plus block-level malformation |
 | AT-12 | integration + source census, §7.3 | rule text carries the id key; `DEC-LOOPECON-06`'s triple untouched |
 | AT-13, AT-15 | pure unit, subsumed by §7.5's property | examples kept as regression anchors |
-| AT-14 | baseline guard | positive assertion: all **three** of FSPEC v1.3's cases — zero-decision set, `maxEntries` `0`, `maxBytes` `0` — byte-identical to AT-04's stream |
+| AT-14 | baseline guard | positive assertion: all **three** of FSPEC **E-7**'s cases — zero-decision set, `maxEntries` `0`, `maxBytes` `0` — byte-identical to AT-04's stream |
 | AT-16 | replay, both flag settings | invariance **plus** the open-finding ledger anchored to a value transcribed from the fixture, so a driver broken identically in both arms still fails |
 | AT-17 | integration | a filed High reopening mints its erratum item and satisfies the confirmation-presence check |
 | AT-18 | corpus oracle over O-5's synthetic two-file fixture | cardinality **and** §3.4's positive conjunct: the single line's `statement`/`sourcePath` equal the project-level record's (transcribed from the fixture) and `origin === "project"`, with the feature-level statement asserted absent |
