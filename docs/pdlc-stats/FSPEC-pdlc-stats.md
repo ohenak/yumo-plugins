@@ -13,7 +13,12 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.4 | 2026-08-31 |
+| Draft | pm-author | 1.5 | 2026-08-31 |
+
+Erratum round (v1.5): §7.3's two criterion-wording errata against REQ-STATS-09 (no-`docs/`-root
+case) and REQ-STATS-07 (zero-state row) are marked **closed** — REQ v1.4 already carries both
+carve-outs, so the entries' claim that the documents disagree was stale. No behavioural change: D-9,
+EC-09 and BR-27 stand as written. No other change.
 
 Erratum round (v1.4): re-grounded on REQ v1.4. BR-11 and BR-16 state their harvested conditions over
 the basename grammars REQ-STATS-04/06 name, not bare globs, so BR-16 and BR-14 read one file set;
@@ -924,46 +929,26 @@ no oracle.
 | O-3 | How byte totals are obtained. BR-14 fixes *which* files are on each side and that the number is the file's size on disk; the mechanism is TSPEC's, bounded only by BR-28's read-only stance. | TSPEC |
 | O-4 | Whether fleet mode's per-feature computation is sequential or concurrent. BR-18's lexicographic ordering and §3.4's read-only invariant hold either way; nothing in this document requires one. | TSPEC |
 
-### 7.3 Upstream errata raised, not folded in
+### 7.3 Upstream errata raised, not folded in — all closed
 
-Wording findings left open in the REQ text are raised as errata against it rather than resolved
-here; this FSPEC records which reading it derived from.
+This section carried five errata against REQ *wording*. **All five are closed at REQ v1.4**; this
+FSPEC routes nothing upstream. No behaviour changed in closing them — in every case the REQ adopted
+the reading this FSPEC had already implemented, so the business rules and acceptance tests named
+below stand exactly as written. The entries are kept as a record of what was raised and how it
+settled.
 
-The three harvested-predicate errata this section carried are **closed**: REQ v1.3/v1.4 scoped
-REQ-STATS-04's and REQ-STATS-06's harvested tests to the documented basename grammars. BR-11, BR-16,
-AT-12 and AT-17 state and pin that form; nothing about them is routed upstream now. Two errata
-remain:
+| # | Erratum raised | Closed by | FSPEC sites that stand unchanged |
+|---|---|---|---|
+| E-1 | REQ-STATS-04's and REQ-STATS-06's harvested predicates read as bare globs (three related findings) | REQ v1.3/v1.4 scoped both to the documented basename grammars | BR-11, BR-16, AT-12, AT-17 |
+| E-2 | REQ-STATS-05 requires a post-mortem listing C-5 defines nowhere (software-engineer FSPEC v1 F-03, High) | REQ v1.4: C-5 states the carve-out — post-mortem *discovery* is REQ-STATS-05's own, fidelity binds the `RESOLVED:` marker, not the listing | §1, BR-12 |
+| E-3 | REQ-STATS-03's malformed disposition swallows pipeline-authored `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files (test-engineer FSPEC v1 F-01, High) | REQ v1.4: REQ-STATS-03 decides the label explicitly — those names are malformed, one label stands, a third bucket would be an independent rule C-5 forbids | D-8, BR-06 |
+| E-4 | REQ-STATS-09's *Given* sweeps in the no-`docs/`-root case (software-engineer FSPEC v2 F-02, Medium) | REQ v1.4: the *Given* now scopes itself to a repository whose `docs/` root is present and readable, and names a missing or unreadable root a root failure | D-9, EC-09, BR-30 |
+| E-5 | REQ-STATS-07's gap wording does not describe a zero-state row (software-engineer FSPEC v2 F-04, Medium) | REQ v1.4: the criterion now states a readable but empty directory "is not a gap but a normal row whose metrics report their zero states" | BR-27, AT-19 |
 
-- **REQ-STATS-05 requires a post-mortem-listing classification that C-5 says the REQ defines
-  nowhere** (software-engineer FSPEC v1 F-03, High). "One entry per distinct phase with a
-  post-mortem file present" requires phases be discovered from basenames, while C-5 enumerates only
-  three re-read rules, none of them a `POSTMORTEM-*` listing — and the driver has no such rule to
-  inherit, since it constructs the path from a phase it already holds. BR-12 and §1 state the match
-  and say why it is not a divergence; the REQ's own C-5 enumeration is what needs the carve-out.
-- **REQ-STATS-03's malformed disposition swallows pipeline-authored artifacts** (test-engineer FSPEC
-  v1 F-01, High). Four `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files written by Phase CR sit in
-  `docs/completed/pdlc-advisory-wave-gate/` and are, under the criterion as written, reported to an
-  operator as malformed. D-8 follows the REQ literally rather than diverging; whether that is the
-  intended operator-facing wording is the REQ's to decide.
-
-Three more follow: the first two against criterion *wording* whose behaviour this FSPEC decides
-differently and deliberately, the third collecting two findings no FSPEC behaviour turns on:
-
-- **REQ-STATS-09's *Given* sweeps in the no-`docs/`-root case** (software-engineer FSPEC v2 F-02,
-  Medium). A repository with no `docs/` root satisfies "absent under both `docs/{feature}/` and
-  `docs/completed/{feature}/`", so the criterion as written demands a not-found report on the one
-  path EC-09 refuses one. D-9 decides the root failure and says why; the criterion needs the
-  carve-out, and until it has one the two documents disagree on a P1 path.
-- **REQ-STATS-07's "reports it by name as missing/malformed" does not describe a zero-state row**
-  (software-engineer FSPEC v2 F-04, Medium). BR-27 narrows *missing artifacts* out of the gap
-  branch: a readable but empty directory is a measured row, and only unreadability is a gap. Nothing
-  the criterion protects is lost — the feature is still reported by name, never omitted — but "as
-  missing" is not what that row says, and the narrowing is what resolved the v1 empty-directory
-  contradiction, so it is the wording that should move.
-
-- **REQ-STATS-02's state enumeration over-distributes across the ACs it names** (test-engineer v3
-  F-03, Low) and **REQ-STATS-08's conjunct (b) lost its list separator** (both reviewers, Low).
-  BR-22 and §3.4 state the intended readings; no FSPEC behavior turns on either.
+Two Low findings remain recorded but route nowhere: **REQ-STATS-02's state enumeration
+over-distributes across the ACs it names** (test-engineer v3 F-03) and **REQ-STATS-08's conjunct (b)
+lost its list separator** (both reviewers). BR-22 and §3.4 state the intended readings; no FSPEC
+behaviour turns on either.
 
 ### 7.4 Assumptions
 
