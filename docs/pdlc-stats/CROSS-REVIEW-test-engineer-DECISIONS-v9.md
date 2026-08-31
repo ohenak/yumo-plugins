@@ -74,3 +74,36 @@ probe, the 24 is TSPEC's (`TSPEC:211-222` states the `lib/loop-session.mjs` prob
 arithmetic explicitly), and DECISIONS' own probe-invariance table already reconciles them. The error
 was mine — comparing one document's total under the other's query, the exact thing this document
 warns is "not defensible". Nothing is owed to TSPEC on that count.
+
+## Decision
+
+**The document is unchanged, remains a faithful compression of REQ v1.6 / FSPEC v1.7 / TSPEC v1.6 at
+HEAD, and nothing was broken.** No High finding, old or new. Two findings stand, both **inherited**
+(there is no delta on this document, so nothing can be `delta`-provenanced) and both **nonlocal**.
+
+Every repository claim in the document re-measured at HEAD, one by one — this is the part that could
+have rotted while the branch advanced, and none of it did:
+
+| Claim (DECISIONS) | Re-measured at HEAD | State |
+|---|---|---|
+| `prepack.mjs` `MODULE_NAMES` = four bare names | `pdlc/engine/scripts/prepack.mjs`, four members | holds |
+| `publish-preflight.mjs` holds a deliberate production-side copy at `:205-219`, comment at `:200-203` | `LIB_MODULES_AT_HEAD` (12) + `LIB_MODULES_FROM_THIS_FEATURE` (3) at exactly those lines; comment reads *"deliberate second, production-side copy"* | holds |
+| `_tspec-packed-set.mjs` `tspecPackedCount` = `4 + 15 + 5 + 1 + (licence…)` | `_tspec-packed-set.mjs:98-99`, verbatim | holds |
+| `pdlc/workflows/package.json` `c8.include` = **seven** `**/`-anchored entries | seven entries, both `lib/*.mjs` members present | holds |
+| `REQUIRED_INCLUDES` holds **four** entries, so P9-02's literal is `4 + 1 + 2` = seven | `coverageInstrumentation.test.js:37-46`: four entries, the fourth `check-wave-resume-delta-coverage.mjs` | holds |
+| P9-02's title still says **six** | `coverageInstrumentation.test.js:264` — *"the include set is exactly the six modules the feature owns"* | holds (stale in the shipped code, as the document says) |
+| P-1's title pins the count | `learningsPremises.test.js:78` — *"MODULE_NAMES is exactly the four canonical workflow modules"* | holds |
+| `run.test.js` is live: 27 top-level `test(` calls, no `.skip` | 27 and 0, measured | holds |
+| `pdlc/README.md`'s prose enumeration names four and is pinned by no oracle | `pdlc/README.md:231`, the four-member sentence; `documentOracles.test.js` reads the file but not the member list | holds |
+| Two grep hits survive and fail the predicate: `loop-cli.test.js` at `:122`, `:637`, `:652`, `:681`, `:827`, `:852`; `cli.mjs` at `:114`, `:117` | every one of the eight line anchors resolves to the stated `path.join` / `pathToFileURL` / comment shape | holds |
+
+The line-number anchors are the fragile class, and the document is explicit that it uses them only
+where position is the measurement (the grep hits) while citing test titles and section prose
+elsewhere per `DEC-DOC-01`. Eight anchors, eight resolutions, on a branch that has taken twenty-odd
+commits since they were written.
+
+The cost claims are equally intact. Option B's "four edit sites" still prices correctly: an engine
+`lib/` module is not enumerated by `MODULE_NAMES`, so B genuinely does not pay `run.test.js`,
+`learningsPremises.test.js`, `prepack.mjs` or `fixture-machine.mjs`, and `pdlc/engine/package.json`
+still declares no `c8` block and no coverage dependency, which is what makes B's and C's "no coverage
+gate" column true rather than rhetorical. Option A's ten remain the ten.
