@@ -107,4 +107,17 @@ edits.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | Medium | inherited | nonlocal | §2 Goals, G-3 (vs REQ-STATS-07) | G-3 still says feature artifacts "missing or failing to parse" are "reported missing/malformed". REQ-STATS-07 now reserves the by-name gap report for a directory that **cannot be read**, treats a readable-but-empty directory as a normal zero row, and leaves *malformed* as a within-metric state (REQ-STATS-03). Not touched by this round's edit. Fix: G-3 to read "any feature directory that cannot be read is reported by name with its reason — never silently dropped". |
+| F-02 | Low | inherited | local | §4 REQ-STATS-06 harvested predicate (vs REQ-STATS-03 / C-5) | C-4's `{doc-type}` is an open placeholder; the driver's is a closed catalogue (`REVIEW_DOC_TYPES`, `pdlc/workflows/orchestrate-dev.js:10105-10112`, rejected at `:10144` as `bad_doc_type`). So `CROSS-REVIEW-product-manager-REVIEW-v1.md` — four such files exist under `docs/completed/pdlc-advisory-wave-gate/` — is malformed under REQ-STATS-03 but a survivor under REQ-STATS-06. Both ACs are individually correct and the pre-delta glob behaved the same way, hence `inherited`; the risk is a shared harvested fixture assuming the two agree. Worth one clause noting the predicate is deliberately set-membership over C-4, not classification under C-5. |
+| F-03 | Low | delta | local | §Status, v1.4 erratum note (REQ lines 19-22) | The note justifies the edit as "so a foreign-feature file cannot suppress the harvested state". True for `CODE_REVIEW-{feature}-v{N}.md`, which carries a `{feature}` segment; false for `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, which has none — a foreign cross-review is byte-indistinguishable from a native one and still counts as a survivor. The AC is correct; only the note's rationale over-promises, and a test author writing that case from the note would author an unpassable fixture. Fix: attribute the feature-scoping claim to the DoD family only, or restate the note as grammar conformance. |
+
+FINDING: Medium | inherited | nonlocal | §2 Goals, G-3 | G-3's "artifacts missing or failing to parse are reported missing/malformed" contradicts the corrected REQ-STATS-07: a readable-but-empty directory is a normal zero row, only an unreadable directory is a by-name gap, and malformed is a within-metric state rather than a feature-level label.
+FINDING: Low | inherited | local | §4 REQ-STATS-06 harvested predicate | C-4's open `{doc-type}` placeholder admits `CROSS-REVIEW-{role}-REVIEW-v{N}.md` as a survivor while REQ-STATS-03 classifies the same real files (docs/completed/pdlc-advisory-wave-gate/) as malformed via the driver's closed `REVIEW_DOC_TYPES` catalogue; a shared harvested fixture assuming the two ACs agree would be written wrong.
+FINDING: Low | delta | local | §Status, v1.4 erratum note | The note's "a foreign-feature file cannot suppress the harvested state" holds only for the DoD grammar; `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` carries no feature segment, so the cited grammar cannot deliver feature scoping for the cross-review family.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
