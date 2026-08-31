@@ -124,7 +124,34 @@ unavailable` (`TSPEC:543`) and the withdrawn reading would have changed which st
 
 ## Data Model
 
-_pending_
+No type, constant, literal or JSON key is affected by REQ v1.7. Checked explicitly, because a
+withdrawn AC clause is exactly the kind of edit that silently orphans a discriminator:
+
+- `MetricState = "measured" | "harvested" | "unmeasurable" | "unavailable"` (`TSPEC:543`) — the
+  withdrawn clause decided *which* state a given directory reaches, never introduced or retired a
+  member. No arm added, none dead. REQ v1.7's only state token is `harvested`, already present.
+- `ProcessSpecRatio`'s `{ state, ratio, processBytes, specBytes }` shape (`TSPEC:817-822`) — the
+  `harvested` arm already returns `ratio: null` with both byte totals populated, which is what REQ
+  v1.7's "contributes no process bytes" implies for the out-of-catalogue fixture: `processBytes`
+  excludes those files on both the old and new reading, so no recorded literal moves.
+- `DodRounds { state: "measured" | "harvested"; rounds: number | null }` (`TSPEC:557`) — untouched;
+  REQ-STATS-04's harvested clause was not part of this erratum.
+- `REVIEW_DOC_TYPE_ROWS` (six rows, BR-09) and the six C-3 spec document types — REQ v1.7 does not
+  add, remove or rename a document type, so the shared-constant argument and the §2.1 drift oracle
+  (`TSPEC:458`) still hold with the same expected membership.
+- §6.1's measured baselines for `docs/completed/pdlc-advisory-wave-gate/` — 62 / 4 / 58, ratio
+  **measured**. REQ v1.7 confirms rather than perturbs these: the four out-of-catalogue files
+  contribute no process bytes under both the old byte rule and the new one, and 58 grammatical
+  survivors keep the harvested disjunct dark. I re-derived the conclusion from REQ's new sentence
+  and reached the same numbers TSPEC records; no baseline literal needs re-measuring.
+- The five-key JSON literal for REQ-STATS-02 and `halts: HaltEntry[]` — outside this erratum's
+  blast radius; REQ-STATS-05's halt state was settled at v1.6 and is unchanged at v1.7.
+
+One consequence worth stating for the implementer: because REQ and FSPEC now agree, the
+`harvested`-vs-`measured` distinction for an out-of-catalogue basename is a **single-sourced**
+expectation for the first time in this feature's history. Any test written against it can be pinned
+hard — no "contested, may re-stamp" hedging is warranted in a fixture comment, and none should be
+copied forward from §4.3's stale paragraph into test source.
 
 ## Test Strategy
 
