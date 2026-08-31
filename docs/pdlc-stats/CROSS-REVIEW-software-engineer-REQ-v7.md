@@ -130,10 +130,54 @@ available today.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | delta | local | REQ-STATS-05's new harvested state rests on "harvest is observed to delete post-mortems as well as reviews" (`REQ-pdlc-stats.md:184-187`), inferred from `docs/completed/pdlc-advisory-tier/`'s `Harvested from` row. The inference is invalid and the generalisation is false: `docs/completed/pdlc-advisory-wave-gate/`'s row names `POSTMORTEM-T`/`POSTMORTEM-D` while both files remain on disk, so the row records what harvest *read* (`harvest-learnings/SKILL.md:34,122`), not what it deleted (`SKILL.md:28,59,129` delete `CROSS-REVIEW-*`/`CODE_REVIEW-*` only). Nine of thirteen harvested features under `docs/completed/` retain post-mortems. Because the AC makes `0` unreachable for any feature with LEARNINGS (`:187-190`), v1.5 replaces a correct measured `0` with an unmeasurable label for those nine — degrading exactly the `docs/completed/` baseline R-6 (`:260-262`) and G-1 exist to protect. Knock-on: NG-6 (`:73-77`) carries the same premise. | REQ-STATS-05, §5 (`:184-190`) |
+| F-02 | Low | delta | local | The edit puts an inline shipped-behaviour observation (a named directory's contents and one file's row) directly in the REQ. The repo's convention for shipped facts a spec leans on is a cited measured fact under `docs/_constraints/` (`pdlc-retirement-baseline.md:53-74` `M-*`, `pdlc-rcv-catalogue.md:149` "cited to a measured fact"); this REQ cites no `M-*`. Whatever premise survives F-01 should be relocated to a constraints measured fact and cited by id, so it is re-measurable rather than frozen in REQ prose. | REQ-STATS-05, §5 (`:184-187`) |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | (Carried from v6, now answerable without an upstream decision.) The corpus says post-mortems usually survive harvest (9/13). Is there a reason to prefer the deletion reading that the survey misses — e.g. a period when harvest behaved differently — or is path 1 in §3 acceptable? |
+| Q-02 | For the two zero-post-mortem features whose files vanished without the `Harvested from` row accounting for it (`pdlc-consolidation-agent`, and `pdlc-advisory-tier`'s partial case): do we care that `pdlc stats` will report `0 halts` for a feature that demonstrably halted five times, or is that an accepted limit of "reports only what is on disk" (NG-6)? I read it as accepted, but REQ-STATS-05's new text is arguably an attempt to fix it that costs more than it buys. |
+| Q-03 | (Carried, non-blocking.) Does `LEARNINGS-{feature}.md` presence remain the right discriminator at all, given NG-6 now forbids parsing its `Harvested from` row — the one field that could distinguish the cases? |
 
 ## Positive Observations
 
+- **F-01 was closed properly and without waiting on upstream.** REQ-STATS-06 dropping the share
+  claim entirely ("How much of the numerator harvest removes is not asserted here", `:201-202`) is a
+  better fix than restating the contract correctly would have been — the AC now cannot be falsified
+  by whichever way the upstream contradiction settles. That is the right altitude instinct.
+- **G-3's restatement (`:46-49`) is exactly right and I verified it against REQ-STATS-07**
+  (`:207-213`): feature-level labels reserved for unreadable directories, artifact-level absence
+  riding inside its own metric, a readable-but-empty directory explicitly a normal row rather than a
+  gap. Goal and AC now say the same thing.
+- **NG-6's "the `Harvested from` row is never parsed to reconstruct a deleted count"** (`:75-77`) is
+  a good, self-denying constraint — and, ironically, it is the rule that should have stopped
+  REQ-STATS-05 from treating that same row as evidence.
+- **REQ-STATS-02's set-equality guarantee held through the edit** (`:143-145`): adding a fourth
+  harvested-state AC was propagated into the JSON key-set clause rather than left behind, so the
+  "metric added to human mode without a JSON field fails" oracle still covers the full enumeration.
+- Byte discipline was respected: +992 B against a stated +1000 bound, with no unrelated churn in the
+  diff.
+
 ## Recommendation
 
+**Needs revision** — one open High (F-01), introduced by this round's edit.
+
+This is not a repeat of round 6. The blocker I filed at v5/v6 is genuinely closed, and the document
+improved in four other places. The new High is narrower and fully actionable inside the REQ: one
+premise sentence and one AC clause in REQ-STATS-05, with NG-6 as knock-on. Path 1 in §3 — take the
+survive side the corpus supports 9:13, restore `0` for LEARNINGS-present-with-no-post-mortem, keep
+everything else in v1.5 — resolves it without any upstream dependency and without touching G-3,
+REQ-STATS-06 or the JSON contract. F-02 is a Low that can ride along with that edit or be deferred.
+
+I want to be explicit that the author was pushed here by my own v6 finding, and the direction taken
+was reasonable on the evidence available. The one thing that would have caught it earlier is the
+check the corpus makes cheap: before asserting what harvest does, list the corpus and count.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
