@@ -254,3 +254,74 @@ test that was subsequently written pins the token hard. The Medium did its job.
 **No new property is owed.** REQ v1.7 changed only what a *rejection* means downstream, not the
 grammar; `parseReviewFilename`'s round-trip and rejection properties are unaffected, and the
 property suite (`statsProperties.test.js`) needs no addition on account of this delta.
+
+## Open Questions
+
+**Q-01 — none blocking.** The v10 questions are both discharged or unchanged. Q-01 asked whether
+§8.3's closure would land before PROPERTIES/PLAN were re-read; it landed, and PROPERTIES already
+reads the settled direction (PROP-RATIO-08 at `PROPERTIES:173` names all four AT-17 legs including
+the out-of-catalogue one). Q-02 asked that the closure not delete the BR-26/EC-10 bullet along with
+it; it did not.
+
+**Q-02 — BR-26/EC-10 remains genuinely open, and is correctly parked.** §8.3's surviving bullet
+states that "in neither the exclusion set nor recognizable as a feature" is circular as written and
+that FSPEC should state the predicate it intends. That is inherited, FSPEC-owned, and untouched by
+this delta. §4.4 adopts the leading-underscore discriminant as the interim rule and RK-5 records the
+residue with its oracle, so the open question is not blocking test authoring. I raise it here only
+to confirm it survived the closure edit intact — it did.
+
+**Assumption recorded.** I read §0's v1.7 and earlier changelog paragraphs as historical record.
+The v1.8 round neutralised v1.7's superseded row **in place** ("*Superseded — this row is history,
+not a live claim*") rather than deleting it, which is the same template the document used at v1.3
+and which I have twice endorsed. I did not file the remaining older changelog rows as defects.
+
+**Deferred observations** — recorded, not gating, and out of scope for a frozen round:
+
+DEFERRED: §2.1's "seven `REQUIRED_INCLUDES` entries at HEAD" is a pre-implementation reading; the feature's own T-19/T-20 commits landed `lib/stats.mjs` and `pkg.c8.include` now holds eight, so §2.1's HEAD-relative counts are historical rather than live.
+DEFERRED: `coverageInstrumentation.test.js:263`'s title word ("seven modules") and its adjacent comment ("REQUIRED_INCLUDES' three entries") are stale against an eight-element literal and a four-entry constant — the `toEqual` oracle is correct, only the printed words drifted; belongs to IMPLEMENTATION review.
+DEFERRED: §8.3's closure prose says "§4.3 now states each of the four as the specified behaviour it is", but BR-25's loose-file illustration is stated in §4.4 (`TSPEC:847`), not §4.3; the attribution predates this round and the count itself is right.
+
+**Not re-reviewed.** Everything outside §0, §4.3's narration and §8.3: §2.1's co-change derivation,
+§4.2/§5's types, §4.4's discovery predicate, §6.2's levels, §6.4's vendoring oracle, §6.6's kill
+map, §7's tables and §8.4's DECISIONS questions. Those were approved at v9/v10 against upstream
+whose only movement this round is the clause above, and I re-litigated none of them.
+
+## Recommendation
+
+**Approved with minor changes**
+
+TSPEC v1.8 is a faithful compression of REQ v1.7 and FSPEC v1.8. All four v10 findings are resolved
+at their named sites, and I verified each against HEAD rather than against the changelog: the REQ
+quotation is verbatim, both grounding hashes match `sha256sum`, FSPEC's v1.8 diff really is
+changelog-only, and §8.3's count word matches its bullet count and an independent count claim
+elsewhere in the document.
+
+The delta broke nothing. No type, signature, exit code, branch order, code sketch, baseline literal
+or acceptance-test expected value moved — and this round I could confirm that against shipped code
+rather than prose: `computeByteRatio` (`lib/stats.mjs:277-294`) implements §4.3's sketch exactly,
+and AT-17's fourth leg (`statsMetrics.test.js:389-399`) asserts the settled token `harvested` with a
+positive oracle, a real parser and the discriminating `CODE_REVIEW`-intact conjunct. It passes.
+
+Two Low findings remain, neither touching an oracle: a 161-character line the neutralisation edit
+introduced, and an imprecise section attribution in §8.3's closure prose that predates this round.
+Both are cosmetic and can be swept whenever the document is next opened. Nothing here requires a
+round.
+
+**Positive observations.**
+
+- **The document predicted its own delta and then discharged it exactly.** §4.3 pre-declared three
+  re-stamp sites; all three re-stamped, and the paragraph says plainly that no expected value moved
+  "because the value they carried was already the settled one". Routing beat guessing, and the
+  ledger closed clean.
+- **Withdrawn readings are neutralised in place, not deleted.** Both §0's v1.7 row and §4.3's
+  survivor clause are kept as marked history. On a question this document has now seen argued both
+  ways, that is what stops a future editor re-raising it in good faith.
+- **The author caught an upstream movement my dispatch did not name.** FSPEC moved to v1.8 this
+  round as well as REQ to v1.7; the changelog re-grounded on both and pinned both hashes correctly,
+  in a document whose v1.5 shipped a false no-movement attestation. That habit has now visibly
+  changed.
+- **The count bookkeeping is cross-checked.** §8.3's "one remains open" agrees with its bullet
+  count and with `TSPEC:155`, written in a different section at a different time.
+- **The settled rule reached production correctly.** The single-parser seam §4.3 argued for is what
+  shipped, and its guarded branch has a mutation-sensitive test. The chain from REQ sentence to
+  green assertion is complete and I walked all of it.
