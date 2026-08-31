@@ -106,7 +106,48 @@ the first, so the erratum owed upstream reads as covering one stale count when i
 
 ## Consequences
 
+**For PLAN and the implementer.** The K-3 repair is the consequential one. With the row rejoined,
+the obligations table again exposes a `Falsified by` cell for K-3 and rows for K-4 through K-9, so a
+PLAN author reading it can place a red test per obligation: K-3's live half (the P9-02
+`expect(include).toEqual([…])` array-equality, which reds at HEAD the moment `package.json` moves
+without the test literal, position-sensitively) and its new half (the c8-run driver's import plus the
+`json-summary` naming `lib/stats.mjs`, the only thing that catches a declared-but-unresolving glob
+under `allow-external`). Before the repair those cells were prose outside a table and easy to skip.
+
+**For the tenth site.** `pdlc/README.md` is now named in every breakdown, and its site-table row is
+honest about carrying *"pinned by no oracle"* in place of a falsifier — `documentOracles.test.js`
+reads the file but never its member list. That is the one site where a partial edit stays green, it
+is recorded as such in three places (site table, K-9, *Standing costs accepted*), and it is now
+countable from the prose rather than only from the table. A reader can no longer reach nine.
+
+**Residual work, owed upstream not here.** TSPEC §2.1's six → seven and TSPEC §7.3's 24/14 are both
+stale against HEAD in the same direction: DECISIONS is right, TSPEC is behind. Neither is fixable
+from this dispatch — TSPEC is approved with an approved PLAN beneath it — so both should ride one
+TSPEC erratum round rather than two.
+
+**No regression surface.** I re-derived the count words and the site partition rather than reading
+them, resolved every REQ/FSPEC/TSPEC citation against the cited file, and re-ran the sweep command
+at HEAD. Nothing previously approved was contradicted by the delta.
+
 ## Recommendation
+
+**Approved with minor changes** — the confirmation is affirmative. The routed items land, the
+document remains a faithful compression of REQ/FSPEC/TSPEC at HEAD, and the two residual findings are
+Low, inherited and non-gating. Neither should hold this document; F-01 rides the next DECISIONS
+touch, F-02 rides the TSPEC erratum K-3 already owes.
+
+## Positive Observations
+
+- The K-3 rejoin was done as a pure structural repair — *no cell text changed* — which is exactly the
+  right shape for an erratum: the round is auditable as "rows became rows" and nothing else.
+- The v1.6 changelog re-grounds upstream **before** describing the edit, states the measured HEAD
+  hashes, and names the dispatch's phantom TSPEC anchor as a workflow-side defect rather than
+  silently re-pinning to it. That is the behaviour DEC-ERR-03 is asking for.
+- Refusing to edit TSPEC from this dispatch, and refusing to match a number known to be wrong, is the
+  correct call twice over. Matching would have produced two documents agreeing on a mis-sized task —
+  the precise failure mode that makes a stale count survive to implementation.
+- The superseded-in-part marker on v1.4 preserves the historical entry instead of rewriting it, with
+  the reason stated. Changelog integrity is worth more than citation uniformity here.
 
 ## Delta-Confirmation Findings
 
