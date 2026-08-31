@@ -13,7 +13,32 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.5 | 2026-08-31 |
+| Draft | se-author | 1.6 | 2026-08-31 |
+
+**v1.6 — erratum round 6** (targeted versioned edit; no restructuring, no re-litigation).
+**Upstream moved, and v1.5's changelog said otherwise.** v1.5 attested that REQ and FSPEC "neither
+moved since v1.4's grounding". The two hashes it cited were current and correct, but v1.4 grounded
+on **FSPEC v1.5 / REQ v1.4** and HEAD carries **FSPEC v1.7 / REQ v1.6**: FSPEC took a BR-16
+basename-shape-only rewrite (v1.6), a BR-16 count correction two → four and an AT-15 trace row
+(v1.7); REQ withdrew REQ-STATS-05's harvested halt state and restored a measured `0`, rescoped NG-6,
+and reworded REQ-STATS-06's predicate (v1.5–v1.6). Citing a current hash is not the same check as
+diffing it against the previously grounded one, and reading the two as agreeing is what let the
+round skip re-grounding. Corrected here, and re-grounded properly this round. The absorbed
+decisions: (a) **FSPEC BR-16 v1.6/v1.7** re-scopes the `docs/completed/pdlc-advisory-wave-gate/`
+citation to the malformed *basename shape* only — that directory holds grammar-matching
+cross-reviews too and reports a measured ratio. §4.3 read it as naming a harvested directory; the
+passage is rewritten to the shape-only reading, its pin moved from "BR-16 at v1.4" to v1.7, and the
+HEAD measurement (62 `CROSS-REVIEW-*`, 4 out-of-catalogue, 58 grammatical) recorded so a real-path
+test is not written to a wrong expectation. §7.2's AT-09 row and §6.1's baselines already carried
+the four-file count and needed no edit. (b) **REQ-STATS-06 v1.6** now calls a grammatical basename
+outside the driver's catalogue **a survivor**, which contradicts BR-16's "reports `harvested`" on
+the same file and contests AT-17's fourth-leg expectation. That is a REQ-versus-FSPEC conflict, not
+a TSPEC choice: §4.3 continues to implement BR-16, its immediate upstream, states the dispute and
+the three sites that re-stamp when it settles, and §8.3 carries it as the second open erratum
+(routed, not repaired). (c) §5's types survive REQ v1.6's halt withdrawal unchanged — `halts:
+HaltEntry[]` carries no state discriminator and an empty array is exactly the measured `0` REQ now
+mandates — and the five-key JSON literal still matches REQ-STATS-02. No type, signature, exit code,
+oracle, code sketch or count changed this round.
 
 **v1.5 — erratum round 5** (targeted versioned edit; no restructuring, no re-litigation).
 Re-grounded on REQ / FSPEC HEAD first — both are the versions this round's dispatch pins
