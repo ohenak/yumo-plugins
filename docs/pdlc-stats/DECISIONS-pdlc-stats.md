@@ -130,29 +130,53 @@ the holders reaches none of the five (see *What the sweep found*):
 | `pdlc/engine/__tests__/run.test.js` | two `assert.deepEqual` manifest name lists plus the `scratchWorkflows` copy list | the same bare four, transcribed three times. The first `deepEqual`'s own comment states the intent as *"a prepack that … vendored a third file, must still fail this assertion"*, so a fifth member reds it by design; the copy list left at four makes the real `runPrepack` miss `lib/stats.mjs` and reds the process-entry leg's `assert.equal(result.status, 0, …)` |
 | `pdlc/workflows/__tests__/learningsPremises.test.js` | P-1's `expect(names).toEqual([…])` over the `MODULE_NAMES` array it parses out of `prepack.mjs`'s **source text** | the same bare four; the test's title pins the count too (*"exactly the four canonical workflow modules"*) |
 
-**The sixth site, and why it was missed on the first measurement.**
-`pdlc/engine/__tests__/loop-distribution.test.js` is `pdlc-engineering-loop`'s enforcement of exactly
-this co-change class, and it is live (four un-`skip`ped tests) at HEAD. Its `assertAdditiveOnly`
-helper is not containment-only — its own comment calls it *"both-directions-lite"* and its last
-assertion is `actual.length === baseline.length + added.length`, a set-size equality — and its
-`P7-02: D-1, D-2, D-3 and D-5 are additive-only …` test applies it to `prepack.mjs`'s
-`MODULE_NAMES`, `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `_tspec-packed-set.mjs`'s
-`WORKFLOW_MEMBERS` and `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`. Adding `lib/stats.mjs` to
-any of them makes the actual length exceed `baseline.length + added.length` and reds that conjunct.
-The same test hard-pins the count K-2 moves (`tspecPackedCount({ licence: false })` equal to
-`4 + 15 + 5 + 1`, *"vendored class size must be 5"*), and the `P7-02: docs/completed/… agree with
-tspecPackedCount's vendored class size` test pins it a second time, derived
-(`assert.equal(vendoredClassSize, 5, …)`). Six assertions in one file, in `pdlc/engine/__tests__/`,
-so `npm test` in `pdlc/engine` runs them and the required `Engine tests (ubuntu-latest)` check
-carries them. The measurement that produced the five-site table scanned the files that *hold* the
-enumerations; the assertions that pin their *size* live in a different package, so a per-file scan of
-the five never reached them. The durable form of that lesson — *an enumeration's co-change set
-includes the tests that pin the enumeration's size* — belongs in
-`docs/_constraints/DOMAIN-CONSTRAINTS.md`, not only in this feature's LEARNINGS.
+**What the sweep found, and why two rounds of per-file reading kept missing sites.** The first
+measurement scanned the files that *hold* the enumerations and found five; round 2 added
+`loop-distribution.test.js` by hand and made it six. That is the wrong instrument: the assertions that
+pin an enumeration's membership and size live in *other packages* than the enumeration, so no scan of
+the holders reaches them. The set is derivable mechanically instead, in one command —
 
-This raises option A's measured cost from five sites to six. It does not move the verdict: B pays
-the same sixth site (the `15` in that arithmetic is B's own class term) and still buys **no coverage
-gate**, C is unchanged, and D is still a broken A.
+    grep -rln "escalation-view" pdlc/engine/__tests__/ pdlc/workflows/__tests__/
+
+— fifteen files at HEAD, of which the ones that **transcribe a member list** (rather than importing a
+module, which is what the other ten do) are: `_tspec-packed-set.mjs` and `loop-distribution.test.js`,
+already in the table, plus three that were not — `coverageInstrumentation.test.js`,
+`run.test.js` and `learningsPremises.test.js`. `loop-cli.test.js` is the one hit that survives the
+grep but fails the predicate: its five references are `path.join(…, "lib", "loop-session.mjs")` import
+paths and comments, never a list. So the co-change set is **nine sites**, and the number is now
+reproducible rather than accumulated.
+
+Two of the three were already visible in this document and simply not in the table.
+`coverageInstrumentation.test.js` is named in K-3 as an obligation and in the re-evaluation trigger's
+list — which is exactly why the trigger counted *seven files* while the table showed six rows: the
+document was counting two different sets. It is site 7 because it is the pinning half of a pair
+(`pdlc/workflows/package.json` plus the test that array-equals its contents), both owned by K-3. The
+genuinely new ones are `run.test.js` and `learningsPremises.test.js`, both of which fence
+`prepack.mjs`'s `MODULE_NAMES` — the first by `deepEqual` over `runPrepack`'s manifest twice and by
+copying the four members into a scratch tree, the second by parsing `MODULE_NAMES` out of the prepack
+*source* and asserting array-equality against a four-name literal. All three are live: no `.skip`
+anywhere in `run.test.js` (27 top-level `test(` calls) and P-1 runs in the workflows jest suite.
+
+**Corrected cost claim: options B and C do not pay the two new sites.** The review that surfaced
+`run.test.js` reasoned that every option adding a vendored module pays it. Measured at HEAD, that is
+true of A only: `run.test.js` and `learningsPremises.test.js` both fence `MODULE_NAMES`, and B puts
+the module in `pdlc/engine/lib/`, which `MODULE_NAMES` does not enumerate — nothing copies it into the
+vendor tree, so both files stay green. What B does pay is `_tspec-packed-set.mjs`'s `15` term and the
+same literal inside `loop-distribution.test.js`'s `4 + 15 + 5 + 1`. The corrected comparison is nine
+sites (A) against three (B) — a wider gap than the previous record showed, and still not enough to
+move the verdict, because those three sites buy **no coverage gate**, which is the disqualifier.
+C pays none of them and puts the whole feature outside every gate; D is still a broken A.
+
+**The durable lesson, and where it goes (PM Q-01).** *An enumeration's co-change set includes every
+assertion that pins the enumeration's membership or size, wherever it lives; derive that set with a
+query, never by reading the files that hold the enumeration.* This is the second consecutive round in
+which a per-file reading missed a fencing test, so the rule is promoted to
+`docs/_constraints/DOMAIN-CONSTRAINTS.md` **in this feature**, as part of K-9's owning task, rather
+than at harvest: a constraint that arrives at harvest does not protect this feature's own PLAN, which
+is where the next miss would cost something.
+
+This raises option A's measured cost from six sites to nine. It does not move the verdict, for the
+reason the corrected comparison gives above.
 
 **B rejected.** It pays a co-change of the same order — `_tspec-packed-set.mjs`'s count conjunct has
 to move either way, since `tspecPackedCount` sums the `lib` class and the vendored class in one
