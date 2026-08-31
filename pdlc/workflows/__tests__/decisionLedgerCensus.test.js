@@ -202,7 +202,7 @@ function scannedRemainder() {
 // yet, so "resolves to exactly one top-level declaration at HEAD" would
 // fail for the right reason today. T-18 removes this wrapper once the last
 // owned declaration (and the wiring sentinels) lands.
-describe.skip("T-18: decision-ledger source census (TSPEC §7.3, BR-11 / REQ NG-4)", () => {
+describe("T-18: decision-ledger source census (TSPEC §7.3, BR-11 / REQ NG-4)", () => {
   describe("partition: CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS, disjoint", () => {
     it("pins the frozen list sizes: six tokens, eight exempt, fourteen owned", () => {
       expect(DECISION_LEDGER_CENSUS_TOKENS.length).toBe(6);

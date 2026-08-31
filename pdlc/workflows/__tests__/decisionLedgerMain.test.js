@@ -93,8 +93,29 @@ const REVIEWER_TSPEC_MARKER = `for phase T of feature ${FEATURE}.`;
 
 const DECISIONS_WARRANTED_FALSE = "DECISIONS_WARRANTED: false";
 
-// A minimal wave-mode PLAN: one task, one file, so Phase I dispatches exactly one `se-implement`
-// call and the wave gate has a satisfiable file-ownership manifest.
+// Mirrors `orchestrate-dev.js`'s own `REQUIRED_HEADINGS` table (the canonical `title` of each row
+// only — an alias would work equally well against `isComplete`, but the canonical title is the
+// unambiguous choice) for every docType a generic creator dispatch below might be asked to write.
+// REQ and TSPEC are deliberately absent: REQ is pre-seeded by `runPipeline`, and TSPEC is written
+// by the explicit `CREATOR_TSPEC_MARKER` branch above (its exact bytes are this file's subject).
+const GENERIC_REQUIRED_HEADINGS = Object.freeze({
+  FSPEC: [
+    "Overview",
+    "Linked Requirements",
+    "Behavioral Flow",
+    "Business Rules",
+    "Edge Cases and Error Scenarios",
+    "Acceptance Tests",
+    "Open Questions",
+  ],
+  PLAN: ["Overview", "Batches", "Dependencies", "Verification"],
+  PROPERTIES: ["Overview", "Properties", "Oracles", "Fixtures"],
+  DECISIONS: ["Context", "Options Considered", "Decision", "Consequences"],
+});
+
+// A minimal wave-mode PLAN task table: one task, one file, so Phase P's mechanical parser finds a
+// task graph (exact `Task ID` / `Dependencies` header cells) and Phase I dispatches exactly one
+// `se-implement` call against a satisfiable file-ownership manifest.
 const WAVE_PLAN = [
   "| Task ID | Description | Batch | Dependencies |",
   "|---|---|---|---|",
@@ -105,12 +126,36 @@ const WAVE_PLAN = [
   "| TASK-01 | `src/one.js` |",
 ].join("\n");
 
+/** A minimal document, structurally complete per `isComplete`'s heading table, for any docType a
+ *  generic `Create {path} for feature {feature}.` creator dispatch names (§the makeAgent branch
+ *  below). Falls back to a single `Overview` section for an unrecognised docType rather than
+ *  throwing, so an unanticipated phase degrades to a retry instead of crashing the fixture. PLAN
+ *  is special-cased to fold `WAVE_PLAN`'s real task table into its `Batches` section — Phase P's
+ *  parser needs an actual table, not prose, to build a task graph.
+ */
+function genericCompleteDoc(targetPath) {
+  const docType = (/\/([A-Z]+)-[^/]+\.md$/.exec(targetPath) || [])[1];
+  const headings = GENERIC_REQUIRED_HEADINGS[docType] || ["Overview"];
+  return (
+    `# ${docType || "Document"}\n\n` +
+    headings
+      .map((h) =>
+        docType === "PLAN" && h === "Batches"
+          ? `## ${h}\n\n${WAVE_PLAN}\n`
+          : `## ${h}\n\nMinimal fixture body for ${h}.\n`
+      )
+      .join("\n")
+  );
+}
+
 // The fixture DECISIONS corpus `gatherDecisionCorpus` enumerates on the flag-on run, matched
-// against `DECISION_CORPUS_ARGV`'s glob (`docs/*/DECISIONS-*.md`) — TSPEC §3.1, §3.2. One
-// project-unrelated feature directory so the flag-on arm's corpus is never empty and
-// `renderDecisionLedgerBlock` therefore never degrades to `""` (FSPEC F-7's total-leg guard).
+// against `DECISION_CORPUS_ARGV`'s project-level glob (`docs/_decisions/DECISIONS-*.md`) — TSPEC
+// §3.1, §3.2. Project-level, not tied to `FEATURE`'s own directory, so it survives §3.1's scope
+// narrowing (project-level records are unconditionally in-scope) regardless of which single
+// feature directory `gatherDecisionCorpus` picks — the flag-on arm's corpus is therefore never
+// empty and `renderDecisionLedgerBlock` never degrades to `""` (FSPEC F-7's total-leg guard).
 const CORPUS_FEATURE = "decledger-corpus-fixture";
-const CORPUS_DECISIONS_PATH = `docs/${CORPUS_FEATURE}/DECISIONS-${CORPUS_FEATURE}.md`;
+const CORPUS_DECISIONS_PATH = `docs/_decisions/DECISIONS-${CORPUS_FEATURE}.md`;
 const CORPUS_DECISIONS_TEXT = [
   "# DECISIONS",
   "",
@@ -247,6 +292,18 @@ function makeAgent({ store, tPrompts, dispatched }) {
           tasks: [{ id: "TASK-01", description: "First task", dependencies: [], planBatch: 1 }],
         });
       }
+      // A creator dispatch for any OTHER document (FSPEC, PLAN, PROPERTIES, …) — `creatorPrompt`'s
+      // own opening line (`orchestrate-dev.js`, "Create {path} for feature {feature}."). Unlike
+      // TSPEC (handled explicitly above, since its reviewer-dispatch bytes are this file's whole
+      // subject), these documents are load-bearing only insofar as the pipeline needs to walk
+      // PAST them to reach Phase T — so this writes the minimal structurally-complete document
+      // `isComplete`'s required-heading table asks for, generically, rather than one hand-rolled
+      // branch per phase.
+      const createMatch = /^Create (\S+) for feature/.exec(text);
+      if (createMatch) {
+        store.writeFile(createMatch[1], genericCompleteDoc(createMatch[1]));
+        return `Created ${createMatch[1]}.\n${DECISIONS_WARRANTED_FALSE}`;
+      }
       return "Created/updated document successfully.";
     }
 
@@ -310,7 +367,7 @@ afterEach(() => {
 });
 
 describe("decisionLedgerMain — `main()`-driven composition-root wiring (TSPEC §7.2, PLAN T-10a)", () => {
-  test.skip("T-18: flag on — gatherDecisionCorpus's `_git` listing call fires >= 1 on the served reviewer flow (PROP-WIRE-04)", async () => {
+  test("T-18: flag on — gatherDecisionCorpus's `_git` listing call fires >= 1 on the served reviewer flow (PROP-WIRE-04)", async () => {
     const { result, gitCalls } = await runPipeline({
       configText: ENABLED_CONFIG_TEXT,
       corpusFiles: [CORPUS_DECISIONS_PATH],
@@ -329,7 +386,7 @@ describe("decisionLedgerMain — `main()`-driven composition-root wiring (TSPEC 
     expect(corpusListingCalls.length).toBeGreaterThanOrEqual(1);
   });
 
-  test.skip("T-18: flag on — the served reviewer prompt ends with renderDecisionLedgerBlock's own output for the same corpus (PROP-WIRE-05, PROP-WIRE-12 presence-and-shape)", async () => {
+  test("T-18: flag on — the served reviewer prompt ends with renderDecisionLedgerBlock's own output for the same corpus (PROP-WIRE-05, PROP-WIRE-12 presence-and-shape)", async () => {
     const { result, tPrompts, gitCalls } = await runPipeline({
       configText: ENABLED_CONFIG_TEXT,
       corpusFiles: [CORPUS_DECISIONS_PATH],
@@ -352,7 +409,7 @@ describe("decisionLedgerMain — `main()`-driven composition-root wiring (TSPEC 
         p === CORPUS_DECISIONS_PATH ? CORPUS_DECISIONS_TEXT : null,
     });
     expect(corpus.unlistable).toBe(false);
-    const selected = dev.selectDecisions({
+    const { selected } = dev.selectDecisions({
       entries: corpus.entries,
       feature: FEATURE,
       thresholds: DECISION_LEDGER_THRESHOLDS,
@@ -371,7 +428,7 @@ describe("decisionLedgerMain — `main()`-driven composition-root wiring (TSPEC 
     expect(result.report.decisionLedger.dispatches.length).toBeGreaterThanOrEqual(1);
   });
 
-  test.skip("T-18: flag off — three positive conjuncts: byte-identical to T-02's committed recording, the flag-off/flag-on report key-set symmetric difference is exactly {decisionLedger} in both directions, and the flag-off NTC-DECLEDGER-* notice set is empty (PROP-OFF-01, PROP-WIRE-12)", async () => {
+  test("T-18: flag off — three positive conjuncts: byte-identical to T-02's committed recording, the flag-off/flag-on report key-set symmetric difference is exactly {decisionLedger} in both directions, and the flag-off NTC-DECLEDGER-* notice set is empty (PROP-OFF-01, PROP-WIRE-12)", async () => {
     const off = await runPipeline({ configText: DISABLED_CONFIG_TEXT, corpusFiles: [] });
     lastGitCalls = off.gitCalls;
     expect(off.result.outcome).toBe("success");

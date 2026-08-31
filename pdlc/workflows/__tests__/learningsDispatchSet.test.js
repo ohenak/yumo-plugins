@@ -1475,7 +1475,9 @@ describe("learningsDispatchSet — PROP-DISPATCH-08: dispatchAndVerify has exact
     // real call-site count is total minus the one declaration.
     expect(totalCalls - declarations).toBe(2);
 
-    const wrappedClosureIdx = source.indexOf("const wrapped = (skill, basePrompt, targetPath, dispatchKind, sessionKey) =>");
+    const wrappedClosureIdx = source.indexOf(
+      "const wrapped = (skill, basePrompt, targetPath, dispatchKind, sessionKey, ledgerBlock = \"\") =>"
+    );
     const wrappedDispatchIdx = source.indexOf("async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId, sessionKey })");
     expect(wrappedClosureIdx).toBeGreaterThan(-1);
     expect(wrappedDispatchIdx).toBeGreaterThan(-1);

@@ -163,7 +163,7 @@ afterEach(() => {
 // the four not-enabled config texts — proving the four spellings are not merely untested, but
 // genuinely indistinguishable from absent.
 
-describe.skip("T-18: AT-05 — four not-enabled config spellings resolve through the real gate to the identical, baseline-identical stream", () => {
+describe("T-18: AT-05 — four not-enabled config spellings resolve through the real gate to the identical, baseline-identical stream", () => {
   const NOT_ENABLED_CONFIG_TEXTS = Object.freeze({
     "absent decisionLedger block": JSON.stringify({ other: "block" }),
     "enabled key absent (defaults false)": JSON.stringify({ decisionLedger: { maxEntries: 10 } }),
@@ -213,7 +213,7 @@ describe.skip("T-18: AT-05 — four not-enabled config spellings resolve through
 // real production pipeline), never a hand-rolled `""` stub, so the assertion is over the actual
 // renderer's total/empty contract (PROP-REND-01) rather than an implementation echo of it.
 
-describe.skip("T-18: AT-14 — zero-decision set / maxEntries 0 / maxBytes 0 all degrade to the baseline-identical stream", () => {
+describe("T-18: AT-14 — zero-decision set / maxEntries 0 / maxBytes 0 all degrade to the baseline-identical stream", () => {
   const oneEntry = () => [
     { id: "DEC-DRV-01", sourcePath: "docs/_decisions/DECISIONS-drv.md", origin: "project", statement: "Some decision." },
   ];
@@ -255,7 +255,7 @@ describe.skip("T-18: AT-14 — zero-decision set / maxEntries 0 / maxBytes 0 all
 // receive the identical block (§2.6)." TSPEC §4.5 fixes the read site: one `await` per round,
 // immediately before the two `reviewerPrompt` calls.
 
-describe.skip("T-18: enabled path — ledgerBlock is appended last on both prompt-return paths, identically to both reviewers", () => {
+describe("T-18: enabled path — ledgerBlock is appended last on both prompt-return paths, identically to both reviewers", () => {
   const LEDGER_MARKER = "\n## Decisions\n\nDEC-DRV-01 | docs/_decisions/DECISIONS-drv.md | project\n";
 
   test("iteration 1 (first-pass) prompt ends with the ledger block, for BOTH reviewers, byte-identically", async () => {
@@ -323,7 +323,7 @@ const AT16_FIXTURE_EXTRA_LINES = AT16_ROUND1_FINDING_LINES + AT16_ROUND1_ERRATUM
  *  both arms. */
 const AT16_EXPECTED_OPEN_FINDINGS_AFTER_ROUND_1 = 2;
 
-describe.skip("T-18: AT-16 — replay of a fixed reviewer-output fixture under the flag true/false agrees on every driver-side outcome", () => {
+describe("T-18: AT-16 — replay of a fixed reviewer-output fixture under the flag true/false agrees on every driver-side outcome", () => {
   async function replay(_injectDecisionLedger) {
     return runDriverScenario({
       _injectDecisionLedger,
@@ -411,7 +411,7 @@ describe.skip("T-18: AT-16 — replay of a fixed reviewer-output fixture under t
 // deduped and routed as any other High finding — it mints its erratum item and satisfies the
 // confirmation-presence check. Any special-casing on account of the index fails."
 
-describe.skip("T-18: AT-17 — a High finding re-opening an indexed decision is scored, deduped and routed exactly as any other High finding", () => {
+describe("T-18: AT-17 — a High finding re-opening an indexed decision is scored, deduped and routed exactly as any other High finding", () => {
   const REOPENING_FINDING_LINE =
     "FINDING: High | delta | nonlocal | §5.1 | Reopens DEC-DRV-09: cited source changed.\n";
   const ORDINARY_FINDING_LINE = "FINDING: High | delta | nonlocal | §5.1 | Ordinary unrelated defect.\n";
@@ -457,7 +457,7 @@ describe.skip("T-18: AT-17 — a High finding re-opening an indexed decision is 
 // prompt names the decision-id convention) is owned elsewhere (T-15's `DECISION_LEDGER_RULE_TEXT`);
 // this file's obligation is the DRIVER half — the dedupe key itself is untouched by this feature.
 
-describe.skip("T-18: AT-12 (driver half) — the driver's dedupe key stays severity/section/normalised-text; a decision id embedded in the text is not part of the key", () => {
+describe("T-18: AT-12 (driver half) — the driver's dedupe key stays severity/section/normalised-text; a decision id embedded in the text is not part of the key", () => {
   test("two findings differing ONLY in which decision id their text cites are NOT deduped — the key does not special-case a decision id", () => {
     const { findingIdentityKey } = devModule;
     const citingA = { severity: "High", provenance: "delta", locality: "nonlocal", section: "§5.1", text: "Reopens DEC-DRV-09: cited source changed." };
