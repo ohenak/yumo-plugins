@@ -2468,6 +2468,85 @@ function parseDerivativeStopConfig(text) {
   };
 }
 
+// ─── pdlc-decision-ledger TSPEC §4.1 — `decisionLedger` config (REQ C-3/C-5). Direct
+// structural clone of `parseLearningsConfig` above: same `degraded(sectionMalformed)` closure
+// shape, same `text == null` / `JSON.parse` failure / missing-block short-circuits, same
+// `boolField` + `nonNegativeInt` per-key validators. One deliberate divergence (REQ C-5, A-2):
+// `enabled` defaults to `false`, not `true` — this feature ships OFF by default.
+
+const DECISION_LEDGER_DEFAULTS = Object.freeze({
+  enabled: false,
+  maxEntries: 70,
+  maxBytes: 12500,
+});
+
+// TSPEC §4.4 — the two run-level notice ids `decisionLedger` config reads can emit, keyed to
+// their TSPEC-table detail text (§4.4). Never `undefined`-spread: absent-block, the common case,
+// emits neither.
+const DECISION_LEDGER_NOTICES = Object.freeze({
+  "NTC-DECLEDGER-MALFORMED": "the `decisionLedger` value is present but not a plain object",
+  "NTC-DECLEDGER-KEYTYPE":
+    "one or more keys are wrong-typed; each named in the detail, each falling back to its own default",
+});
+
+/**
+ * Parse the repo's `decisionLedger` config section out of the SAME `.claude/pdlc.config.json`
+ * `parseLearningsConfig` reads. Pure and total: never throws, never reads anything, and every
+ * key falls back INDEPENDENTLY.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+function parseDecisionLedgerConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: DECISION_LEDGER_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObject(parsed) || !("decisionLedger" in parsed)) return degraded(false);
+
+  const section = parsed.decisionLedger;
+  if (!isPlainObject(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return DECISION_LEDGER_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return DECISION_LEDGER_DEFAULTS[key];
+  };
+
+  const nonNegativeInt = (key) => {
+    if (!(key in section)) return DECISION_LEDGER_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 0) return v;
+    invalidKeys.push(key);
+    return DECISION_LEDGER_DEFAULTS[key];
+  };
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+      maxEntries: nonNegativeInt("maxEntries"),
+      maxBytes: nonNegativeInt("maxBytes"),
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
 // ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
 
 const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
@@ -15105,6 +15184,28 @@ async function main({
   // (REQ-LOOPECON-04/07); a notice fires only when the parser actually reports something.
   const pinCheckConfigParsed = parsePinCheckConfig(learningsConfigText);
   const derivativeStopConfigParsed = parseDerivativeStopConfig(learningsConfigText);
+  // pdlc-decision-ledger TSPEC §4.1/§4.4 — the `decisionLedger` block is threaded through the
+  // SAME already-read `learningsConfigText`, never a second read and never a second path
+  // constant (PLAN T-13). Absent-block is the common case and emits no notice, keeping the
+  // disabled-state run byte-identical; a notice fires only when the parser actually reports
+  // something, on the same run-level `notices` channel every other §4.7 notice rides.
+  const decisionLedgerConfigParsed = parseDecisionLedgerConfig(learningsConfigText);
+  if (decisionLedgerConfigParsed.sectionMalformed) {
+    notices.push({
+      id: "NTC-DECLEDGER-MALFORMED",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s decisionLedger section is malformed; ` +
+        `the run proceeds on TSPEC §4.1 defaults.`,
+    });
+  }
+  if (decisionLedgerConfigParsed.invalidKeys.length > 0) {
+    notices.push({
+      id: "NTC-DECLEDGER-KEYTYPE",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s decisionLedger section has wrong-typed key(s) ` +
+        `(${decisionLedgerConfigParsed.invalidKeys.join(", ")}); each falls back to its default.`,
+    });
+  }
   // Destructured rather than read as a member expression: PROP-DIS-06
   // (`advisoryDisabled.test.js`) pins the source-text count of enablement member reads over
   // this module so that the count covers the ADVISORY config's gates alone. This is a
