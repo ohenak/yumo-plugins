@@ -13,7 +13,26 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.2 | 2026-08-31 |
+| Draft | se-author | 1.3 | 2026-08-31 |
+
+**v1.3 — erratum round 4** (targeted versioned edit; no restructuring, no re-litigation). Re-grounded
+on REQ v1.4 / FSPEC v1.4 first — both unchanged since v1.2's grounding, so no upstream decision is
+absorbed this round. (a) §2.1's derivation claim is made reproducible: the sweep produces a
+**24-file candidate set** (repo-scoped `git grep -l`, restricted to sources) and one **stated
+filter** — keep sites that enumerate the class or pin its size/membership, drop the 14 that merely
+consume a member — so `24 − 14 = 10` is re-runnable rather than asserted, which is what RK-1's
+residue argument and `DEC-STATS-03`'s trigger rely on. (b) The set grows nine → **ten**:
+`pdlc/README.md`'s prose enumeration and its count word (`MODULE_NAMES`'s copied-module class, four →
+five — a different number from the packed class's five → six) is added as a row, pinned by no oracle
+and named explicitly in RK-1's residue with an owning task. (c) The `loop-distribution.test.js` row
+gains an eighth assertion edit: P7-02's `vendoredClassWord` ternary, which matches the sibling
+FSPEC's count *word*, not its digit. (d) The `coverageInstrumentation.test.js` row names P9-02's test
+title (six → seven), no assertion affected. (e) §6.4's classifier-purity oracle is **split by return
+type**: non-aliasing is scoped to the three object-returning classifiers, and `deriveDodRoundIndex`,
+typed `=> number`, gets an **A-B-A same-instance** conjunct instead — deleting the conjunct would
+have removed `DEC-STATS-03`'s only mechanical detector, and what A-B-A does and does not falsify is
+stated rather than overclaimed. §7.3 and RK-1 carry the ten. No behavioural claim, type, signature or
+code sketch changed.
 
 **v1.2 — erratum round 3** (targeted versioned edit; no restructuring, no re-litigation). Re-grounded
 on REQ v1.4 / FSPEC v1.4 first. (a) §2.1's co-change set is corrected from five sites to the
