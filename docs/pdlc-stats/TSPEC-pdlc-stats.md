@@ -13,7 +13,27 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.4 | 2026-08-31 |
+| Draft | se-author | 1.5 | 2026-08-31 |
+
+**v1.5 — erratum round 5** (targeted versioned edit; no restructuring, no re-litigation).
+Re-grounded on REQ / FSPEC HEAD first — both are the versions this round's dispatch pins
+(`REQ sha256:5f3e8051…`, `FSPEC sha256:c7d2c832…`) and neither moved since v1.4's grounding, so no
+upstream decision is absorbed. The round's dispatched erratum item — §2.1 and §8/RK-1 still listing
+**five** in-repo co-change sites while `DEC-STATS-01`'s `K-1` derives more, with `K-7`'s two
+sibling-feature document edits unnamed — was already discharged at v1.2/v1.3 and is verified present
+in the body this round, not rewritten: §2.1, §1, §6.4, §7.3 and RK-1 all carry the sweep-derived
+**ten**, and §2.1's table names both `docs/completed/pdlc-engine-distribution/` edits (TSPEC §5.4
+`PK-26`; FSPEC §5.2's per-class count five → six) as `K-7`-owned rows. Four wording corrections land,
+all scoping or citation, none behavioural: (a) §1's cost sentence joined the sibling-feature
+carve-out to the ten with "including", placing inside the ten an edit §2.1 and RK-1 place outside it
+— restored to a coordinating "and" and stated as outside; (b) RK-1's opening clause carried the same
+mis-scoping and is corrected the same way, so the misleading reading does not survive at the risk
+row; (c) §6.4's "four **script-side** enumerations" is renamed "the four enumerations
+`assertAdditiveOnly` reads", since three of the four sit under `pdlc/engine/scripts/` and the fourth
+is `_tspec-packed-set.mjs` under `__tests__/` — the subset is named by its falsifier, not by
+directory; (d) §2.1's `learningsPremises.test.js` row now quotes P-1's shipped title verbatim
+("MODULE_NAMES is exactly the four canonical workflow modules"), so a co-change grep for the quoted
+phrase resolves. No count, behavioural claim, type, signature, oracle or code sketch changed.
 
 **v1.4 — erratum round 4 (continuation)** (targeted versioned edit; no restructuring, no
 re-litigation). **Upstream moved: FSPEC v1.4 → v1.5.** Re-grounded first. FSPEC v1.5 turns §7.3 into
