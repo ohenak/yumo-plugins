@@ -199,7 +199,19 @@ lands as an AT-12 leg or its own number is the FSPEC author's call.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | BR-11's harvested predicate ("no `CODE_REVIEW-*` file remains") is broader than REQ-STATS-04 v1.3's ("no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar remains"). On a directory with LEARNINGS plus only a non-grammar `CODE_REVIEW-` basename, the REQ requires `harvested` and BR-11 yields `0`. §7.3's third bullet still asserts "this FSPEC introduces no divergence", which was true of REQ v1.2 and is false at HEAD. EC-16 and BR-10 already side with the REQ. Fix: narrow BR-11 to BR-10's grammar; add the AT-12 third leg. | §4.2 BR-11; §7.3 bullet 3; EC-16 |
+| F-02 | Medium | delta | local | §7.3 "Upstream errata raised, **not folded in**" is stale in its entirety: all seven bullets were folded in by REQ v1.3 (`50dffe8c8`). It still tells TSPEC the documents disagree — most sharply "until it has one the two documents disagree on a P1 path" (REQ-STATS-09) and "the REQ's own C-5 enumeration is what needs the carve-out" (post-mortem discovery, now carved out in C-5 itself). Fix: convert §7.3 to a settled-upstream record naming REQ v1.3 as the resolving version, retaining only F-01's item as genuinely open. | §7.3 (all bullets) |
+| F-03 | Medium | delta | local | BR-27 quotes REQ-STATS-07 as saying "missing or fail to parse … reports it by name as missing/malformed" and calls itself a narrowing of that. The quoted string no longer exists; v1.3 states BR-27's own rule (unreadability is the gap, readable-but-empty is a measured row). The rule is faithful; the quotation and the "raised as an erratum" clause are not. | §4.5 BR-27 |
+| F-04 | Medium | delta | local | EC-09's "That departs from REQ-STATS-09's *Given*, which sweeps this case in", and D-9's rationale built on the same premise, describe a contradiction REQ v1.3 removed with its "in a repository whose `docs/` root is present and readable" carve-out. The behaviour is unchanged and endorsed upstream; the justification cites text that is gone, on a P1 error path TSPEC will read for intent. Restate D-9's premise in the past tense and drop EC-09's departure clause. | §5 EC-09; §7.1 D-9; §7.3 bullet 6 |
+| F-05 | Low | delta | local | BR-06's closing sentence calls the malformed disposition of `CROSS-REVIEW-{role}-REVIEW-v{N}.md` "a wording defect of the upstream criterion… raised as an erratum". REQ-STATS-03 v1.3 decides that case in the same direction and for D-8's own reason. Replace the erratum notice with a citation of the criterion that now settles it; D-8's decision and AT-09 stand. | §4.2 BR-06; §7.1 D-8 |
+
+FINDING: High | delta | local | §4.2 BR-11 | BR-11's `CODE_REVIEW-*` harvested predicate diverges from REQ-STATS-04 v1.3's version-grammar predicate: `harvested` versus `0` on the same directory.
+FINDING: Medium | delta | local | §7.3 | "Upstream errata raised, not folded in" — all seven were folded into REQ v1.3; the section now asserts disagreements that no longer exist.
+FINDING: Medium | delta | local | §4.5 BR-27 | BR-27 quotes retired REQ-STATS-07 wording ("missing or fail to parse … missing/malformed") and calls itself a narrowing of text that no longer exists.
+FINDING: Medium | delta | local | §5 EC-09 / §7.1 D-9 | Both justify the root-failure behaviour as a departure from REQ-STATS-09's *Given*, which v1.3 carved out; the premise is gone on a P1 path.
+FINDING: Low | delta | local | §4.2 BR-06 | BR-06 still calls the malformed disposition an unresolved upstream wording defect; REQ-STATS-03 v1.3 decides it in the same direction.
 
 ## Open Questions
 
