@@ -725,20 +725,44 @@ because it is the one consequence of BR-06 that lands in a different metric.
 **The harvested test is asked over BR-14's grammars, as BR-16 specifies.** `crossReviews` is
 grammatical membership (`parseReviewFilename(...).ok`), so the harvested condition below asks
 whether any *grammar-passing* cross-review remains, not whether any basename starting
-`CROSS-REVIEW-` remains. That is not a TSPEC choice needing defence: FSPEC BR-16 at v1.4 phrases the
-condition over BR-14's `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar, states it is evaluated
-over exactly the file set BR-14's numerator sums, and names the
-`docs/completed/pdlc-advisory-wave-gate/` shape — a harvested directory whose only `CROSS-REVIEW-`
-basenames are the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form — as reporting
-`harvested`. REQ-STATS-06 at v1.4 carries the same scoping. The rule the two upstream documents
-encode is the one this layer implements: REQ C-4 defines the process side as "every file matching
-the documented … grammars", so a basename that does not match contributes no bytes, and a condition
-asking whether the numerator's evidence is gone is asked over the same membership that supplies the
-numerator. Nothing on this point is routed upstream (FSPEC §7.3 records it closed).
+`CROSS-REVIEW-` remains. FSPEC BR-16 at **v1.7** phrases the condition over BR-14's
+`CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar and states it is evaluated over exactly the file
+set BR-14's numerator sums, so on BR-16's own reading a basename that fails contributes no bytes and
+counts as no file remaining. This layer implements that reading, which is also REQ C-4's definition
+of the process side as "every file matching the documented … grammars".
+
+**The `docs/completed/pdlc-advisory-wave-gate/` citation is a basename *shape*, not a verdict.** An
+earlier revision of this section read BR-16 as naming that directory a harvested one. It is not, and
+BR-16 at v1.7 says so explicitly: the directory carries four out-of-catalogue
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` files **alongside** grammar-matching cross-reviews and so
+reports a **measured** ratio itself; only the malformed shape is borrowed. Measured at HEAD, the
+directory holds 62 `CROSS-REVIEW-*` files, of which 4 are the out-of-catalogue form and 58 match
+BR-14's grammar, so `crossReviews.length` is 58 and the harvested disjunct does not fire. §7.2's
+AT-09 row and §6.1's measured baselines already record the same four-file count and the same
+directory; nothing in §6 or §7 changes. A real-path test written against this directory must expect
+a measured ratio, not `harvested`.
+
+**What the shape itself yields is contested upstream and is not decided here.** REQ-STATS-06 at
+**v1.6** now states that "the predicate is set-membership over C-4's grammars, so a grammatical
+basename outside the driver's document-type catalogue is **a survivor** even where REQ-STATS-03
+reports it malformed" — which classes `CROSS-REVIEW-{role}-REVIEW-v{N}.md` as a surviving
+cross-review and a directory holding only those as **measured**. FSPEC BR-16 at v1.7 classes the
+same file as no file remaining and the same directory as `harvested`. Both cannot hold. The
+disagreement is REQ-versus-FSPEC, not a choice this layer may make: the sketch below is written
+against BR-16, the immediate upstream, and §8.3 routes the reconciliation to the owning phase. When
+it settles, exactly three things here re-stamp — this paragraph, BR-16's version pin above, and
+AT-17's fourth-leg expectation named next. No type, signature, exit code or other oracle depends on
+the outcome.
 
 **FSPEC AT-17's fourth leg** is the boundary fixture, and it is FSPEC-owned rather than invented
 here: `LEARNINGS-{feature}.md`, `CODE_REVIEW` files **intact**, and as its only `CROSS-REVIEW-`
-basenames the out-of-catalogue form — expected `harvested`. The "`CODE_REVIEW` files intact"
+basenames the out-of-catalogue form — expected `harvested` on BR-16's reading, and `measured` on
+REQ-STATS-06 v1.6's. This leg's expected value is the single place the contested scoping above
+becomes an assertion; it is carried here as BR-16 states it and is the row to re-stamp if the
+reconciliation lands the other way. FSPEC §8 also maps BR-16 to **AT-15**, whose neither-list pins
+the byte half of the same agreement (a `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file reaching neither
+side); that half is unaffected by the dispute, since neither reading gives the file spec-side bytes.
+The "`CODE_REVIEW` files intact"
 conjunct is load-bearing for what the leg proves: the condition below is a *disjunction*, so a
 directory with no DoD reviews would read `harvested` through `dodReviews.length === 0` whatever the
 cross-review side said. Keeping the DoD family populated is what makes the grammatical cross-review
