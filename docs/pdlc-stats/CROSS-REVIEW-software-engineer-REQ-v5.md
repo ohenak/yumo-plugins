@@ -102,6 +102,36 @@ FINDING: Low | delta | local | Metadata block, v1.4 erratum note (lines 20-23) |
 
 ## Positive Observations
 
+- The remediation took the *cite-the-existing-constraint* form rather than inlining a fresh match
+  rule into the AC. That is exactly what C-5 demands and what SE REQ v3 F-03 asked for; a second
+  copy of the basename grammar in an AC body would have been the easier edit and the wrong one.
+- The edit is genuinely minimal — 9 insertions, 3 deletions, confined to one predicate and its
+  changelog note. Nothing previously approved moved. I diffed the whole file, not just §5, to say so.
+- REQ-STATS-06 and REQ-STATS-04 now express the harvested predicate the same way. Two ACs that
+  disagreed about what counts as a survivor would have surfaced as a contradiction in TSPEC at the
+  worst possible moment; it is settled at the layer that owns it.
+- The changelog note names the round, the scope and "No other change" explicitly, which made this
+  confirmation cheap to bound.
+
 ## Recommendation
 
+**Needs revision**
+
+The routed item landed and landed well — F-02 is a Low nit in a changelog sentence, not in an AC.
+What blocks approval is F-01, which the DEC-ERR-03 upstream re-read surfaced rather than the item
+list: REQ-STATS-06's harvested predicate rests on a "post-mortems survive harvest" premise that the
+two upstream documents contradict each other about at HEAD, and REQ-STATS-05's *absence* of a
+harvested state rests on the same premise from the other side. Because the finding is inherited —
+pre-round bytes the erratum edit did not touch — it routes back through the REQ's ordinary revision
+loop rather than halting the phase, which is the right disposition: the resolution is an upstream
+decision about `harvest-learnings` behaviour, not a wording fix this erratum round could have made.
+
+Concretely, to reach Approved: settle Q-01 (a `docs/_decisions/` entry, since the answer binds more
+than this feature), then in REQ-STATS-06 cite the settled source in place of the bare assertion, and
+give REQ-STATS-05 a harvested state if the answer is "deleted". If the answer is "survive", the
+clause is already correct and only wants its citation.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
