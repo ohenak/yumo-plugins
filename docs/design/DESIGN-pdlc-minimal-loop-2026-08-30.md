@@ -57,8 +57,9 @@ one-way (any reviewer may raise the tier, none may lower it).
 |---|---|---|---|
 | SPEC (REQ+FSPEC merged) | one doc, ≤1 review round | one doc | separate REQ + FSPEC |
 | Phase G — bounded grilling | — | ≤2 rounds | ≤3 rounds |
+| G2 — architecture checkpoint | — | ≤2 rounds | ≤2 rounds |
 | TSPEC+PLAN | merged, one doc | merged, one doc | separate |
-| DECISIONS doc | never (ledger rows only) | ledger rows only | full doc |
+| DECISIONS doc | never (ledger rows only) | ledger rows only | compiled from ledger rows³ |
 | PROPERTIES | never | on trigger only¹ | always |
 | Implement (TDD waves) | unchanged | unchanged | unchanged |
 | Verify — two-axis DoD² | always | always | always |
@@ -67,6 +68,10 @@ one-way (any reviewer may raise the tier, none may lower it).
 ¹ Trigger: the feature contains an algorithmic or stateful core (parser, scheduler, money
 math, concurrency) rather than wiring/config/docs. The trigger fires from TSPEC review — a
 reviewer names the core; absence of a naming means no PROPERTIES doc.
+³ The L-tier DECISIONS document is no longer independently authored and reviewed: it is a
+mechanical compilation of the feature's closed ledger rows, generated at TSPEC approval and
+carrying no review window of its own. This deletes the observed 9–12-round DECISIONS window
+outright rather than relocating it.
 ² R3-4: pm lens → Spec axis, te lens → Standards axis, run in parallel with the DoD scan,
 reports aggregated verbatim under separate headings, never merged or re-ranked. This retires
 the standalone CR phase and **requires an explicit operator re-decision** (it contradicts a
@@ -80,6 +85,22 @@ answers; the grillee answers only from the authority ladder — (1) the SPEC tex
 ESCALATE. Every resolved question becomes a decision-ledger row. Cost bound ≤8 dispatches.
 Downstream authoring then runs to-spec style: pure synthesis, zero discovery, existing seams
 preferred.
+
+**G2 — the architecture checkpoint** applies the same pattern at the second point where a
+batch of decisions ripens: after FSPEC approval, before TSPEC authoring. Rationale from the
+corpora: TSPEC and DECISIONS were reviewed as a pair in one window and burned rounds as a
+pair (advisory-wave-gate 12+11, engineering-loop 15+12) — post-hoc decisions re-opened
+through the TSPEC channel, with each document's edits cascading into the other's approval
+anchors. G2 makes the dependency one-directional. Same frontier discipline and authority
+ladder as Phase G, ≤2 rounds, but the frontier is architectural — seams, boundaries,
+storage, protocols — questions FSPEC makes decidable against existing code without needing
+the TSPEC to exist. Output is **decision-ledger rows only, never a reviewed document**.
+Decisions not ripe at G2 are left as open ledger rows that TSPEC review is required to close
+(fog-of-war rule: don't force what can only be decided while mapping the seams). TSPEC is
+then synthesized to-spec against closed rows, and its review verifies synthesis rather than
+hosting design debate. The addressable saving is the genuine-debate residue of the T+D
+window (~3–5 rounds; the bookkeeping majority is already killed by M1/M2/M4) plus, via ³,
+the entire standalone DECISIONS review window on L features.
 
 **The decision ledger (M4) is the spine.** Every review dispatch carries the
 one-line-per-closed-decision index; re-opening a closed decision requires a High finding
@@ -203,7 +224,12 @@ diagnose upstream, not a budget to raise.
 4. **`queue.autoResolve`** (§6) — config-gated off, one-feature experiment on a consumer
    repo queue; needs `pdlc stats` (step 2) live first so resolution attempts are attributable.
 5. **Phase G** on one M-tier feature (High risk per proposal; the experiment is cheap: ≤8
-   dispatches, and a failed experiment leaves a decision ledger, not damage).
+   dispatches, and a failed experiment leaves a decision ledger, not damage). **G2 rides the
+   same experiment**: it is the identical mechanism pointed at a different frontier, so one
+   feature runs both checkpoints and `pdlc stats` attributes their effects separately (Phase
+   G against SPEC-review rounds, G2 against TSPEC rounds). The DECISIONS-as-compilation
+   change (³) ships with G2, since an L feature without a G2 checkpoint has no closed rows
+   to compile.
 6. **Size tiers + document merges** (S first — `pdlc-rcv-budget-stop` is the archetype S
    feature that paid for six documents).
 7. **Two-axis DoD (R3-4)** — last, because it needs the operator re-decision.
