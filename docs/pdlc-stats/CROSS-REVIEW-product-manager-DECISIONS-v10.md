@@ -56,7 +56,47 @@ all were approved across v5–v9.
 
 ## Options Considered
 
-_pending_
+The bytes in front of me are frozen. Only the relationship to upstream can have broken, and there
+are three readings of what an upstream correction *toward* this document does to its approval. I
+state them rather than leaving the choice implicit.
+
+**Reading 1 — TSPEC moved, so DECISIONS is stale and owes a re-grounding round.** Rejected on
+evidence. Staleness is a defect only when it changes something. The TSPEC v1.6→v1.7 delta touches
+exactly one row of §2.1 plus two changelog restatements of it. DECISIONS decides module boundaries,
+seam identity and co-change cost; the corrected row is inside its subject matter, so I checked it
+directly rather than waiting out the diff — and the check comes back agreeing, not diverging. No
+`BR-`/`E-`/`AC-` row moved, no decision was opened upstream this round that DECISIONS owes
+absorption for. TSPEC's own v1.7 changelog says so explicitly: *"no upstream decision absorbed this
+round"*. There is nothing to re-ground.
+
+**Reading 2 — the correction lands upstream, so DECISIONS' K-3 divergence clause is now a live
+falsehood and must be edited.** Rejected as a *gating* reading, accepted as a finding. K-3's clause
+says the divergence is *"owed upstream in TSPEC and not resolved here (TE F-05)"*. At TSPEC v1.7 it
+**is** resolved there. That sentence no longer describes HEAD. But weigh what it costs: the number
+K-3 carries (`seven → eight`) was always correct and is now corroborated upstream; the obligation
+K-3 states — add the `**/`-anchored `lib/stats.mjs` entry to `c8.include`, add the matching member to
+P9-02's expected literal, fix the stale title and comment words — is unchanged and correctly sized;
+and the falsifier cell PLAN reads to place its red test is untouched. Nothing an implementer or a
+PLAN author *does* changes. What goes wrong is narrower and real: a reader of K-3 is told to chase a
+repair upstream that has already landed. That is a bookkeeping defect in a routing note, not a
+misdirection of work — **Low**, recorded, not gating. Editing frozen bytes to close it would open a
+downstream obligation (PLAN and PROPERTIES are approved beneath this document) that nobody was asked
+to discharge, which is the same reasoning v1.6 used when it declined to edit TSPEC from a DECISIONS
+dispatch, and it holds symmetrically here.
+
+**Reading 3 — test whether the document's load-bearing claims still hold at HEAD, and route what
+does not.** Adopted. It is the only question a frozen round can honestly answer, and this document
+passes it. Every claim DECISIONS leans on TSPEC for — the ten-site co-change set, its partition
+across K-1/K-3/K-8/K-9, the seven-entry `c8.include`, the four-entry `REQUIRED_INCLUDES`, the
+`4 + 1 + 2` literal, the `MODULE_NAMES` copied-class (4 → 5) versus packed-class (5 → 6) distinction,
+K-7's sibling-document carve-out sitting *outside* the ten — I re-read against TSPEC v1.7 and against
+the shipped code. All hold, and one of them holds *better* than it did at v9.
+
+**The bar I am applying is the one I set at v9, unchanged.** Under a decision freeze, only two things
+may block: a defect the revision introduced (there is no revision, so this limb is vacuous), and a
+factual contradiction between this document and repository/upstream HEAD. The second limb is the
+whole of this round's work, and it produced one contradiction — K-3's *"not resolved here"* clause —
+whose severity I calibrate to what a reader would mis-*do*, which is nothing.
 
 ## Decision
 
