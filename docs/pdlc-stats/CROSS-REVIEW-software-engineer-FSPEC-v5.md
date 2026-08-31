@@ -51,7 +51,29 @@ constraint or non-goal was added, so §2.1's coverage table needs no new row.
 
 ## Behavioral Flow
 
-_pending_
+No flow-table cell changes meaning under REQ v1.3.
+
+- **Flow A, A2 → A3 (root probe before feature resolution).** D-9's ordering — A2 exits on a
+  missing or unreadable `docs/` root before A3 can resolve a feature — was the FSPEC's decision
+  *against* REQ-STATS-09's literal *Given*. REQ v1.3 now states the same ordering as its own
+  carve-out, so A2/A3 is no longer a departure to be justified; it is the criterion. The flow
+  itself is right as written.
+- **Flow A, A6 (DoD metric) and A8 (ratio).** A8's decision point already reads "Is either process
+  family entirely absent alongside a `LEARNINGS-{feature}.md`?", which is REQ-STATS-06 v1.3 word
+  for word. A6 delegates its predicate to BR-11 and therefore inherits F-01's divergence; fixing
+  BR-11's clause fixes A6 without touching the table.
+- **Flow B, B5.** "Could the directory not be **read**… No → a normal row, including for a
+  directory that is readable and empty" is now the REQ's own sentence rather than a narrowing of
+  it. B5 and REQ-STATS-07 v1.3 agree exactly.
+- **§3.4 (read-only invariant).** REQ-STATS-08's re-punctuated conjunct (b) enumerates the same
+  three obligations §3.4 already carries, and the liveness conjunct ("never suffices alone") is
+  untouched. No change.
+
+Carried forward and still open from v4: **F-01 of that round** (Flow C3 routes a refusal Flow A's
+A4 cannot raise) and **F-03 of that round** (B5's decision point is narrower than EC-21's
+catch-all). Both are Local and pre-existing; neither is aggravated or repaired by the REQ edit, and
+neither is re-raised here, since this confirmation is not the channel for the FSPEC's own open
+minor findings.
 
 ## Business Rules
 
