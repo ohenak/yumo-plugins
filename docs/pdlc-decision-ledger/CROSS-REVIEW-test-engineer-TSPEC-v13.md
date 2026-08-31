@@ -90,7 +90,40 @@ a deleted or added member — completeness by set equality, not containment, sur
 
 ## Test Strategy
 
+**Nothing I approved is broken by this delta.**
+
+- **The 1,200-byte framing pin stays falsifiable, and the edit makes it more so.** The paragraph now
+  states explicitly that the pin "measures rendered output, not a constant count — it is a unit test
+  over `renderDecisionLedgerBlock`'s emitted framing, so it stays honest however the sentinels are
+  spelled in source." That is the right oracle placement: an assertion over the renderer's output
+  cannot be defeated by hoisting or inlining a sentinel, whereas a summed-constants assertion could
+  have been. The literal `1,200` is transcribed from the budget, not derived from the code under
+  test, so there is no implementation echo. §3.6's dependent arithmetic (`12500 − 1200 = 11,300`,
+  `6,305` project-level, `10,859 + 1,200 = 12,059`, `441` clearance) is untouched by the delta and
+  still consistent with the paragraph.
+- **The classify-or-redden guard is a positive mechanism, not an absence-only oracle.** §4.3's
+  "hoisting either sentinel would introduce a feature-declared name absent from
+  `DECISION_LEDGER_OWNED_DECLS`, which §7.3's classify-or-redden guard fires on" names the exact
+  conjunct that reddens (partition set-equality plus resolves-to-exactly-one), not merely "the test
+  would not pass".
+- **The single-siting reconciliation improves testability rather than weakening it.** The prior
+  claim ("stated nowhere else") was false on its face against the operand rows and the revision
+  history; the new formulation distinguishes *authority* (this paragraph) from *enumeration* (the
+  operand rows, which are what makes the count mechanically checkable) and *history* (the
+  changelog), and gives an explicit precedence rule — "when this paragraph and an operand row
+  disagree, this paragraph is right and the row is the defect". A reviewer or implementer now has a
+  deterministic resolution rule instead of a claim that HEAD contradicts.
+- **Traceability survives.** §7.6's AT-12 routing of the source census, §8.1's REQ-DECLEDGER-08 row,
+  §7.2's sole-proof statement for `report.decisionLedger`, and §7.4's baseline pinning are all
+  outside the three changed hunks and unmodified.
+
+The one thing the delta gets factually wrong is bookkeeping, not test design — see F-01 below.
+
 ## Open Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §4.3's framing pin is a unit test over "emitted framing", but the renderer returns `""` for an empty `selected`, so the framing can only be measured on a non-empty render minus its decision lines. TSPEC altitude does not owe the extraction recipe, and PROPERTIES/PLAN can supply it — flagging only so the PROPERTIES author does not have to rediscover it. No change requested here. |
 
 ## Findings
 
