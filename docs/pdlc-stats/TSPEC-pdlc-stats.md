@@ -137,8 +137,8 @@ pdlc/engine/bin/cli.mjs
     └─ runStats({argv, io, parsers}) ── pure orchestration (in stats.mjs), returns a StatsOutcome
          ├─ discoverFeatures(...)    ── fleet only
          ├─ computeFeatureStats(...) ── the four metrics, one feature
-         ├─ renderHuman(outcome)     ── pure string
-         └─ renderJson(outcome)      ── pure object → JSON.stringify
+         ├─ renderHuman(report)     ── pure string
+         └─ renderJson(report)      ── pure object → JSON.stringify (§4.2.1's key sets)
 ```
 
 Everything below `cmdStats` is a pure function of its inputs plus four injected seams. `cmdStats`
@@ -289,8 +289,12 @@ export function runStats(
   args: { argv: string[]; io: StatsIo; parsers: StatsParsers; cwd: string }
 ): StatsOutcome;
 
-export function renderHuman(outcome: StatsOutcome): string;
-export function renderJson(outcome: StatsOutcome): object;   // caller JSON.stringify's
+/* Both renderers are total over the internal `StatsReport` (§4.2), never over
+   `StatsOutcome`: `runStats` builds one report and hands it to both, which is
+   what makes AT-06's agreement structural. `renderJson` emits §4.2.1's key
+   sets — a projection of the report, not a serialisation of it. */
+export function renderHuman(report: StatsReport): string;
+export function renderJson(report: StatsReport): object;   // caller JSON.stringify's
 
 export const REVIEW_DOC_TYPE_ROWS: readonly string[];  // BR-09's six, in order
 export const NON_FEATURE_DIRS: readonly string[];      // BR-25's eight, fixed
@@ -338,7 +342,7 @@ commands use, not their flag *lists*" is satisfied by exactly this reuse:
 export async function cmdStats(argv) {
   const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
   try {
-    const outcome = runStats({ args: argv, io: statsIo(), parsers: await statsParsers(), cwd });
+    const outcome = runStats({ argv, io: statsIo(), parsers: await statsParsers(), cwd });
     if (outcome.stdout) process.stdout.write(outcome.stdout);
     if (outcome.stderr) process.stderr.write(outcome.stderr);
     process.exitCode = outcome.exitCode;
@@ -352,13 +356,17 @@ export async function cmdStats(argv) {
 }
 ```
 
+Three spellings are fixed here so the sketch and §3.3 cannot drift: the argument key is `argv`
+(§3.3's `runStats(args: {argv, io, parsers, cwd})`); `cwd` is resolved **once**, at this edge, from
+`--cwd` or `process.cwd()`, so nothing below `cmdStats` reads ambient process state and every test
+below this line supplies its own root; and `statsParsers` is `await`ed because it resolves the
+workflow root and dynamically imports the driver.
+
 The `try`/`catch` is the wrapper §5's last row names; it is written here rather than described so
 that the sketch and the error table cannot disagree, and the test that drives an injected throw
 through `statsParsers()` asserts against **this** function, not against `runStats`. The property
 argument is `runStats`'s: it returns `{stdout, stderr, exitCode}` and never throws for a decided
-scenario, so this catch is reached only by a genuinely unexpected fault. Note the parameter name:
-`runStats` takes `args` (§3.3), and the `argv` local is passed into it under that key — the two
-spellings name one value.
+scenario, so this catch is reached only by a genuinely unexpected fault.
 
 `statsParsers()` mirrors the existing `loopSessionModule()` / `escalationViewModule()` /
 `devWorkflowModule()` helpers: `resolveWorkflowRoot()` for the root, then a dynamic
@@ -781,6 +789,19 @@ Importing `bin/cli.mjs` is inert — the file states and its entry guard enforce
 only happens when `import.meta.url` matches `process.argv[1]` — so the process level runs `main()`
 directly with a process-argv-shaped array, exactly as `cli.test.js` already does, with no spawn.
 
+One consequence of in-process running is stated so it is not rediscovered: `checkFlags` and
+`cmdStats` set `process.exitCode` on the **shared** test process, and an exit code left at `1` by a
+usage-error case would be inherited by the next case and by the worker's own exit status. Each
+process-level test therefore reuses the shipped precedent rather than inventing one:
+`captureRun(fn)` in `pdlc/engine/__tests__/loop-cli.test.js` already records
+`process.exitCode` before the call, reads it after, restores the saved value, and returns
+`{stdout, stderr, exitCode}` from swapped-in capture functions. This feature's tests reuse that
+helper's shape, extended in one respect: `captureRun` swaps `console.log`/`console.error`, and
+`cmdStats` writes through `process.stdout.write`/`process.stderr.write` directly while `checkFlags`
+uses `console.error`, so both pairs are swapped for the duration of the call. "Stdout is empty"
+(AT-24, BR-20) is then an assertion about a captured buffer, not about a stream nobody read, and no
+case can leak an exit code into the next.
+
 ### 6.3 The cross-mode oracle (AT-06)
 
 One test parameterised over a corpus of `StatsReport` values that between them reach **every**
@@ -1059,7 +1080,7 @@ Raised against the upstream document that owns each, per the erratum channel; no
 
 ### 8.4 Questions for DECISIONS
 
-Two load-bearing alternatives were weighed and rejected and belong in `DECISIONS-pdlc-stats.md`:
+Three load-bearing alternatives were weighed and rejected and belong in `DECISIONS-pdlc-stats.md`:
 
 1. **Module placement** (§2.1's three-option table): `pdlc/workflows/lib/stats.mjs` chosen over an
    engine-`lib/` module and over inlining in `bin/cli.mjs`. Constraint that forced the shape: the
@@ -1068,7 +1089,14 @@ Two load-bearing alternatives were weighed and rejected and belong in `DECISIONS
    the sibling feature's frozen packed-set table would have to be amended a second time.
    Re-evaluation trigger: `pdlc/workflows/lib/` becoming a routinely-growing directory, at which
    point the five enumerations should be derived rather than transcribed.
-2. **Parser injection with an identity oracle**, rejected in favour of neither a direct static
+2. **`schemaVersion` as a renderer obligation, not a report field** (§4.2.1, added in v1.1). The
+   alternative — carrying it on `StatsReport` or `FeatureStats` — was rejected because it puts a
+   JSON-only concern into the value the human renderer also reads and forces §6.3's cross-mode
+   oracle to carry a permanent per-key exception. Constraint that forced the shape: BR-21's
+   set-equality between the JSON key set and the printed metric set, which a report-level field
+   would break in the human direction. Reversibility: easy. Re-evaluation trigger: a second
+   JSON-only field appearing, at which point a named envelope type is cheaper than two hoists.
+3. **Parser injection with an identity oracle**, rejected in favour of neither a direct static
    import (which forces every unit test to load 816 KB and makes `ok: false` branches hard to reach)
    nor behavioral-equivalence testing (which passes for a re-implementation that agrees on today's
    corpus and so cannot enforce REQ C-5). Reversibility: easy. Re-evaluation trigger: the driver
