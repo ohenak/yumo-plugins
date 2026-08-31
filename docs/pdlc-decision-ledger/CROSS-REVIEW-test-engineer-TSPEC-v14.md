@@ -63,6 +63,28 @@ churn class is closed.
 
 ## Interfaces
 
+No interface, protocol or seam in this document was edited. I re-checked the three that the routed
+citation edits sit adjacent to, to confirm the id-swap did not change what they oblige:
+
+- **§4.1 `parseDecisionLedgerConfig`** — the admits-nothing clause still says `0` is a *valid* value
+  on **either** `maxEntries` or `maxBytes`, still routes the `maxBytes` axis through E-8 ⇒ E-6, and
+  still cross-checks against REQ C-5's non-negative typing. Swapping `FSPEC v1.3's E-7` for
+  `FSPEC E-7` changed the pointer, not the obligation.
+- **§6.1 `F-13`** — the failure row's three conjuncts (block is `""`; not an error; not a fallback;
+  not a halt) are unchanged. The row still carries a positive oracle (`""`), not an absence-only
+  one, which is why I approved it.
+- **§7.6 `AT-14`** — still a positive assertion over all three cases, byte-identical to AT-04's
+  stream. The wording change is an improvement: `FSPEC E-7`'s cases is a falsifiable pointer (E-7
+  enumerates exactly those three), where `FSPEC v1.3's cases` named no clause at all.
+
+**Upstream fidelity of the swapped citations.** I read FSPEC E-7 at v1.4 (`FSPEC:342`) directly.
+It reads: *Either bound resolves to `0` — `maxEntries` `0`, or `maxBytes` `0` → treated as zero
+in-scope decisions — E-6's outcome, for both keys. Not an error, not a fallback to the default, not
+a halt. `0` is a valid operator value on either key (REQ C-5 types both non-negative); on the
+`maxBytes` axis the same outcome also follows from E-8 then E-6.* Every one of the three TSPEC
+sites is a faithful compression of that clause, and E-7 is intact at v1.4 — the changelog's claim
+that "E-7 itself is unmoved at FSPEC v1.4" is true, not asserted. No nonexistent-authority citation.
+
 ## Data Model
 
 ## Test Strategy
