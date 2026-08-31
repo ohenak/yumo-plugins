@@ -220,8 +220,19 @@ Neither question is gating, and neither needs an answer before batches 3–8 run
 
 ## Recommendation
 
-_pending_
+**Approved**
+
+The delta resolves the routed item without breaking anything I previously approved, and the document
+remains a faithful compression of REQ v1.9, FSPEC v1.3, TSPEC v1.2 and DECISIONS at HEAD. Zero
+findings, so nothing is required of the author before batches 3–8 proceed. Q-01 is a one-clause
+comment in a test-file header that can ride along with T-10a's implementation; Q-02 is closed.
+
+I would specifically ask that the census contract not be reopened. It has now converged across
+three rounds onto upstream's own vocabulary at all six sites, and every further restatement of that
+arithmetic is a new opportunity for the two numerically identical partitions to be wired to the
+wrong operands — which is the precise failure §7.3 v1.2 exists to prevent.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
