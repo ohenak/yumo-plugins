@@ -188,3 +188,7 @@ FINDING: Low | inherited | nonlocal | pdlc-decision-corpus-baseline.md:6 and :26
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 2}
+
+APPROVAL-HASH: sha256:9bc8bc32d69845b0f221c77ba48f919b8b0f6266a98f7c6eab73d1b5cc05f10d
+APPROVAL-HASH-NORMALIZED: sha256:9bc8bc32d69845b0f221c77ba48f919b8b0f6266a98f7c6eab73d1b5cc05f10d
+REVIEWED-COMMIT: 5af3ebe829f40a7996714eb173ee6941dd53ae7f
