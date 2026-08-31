@@ -209,4 +209,61 @@ FINDING: Medium | delta | local | §0 v1.5 changelog — "neither moved since v1
 
 ## Positive Observations
 
-_(pending)_
+- **The round refused to rewrite what was already right.** The dispatched item asserted §2.1 and
+  §8/RK-1 "still list five". They did not — the fix landed at v1.2/v1.3. The changelog says so
+  plainly and verifies the ten is present rather than performing a redundant edit to look
+  responsive. That is the correct handling of a stale erratum item, and it is the harder choice.
+
+- **Correction (c) is a genuine accuracy gain, not a hedge.** "Four **script-side** enumerations"
+  was false about one of its four members: `_tspec-packed-set.mjs` lives under `__tests__/`.
+  Renaming the subset to "the four enumerations `assertAdditiveOnly` reads" names it by its
+  falsifier instead of by directory, which is both true and more useful — the reader now knows *why*
+  those four are a set.
+
+- **Correction (d) makes a grep resolve.** Quoting P-1's title verbatim
+  ("MODULE_NAMES is exactly the four canonical workflow modules") instead of paraphrasing it means
+  the co-change checklist can be executed mechanically. I verified the quote against
+  `learningsPremises.test.js:78` character-for-character. Small edit, real leverage on `RK-1`.
+
+- **The `outside the ten` scoping fix is worth more than its size.** §1 and RK-1 both used
+  "including", which put the sibling-feature document edits inside a count that §2.1, `K-1`'s
+  partition and `K-7`'s ownership all place outside it. Left alone, a PLAN author would have had two
+  defensible readings of "ten" and no way to tell which was meant. Both sites corrected together.
+
+- **§7.2's `AT-09` row was already correct about the four out-of-catalogue basenames**, including the
+  count FSPEC only fixed at v1.7. The document was ahead of its upstream on that detail — which is
+  what makes `F-01` a single stranded paragraph rather than a systemic drift.
+
+- **Upstream fidelity is otherwise intact across a two-revision FSPEC move.** I re-checked nine
+  upstream anchors against FSPEC v1.7 and REQ at HEAD; eight survived unchanged, including `BR-16`'s
+  actual rule, its precedence, `AT-15`'s `EC-19` mapping and `E-5`'s corrected `AT-26` trace.
+
+## Recommendation
+
+**Needs revision** — mandatory on any High finding.
+
+To be explicit about what this verdict does and does not say: the **dispatched erratum items are
+fully discharged**, and the four wording corrections are correct, well-evidenced and break nothing I
+approved at v6. If the round were scored on its item list alone it would pass.
+
+It does not pass because `DEC-ERR-03` scopes this confirmation to the TSPEC measured against
+upstream at HEAD. FSPEC moved v1.5 → v1.7 and rewrote the `BR-16` passage §4.3 quotes as its
+authority, reversing the worked example's verdict. §4.3 now misstates both what FSPEC says and what
+a real archive path yields, and points at a repair (`CROSS-REVIEW-*` globbing) that `BR-14`/`BR-16`
+exist to forbid.
+
+Exactly two changes are required:
+
+1. **§4.3** — re-scope the `pdlc-advisory-wave-gate` citation to the basename **shape only**, state
+   that the directory reports a measured ratio, move the `harvested` verdict onto the
+   only-out-of-catalogue construct (`AT-17`'s fourth leg, already described correctly one paragraph
+   below), and re-pin the citation from "`BR-16` at v1.4" to v1.7.
+2. **§0 changelog** — correct the grounding attestation to record the FSPEC v1.5 → v1.7 move.
+
+`F-01` is tagged `inherited`: it is FSPEC-movement fallout, not damage the erratum edit did. It
+should route back to the owning phase rather than halt this one.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
