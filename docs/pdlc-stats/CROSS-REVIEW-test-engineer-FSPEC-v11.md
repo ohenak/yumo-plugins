@@ -204,3 +204,8 @@ FINDING: Low | inherited | nonlocal | FSPEC header `Upstream` field pins REQ v1.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:c7d2c832dee586c8e371ec843c0809b167b65dbbeced4dd140934fe68d0ec63d
+APPROVAL-HASH-NORMALIZED: sha256:c7d2c832dee586c8e371ec843c0809b167b65dbbeced4dd140934fe68d0ec63d
+REVIEWED-COMMIT: ad404dc8659f58aab874b11a392914f6f9daf95c
+UPSTREAM-STATE: REQ sha256:f75c348f299ebff8518b590f64668d054587c0c9d4d7ba442477e6fdfa7a8862
