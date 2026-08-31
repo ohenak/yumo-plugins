@@ -109,10 +109,35 @@ raised.
 
 ## Open Questions
 
+None. Nothing in this round is undecided, and I open no new decision under the freeze.
+
 ## Delta-Confirmation Findings
+
+No findings.
 
 ## Findings
 
+No findings. My v9 F-01 (High) is resolved at §4.2 BR-16 and verified against the repository at
+HEAD; the two record corrections routed from the test-engineer's v9 land correctly and disturb no
+enumeration.
+
 ## Positive Observations
+
+- **The fix went exactly where v9 said and nowhere else.** The tempting repair for "one document,
+  two counts" is to move whichever site is nearest the edit. This round moved BR-16 alone and left
+  BR-06 and AT-09 — the two sites that were already right, one of them an oracle verified green
+  against the real directory — untouched. A one-word diff inside a rule body is the correct blast
+  radius for a false numeral.
+- **The trace-table edge was added rather than the assertion removed.** AT-15 gained its BR-16
+  assertion in v1.6 without the matching §8 edge; the cheap resolution is to delete the assertion.
+  Adding the edge keeps the coverage and makes §8 set-equal to the tests that actually assert
+  BR-16, which is what downstream PROPERTIES and PLAN tasks read.
+- **E-5's re-citation replaced a wrong test with the right two, not with more tests.** AT-19 pinned
+  a different rule; the correction names the oracles §8 already attributes to BR-27 and stops
+  there, so the record column stayed a record rather than growing into a second trace table.
+- **The changelog is checkable and checks out.** "Three record corrections, no rule changed" is
+  falsifiable against the diff, and the diff carries no rule body, exit code, enum token or `AT-*`
+  definition line. Self-certifications that survive verification are what make a delta round cheap
+  to review.
 
 ## Recommendation
