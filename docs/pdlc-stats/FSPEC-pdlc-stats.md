@@ -356,10 +356,12 @@ is entirely absent** — that is, either no file matching BR-14's
 `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains, or no file matching its
 `CODE_REVIEW-{feature}-v{N}.md` grammar remains, or neither (REQ-STATS-06). It is evaluated over
 exactly the file set BR-14's numerator sums, so the two never disagree: a basename failing a grammar
-contributes no bytes to the process side and counts as no file remaining. A directory holding only
-the out-of-catalogue
-`CROSS-REVIEW-{role}-REVIEW-v{N}.md` files BR-06 reports as malformed — the shape
-`docs/completed/pdlc-advisory-wave-gate/` carries — reports `harvested`, not a measured ratio; and a
+contributes no bytes to the process side and counts as no file remaining. A directory whose only
+`CROSS-REVIEW-` basenames are the out-of-catalogue
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` files BR-06 reports as malformed reports `harvested`, not a
+measured ratio. That basename shape is cited from `docs/completed/pdlc-advisory-wave-gate/`, which
+carries two of them **alongside** grammar-matching cross-reviews and so reports a measured ratio
+itself; only the shape is borrowed, not the verdict. A
 stray `CODE_REVIEW-{feature}-draft.md` or foreign `CODE_REVIEW-` file does not hold the DoD family
 open. Post-mortems survive harvest while cross-reviews and DoD reviews do not, so a
 numerator computed over a partially deleted process set would silently undercount rather than be
