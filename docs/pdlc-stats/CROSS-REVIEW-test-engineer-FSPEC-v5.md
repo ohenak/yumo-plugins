@@ -231,7 +231,50 @@ F-02, Medium — the behaviour is sound and tested, the trace is not.
 
 ## Acceptance Tests
 
-_pending_
+The erratum invalidates no existing AT. It leaves one AT set short of a fixture and one AT leg
+mis-credited.
+
+**AT-12 — the AT F-01 needs.** AT-12 today: "two directories, both with `LEARNINGS-{feature}.md`: one
+with a surviving `CODE_REVIEW-{feature}-v4.md` and no other, one with none. *Then:* the first reads
+exactly `4` and the second reads `harvested`." Both fixtures are on-grammar or empty, so both readings
+of BR-11 — bare prefix and version grammar — pass AT-12 identically. Under my "write the test right
+now" check, this AT cannot be used to decide which predicate to implement, which is the definition of
+a gap once the two predicates diverge.
+
+The discriminating leg is one fixture: a third directory with `LEARNINGS-{feature}.md` present and a
+single `CODE_REVIEW-` file that fails the version grammar — `CODE_REVIEW-notes.md`, or another
+feature's `CODE_REVIEW-other-feature-v1.md`, which is the realistic one given how these files are
+named. *Then:* that directory reads `harvested`, not `0`. Stating the falsifier in the AT, in the form
+this document has used well elsewhere: **an implementation whose harvested test globs
+`CODE_REVIEW-*` reports `0` here and fails this leg.** That sentence is what stops the leg being
+transcribed into a fixture that happens to use a well-formed name and re-collapsing into AT-12.
+
+Worth pairing it with AT-17's ratio fixtures in the TSPEC's mind, because the two metrics now
+deliberately differ: the same off-grammar `CODE_REVIEW-other-feature-v1.md` file makes the DoD metric
+`harvested` (grammar-scoped, REQ-STATS-04) while keeping the ratio *not* harvested on the DoD side
+(prefix-scoped, REQ-STATS-06). A single shared fixture asserting both metrics on that one directory
+would pin the split as intentional and make any later "consistency" refactor go red. I would file that
+as the strongest available oracle for this erratum, and it costs one directory.
+
+**AT-20 — sound test, wrong credit.** Both legs are good tests and I am not asking for either to
+change. The second leg's own sentence — "B5's read failure and EC-21's catch-all are different paths:
+only this leg fails an implementation whose guard is around the read alone" — is exactly why §2.1
+cannot go on crediting it to REQ-STATS-07 now that REQ-STATS-07 is scoped to the read alone. The AT
+states, in its own words, that it tests something the criterion no longer covers. That is F-02's
+evidence, and it is in the document already.
+
+**AT-27, AT-23, AT-13, AT-14, AT-14b, AT-17, AT-26, AT-24.** Re-read; all still faithful to the
+amended REQ. AT-27's eight-run cross product and its `feature`-per-mode conjunct are, if anything,
+better supported now: they test the behaviour REQ-STATS-09 v1.3 demands rather than the behaviour D-9
+decided against it. AT-13's foreign-feature basename leg is now the direct oracle for a listing rule
+the REQ explicitly owns. No AT needs to be withdrawn or re-fixtured because of this erratum.
+
+**Property-based note, unchanged from v4.** The review-round and DoD basename grammars remain the
+parameterisable components in this feature, and the erratum makes the DoD grammar *more* load-bearing,
+not less — it is now the discriminator between `harvested` and a measured index. A property over
+generated basenames (`CODE_REVIEW-{feature}-v{N}.md` accepted; prefix-matching non-members rejected)
+would cover F-01's whole input space rather than the one fixture above. That belongs in PROPERTIES,
+not here; I note it so the TSPEC author does not treat the single leg as the ceiling.
 
 ## Open Questions
 
