@@ -129,4 +129,89 @@ installed users. D is therefore not a cheaper A, it is a broken A, and the asymm
 
 ## Decision
 
+### DEC-STATS-01: The pure metric logic lives in `pdlc/workflows/lib/stats.mjs`; the operator surface is a `stats` case in `pdlc/engine/bin/cli.mjs`
+
+**Decision.** Option A. `computeFeatureStats`, `discoverFeatures`, `parseStatsArgv`, `runStats` and
+both renderers land in a new `pdlc/workflows/lib/stats.mjs`. `pdlc/engine/bin/cli.mjs` gains a
+`cmdStats` that builds the four `StatsIo` seams and the `StatsParsers` bundle, reaching the new
+module through the same `resolveWorkflowRoot()`-then-dynamic-`import()` arrangement its existing
+`loopSessionModule()` and `escalationViewModule()` helpers use. `resolveWorkflowRoot()` itself is
+unchanged: it probes for `orchestrate-dev.js` and `orchestrate-queue.js` to pick a root, and
+`lib/stats.mjs` loads from whichever root that returns.
+
+**Constraint that forced the shape.** Two, pulling the same way. REQ C-5 makes agreement with
+`orchestrate-dev.js`'s classifiers *the* correctness property, so the consumer should be versioned,
+vendored and tested as one unit with the producer. And the only per-file branch floor in the repo is
+the second stage of `pdlc/workflows/package.json`'s `test:coverage`
+(`--per-file --branches 85`), which exists precisely so a small module cannot hide inside
+`orchestrate-dev.js`'s aggregate; a new module of a few hundred lines wants that gate.
+
+**Carve-out against a completed sibling feature — stated once, here.** Adding
+`vendor/workflows/lib/stats.mjs` to `pdlc/engine/__tests__/_tspec-packed-set.mjs`'s
+`WORKFLOW_MEMBERS`, and moving `tspecPackedCount`'s vendored term from `5` to `6`, amends
+enumerations that `docs/completed/pdlc-engine-distribution/` approved and froze (its TSPEC §5.4
+`PK-*` table and FSPEC §5.2's per-class counts). This paragraph is that amendment's single site.
+Downstream documents — PLAN, PROPERTIES, the implementation's tests — **cite `DEC-STATS-01` and do
+not restate this text**: `pdlc-engineering-loop`'s LEARNINGS records verbatim restatement of one
+clause across three documents as a defect generator, and a carve-out is exactly the clause shape
+that attracts it. The growth path is precedented rather than novel: the same class already went from
+three members to five when `lib/loop-session.mjs` and `lib/escalation-view.mjs` were added, recorded
+as `PK-24`/`PK-25` in that helper's own comments.
+
+**Reversibility: hard.** Undoing it means amending the five enumerations and the sibling feature's
+frozen table a second time. Not a one-way door — no data or published contract is committed — but
+each reversal costs what the original cost.
+
+**Re-evaluation triggers.**
+- `pdlc/workflows/lib/` becomes a routinely-growing directory (a third runtime-reachable member
+  added after `stats.mjs`). At that point the transcription stops being amortisable and the four
+  vendoring enumerations should be *derived* from a directory listing at pack time, with the
+  packed-set test asserting the derived set rather than a literal.
+- A future REQ forbids editing `pdlc/engine/`, as `pdlc-loop-economics`'s NG-3 did. Under that
+  constraint option A is unavailable and DEC-LOOPECON-08's inverse trade applies instead.
+- `pdlc/engine/package.json` gains a coverage gate with a per-file floor, which would remove option
+  B's disqualifying asymmetry.
+
+### DEC-STATS-02: `schemaVersion` is a `renderJson` obligation, not a field on `StatsReport` or `FeatureStats`
+
+**Decision.** Option A. `SCHEMA_VERSION` is a module constant in `lib/stats.mjs`, and `renderJson`
+hoists it identically into all three emitted documents (single success, fleet success, refusal).
+Neither `StatsReport` nor `FeatureStats` carries it. `renderJson` stays a **projection** of
+`StatsReport`, not a serialisation of it — the same reason `FeatureStats.feature` and
+`FeatureStats.dir` exist for the human header and BR-02's live-before-archive preference yet reach
+no document.
+
+**Constraint that forced the shape.** BR-21's set-equality between the JSON top-level key set and
+the printed metric set. A report-level `schemaVersion` breaks it in the human direction: the value
+the human renderer reads would carry a key with no printed counterpart, and TSPEC §6.3's cross-mode
+oracle would need a standing per-key exception — a permanent hole in the one check REQ-STATS-02's
+guarantee rests on.
+
+**Reversibility: easy.** One constant and one hoist site.
+
+**Re-evaluation trigger.** A second JSON-only field appears. Two hoists is where an explicitly named
+envelope type (`JsonEnvelope<T>`) becomes cheaper than repeating the hoist, and the oracle can then
+be stated over the envelope's payload rather than over an exception list.
+
+### DEC-STATS-03: The driver's four classifiers are injected as a bundle and pinned by an identity oracle
+
+**Decision.** Option A. `computeFeatureStats` receives `parseReviewFilename`, `deriveRoundWindow`,
+`deriveDodRoundIndex` and `parseResolvedMarker` in an injected `StatsParsers` bundle.
+`statsParsers()` in `pdlc/engine/bin/cli.mjs` is the **single production construction site**, and one
+test asserts that the functions it returns are `===`-identical to `orchestrate-dev.js`'s own
+exports. Unit-test doubles default to the real parsers (so a test opts *out* of fidelity explicitly,
+never into it by omission), consistent with `DECISIONS-seam-defaults.md` DEC-SEAM-01's rule that a
+seam's default is chosen for what the consumer does with it.
+
+**Constraint that forced the shape.** REQ C-5 is a claim about all inputs, not a corpus. Reference
+identity is the only guard that is total over inputs while still leaving the seam injectable;
+behavioral equivalence (option C) is a sample, and a sample cannot discharge a universal.
+
+**Reversibility: easy.** Switching to a static import is a local change in `lib/stats.mjs` and
+deletes the oracle rather than requiring a new one.
+
+**Re-evaluation trigger.** The driver exports gain state — a closure over configuration, a cache, a
+module-level mutable. Sharing a function reference stops being sufficient the moment two callers can
+observe each other through it, and the seam would need to share the state, not the function.
+
 ## Consequences
