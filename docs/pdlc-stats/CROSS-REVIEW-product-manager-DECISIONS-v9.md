@@ -233,3 +233,14 @@ FINDING: Low | inherited | nonlocal | v1.6 changelog upstream grounding line | T
 |----|---------|
 | Q-01 | K-9 covers three sites, two with falsifiers and one (`pdlc/README.md`'s prose enumeration) without. Will PLAN's task carry an explicit review checkpoint for that edit? A green `run.test.js` and `learningsPremises.test.js` can read as "K-9 done" while the prose member list and its count word go stale in silence — the partial-co-change shape `RK-1` exists to prevent. Carried unanswered from v7 and v8. |
 | Q-02 | Three consecutive rounds now, the dispatch's TSPEC pin has been either unresolvable (`sha256:512a9fcf…`, matching no revision on the branch) or absent. The document has handled it correctly by re-grounding on HEAD under `DEC-ERR-03`, but where is that hash produced? If it names a version that never existed rather than an older one, the staleness check is not lagging but broken, and no document-side discipline can compensate. Pipeline observation, not a document defect. |
+
+## Recommendation
+
+**Approved with minor changes.** No High findings. Two Low findings, both inherited and nonlocal:
+one is an erratum owed upstream in TSPEC, the other a tense convention in this document's own
+changelog. Neither is actionable inside a frozen round and neither blocks Phase D.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
