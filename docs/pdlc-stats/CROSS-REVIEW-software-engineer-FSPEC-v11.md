@@ -58,6 +58,21 @@ id, and no new obligation for this FSPEC to compress.
 
 ## Behavioral Flow
 
+§3.1 step A8 is the only flow step the moved clause can reach. It reads: *"Compute the process-to-spec
+byte ratio (BR-14…BR-16). Is either process family entirely absent alongside a `LEARNINGS-{feature}.md`?
+Is the spec total zero? → `harvested`, `n/a`, or a rendered ratio. Harvested is checked before the
+zero-denominator test (BR-16)."*
+
+This still holds, and it holds without an edit, because the step is written at the altitude of the
+*question asked*, not of the file-classification that answers it. The erratum changes which files
+count toward "entirely absent"; it does not change that the question is asked, its ordering relative
+to the zero-denominator test, or the three outcomes. A flow step that had spelled out the survivor
+rule inline would have needed a matching edit here — this one delegates to BR-16 by citation, so the
+correction lands in exactly one place.
+
+§3.4's read-only stance and the mode-rendering steps are untouched by the delta and I did not
+re-read them.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
