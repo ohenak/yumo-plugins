@@ -85,11 +85,54 @@ fixture prose about genuinely surviving files, none of it about out-of-catalogue
 
 ## Oracles
 
-_pending_
+The erratum changes an outcome, so the question for oracles is whether any oracle in PROPERTIES would
+now pass an implementation REQ forbids, or fail one REQ requires.
+
+**The AT-17 chain is intact end to end.** FSPEC is unmoved this round (`c7d2c832…` at both the v3 pin
+and HEAD), and its AT-17 already states the post-erratum reading in terms: the fourth leg's basenames
+are "the `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form BR-16 names", and the *Then* concludes "the fourth
+not a measured ratio, because files whose bytes BR-14 refuses are equally files BR-16 does not count
+as remaining (BR-16, EC-13)" (`FSPEC-pdlc-stats.md:754-756`). REQ v1.7's new sentence is a
+restatement of that FSPEC clause at REQ altitude. So the chain REQ-STATS-06 → BR-16 → AT-17 →
+PROP-RATIO-08 now reads the same direction at all four levels; before the erratum, REQ was the one
+level out of step. PROPERTIES' `Traces to` cell for PROP-RATIO-08 (`REQ-STATS-06, BR-16, AT-17`) is
+therefore still accurate, and now accurate for the right reason.
+
+**Direction of the oracle is unchanged, so no test flips colour.** Because PROPERTIES already
+asserted the v1.7 outcome, an implementation built against PROPERTIES as written satisfies REQ v1.7.
+The erratum removes a latent conflict in which a conforming implementation could have been red
+against PROP-RATIO-08 while green against REQ-STATS-06; it does not create a new one.
+
+**The disjunction framing survives.** PROP-RATIO-08's stated purpose for leg 4 — "the one that proves
+the condition is a disjunction rather than a DoD-side test" — still holds under v1.7, and the erratum
+strengthens it: with out-of-catalogue basenames no longer counting as survivors, leg 4 is now a
+genuine instance of "cross-review family entirely absent while `CODE_REVIEW` is intact", which is
+precisely the disjunct it was written to exercise. Under v1.6's survivor reading the leg was
+arguably not an instance of the disjunction at all.
+
+I found no oracle in the document whose falsifier depends on the withdrawn clause, and no oracle
+whose pass condition the erratum widens or narrows.
 
 ## Fixtures
 
-_pending_
+Two fixtures encode the changed clause, and both remain correct.
+
+**`F-HARVEST-FOUR` (`PROPERTIES-pdlc-stats.md:331`)** builds the four AT-17 legs, its fourth being
+`CODE_REVIEW` present alongside out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md`, driving
+PROP-RATIO-08 and PROP-RATIO-09. Its expected outcome is `harvested` — the v1.7 outcome. No fixture
+edit is implied by the erratum.
+
+**`docs/completed/pdlc-advisory-wave-gate/` (`:357`)** is the real-path fixture carrying four
+`CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` basenames alongside a genuine
+`CROSS-REVIEW-test-engineer-TSPEC-v6.md`. It is pinned for PROP-RR-03 and PROP-RR-05 — the
+review-rounds and malformed-list expectations — not for the ratio, so the erratum does not disturb
+its recorded expectations. Worth noting for the implementer rather than as a finding: this directory
+carries a *surviving* in-catalogue cross-review, so it is not an instance of the new harvested rule
+and cannot be repurposed as one; the constructed `F-HARVEST-FOUR` leg remains the only place leg 4 is
+exercised. PROPERTIES already keeps those two concerns in separate fixtures.
+
+The G-6 real-path gap row (`:540`) records its measurement date and re-measurement command, and its
+`…-REVIEW-v1.md` note concerns `not_cross_review` classification, which the erratum does not touch.
 
 ## Questions
 
