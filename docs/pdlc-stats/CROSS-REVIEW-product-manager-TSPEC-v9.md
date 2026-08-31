@@ -55,6 +55,33 @@ paragraph, one voided historical clause, and one table cell.
 
 ## Upstream re-grounding (DEC-ERR-03)
 
+The dispatch list is necessary, not sufficient: I re-checked upstream at HEAD independently of it.
+
+**Upstream did not move.** The v1.7 changelog attests that REQ `sha256:5f3e8051…` and FSPEC
+`sha256:c7d2c832…` are the same documents v1.6 absorbed (FSPEC v1.7 / REQ v1.6). Measured at HEAD:
+
+- `REQ-pdlc-stats.md` → `5f3e80519b982f29ab0b6dad30fa776b4be4b2d34085b235ad755890064ed9f8`, header version **1.6**
+- `FSPEC-pdlc-stats.md` → `c7d2c832dee586c8e371ec843c0809b167b65dbbeced4dd140934fe68d0ec63d`, header version **1.7**
+
+Both match the attested prefixes and both match the versions v1.6 grounded on, so the claim "no
+upstream decision is absorbed this round" is true rather than assumed. No new `BR-`, `E-` or `AC-`
+row and no vocabulary rename entered upstream that v1.6 did not already carry.
+
+**Does the TSPEC still faithfully compress what upstream now says?** For the region this round
+touched, the question resolves cleanly: upstream says *nothing* about coverage instrumentation. `c8`
+and "include set" appear **zero** times in both REQ and FSPEC. The c8 include array is an in-repo
+co-change consequence of `lib/stats.mjs` joining the vendored workflow-module class, derived by
+§2.1's sweep, not a compression of any upstream clause. There is therefore no upstream text this row
+can have drifted from, and no acceptance criterion whose meaning this edit could narrow, broaden or
+re-trigger.
+
+**The upstream claims the surrounding rows still lean on were spot-checked and hold.** §2.1's
+sibling-feature rows still cite `docs/completed/pdlc-engine-distribution/` FSPEC §5.2's per-class
+count five → six and TSPEC §5.4's `PK-26`, unchanged by this diff; §8.3's one open upstream erratum
+(FSPEC BR-26/EC-10's absent feature-recognition predicate) still stands and is untouched, so RK-5's
+provisional-predicate framing at `:853` and `:1286` remains accurate. My v8 findings were both closed
+at that round and nothing in this diff reopens either.
+
 ## Delta-Confirmation Findings
 
 ## Questions
