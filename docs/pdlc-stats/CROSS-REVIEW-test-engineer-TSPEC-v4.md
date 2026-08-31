@@ -39,3 +39,50 @@ authoritative returns a tenth site the table omits, and the `loop-distribution.t
 
 None of these touches a type, a signature, an `if` chain, an exit code or a traceability row. All
 three are repairable inside §2.1 and §6.4 without reopening anything approved.
+
+## Design
+
+**The purity conjunct is the right idea, specified one word too broadly.** §6.4's new oracle reads:
+"each of the four driver classifiers, called **twice with the same input inside one freshly-imported
+module instance**, returns results that are `deepEqual` **and non-aliased** (the second result is not
+the same object reference as the first, so a memoised return is distinguishable from a recomputed
+one)". §3.2 types the four as `ReviewParse`, `RoundWindow`, `ResolvedMarker` — objects — and
+`deriveDodRoundIndex(basenames, feature): number`. I checked the driver: `orchestrate-dev.js:12384`
+ends `return max + 1`, a primitive. For that classifier `first !== second` is false whenever the
+function is correct, so the conjunct as written is a guaranteed red on a pure implementation. This is
+the F-01 finding, and the repair is small and stated in **Recommendation**.
+
+The wider point is why the broad phrasing is dangerous rather than merely wrong. An implementer
+TDDing §6.4 writes the conjunct, watches it red on one of four classifiers, and the cheapest way out
+is to weaken the conjunct to `deepEqual` alone across the board. That passes, and it also passes
+against a memo table — which is precisely the state `DEC-STATS-03`'s "the driver exports gain state"
+trigger names and which the paragraph beneath the table correctly says every other conjunct here is
+structurally blind to. The oracle would survive as a shape and die as a detector, silently. Scoping
+the conjunct in the spec is what prevents that; leaving it to the implementer's judgement at red-test
+time is what invites it.
+
+**The fresh-instance requirement is correct and worth keeping verbatim.** The paragraph's reasoning —
+a module-level cache populated by an earlier test in the same worker makes the first call itself a
+cache hit, so the conjunct passes vacuously — is exactly right, and it is the kind of vacuity that
+would never surface as a failure. Keep it; it applies to all four classifiers including the
+number-returning one.
+
+**The construction-site count oracle is well-grounded.** "The four-classifier object literal occurs
+**exactly once** … a set-equality over occurrences, not an 'at least one'" is the correct shape:
+an at-least-one probe cannot detect the second construction site that voids the parser-identity
+oracle. The cited precedent is real — `pdlc/engine/__tests__/bin-guard-structure.test.js` does pin
+`bin/pdlc.mjs` to zero static imports, three top-level statements and zero `await` tokens in
+comment-stripped source, and it ships a comment/string-aware tokeniser to do it. Naming that file
+tells the implementer to reuse the tokeniser rather than reach for a naive `String.match`, which
+would count the literal inside a comment. Nothing to add.
+
+**§6.4's header count is consistent.** "Seven" matches the table: parser identity, doc-type
+catalogue, exclusion set, vendoring co-change, classifier purity, construction-site count, no-write
+capability.
+
+**The vendoring row's coverage arithmetic checks out.** "Covers four of the nine directly and a fifth
+(`c8.include`) by way of `coverageInstrumentation.test.js`" is right: the four directly-asserted
+sites are `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs` and `_tspec-packed-set.mjs`,
+and the remaining four of the nine are the pinning tests themselves, which cannot be covered by an
+oracle because they *are* the oracles. The row's demotion from "the exact failure" to "not the first
+thing that reds" is honest and matches HEAD.
