@@ -1292,13 +1292,17 @@ time rather than transcribed across ten sites.
 
 Raised against the upstream document that owns each, per the erratum channel; none is repaired here.
 
-**Two remain open.** Three others this section carried — FSPEC BR-16's `CROSS-REVIEW-*`-versus-
-grammars ambiguity, FSPEC BR-11's dropped "matching the version grammar" qualifier, and FSPEC BR-25's
-incomplete loose-file illustration — are **closed** at REQ v1.4 / FSPEC v1.4, and FSPEC §7.3 records
-them as closed. They are removed rather than left standing: an erratum bullet whose upstream answer
-has landed re-routes a settled question, which is `DEC-ERR-01`'s anti-pattern, and costs a round on
-something upstream has already decided. §4.3 now states each of the three as the specified behaviour
-it is.
+**One remains open** — BR-26/EC-10's unclassified predicate, below. Four others this section
+carried are **closed**: FSPEC BR-16's `CROSS-REVIEW-*`-versus-grammars ambiguity, FSPEC BR-11's
+dropped "matching the version grammar" qualifier and FSPEC BR-25's incomplete loose-file
+illustration at REQ v1.4 / FSPEC v1.4 (FSPEC §7.3 records them as closed); and the REQ-STATS-06-
+versus-BR-16 disagreement over the out-of-catalogue cross-review basename, **discharged at REQ v1.7
+and absorbed by FSPEC v1.8 in BR-16's favour** — the unrecognised basename counts as no file of its
+family remaining, which is the reading §4.3 and AT-17's fourth leg already carried, so no expected
+value moved. All four are removed rather than left standing: an erratum bullet whose upstream
+answer has landed re-routes a settled question, which is `DEC-ERR-01`'s anti-pattern, and costs a
+round on something upstream has already decided. §4.3 now states each of the four as the specified
+behaviour it is.
 
 - **FSPEC BR-26/EC-10 name an "unclassified" outcome but state no positive feature-recognition
   predicate.** "In neither the exclusion set nor recognizable as a feature" is circular as written,
@@ -1307,20 +1311,6 @@ it is.
   leading-underscore discriminant as the only one the repository's convention supplies and flags the
   bare-named residue; the FSPEC should state the predicate it intends.
 
-- **REQ-STATS-06 (v1.6) and FSPEC BR-16 (v1.7) now disagree on the out-of-catalogue cross-review
-  basename.** REQ v1.6 added "the predicate is set-membership over C-4's grammars, so a grammatical
-  basename outside the driver's document-type catalogue is a survivor even where REQ-STATS-03
-  reports it malformed", which makes `CROSS-REVIEW-{role}-REVIEW-v{N}.md` a surviving cross-review
-  and a directory holding only those **measured**. BR-16 at v1.7 states the same file counts as no
-  file remaining and the directory reports **harvested**, and AT-17's fourth leg asserts
-  `harvested`. Both readings are internally coherent; they are not jointly satisfiable, and the
-  choice decides a named acceptance test's expected value. §4.3 implements BR-16, its immediate
-  upstream, and does not guess the outcome. The reconciliation is REQ-versus-FSPEC and belongs at
-  the owning phase; when it settles, §4.3's contested paragraph, its BR-16 pin and AT-17's
-  fourth-leg expectation re-stamp together. Note this is *not* the closed E-1 item above: E-1 was
-  "bare glob versus grammar", settled at REQ v1.4 in favour of the grammar. The live question is
-  narrower — whether a basename that passes the grammar but carries a doc-type outside the driver's
-  catalogue is a survivor.
 
 ### 8.4 Questions for DECISIONS
 
