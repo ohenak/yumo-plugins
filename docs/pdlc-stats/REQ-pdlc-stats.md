@@ -73,9 +73,11 @@ semantics, or to any convergence logic: `pdlc stats` only reads what those mecha
 **NG-5** No changes to the `POSTMORTEM-*` `RESOLVED:` lifecycle, the erratum channel or the
 fail-closed gate: `pdlc stats` never writes a `RESOLVED:` line or participates in clearing a halt.
 
-**NG-6** No retroactive recovery of metrics for deleted artifacts (for example cross-reviews removed
-by `harvest-learnings`). `pdlc stats` reports only what is on disk — but says so where it applies,
-per REQ-STATS-03's harvested state.
+**NG-6** No retroactive recovery of metrics for deleted artifacts (cross-reviews, DoD reviews or
+post-mortems removed by `harvest-learnings`). `pdlc stats` reports only what is on disk — but says so
+where it applies, per the harvested states. In particular it never reads `LEARNINGS-{feature}.md`'s
+`Harvested from` row to reconstruct a deleted count: LEARNINGS presence is used only as the
+discriminator that distinguishes harvested from a genuine zero, never as a data source.
 
 **NG-7** No new decision-ledger, glossary or size-tiering mechanism (proposal moves M4/R3-3/R3-5) is
 introduced or altered here.
@@ -142,7 +144,7 @@ under REQ-STATS-08's read-only stance.
 **When:** `pdlc stats {feature} --json` runs. **Then:** stdout is exactly one well-formed JSON
 document whose top-level key set is set-equal to REQ-STATS-01's printed metric set plus one
 schema-version field — REQ-STATS-03's malformed and unmeasurable states and
-REQ-STATS-03/04/06's harvested state ride in their own metric's value, never as extra top-level keys — so a metric added to human
+REQ-STATS-03/04/05/06's harvested state ride in their own metric's value, never as extra top-level keys — so a metric added to human
 mode without a JSON field fails; nothing else is
 mixed into stdout in this mode.
 
@@ -261,13 +263,14 @@ guarantees — the top-level key set is set-equal to the printed metric set, and
 field is present — while the field spellings themselves stay FSPEC material (O-1).
 
 **R-6** A harvested feature's deleted evidence could read as a genuine zero, corrupting any baseline
-over `docs/completed/`, where most features are already harvested. Mitigated by REQ-STATS-03/04/06's
-harvested state, reported distinctly from a measured value.
+over `docs/completed/`, where most features are already harvested. Mitigated by
+REQ-STATS-03/04/05/06's harvested state, reported distinctly from a measured value.
 
 ## 7. Obligations / Open Questions
 
 **O-1** The exact JSON field spellings, the human-readable table column layout, and the ratio's
-rendering precision and not-available / harvested tokens are FSPEC/TSPEC material, not specified
+rendering precision and the not-available / harvested tokens of every metric that has one are
+FSPEC/TSPEC material, not specified
 here. The directory exclusion set is **not** among them: REQ-STATS-07 fixes it.
 
 **O-2** Whether `pdlc stats` reuses parsing logic already in `pdlc/workflows/` or implements its own
