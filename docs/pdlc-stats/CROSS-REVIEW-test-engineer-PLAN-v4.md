@@ -220,4 +220,24 @@ DEFERRED: `pdlc/workflows/lib/stats.mjs` now exists untracked in the working tre
 
 ## Delta-Confirmation Findings
 
+All five v2 findings (te F-01…F-05) are resolved. No High finding is open, delta or inherited. Two
+Low findings are new to this round, three are carried forward unchanged.
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The acceptance-test coverage table's AT-15 row still names only T-04 and T-18, while the delta added T-09's shipped-seam AT-15/EC-19 leg to both the anti-drift table and T-09's task row. The two tables disagree about AT-15's owners. Non-gating: the preamble says "at least one task", so the row is incomplete rather than false, and the implementer reads the task row. Fix is one cell | PLAN §Verification, Acceptance-test coverage, AT-15 |
+| F-02 | Low | delta | local | T-23 cites `loop-distribution.test.js:73-77` for `assertAdditiveOnly`'s message. The quoted text is character-exact, but the literal sits at `:77` and its `assert.equal(` spans `:74-78` — the range starts on a closing brace and stops a line short. Costs nothing operationally; a line anchor is still a claim | PLAN §Batches, T-23 |
+| F-03 | Low | inherited | nonlocal | T-23 counts **nine** assertion edits on `loop-distribution.test.js`; TSPEC §2.1's row for the same file still says **eight**. PLAN is a superset and names the extra edit with its rationale, so no coverage is lost — transcription divergence in the upstream, predating this round | PLAN §Batches, T-23 |
+| F-04 | Low | inherited | nonlocal | Batch-10 gate note says `assertAdditiveOnly` "goes red as soon as the first enumeration moves"; TSPEC §6.4 scopes the trigger to the four enumerations the oracle *reads* (sites 1–4), and T-24's `c8.include` edit is in batch 10 but is not one of them. An implementer landing T-24 first sees green where red was promised. Bounded: T-21, T-22 and T-25 all move sites 1–4 in the same batch, and the gate measures at batch end | PLAN §Batch gates, batch 10 |
+| F-05 | Low | inherited | nonlocal | T-04 owns AT-17, whose fourth leg is the single assertion site touched by the live REQ-STATS-06 v1.6 (`measured`) versus FSPEC BR-16 v1.7 (`harvested`) dispute (TSPEC §4.3, routed at §8.3). The row gives its implementer no signal to read §8.3 before writing that conjunct | PLAN §Batches, T-04 |
+
+FINDING: Low | delta | local | PLAN §Verification, Acceptance-test coverage, AT-15 | AT-15's row names only T-04 and T-18, but the delta gave T-09 a shipped-seam AT-15/EC-19 leg and recorded it in the anti-drift table; the two coverage tables now disagree about AT-15's owners. Fix: add `T-09 (shipped seam, end-to-end)` to the AT-15 cell.
+FINDING: Low | delta | local | PLAN §Batches, T-23 | The verbatim `assertAdditiveOnly` message is transcribed exactly, but its line anchor `loop-distribution.test.js:73-77` is wrong at both ends — the literal is at `:77` and the `assert.equal(` call spans `:74-78`. Fix: cite `:74-78` (or `:77` for the literal alone).
+FINDING: Low | inherited | nonlocal | PLAN §Batches, T-23 | T-23 says nine assertion edits on `loop-distribution.test.js` where TSPEC §2.1 says eight; PLAN is a superset and names the ninth with rationale, so no coverage is lost. Recorded so a later reader does not misread it as this round's damage.
+FINDING: Low | inherited | nonlocal | PLAN §Batch gates, batch 10 | "Reds as soon as the first enumeration moves" reads wider than TSPEC §6.4's edited scope (the four enumerations `assertAdditiveOnly` reads, sites 1–4); T-24's `c8.include` edit is in batch 10 and is not one of them. Fix: scope the sentence the way §6.4 now does.
+FINDING: Low | inherited | nonlocal | PLAN §Batches, T-04 | AT-17's fourth leg is the only assertion site touched by the live REQ-STATS-06 v1.6 / FSPEC BR-16 v1.7 dispute (TSPEC §4.3, §8.3). Fix: one clause on T-04 naming that leg as a re-stamp site when §8.3's reconciliation lands.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 5}
