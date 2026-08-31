@@ -306,7 +306,7 @@ different suites). Verified against the FSPEC's own AT list
 
 | AT | Task | AT | Task |
 |---|---|---|---|
-| AT-01 | T-06 | AT-15 | T-04 (size arithmetic, removal probe), T-18 (symbolic-link leg, real fs) |
+| AT-01 | T-06 | AT-15 | T-04 (size arithmetic, removal probe), T-18 (symbolic-link leg, real fs), T-09 (shipped seam, end-to-end) |
 | AT-02 | T-05 | AT-16 | T-04 |
 | AT-03 | T-07 | AT-17 | T-04 |
 | AT-04 | T-07, T-09 | AT-18 | T-05 (constructed roots), T-18 (real `docs/`) |
