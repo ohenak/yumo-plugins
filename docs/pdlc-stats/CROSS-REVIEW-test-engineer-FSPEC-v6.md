@@ -77,6 +77,19 @@ BR-12 honors what remains of C-5 — so no finding beyond F-06's citation-freshn
 
 ## Behavioral Flow
 
+Only one flow cell changed: A6's decision point moved from "Any `CODE_REVIEW-*` file present?" to
+"Any `CODE_REVIEW-{feature}-v{N}.md` file present?". That is the correct edit — the old cell was the
+flow-level restatement of the same over-broad predicate BR-11 carried, and leaving it would have left
+an implementer reading the flow table a second, contradicting rule. A8's cell was already phrased over
+"either process family", so it needed no edit and got none.
+
+Steps A5–A8's independence claim is unchanged and still holds under the new predicates: BR-11 and
+BR-16 each test their own family, so a directory whose cross-reviews are gone and whose DoD reviews
+survive still reports `harvested` rows against a measured DoD number. AT-12's new third leg and
+AT-17's new fourth leg are both consistent with that independence rather than in tension with it.
+
+No finding in this section.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
