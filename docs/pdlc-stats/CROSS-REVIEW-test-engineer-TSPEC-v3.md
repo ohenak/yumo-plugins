@@ -138,12 +138,50 @@ upstream text.
 
 ## Recommendation
 
-_pending_
+**Needs revision** — one High, and it is a small, bounded, purely textual edit.
+
+The TSPEC's *design and behaviour still hold against the FSPEC as it now stands*; every rule the
+erratum round rewrote was rewritten into the reading §4.3 had already taken. What no longer holds is
+the document's account of its upstream: two §4.3 paragraphs and three §8.3 bullets describe FSPEC
+and REQ text that has been deleted, and justify correct code by a divergence that is closed. A TSPEC
+whose stated reason for a branch is "the FSPEC says otherwise and we route it as an erratum" is not
+a faithful compression once the FSPEC agrees.
+
+Exactly what to change, and nothing more:
+
+1. §4.3 DoD paragraph — replace "FSPEC BR-11's wording is looser… routed as an erratum (§8.3)" with
+   a statement that FSPEC BR-11 (v1.4) and REQ-STATS-04 now both scope the harvested test to
+   `CODE_REVIEW-{feature}-v{N}.md`, and that `-draft`/foreign leftovers neither raise the number nor
+   suppress `harvested` — the upstream's own words. Keep the mechanism sentence about escaping.
+2. §4.3 harvested-test paragraph — replace "FSPEC BR-16 and REQ-STATS-06 both phrase the condition
+   over `CROSS-REVIEW-*` … the FSPEC's ambiguity is routed as an erratum" with the agreement: BR-16
+   (v1.4) evaluates the condition "over exactly the file set BR-14's numerator sums", which is the
+   membership `parseReviewFilename(...).ok` supplies. The REQ C-4 grounding stays; the choice is now
+   a citation, not a divergence.
+3. §4.3's boundary fixture — add the conjunct FSPEC AT-17's fourth leg names: the fixture holds
+   grammar-matching `CODE_REVIEW-{feature}-v{N}.md` files **intact**, so `dodReviews.length === 0`
+   cannot supply the `harvested` result and the grammatical cross-review disjunct is the only thing
+   under test (F-03).
+4. §8.3 — delete the BR-16, BR-11 and BR-25 bullets (all three closed by REQ v1.4 / FSPEC v1.4) and
+   **keep** the BR-26/EC-10 bullet, which is still open. Optionally record in the version header
+   that the TSPEC is re-grounded on FSPEC v1.4.
+
+No `if` chain, no oracle, no key set, no exit code and no traceability row needs to move. I expect
+this back green in one pass.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | delta | local | §4.3 asserts as fact upstream wording deleted by the erratum round: "FSPEC BR-11's wording is looser (`no CODE_REVIEW-* file remains in the directory`)" and "FSPEC BR-16 and REQ-STATS-06 both phrase the condition over `CROSS-REVIEW-*`, and the two readings genuinely disagree". At HEAD, FSPEC BR-11 scopes the DoD test to `CODE_REVIEW-{feature}-v{N}.md` and names the `-draft`/foreign leftovers; FSPEC BR-16 and REQ-STATS-06 state the condition over BR-14's grammars and BR-16 adds "evaluated over exactly the file set BR-14's numerator sums". Both paragraphs also close by routing an erratum (§8.3) that no longer exists. Behaviour is unaffected — the TSPEC's `if` chains already implement the now-approved reading — but the implementer TDDs from prose that misdescribes the approved FSPEC and explains a correct branch by a closed divergence. Re-ground both paragraphs on FSPEC v1.4 / REQ v1.4; change no code sketch. | §4.3 (DoD rounds BR-10/BR-11; "The harvested test reads … grammatically") |
+| F-02 | Medium | delta | local | §8.3 raises four upstream errata, three of which the erratum round closed: the BR-16 `CROSS-REVIEW-*`-vs-grammars ambiguity (BR-16 now states the grammars), the BR-11 dropped "matching the version grammar" qualifier (BR-11 now carries it), and the BR-25 incomplete loose-file illustration (BR-25 now names `docs/completed/QUEUE-HISTORY-rows-0-1.md`). Left standing they re-route settled items upstream and invite a re-open of decisions this round closed. Delete those three; keep the BR-26/EC-10 bullet, which the erratum round did not touch and which is still genuinely open. | §8.3 (bullets 2, 3, 4) |
+| F-03 | Medium | inherited | local | §4.3's boundary fixture for the grammatical harvested reading is specified as "a directory with `LEARNINGS-*.md`, one `CROSS-REVIEW-{role}-REVIEW-v1.md`, and no grammar-passing cross-review, asserted `harvested`" — with no DoD files. Under the section's own predicate `harvested && (crossReviews.length === 0 \|\| dodReviews.length === 0)`, the empty `dodReviews` set alone yields `harvested`, so the fixture passes under the literal `CROSS-REVIEW-`-prefix reading too: it cannot fail for the property it exists to pin. FSPEC AT-17's new fourth leg supplies the missing conjunct — `CODE_REVIEW` files intact — which makes the cross-review disjunct the only path to `harvested`. Add that conjunct to the fixture description. Pre-round bytes, but the new AT leg is what makes it repairable now. | §4.3 (boundary fixture sentence); FSPEC AT-17 |
+
+FINDING: High | delta | local | §4.3 (DoD rounds; harvested-test paragraph) | §4.3 states FSPEC BR-11/BR-16 and REQ-STATS-06 wording that the erratum round deleted, and routes a now-closed erratum; behaviour unaffected, prose must be re-grounded on FSPEC v1.4 / REQ v1.4.
+FINDING: Medium | delta | local | §8.3 (bullets 2, 3, 4) | Three of four upstream errata are closed by REQ v1.4 / FSPEC v1.4 (BR-16 grammars, BR-11 qualifier, BR-25 second loose file); delete those three, keep the still-open BR-26/EC-10 bullet.
+FINDING: Medium | inherited | local | §4.3 (boundary fixture sentence) | The grammatical-harvested boundary fixture omits DoD files, so the `dodReviews.length === 0` disjunct produces `harvested` regardless of the cross-review reading under test; add FSPEC AT-17's "CODE_REVIEW files intact" conjunct.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
