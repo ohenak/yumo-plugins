@@ -34,6 +34,19 @@ four where the document's own upstream statement is verifiable end to end.
 
 ## Options Considered
 
+How I disposed of this round, and what I rejected:
+
+| Option | What it would mean | Disposition |
+|---|---|---|
+| Re-open the K-3 arithmetic now that implementation exists on the branch | Treat `c8.include` measuring **eight** at branch HEAD as falsifying K-3's *"seven at HEAD"* | **Rejected.** The design's measurement basis is the pre-feature tree. `git show main:pdlc/workflows/package.json` has exactly seven `c8.include` entries and `main:…/coverageInstrumentation.test.js:264` still prints *"exactly the six modules"* — K-3's `4 + 1 + 2` = seven and "this feature makes it eight" are both true against that basis. Nothing in the delta is falsified. |
+| Raise High on the branch's implementation mis-sizing the P9-02 title | The landed test title reads *"seven"* while the literal it asserts holds eight | **Rejected as a DECISIONS finding.** It is a code defect in `pdlc/workflows/__tests__/coverageInstrumentation.test.js:264`, not a defect of this document — and it is the *exact* failure K-3 predicted. Recorded as `DEFERRED` for the implementation phase, not folded into this verdict. |
+| Re-derive the whole site table from scratch | Treat a moved preamble as licence to re-audit all ten rows | **Rejected.** Delta protocol: the preamble hunk changed two count words; I verified those two words against the table and the sweep, and the sweep command itself, and stopped there. |
+| Confirm the four repairs landed, carry the residue as non-gating notes | Approve v1.7; record the measurement-basis and pin-recurrence observations | **Chosen** |
+
+One thing I deliberately did not do: accept "the changelog says it re-grounded" as evidence that it
+re-grounded. Every hash and version word in the new entry was measured against the files at HEAD
+(table in **Context**), and the two repaired count words were re-derived from the table below them.
+
 ## Decision
 
 ## Consequences
