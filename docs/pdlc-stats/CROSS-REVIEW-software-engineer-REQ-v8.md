@@ -45,7 +45,50 @@ than deferred.
 
 ## 3. New issues in changed sections
 
+I checked the five changed hunks for internal consistency, for knock-on breakage into the sections
+they reference, and for any new claim about shipped behaviour.
+
+**Consistency of the withdrawal is complete.** The harvested-state enumeration now reads
+`REQ-STATS-03/04/06` in both places that carry it — REQ-STATS-02's JSON key-set clause (`:145`) and
+R-6 (`:262`) — and `grep -n "REQ-STATS-05\|halt"` over the whole document finds no surviving claim
+that halts carry a harvested state. REQ-STATS-03 (`:164-168`) and REQ-STATS-04 (`:177-179`) keep
+their harvested states, which is right: those are exactly the two families the SKILL removes.
+REQ-STATS-06's ratio harvested state (`:198-204`) is predicated on the same two families, so it is
+unaffected by the withdrawal. No dangling reference, no half-propagated edit.
+
+**REQ-STATS-02's set-equality oracle survived the edit.** The clause still binds the top-level JSON
+key set to be set-equal to REQ-STATS-01's printed metric set, with per-metric states riding inside
+their own metric's value (`:143-148`). Removing `05` from the harvested list narrowed a parenthetical,
+not the enumeration under test, so "a metric added to human mode without a JSON field fails" still
+holds over the full metric set and a deleted case still fails.
+
+**No new absence-only oracle.** REQ-STATS-05's rewritten text pairs its negative ("no harvested state
+is drawn here") with the positive on the same path ("halts report `0`" and "any surviving post-mortem
+yields measured entries as above"), and R-6 states what the `0` unions. That is the shape I ask of
+negative assertions, and the REQ meets it.
+
+**The residual R-6 accepts is real, not hypothetical — and correctly sized as accepted.** I verified
+the worst case at HEAD: `docs/completed/pdlc-consolidation-agent/` holds no `POSTMORTEM-*` file at
+all, while `docs/_decisions/DECISIONS-review-severity-bars.md` carries six citations of
+`POSTMORTEM-*-pdlc-consolidation-agent.md`. So `pdlc stats` will report `0 halts` for a feature that
+demonstrably halted. v1.6 does not hide this: R-6 (`:264-267`) states the union explicitly and warns
+the consumer baselining over `docs/completed/` not to read `0` as a clean run. Given both universal
+readings of harvest behaviour were falsified in turn, reporting the measured fact and naming the
+residual is the defensible choice, and it is the choice I recommended. I record the remaining gap as
+F-01 below at **Low**, non-gating: no AC surfaces the caveat in the command's own output, so a JSON
+consumer sees an unqualified `0` with the warning living only in the REQ. That is a legitimate FSPEC
+question, not a REQ defect, and it does not need to be settled to leave R.
+
+**Altitude clean.** The changed text states outcomes only — what is reported, what a value means. No
+signature, algorithm, token spelling or field name crept in; O-1 still owns the token spellings
+(`:271-274`).
+
 ## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | R-6 (`:264-267`) accepts that halts `0` unions "never halted" with "post-mortem files gone" and warns the consumer in prose, but no AC gives the command a way to say so in its own output — a `--json` consumer sees an unqualified `0`. Verified live: `docs/completed/pdlc-consolidation-agent/` has no `POSTMORTEM-*` while `docs/_decisions/DECISIONS-review-severity-bars.md` cites six. Suggest FSPEC decide whether the halts value carries an accepted-residual note; no REQ change needed. | R-6, REQ-STATS-05 |
+| F-02 | Low | Process | `harvest-learnings/SKILL.md` is self-inconsistent about its own `Harvested from` row: `:77` composes it from `CROSS-REVIEW + CODE_REVIEW + POSTMORTEM`, while `:126` calls that row "the record of what step 8 deleted" and step 8 (`:59`) removes only the first two families. The REQ no longer depends on this (NG-6 forbids parsing the row), so it is not gating here, but it is the trap that produced two falsified premises across rounds 6 and 7 and is worth fixing at the source. | NG-6 (`:79-80`) |
 
 ## Questions
 
