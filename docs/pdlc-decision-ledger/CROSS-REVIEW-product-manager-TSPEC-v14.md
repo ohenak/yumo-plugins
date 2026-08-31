@@ -124,6 +124,46 @@ specification.
 
 ## Data Model
 
+**The two thresholds are still typed as the REQ types them.** §4.1's `parseDecisionLedgerConfig`
+shape is unchanged by this delta, and I re-checked it against REQ C-5 at HEAD rather than against my
+v13 reading. `nonNegativeInt` is still the validator on both `maxEntries` and `maxBytes`, and the
+paragraph still says in terms that the non-positive-int choice is deliberate: `0` is a **valid**
+admits-nothing operator value on either threshold. REQ C-5 types both **non-negative** (the retyping
+that landed in REQ v1.8 and closed ERR-1), FSPEC E-7 requires `0` on either key to be treated as
+zero in-scope decisions, and §4.1 now cites that by id. The three documents agree on both the type
+and the outcome. No enum value, numeric range, scale or return type in this section diverges from
+its REQ definition.
+
+**§6.1's F-13 row still maps the failure to the same outcome, and the id swap did not narrow it.**
+The row reads "Block is `""` — E-6's outcome, identically on either key. Not an error, not a
+fallback to the default, not a halt (FSPEC **E-7**)". Both of E-7's clauses survive the rewrite —
+the "either key" quantifier and the three negations — and the E-8 ⇒ E-6 route on the `maxBytes` axis
+is still named in the mechanism column. This is the one place the id-decoupling had the most to get
+wrong, since F-13 is where a narrowing would be least visible, and it got it right.
+
+**The four corpus literals are unmoved, and the baseline pin is unmoved.** 6,305 / 10,859 / 12,059 /
+441 are byte-identical across the delta, and the Baseline row still pins v1.2, cited by `M-*` id and
+never restated — which is the discipline that keeps this document from having a second, drifting
+copy of a measured value. FSPEC's own v1.4 entry confirms Baseline is unmoved and that A-1 still
+derives `M-6b`/`M-6c` and `M-7b`/`M-7c` from v1.2. Nothing to raise.
+
+**The §4.3 framing pin is unchanged, and so is the over-claim I raised at v13.** §4.3 still states
+normatively that the header and trailer sentinel lines ship as **inline string literals inside
+`renderDecisionLedgerBlock`'s body**, not top-level bindings — the right answer, and the one that
+keeps the fourteen-count from moving under an implementer's discretion. But the sentence justifying
+it (:936–938) still reads that "hoisting either sentinel to a top-level `const` would introduce a
+feature-declared name absent from `DECISION_LEDGER_OWNED_DECLS`, which §7.3's classify-or-redden
+guard fires on." As I set out at v13, that guard does not fire on an inert case: §7.3's set equality
+ranges over *members of* the frozen list, so a name that is not a member is not compared; the only
+indirect path to red is an unsliced remainder containing one of the six forbidden tokens, and a
+sentinel string constant contains none. The normative rule stands on its own and is unaffected — it
+is the stated *reason* that is wrong, and it is the sentence a future editor would rely on to
+conclude the pin is self-enforcing. This delta did not touch §4.3, so this is **inherited**, and it
+carries forward at Medium (F-03). The identical over-claim in §7.3's *Forbidden token set* row
+(:1475, "a symbol added later must be classified into one list or the other or the test reddens") is
+also untouched and carries forward at Low (F-04); both are one clause, and fixing them together is
+cheaper than fixing them twice.
+
 ## Test Strategy
 
 ## Open Questions
