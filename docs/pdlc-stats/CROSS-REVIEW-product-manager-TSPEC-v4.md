@@ -287,8 +287,13 @@ the *candidate* set and name the filter applied to it. No round needed; fold int
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | §2.1 calls the nine-site figure "sweep-derived, not hand-counted", but the named query (`git grep -l "lib/loop-session.mjs"` over tracked sources) returns 24 files; reaching nine requires an unstated judgement filter separating sites that enumerate or pin the member class from sites that merely consume it. All nine named sites do appear in the sweep output, so the set is not wrong — but "sweep-derived" reads as mechanically exhaustive, and exhaustiveness is exactly what RK-1's residue argument and DEC-STATS-03's re-evaluation trigger rest on. State that the sweep produced the candidate set, and name the filter applied to it. | §2.1, "The number is *sweep-derived*, not hand-counted" |
+
+FINDING: Low | delta | local | §2.1 sweep-derivation claim | "sweep-derived, not hand-counted" overstates the method: the named `git grep -l` query returns 24 tracked files and reaching nine requires an unstated filter (sites that enumerate or pin the class vs. sites that merely consume it). All nine named sites are genuinely in the sweep output, so the set is sound; the wording should say the sweep produced the candidate set and name the filter, since RK-1's residue argument and DEC-STATS-03's re-evaluation trigger both rely on the set being exhaustive.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
