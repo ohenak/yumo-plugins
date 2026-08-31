@@ -53,3 +53,79 @@ remains open; no High finding is open anywhere in the document.
 |----|---------|
 | Q-01 | PROP-DISC-10 requires the fixture to hold "every one of `NON_FEATURE_DIRS`' eight names", and `F-EXCLUDED-ONLY` includes an empty `completed/`. That makes the fixture's exclusion list a second hand-transcription of the same eight names PROP-DISC-05 pins by set-equality against the real `docs/` root. If BR-25's eight ever change, both must move together. Is that duplication deliberate belt-and-braces, or would `F-EXCLUDED-ONLY` be better stated as "the eight names PROP-DISC-05 pins" so there is one transcription to maintain? Either answer is fine; I would just like it decided rather than inherited. |
 | Q-02 | PROP-CLI-03 now carries two claims of quite different lifetimes: the flag-rejection claim (true today, must stay true) and the `USAGE` line claim (deliberately red until T-17 lands). When T-09's red is written, both halves fail together and the failure message will name the flag property. Is that acceptable to the implementer, or would a one-line note in the property — "the `USAGE` half is the last to go green" — save a wave's confusion? |
+
+## Positive Observations
+
+- **The High finding was closed at its root, not at its symptom.** F-01 asked for a property that
+  could falsify EC-20. What landed is a property that spells out the *positive* outcome in four
+  conjuncts — header line, empty feature list, `features` set-equal `{}` and `unclassified`
+  set-equal `[]` with both keys **present** rather than omitted, exit `0` — and then names the wrong
+  implementation it kills ("an implementation that treats 'nothing to report' as 'nothing to read'
+  and takes EC-09's root-failure branch fails"). The "both keys present, not omitted" clause is the
+  part I did not ask for and the part that matters most: it is the difference between an empty
+  report and a malformed one, and a consumer of `--json` (REQ R-5's future
+  `harvest-learnings` integration) would break on the second while a containment check passed.
+- **The corrected measurement was corrected everywhere, including where it stung.** The `docs/` root
+  numbers moved in both §Fixtures and §Oracles, and the revision explicitly names this feature's own
+  `docs/pdlc-stats/` as the thirteenth — the directory that was easiest to overlook because it did
+  not exist when the count was first taken. I re-ran the witness independently over all thirteen and
+  every one passes. The surrounding sentence still says "invariants, not counts" for the *assertions*
+  while the prose carries the measurement, which is the right split: the numbers are the reader's
+  sanity check, not the test's oracle.
+- **PROP-CLI-03's new conjunct is argued from the code rather than asserted.** It explains why the
+  `USAGE` line is pinned there and not on PROP-CLI-05 — `USAGE` is module-private and reaches an
+  observer only through `checkFlags`' stderr write — and then states what stderr carries at HEAD so
+  the red is expected rather than alarming. I checked both claims: `pdlc/engine/bin/cli.mjs:59-69`
+  lists exactly the five command lines named, and `checkFlags` at `:1012-1019` writes `USAGE` then
+  the error then sets exit 1. This is the standard the document set for itself in v1 and it held
+  under revision.
+- **PROP-DISC-08's rewrite made the property honest about its own reach.** It was already correct;
+  the revision restates it as a claim about the command rather than about the volume, and explains
+  that a real-path fixture is impossible on case-insensitive APFS because the second `mkdir` fails
+  `EEXIST`. That is a test-level justification I would have accepted without explanation, offered
+  anyway. Same for PROP-DISC-04, which now states both halves — loose files yield no row, a
+  REQ-less directory yields an ordinary row — and names the falsifying implementation for each.
+- **The revision history is a real changelog.** Each entry names the property added or amended, the
+  reviewer finding it answers, and the severity. That is what lets a delta re-review be a delta
+  re-review rather than a re-read, and it is the reason this round cost a fraction of the last one.
+- **Nothing was over-corrected.** Six findings, six targeted edits, 37 insertions. No section I
+  approved in v1 was rewritten, no property was renumbered, no count was left stale — I re-derived
+  all six level counts and the two totals and every one is consistent. Restraint in a revision is
+  underrated and worth naming.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The High finding from v1 is closed, and closed well. All five Medium/Low findings are closed too,
+and I re-verified the factual ones against HEAD rather than taking the revision's word for them: the
+`docs/` root really does hold twenty-one directories and thirteen feature directories, all thirteen
+really do satisfy the witness, `USAGE` really does carry five command lines and no `stats` line,
+`checkFlags` really does write it to stderr, `docs/pdlc-halt-hardening/` really does hold only a
+PLAN, and FSPEC EC-20 really does promise a header, no feature rows and exit 0. No High finding is
+open anywhere in the document.
+
+The three findings this round are all improvements to claims the document makes about itself, not
+gaps in what it covers, and none blocks approval:
+
+1. **F-01 (Medium)** — soften or strengthen PROP-ERR-10's "a fourth reason fails" warranty so it
+   describes the direction the oracle actually closes.
+2. **F-02 (Low)** — reconcile PROP-DISC-10's `T-06` trace with the §PLAN tasks table.
+3. **F-03 (Low)** — say "directory entry (`isDirectory` true)" rather than "real directory" in
+   PROP-DISC-10, so the fake-IO level is not read as a filesystem instruction.
+
+All three are one-sentence edits and can land in the author's next pass without another review
+round.
+
+## Delta-Confirmation Findings
+
+Not applicable — this is an ordinary iteration-2 delta re-review of a revised document, not an
+erratum delta confirmation. The findings above carry the ordinary-round `Scope` legend
+(`Local` / `Cross-Feature` / `Process`). The `FINDING:` lines emitted with this review carry the
+provenance/locality tags the workflow's gate reads; all three are `delta` (introduced by this
+round's bytes) and `local` (inside sections this round edited).
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
