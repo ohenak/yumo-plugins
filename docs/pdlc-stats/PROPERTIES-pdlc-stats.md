@@ -294,7 +294,79 @@ lands in `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` (PLAN T-26).
 
 ## Fixtures
 
-*(pending)*
+### Test doubles (PLAN T-02 — `pdlc/workflows/__tests__/helpers/statsDoubles.js`, new)
+
+| Double | Substitutes | Contract |
+|---|---|---|
+| `fakeStatsIo(tree, {throwOn})` | `StatsIo` | `tree` maps absolute paths to `{dirs, files}` or to file contents. Every member is total except where `throwOn` names a call site, which is how PROP-ERR-05/06 and PROP-DISC-07 are driven without real permission bits. **No write member exists**, so a production write attempt is a `TypeError`, not a silent success (PROP-RO-05). It records every call and its arguments, which is what makes PROP-DISC-01's and PROP-CLI-07's call-count oracles possible. |
+| `recordingParsers(real)` | `StatsParsers` | wraps the **real** driver exports and records call arguments. A narrow stub is opt-in per assertion; the real bundle is the ambient default, so a test cannot silently drift onto a hand-written grammar (REQ C-5). |
+| `realStatsIo()` | `StatsIo` | the real-`node:fs` bundle used by the `integration-fs` properties. It is **not** a second implementation: it is the same four calls `bin/cli.mjs`'s `statsIo()` makes — `readdirSync(…, {withFileTypes:true})`, `lstatSync(…).size`, `readFileSync`, `existsSync` — and PROP-RATIO-05's structural conjunct pins the construction-site call set (including `lstatSync`, never `statSync`) so helper and shipped seam cannot diverge. |
+| `_stats-scratch-prefixes.mjs` | — | the single exported constant holding the suite's declared in-tree scratch prefixes (today exactly `.tmp-*`), consumed by PROP-RO-04's snapshot walk and its guard conjunct (PLAN T-11, new). |
+
+### Constructed fixtures (over `fakeStatsIo`)
+
+| Fixture | Shape | Properties it serves |
+|---|---|---|
+| `F-BOTH-LOCATIONS` | one feature present under `docs/{f}/` **and** `docs/completed/{f}/`, with different artifacts in each | PROP-DISC-01, PROP-NEG-03 |
+| `F-SUBDIR` | feature directory carrying a subdirectory of artifact-shaped names (the shape `docs/completed/pdlc-loop-economics/_evidence/` really has) | PROP-DISC-03 |
+| `F-COLLISION` | one role carrying `CROSS-REVIEW-{role}-TSPEC.md` **and** `CROSS-REVIEW-{role}-TSPEC-v1.md`, with the other five types at indices `REQ` 3, `FSPEC` 2, `PLAN` 5, `PROPERTIES` 1, `DECISIONS` 4 | PROP-RR-07, PROP-RR-08 |
+| `F-COLLISION-HARVESTED` | `F-COLLISION` **plus** `LEARNINGS-{feature}.md` | PROP-RR-11 — the mutation-killing fixture for the branch order |
+| `F-MALFORMED-MIX` | one grammatical cross-review, one basename per driver failure reason (`bad_role`, `bad_doc_type`, `bad_round`, `trailing_junk`), and unrelated artifacts (`LEARNINGS-*.md`, `HANDOFF-PROMPT.md`, `MUTATION-EVIDENCE-*.md`) | PROP-RR-04, PROP-NEG-02 |
+| `F-DOD-LEFTOVERS` | three directories: `LEARNINGS` + surviving `CODE_REVIEW-{f}-v4.md`; `LEARNINGS` + none; `LEARNINGS` + `CODE_REVIEW-{f}-draft.md` + `CODE_REVIEW-{other}-v2.md` | PROP-DOD-03, PROP-DOD-04 |
+| `F-RATIO-NINE` | all six spec documents and all three process families at **nine distinct file sizes**, plus files on neither list, plus one process-side symbolic link | PROP-RATIO-01, PROP-RATIO-02, PROP-RATIO-03 (the link leg runs at `integration-fs`, PROP-RATIO-04) |
+| `F-HARVEST-FOUR` | four directories, each with `LEARNINGS-{f}.md`: cross-reviews intact / no `CODE_REVIEW`; `CODE_REVIEW` intact / no cross-review; neither, and no spec documents; `CODE_REVIEW` **intact** plus only out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` basenames | PROP-RATIO-08, PROP-RATIO-09 |
+| `F-EMPTY` | a readable but empty feature directory | PROP-ERR-07, PROP-ERR-02 |
+| `F-PHASES-P-PR` | post-mortems for phases `P` and `PR` on one feature | PROP-HALT-08's collation leg |
+| `F-UNCLASSIFIED` | a `docs/` root carrying a directory in neither the exclusion set nor recognisable as a feature | PROP-DISC-07 |
+| `F-FLEET-GAP` | a fleet root where one feature's `listDir` throws, and a second where the metric computation throws after a clean read | PROP-ERR-05, PROP-ERR-06 |
+| `F-NO-ROOT` | {`docs/` absent} and {`docs/` unreadable} roots | PROP-ERR-03, PROP-ERR-04 |
+
+Fixture strings are the normative spellings verbatim: `harvested`, `unmeasurable`, `n/a`,
+`unavailable`, `measured`, `not_found`, `no_docs_root`, `unreadable_feature`, `gap`,
+`schemaVersion`, `reviewRounds`, `dodRounds`, `halts`, `byteRatio`, `byDocType`, `malformed`,
+`collidingRole`, `processBytes`, `specBytes`, `features`, `unclassified` — each taken from FSPEC
+§4.4 / BR-19 / BR-30 rather than paraphrased, and the six document-type row labels from
+`REVIEW_DOC_TYPE_ROWS` as the driver's own catalogue spells them
+(`REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS`). Role slugs in fixture basenames are the
+driver's `REVIEWER_ROLE_SLUGS` values — `software-engineer`, `product-manager`, `test-engineer` —
+never a reviewer skill id such as `se-review`.
+
+### Real-path fixtures — measured at HEAD, 2026-08-31
+
+Every literal below was verified against the working tree at the HEAD this document was authored
+against. Each is a **measurement of the archive as it stands**, re-measured if the archive changes;
+a derivation in its place would agree with a wrong implementation.
+
+| Path | Measured fact | Asserted literal | Properties |
+|---|---|---|---|
+| `docs/completed/pdlc-advisory-wave-gate/` | highest grammatical TSPEC cross-review is `CROSS-REVIEW-test-engineer-TSPEC-v6.md`; exactly **four** `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` files | `TSPEC` row `6`; four basenames in `malformed`; no row's count reflects them | PROP-RR-03, PROP-RR-05 |
+| `docs/completed/pdlc-headless-engine/` | sole surviving cross-review `CROSS-REVIEW-software-engineer-TSPEC-v13.md`; `LEARNINGS-pdlc-headless-engine.md` present; `POSTMORTEM-{D,F,I,T}-pdlc-headless-engine.md` present | `TSPEC` row `13`, other five rows `harvested`; halt phase sequence literal `D, F, I, T` | PROP-RR-03, PROP-RR-10, PROP-HALT-06, PROP-HALT-08 |
+| `docs/completed/pdlc-loop-economics/` | exactly `CODE_REVIEW-pdlc-loop-economics-v1.md` and `-v2.md`; carries `_evidence/` subdirectory | DoD rounds `2` (not `3`, not a count) | PROP-DOD-01 |
+| `docs/completed/pdlc-wave-resume/`, **copied into a temp root** with `POSTMORTEM-P-some-other-feature.md` added to the copy | `POSTMORTEM-PR-pdlc-wave-resume.md` carries the line-leading `RESOLVED: yes` on its third line | halt set exactly `[{phase:"PR", resolution:"resolved"}]`; the foreign-feature file contributes nothing | PROP-HALT-01, PROP-HALT-04 |
+| the same copy with the marker rewritten `RESOLVED: no` | — | `[{phase:"PR", resolution:"open"}]` | PROP-HALT-02 |
+| this repository's `docs/` root | twenty directories: the eight excluded (`_constraints`, `_decisions`, `_queue`, `completed`, `design`, `discarded`, `ideas`, `requirements`) and twelve feature directories; one loose file `docs/PLAN-pdlc-integration-boundary-gates.md`; `docs/completed/` carries loose `REQ-completed.md` and `QUEUE-HISTORY-rows-0-1.md`; `docs/pdlc-halt-hardening/` holds only `PLAN-pdlc-halt-hardening.md` | **invariants, not counts**: every feature directory appears exactly once; `docs/pdlc-halt-hardening/` among them; no row named `completed`; the three loose files yield no row | PROP-DISC-04, PROP-DISC-05, PROP-DISC-06, PROP-DISC-08 |
+
+The fleet fixture is deliberately stated as invariants: a feature-count literal is falsified by every
+routine archival and buys nothing this feature needs, while "exactly once" and "never `completed`"
+are the properties BR-02 and BR-25 actually own.
+
+**Fixtures that are deliberately not real-path.** AT-12's third directory (`-draft` and foreign
+`CODE_REVIEW-` leftovers) and AT-17's fourth (`CODE_REVIEW` intact, only out-of-catalogue
+`CROSS-REVIEW-` basenames) are constructed over `fakeStatsIo`: they carry no archive measurement to
+re-measure, and naming them here keeps a later FSPEC edit to either leg visibly a testing concern.
+
+### Process-level harness
+
+Process-level properties reuse `captureRun` from `pdlc/engine/__tests__/loop-cli.test.js`, which
+already records `process.exitCode` before the call, reads it after and restores the saved value —
+necessary because `checkFlags` and `cmdStats` set the exit code on the **shared** test process and a
+`1` left behind would be inherited by the next case and by the worker's own status. The helper's
+shape is extended in one respect: it swaps `console.log`/`console.error`, while `cmdStats` writes
+through `process.stdout.write`/`process.stderr.write` and `checkFlags` uses `console.error`, so both
+pairs are swapped for the duration of the call. "Stdout is empty" (PROP-CLI-02, PROP-JSON-02) is
+then an assertion about a captured buffer, not about a stream nobody read. No test spawns a process:
+importing `bin/cli.mjs` is inert under its `import.meta.url` entry guard.
+
 
 ## Coverage Matrix
 
