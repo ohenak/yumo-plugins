@@ -72,6 +72,35 @@ the fourth was carried by explicit, reasoned design, and the edit introduced not
 
 ## Decision
 
+**The delta resolves the routed items and breaks nothing previously approved. Confirmed.**
+
+Three things carried the confirmation, and all three are checks rather than impressions.
+
+**The structural repair is provably lossless.** I reconstructed `c10c8688d`'s removed and added bytes,
+normalised whitespace, and compared: identical. The *Upstream divergence, owed to TSPEC* paragraph now
+sits inside K-3's obligation cell, which is where its content always belonged — it qualifies the
+obligation, it is not a note beside the table. Nothing in the row's meaning moved, and the row now
+carries `same task` as owner and its two-conjunct falsifier text in the fourth cell, matching the
+shape of every other K-row. The six rows below it are rows again. This is the repair the finding
+asked for, done in the cheapest way that could have been correct.
+
+**The count reconciliation is complete and self-consistent.** The document now says ten in the count
+word *and* in every decomposition of it. I checked the three places the number is decomposed and the
+four places it is asserted, and they agree with each other and with the site table's ten rows, with
+K-1's partition (sites 5 and 7 → K-3; site 6 → K-8; sites 8, 9, 10 → K-9), with K-9's ownership of
+`pdlc/README.md`, and with TSPEC §2.1 at HEAD. The one remaining `nine` in live prose is deliberate
+and correct: *"nine sites are enforced by CI and one is enforced by attention"* under *Standing costs
+accepted*, which is the point that bullet exists to make.
+
+**Fidelity to upstream at HEAD holds.** REQ and FSPEC hash-match their pins exactly, so nothing this
+document compresses from them has moved. TSPEC at HEAD carries the same ten-site set including
+`pdlc/README.md` and the same "pinned by no oracle" residue (`RK-1`), so the co-change contract PLAN
+reads is now one contract across both documents rather than two that partition differently. That was
+the product concern behind my v6 High; it stays closed.
+
+**Verdict: Approved with minor changes.** One Low, inherited and nonlocal, owed upstream in TSPEC and
+not actionable here. Nothing blocks Phase D.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
