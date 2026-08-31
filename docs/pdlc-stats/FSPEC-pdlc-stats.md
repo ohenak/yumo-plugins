@@ -564,6 +564,115 @@ carries a duplicated `RESOLVED:` marker. *When:* both are reported. *Then:* the 
 explicit "none" (human) / empty array (JSON) and exits 0; the second shows that phase tagged `open`
 and exits 0 (BR-13, EC-14).
 
+### 6.6 Byte ratio
+
+**AT-15 — the ratio is process over spec, over the fixed sets.**
+*Who:* pipeline operator. *Given:* a directory holding spec documents, cross-reviews, a post-mortem,
+a `CODE_REVIEW`, and files on neither list (`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`). *When:* the
+report is produced. *Then:* the reported process and spec byte totals equal the on-disk sizes of
+exactly the BR-14 members present, and adding a file on neither list to the directory leaves both
+totals unchanged.
+
+**AT-16 — zero denominator is `n/a`, not a crash.**
+*Who:* pipeline operator. *Given:* a directory with cross-reviews but no spec document. *When:* the
+report is produced. *Then:* the ratio reads `n/a` (JSON `state: "unavailable"`, `ratio: null`), both
+byte totals are still reported, and exit is 0 (BR-15, EC-12).
+
+**AT-17 — harvested wins over `n/a`, and fires on either family's absence.**
+*Who:* pipeline operator. *Given:* three directories, each with `LEARNINGS-{feature}.md`: one with
+cross-reviews intact and no `CODE_REVIEW` file; one with `CODE_REVIEW` files intact and no
+cross-review; one with neither and no spec documents either. *When:* all three are reported.
+*Then:* all three report `harvested` — including the third, which does **not** report `n/a`
+(BR-16, EC-13).
+
+### 6.7 Fleet mode
+
+**AT-18 — every feature directory is discovered, and only directories are.**
+*Who:* pipeline operator. *Given:* this repository's `docs/`, which holds feature directories, the
+eight excluded directories, and the loose file `docs/PLAN-pdlc-integration-boundary-gates.md`.
+*When:* `pdlc stats`. *Then:* every feature directory under `docs/` and under `docs/completed/`
+appears exactly once; no excluded directory appears as a feature; no phantom feature named
+`completed` appears; and the loose file produces no row (BR-25).
+
+**AT-19 — the exclusion set is asserted, not assumed.**
+*Who:* pipeline operator. *Given:* a new directory at the `docs/` root that is neither in the
+exclusion set nor a feature. *When:* `pdlc stats`. *Then:* the report still prints and names that
+directory as an unclassified entry; it is neither silently reported as a feature nor silently
+dropped (BR-26, EC-10).
+
+**AT-20 — gap rows are rows, and one bad feature does not sink the fleet.**
+*Who:* pipeline operator. *Given:* a fleet in which one feature directory cannot be read. *When:*
+`pdlc stats`. *Then:* that feature appears as a named gap row with a reason, every other feature is
+reported normally, and exit is 0 (BR-27, EC-21).
+
+### 6.8 Read-only stance
+
+**AT-21 — the tree is unchanged and the job was done, on the same invocation.**
+*Who:* pipeline operator. *Given:* a snapshot of every path under the repository root except
+`.git/`, recorded by path and modification time immediately before the run. *When:*
+`pdlc stats {feature}` runs to completion. *Then:* a snapshot taken immediately after is set-equal
+to the first **and** stdout carried the metric set and exit was 0. Both conjuncts are asserted
+against the one invocation: a run that printed nothing would satisfy the first and fail this test
+(REQ-STATS-08). The snapshot spans untracked paths deliberately — they must be unchanged too, since
+BR-28 permits no write anywhere — and the comparison is between two snapshots of the same tree, not
+against a fixed literal, so a developer machine carrying a tool cache is not a source of flake.
+
+**AT-22 — read-only holds on the failure path too.**
+*Who:* pipeline operator. *Given:* the same snapshot discipline. *When:* the command is run once
+with an unknown feature and once with an unknown flag. *Then:* both leave the snapshot set-equal,
+both exit 1, and both emitted their report or usage error; no network request was issued and no
+`git` write command was run on either path (BR-28, BR-29).
+
+### 6.9 Not found and usage
+
+**AT-23 — unknown feature is reported by name in both modes.**
+*Who:* pipeline operator, then an automated caller. *Given:* a feature name matching no directory
+under either root, in a repository with no `docs/completed/` at all. *When:* `pdlc stats {feature}`
+and `pdlc stats {feature} --json`. *Then:* both exit 1; the human run names the feature on stderr;
+the JSON run emits a well-formed error object on stdout that a caller can distinguish from a
+feature with no artifacts (BR-30, EC-01).
+
+**AT-24 — the flag set is closed, and a usage error prints nothing to stdout.**
+*Who:* automated caller. *Given:* `pdlc stats {feature} --dry-run`, and `pdlc stats {feature} --cwd`
+with no value, and `pdlc stats a b`. *When:* each is run. *Then:* each exits 1 with a usage error on
+stderr naming the offending token, and stdout is empty in every case — including under `--json`,
+so a caller never parses half a document (BR-01, EC-08).
+
+### 6.10 Test-to-rule traceability
+
+| Rule | Covered by |
+|---|---|
+| BR-01 | AT-24 |
+| BR-02 | AT-02 |
+| BR-03 | AT-03 |
+| BR-04 | AT-23 |
+| BR-05 | AT-07, AT-08 |
+| BR-06 | AT-09 |
+| BR-07 | AT-01 (row rendering), EC-06 |
+| BR-08 | AT-10 |
+| BR-09 | AT-01 |
+| BR-10 | AT-11 |
+| BR-11 | AT-12 |
+| BR-12 | AT-13 |
+| BR-13 | AT-14 |
+| BR-14 | AT-15 |
+| BR-15 | AT-16, AT-06 |
+| BR-16 | AT-17 |
+| BR-17 | AT-01 |
+| BR-18 | AT-18, AT-20 |
+| BR-19 | AT-06, AT-10, AT-16 |
+| BR-20 | AT-04 |
+| BR-21 | AT-05 |
+| BR-22 | AT-05 |
+| BR-23 | AT-20 |
+| BR-24 | AT-05 |
+| BR-25 | AT-18 |
+| BR-26 | AT-19 |
+| BR-27 | AT-20 |
+| BR-28 | AT-21, AT-22 |
+| BR-29 | AT-22, AT-24 |
+| BR-30 | AT-23 |
+
 ## 7. Open Questions
 
 *(pending)*
