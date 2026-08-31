@@ -62,6 +62,39 @@ designed for, and it is worth recording that it produced the effect it claimed i
 
 ## Interfaces
 
+**v12 F-02 (single-siting claim stronger than the mechanism) — resolved, and resolved the honest
+way.** §7.3's pin paragraph no longer asserts an absence the file contradicts. It now separates three
+kinds of site explicitly (TSPEC:1428–1441):
+
+- **This paragraph is the authority** for the count.
+- **The two operand rows are its enumeration** — "subordinate to this paragraph rather than a
+  competing statement of it" — which is the correct reading, since the enumeration is what makes
+  fourteen checkable at all.
+- **The revision history records counts as history of an edit, not as claims about HEAD.**
+- What stays forbidden is "a *third* kind of site": an independent restatement in another section or
+  a downstream document.
+
+It then adds the resolution rule that was missing: "When this paragraph and an operand row disagree,
+this paragraph is right and the row is the defect." I asked for the claim to be softened to what it
+holds; the author instead made the mechanism *decidable*, which is strictly better — a reader who
+finds two numerals now knows which one to fix without a round trip. I re-grepped every count word in
+the file and each occurrence now falls into exactly one of the three sanctioned categories:
+`:1387`/`:1388` (operand rows, enumeration), `:31`/`:53` (changelog, history), `:1425` (the
+authority). No fourth-kind site exists. **Resolved.**
+
+**TE's round-12 F-01 also landed here and I checked it does not disturb my lens.** The pinned phrase
+now reads "six functions ∪ eight constants = fourteen" with the collision against the *Forbidden
+token set* row's numerically-identical-but-membership-different partition named inline (TSPEC:1425–
+1430). This is a disambiguation of a citation token, not a change of count or membership; the
+fourteen and the six/eight memberships are byte-identical to v1.1. No acceptance criterion is
+affected.
+
+**Downstream is now consistent with the pinned phrase.** `PLAN`:158 cites "six ∪ eight = fourteen,
+cited from §7.3 and not restated elsewhere in this document"; `PLAN`:496–499 states the DoD bullet
+"cites it and does not restate it"; `PROPERTIES` carries fourteen at PROP-INV-07 and PROP-INV-11.
+All three downstream documents and this one now agree. There is nothing left for the erratum channel
+on this axis — which is the substance of F-01 below.
+
 ## Data Model
 
 ## Test Strategy
