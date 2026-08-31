@@ -106,11 +106,63 @@ PROP-INV-06/07/08/11 exactly as approved.
 
 ## Oracles
 
-_(pending)_
+The six oracles (ORC-01…ORC-06) are checked against the same question: does any of them lean on
+upstream text that has moved?
+
+- **ORC-01 (corpus oracle, whole-line equality, expectations hand-transcribed from the fixture's
+  own heading text)** — grounded in the Baseline v1.2 corpus and TSPEC §7.6's non-binding-bounds
+  framing. Baseline is unmoved (both TSPEC changelogs re-measure it at v1.2), and PLAN v0.9 does not
+  touch T-09. Holds.
+- **ORC-02 (citation-resolution chain: parse `sourcePath` and `id` out of the rendered line, re-open
+  the file, compare statements, touching no `DecisionRecord` field)** — unaffected by either move.
+  Holds.
+- **ORC-03 (shipped-default assertions at `maxEntries: 70` / `maxBytes: 12500`, over the whole
+  141-record fixture and over the `M-6b` slice)** — depends on the four corpus literals, which TSPEC
+  v1.1 and v1.2 both explicitly record as unchanged, and on `DEC-DECLEDGER-13`/`-16`, which
+  DECISIONS (unmoved) still carries. Holds.
+- **ORC-04 (byte-identity baseline guard, two jobs)** — this is the oracle whose referent PLAN was
+  wrong about at v0.7/v0.8 and is right about at v0.9. PROPERTIES already restricts FX-BASELINE to
+  the prompt clause alone and forbids it as the referent for key sets or notice arrays; PLAN v0.9's
+  T-10a and its Definition of Done bullet now say the same. Converged, no finding.
+- **ORC-05 (the bounds property computes its own model rather than reusing the renderer)** —
+  untouched by either move. Holds. Note that this is deliberately *not* in tension with
+  `DEC-DECLEDGER-11` (which requires `selectDecisions` to obtain `renderedBytes` by calling the
+  renderer): the oracle's independent model is the check, the production path is the subject.
+- **ORC-06 (replay oracle, anchored so that identical brokenness fails)** — the open-finding ledger
+  anchored to a value transcribed from FX-REPLAY. PLAN v0.9 leaves T-10's AT-16 arm untouched.
+  Holds.
+
+**The census is not an ORC-* oracle, and that is still the right call.** It is asserted through
+PROP-INV-06/07/08/11 as contract-level properties over source text rather than as a behavioural
+oracle over a fixture. TSPEC v1.1's widened-regex requirement is a statement about the census
+*mechanism*, and the natural home for it in this document is PROP-INV-06's slicing clause — which is
+why F-04 lands there and not in this section.
 
 ## Fixtures
 
-_(pending)_
+Five fixtures (FX-CORPUS, FX-PRECEDENCE, FX-FAILOPEN, FX-REPLAY, FX-BASELINE). None is invalidated.
+
+- **FX-CORPUS** — the frozen corpus copy, `DECISION_CORPUS_ARGV`'s four pathspecs against Baseline
+  v1.2's `Verified at` commit `8c673a09f`. Baseline unmoved; `DEC-DECLEDGER-14` / D-11's
+  never-rewrite discipline unmoved. Holds.
+- **FX-PRECEDENCE** — the synthetic two-file corpus for O-5's project-level-wins rule, with the
+  positive conjunct (the feature-level statement absent from the whole block) that cardinality alone
+  would not catch. FSPEC §3.4 unmoved. Holds.
+- **FX-FAILOPEN** — the constructed degradation corpora behind O-6/O-7's `RSN-UNLISTABLE` /
+  `RSN-EMPTY` / per-entry `readOk: false` / `emptySources`-not-`failedSources` classification.
+  Unmoved upstream. Holds.
+- **FX-REPLAY** — the recorded round of reviewer outputs. Unmoved. Holds.
+- **FX-BASELINE** — the committed merge-base recording. This is the fixture the whole PLAN erratum
+  turned on, and PROPERTIES already carries the correct limit: the §FX-BASELINE non-referent note
+  records that the recording captures reviewer-prompt streams **only**, so it holds no `report` key
+  set and no baseline notices array and cannot be the referent for PROP-WIRE-12 or PROP-OFF-05.
+  TSPEC §7.4 at HEAD is unchanged on this point and PLAN v0.9 now states the same limit in T-10a and
+  in the Definition of Done. **Fully converged — this is the single most important thing this
+  cascade confirms.**
+
+**Fixture ownership.** The module manifest's census row already homes all three census constants in
+`decisionLedgerCensus.test.js`, matching PLAN v0.9's manifest row byte-for-substance. No fixture or
+manifest row needs to move for PROPERTIES to agree with PLAN at HEAD.
 
 ## Questions
 
