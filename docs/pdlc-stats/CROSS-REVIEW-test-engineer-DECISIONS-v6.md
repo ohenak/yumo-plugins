@@ -46,6 +46,38 @@ returns nothing. Those parts of the delta are confirmed clean and are not discus
 
 ## Options Considered
 
+For a cascade confirmation the options are dispositions, not designs. Three were live, and the
+choice between them is what the findings below encode.
+
+**(1) Confirm unchanged — the delta is numeric bookkeeping.** Defensible on the strongest of the
+divergences: the *work* named by DECISIONS and by TSPEC §2.1 is the same work. DECISIONS already
+names `pdlc/README.md:231`, already owes its edit, and already assigns it to K-9; TSPEC now calls
+that same edit a tenth table row. No file goes unedited under either reading, so no coverage is
+lost and no test goes unwritten. I rejected this because it mistakes the finding. The two documents
+do not merely print different totals — they apply *different membership rules to the same table*.
+DECISIONS states, with both reviewers' agreement recorded, that the site table is a table of
+falsifiers and that `pdlc/README.md` is therefore not a row. TSPEC has now made it a row while
+conceding in the same cell that it is "**Pinned by no oracle**". A reader cannot satisfy both, and
+the reconciliation is a decision about what the table means, not a re-count.
+
+**(2) Confirm with Medium findings — route the numbers, do not halt.** Attractive, and correct for
+three of the six items below. It fails for the purity conjunct, because that one is not a
+bookkeeping divergence at all: DECISIONS names a detector that, applied as written to a *correct*
+implementation, goes red. A specification that prescribes a false-failing test is not a counting
+error, and a round that lets it through hands an implementer a broken oracle with the document's
+authority behind it.
+
+**(3) Non-approving confirmation, findings tagged by provenance and locality.** Chosen. Two High,
+three Medium, one Low. All six are `delta` — every one of them is a divergence the TSPEC edit
+opened, none was present in the bytes I approved at v5 — so none is tagged `inherited`, and I have
+not reached for that tag to keep a finding non-gating. Where the correct repair belongs upstream in
+TSPEC rather than in DECISIONS (F-03, F-04), the finding says so explicitly rather than asking the
+DECISIONS author to absorb an upstream error.
+
+I also considered and rejected filing the tenth-site question as a finding against TSPEC alone. The
+verdict channel here is DECISIONS'; a divergence between two documents is a property of the pair,
+and DECISIONS is the one carrying five now-unfaithful restatements of the number.
+
 ## Decision
 
 ## Consequences
