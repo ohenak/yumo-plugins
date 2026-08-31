@@ -42,6 +42,23 @@ The five substantive TSPEC deltas, each checked against the PLAN task or Overvie
 
 ## Dependencies
 
+Nothing in the TSPEC delta touches the PLAN's ordering, and I checked the three places where it could
+have.
+
+- **Batch graph.** The erratum rounds changed no type, signature, exit code, oracle or code sketch —
+  each round's changelog says so and the diff bears it out (the only structural insertions are
+  changelog rows, §4.3's two new paragraphs and §8.3's new bullet). The PLAN's 27 tasks over 11
+  batches therefore depend on the same seams they did at approval, and the batches-3-to-7 serial
+  chain over `pdlc/workflows/lib/stats.mjs` is unaffected.
+- **The `K-7` / `K-8` pair.** D-2's re-scoping ("the two sibling-feature document edits sit outside
+  the ten") is a wording correction to how the cost is *counted*, not to who owns it. `DEC-STATS-01`'s
+  `K-7` still owns both sibling documents, T-22 still executes them in one versioned change, and
+  T-23 still re-bases `loop-distribution.test.js` behind it in batch 10. No dependency edge moves.
+- **The open-erratum item (D-5) creates no new dependency.** §4.3 decides to implement BR-16 now and
+  route the reconciliation to the owning phase, so no PLAN task blocks on the reconciliation landing.
+  This is why F-01 is Medium and not High: the gap is inheritance of a named risk, not a blocked or
+  mis-sequenced task.
+
 ## Verification
 
 ## Delta-Confirmation Findings
