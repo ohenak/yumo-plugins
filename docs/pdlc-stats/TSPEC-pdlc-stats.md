@@ -87,7 +87,7 @@ in `pdlc/engine/bin/cli.mjs`.
 | Option | Where the pure logic lives | Enumeration co-change | Coverage gate | Verdict |
 |---|---|---|---|---|
 | A (**chosen**) | `pdlc/workflows/lib/stats.mjs` | vendored class grows 5 → 6 | `pdlc/workflows` c8 block, per-file branches ≥ 85 | chosen |
-| B | `pdlc/engine/lib/stats.mjs` | `lib/` class grows 15 → 16 | engine suite (`node __tests__/_run-suite.mjs`), no per-file branch floor | rejected |
+| B | `pdlc/engine/lib/stats.mjs` | engine `lib/` class grows 15 → 16, and that class is held **twice** — `_tspec-packed-set.mjs`'s copy plus `publish-preflight.mjs`'s production-side `LIB_MODULES_AT_HEAD` / `LIB_MODULES_FROM_THIS_FEATURE` pair (12 + 3), a deliberate second copy of the same TSPEC §5.4 table run at publish time | engine suite (`node __tests__/_run-suite.mjs`), no per-file branch floor | rejected |
 | C | inline in `pdlc/engine/bin/cli.mjs` | none | none — `bin/cli.mjs` is in no c8 include set | rejected |
 
 **Why A.** The metric logic's correctness is entirely a question of whether it agrees with four
@@ -100,8 +100,14 @@ lines of pure logic to a 57 KB CLI; option B keeps the enumeration cost without 
 benefit and still has to load the vendored driver across the same seam.
 
 **The cost, stated once.** `pdlc/workflows/lib/` members are vendored into the published engine at
-pack time, and the member list is enumerated at four sites plus a fifth that counts it. Adding
-`lib/stats.mjs` is a single co-change set:
+pack time, and the member list is enumerated — or its size pinned — at **nine** in-repo sites, plus
+two document edits in a completed sibling feature. The number is *sweep-derived*, not hand-counted:
+the query is `git grep -l` over tracked sources for a member of the class (`lib/loop-session.mjs`),
+repo-scoped rather than `__tests__/`-scoped, because a `__tests__/`-scoped sweep misses
+`publish-preflight.mjs`'s production-side copy and `grep -rln` silently drops files containing NUL
+bytes. Five of the nine are the enumerations themselves — **six symbol edits across five files**,
+since `_tspec-packed-set.mjs` holds two — and four are test files that pin those enumerations'
+membership or size. Adding `lib/stats.mjs` is a single co-change set:
 
 | Site | Symbol | Edit |
 |---|---|---|
@@ -110,10 +116,18 @@ pack time, and the member list is enumerated at four sites plus a fifth that cou
 | `pdlc/engine/scripts/fixture-machine.mjs` | `WORKFLOW_MODULE_NAMES` | add `lib/stats.mjs` |
 | `pdlc/engine/__tests__/_tspec-packed-set.mjs` | `WORKFLOW_MEMBERS`, `tspecPackedCount` | add the member; vendored class size `5` → `6` |
 | `pdlc/workflows/package.json` | `c8.include` | add `**/pdlc/workflows/lib/stats.mjs` |
+| `pdlc/engine/__tests__/loop-distribution.test.js` | `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`/`D2_D3_BASELINE`/`D5_BASELINE`, `assertAdditiveOnly`'s length equality and its vendored-class-size assertion | re-baseline the baselines onto this feature's *pre*-state and reduce the delta to one member; move the class size `5` → `6` |
+| `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | P9-02's expected `c8.include` literal (and the real-c8-run driver that imports each `lib/` module) | add the same `**/`-anchored entry; the shipped assertion is `toEqual`, i.e. array-equality, so position matters |
+| `pdlc/engine/__tests__/run.test.js` | three `assert.deepEqual` manifest-membership literals and the process-entry `prepack` leg | add `lib/stats.mjs`; omission reds as an `ENOENT` or a set mismatch |
+| `pdlc/workflows/__tests__/learningsPremises.test.js` | P-1's parsed `MODULE_NAMES` array-equality (and its "exactly four workflow modules" title) | add `lib/stats.mjs` |
+| `docs/completed/pdlc-engine-distribution/TSPEC-….md` §5.4 | the `PK-*` table and its vendored-members note | add `PK-26` (`vendor/workflows/lib/stats.mjs`); note five → **six**; derived total moves |
+| `docs/completed/pdlc-engine-distribution/FSPEC-….md` §5.2 | the "Workflow members" per-class count | five → **six**, in the same versioned change, with its own changelog row |
 
-`_tspec-packed-set.mjs` states its own co-change obligation in its header: a member is "a SPEC change
-first", co-changed with `docs/completed/pdlc-engine-distribution/`'s TSPEC §5.4 `PK-*` table and
-FSPEC §5.2's per-class counts, "never this file alone". That sibling feature is completed and its
+The last two rows are not background: `_tspec-packed-set.mjs` states its own co-change obligation in
+its header — a member is "a SPEC change first", co-changed with
+`docs/completed/pdlc-engine-distribution/`'s TSPEC §5.4 `PK-*` table and FSPEC §5.2's per-class
+counts, "never this file alone" — so those two sibling-document edits are implementation-visible work
+in the same change, owned by `DEC-STATS-01`'s `K-7`, not a reading note. That sibling feature is completed and its
 enumerations are approved and frozen; this feature therefore needs an explicit carve-out amending
 them, exactly the coupling `pdlc-engineering-loop`'s LEARNINGS records as a repo-wide pattern. The
 growth path is precedented: that same class already grew from three members to five when
