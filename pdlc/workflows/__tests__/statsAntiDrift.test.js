@@ -58,7 +58,7 @@ const DOC_TYPE_CANDIDATES = [
 ];
 
 describe("T-08: doc-type catalogue set-equality (TSPEC §3.3, §6.4)", () => {
-  it.skip("T-12: REVIEW_DOC_TYPE_ROWS is set-equal to the doc types parseReviewFilename accepts, probed over the all-caps candidate set with a real role slug", async () => {
+  it("T-12: REVIEW_DOC_TYPE_ROWS is set-equal to the doc types parseReviewFilename accepts, probed over the all-caps candidate set with a real role slug", async () => {
     const { REVIEW_DOC_TYPE_ROWS } = await import("../lib/stats.mjs");
 
     const acceptedByDriver = DOC_TYPE_CANDIDATES.filter((docType) => {
@@ -70,7 +70,7 @@ describe("T-08: doc-type catalogue set-equality (TSPEC §3.3, §6.4)", () => {
     expect(new Set(acceptedByDriver)).toEqual(new Set(REVIEW_DOC_TYPE_ROWS));
   });
 
-  it.skip("T-12: every known-rejected all-caps candidate is rejected specifically as bad_doc_type, never bad_role", async () => {
+  it("T-12: every known-rejected all-caps candidate is rejected specifically as bad_doc_type, never bad_role", async () => {
     // Guards the probe's own validity (TSPEC §6.4): if the role slug were wrong, every candidate
     // would short-circuit on `bad_role` and the set-equality assertion above would pass
     // vacuously against an empty accepted set. This test would then be the only thing to catch
@@ -85,9 +85,9 @@ describe("T-08: doc-type catalogue set-equality (TSPEC §3.3, §6.4)", () => {
       return { docType, reason: parseReviewFilename(basename).reason };
     });
 
-    for (const { docType, reason } of rejected) {
-      expect(reason, `${docType} was rejected for an unexpected reason`).toBe("bad_doc_type");
-    }
+    // Jest's expect takes one argument; collect offenders so a failure names them.
+    const rejectedForUnexpectedReason = rejected.filter(({ reason }) => reason !== "bad_doc_type");
+    expect(rejectedForUnexpectedReason).toEqual([]);
   });
 });
 
@@ -106,19 +106,18 @@ function isFeatureDirectoryByArtifactWitness(dirName) {
 }
 
 describe("T-08: exclusion-set equality (TSPEC §4.4, §6.4)", () => {
-  it.skip("T-12: superset — every NON_FEATURE_DIRS name is present as a directory at docs/", async () => {
+  it("T-12: superset — every NON_FEATURE_DIRS name is present as a directory at docs/", async () => {
     const { NON_FEATURE_DIRS } = await import("../lib/stats.mjs");
 
     const liveDirNames = readdirSync(DOCS_ROOT, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
 
-    for (const name of NON_FEATURE_DIRS) {
-      expect(liveDirNames, `NON_FEATURE_DIRS names ${name}, missing at docs/`).toContain(name);
-    }
+    const missingAtDocsRoot = NON_FEATURE_DIRS.filter((name) => !liveDirNames.includes(name));
+    expect(missingAtDocsRoot).toEqual([]);
   });
 
-  it.skip("T-12: subset — every docs/ directory not in NON_FEATURE_DIRS is a feature directory by the artifact-naming witness, never the leading-underscore predicate under test", async () => {
+  it("T-12: subset — every docs/ directory not in NON_FEATURE_DIRS is a feature directory by the artifact-naming witness, never the leading-underscore predicate under test", async () => {
     const { NON_FEATURE_DIRS } = await import("../lib/stats.mjs");
 
     const liveDirNames = readdirSync(DOCS_ROOT, { withFileTypes: true })
@@ -128,11 +127,9 @@ describe("T-08: exclusion-set equality (TSPEC §4.4, §6.4)", () => {
     const nonExcluded = liveDirNames.filter((name) => !NON_FEATURE_DIRS.includes(name));
     expect(nonExcluded.length).toBeGreaterThan(0);
 
-    for (const name of nonExcluded) {
-      expect(
-        isFeatureDirectoryByArtifactWitness(name),
-        `${name} is not excluded by NON_FEATURE_DIRS but carries no artifact named for it and is non-empty`
-      ).toBe(true);
-    }
+    const nonWitnessedNonExcluded = nonExcluded.filter(
+      (name) => !isFeatureDirectoryByArtifactWitness(name)
+    );
+    expect(nonWitnessedNonExcluded).toEqual([]);
   });
 });

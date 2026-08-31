@@ -46,6 +46,20 @@ Each claim below was measured at HEAD, not read from a document.
 
 ## Findings
 
+Tagged per the delta protocol: **Provenance** (`delta` = this round's edit introduced it;
+`inherited` = already in the pre-round bytes) and **Locality** (`local` = inside a section this edit
+changed; `nonlocal` = anywhere else). `Scope` is the harvest routing tag.
+
+| ID | Severity | Provenance | Locality | Scope | Finding | Requirement ref |
+|----|----------|-----------|----------|-------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | Local | The Residual-risks row asked for in v3's F-01 is still absent. `Residual risks carried into implementation` (`PLAN-pdlc-stats.md:382-385`) carries RK-5's leading-underscore predicate as the one provisional-erratum row, but not TSPEC §8.3's **second** open erratum — REQ-STATS-06 v1.6's "grammatical basename outside the driver's catalogue" versus FSPEC BR-16 v1.7's `harvested` directory — whose blast radius is `computeFeatureStats`'s harvested disjunct plus T-04's AT-17 fourth-leg expected value. The DoD reviewer inherits one named open erratum where TSPEC says there are two. Non-gating and unchanged in severity from v3: no criterion is dropped, TSPEC §4.3 already directs the interim choice (implement BR-16), and every task stays executable as written. | TSPEC §8.3, §4.3; FSPEC BR-16 |
+| F-02 | Low | delta | local | Local | T-24 says the second P9-02 title is "transcribed verbatim" and prints ``"P9-02: the shipped c8 config resolves the two new `lib/` modules too (F4)"``, but the source string at `coverageInstrumentation.test.js:278` has no backticks around `lib/`. Everything else — wording, `the shipped`, `(F4)` — now matches exactly, so this is the last millimetre of te F-04, not a re-opening of it. Since the shipped assertion the implementer will edit compares the title *string*, the transcription should print the bare characters. | te F-04 (round 2), TSPEC §6.4 |
+| F-03 | Low | delta | local | Local | T-23's new verbatim quote of `assertAdditiveOnly`'s message is exact, but its anchor `loop-distribution.test.js:73-77` is off by one at both ends: line 73 is the closing `}` of the preceding loop, the `assert.equal` statement spans 74–78, and the message literal itself is line 77. Cite `:77` for the string, or `:74-78` for the statement. Style/precision only, per DEC-DOC-01. | DEC-DOC-01 |
+
+FINDING: Medium | inherited | nonlocal | `## Residual risks carried into implementation` (PLAN:382-385) | TSPEC §8.3's second open erratum (REQ-STATS-06 v1.6 vs FSPEC BR-16 v1.7, blast radius = harvested disjunct + T-04's AT-17 fourth-leg expected value) is still not carried as a residual-risk row; only RK-5's provisional predicate is.
+FINDING: Low | delta | local | T-24, second P9-02 title transcription | Claimed verbatim, but adds backticks around `lib/` that the source string at `coverageInstrumentation.test.js:278` does not carry.
+FINDING: Low | delta | local | T-23, `assertAdditiveOnly` message citation | Quoted text is exact; the anchor `loop-distribution.test.js:73-77` is off by one at both ends (message literal is `:77`, statement `:74-78`).
+
 ## Questions
 
 ## Positive Observations

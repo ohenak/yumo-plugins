@@ -14,7 +14,7 @@
 
 describe("T-03: parseStatsArgv", () => {
   describe("T-03: accepts the closed surface — no args, a feature, --json, --cwd", () => {
-    it.skip("T-12: no argv yields ok:true with feature null, json false, cwd null", async () => {
+    it("T-12: no argv yields ok:true with feature null, json false, cwd null", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       expect(parseStatsArgv([])).toEqual({
@@ -25,7 +25,7 @@ describe("T-03: parseStatsArgv", () => {
       });
     });
 
-    it.skip("T-12: a single positional is taken as the feature name", async () => {
+    it("T-12: a single positional is taken as the feature name", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       expect(parseStatsArgv(["pdlc-stats"])).toEqual({
@@ -36,7 +36,7 @@ describe("T-03: parseStatsArgv", () => {
       });
     });
 
-    it.skip("T-12: --json sets json true with no feature", async () => {
+    it("T-12: --json sets json true with no feature", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       expect(parseStatsArgv(["--json"])).toEqual({
@@ -47,7 +47,7 @@ describe("T-03: parseStatsArgv", () => {
       });
     });
 
-    it.skip("T-12: --cwd <path> sets cwd to the value token, consumed rather than read as a positional", async () => {
+    it("T-12: --cwd <path> sets cwd to the value token, consumed rather than read as a positional", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       expect(parseStatsArgv(["--cwd", "/tmp/some-repo"])).toEqual({
@@ -58,7 +58,7 @@ describe("T-03: parseStatsArgv", () => {
       });
     });
 
-    it.skip("T-12: feature, --json and --cwd combine in one ok:true result", async () => {
+    it("T-12: feature, --json and --cwd combine in one ok:true result", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       expect(parseStatsArgv(["pdlc-stats", "--json", "--cwd", "/tmp/some-repo"])).toEqual({
@@ -71,7 +71,7 @@ describe("T-03: parseStatsArgv", () => {
   });
 
   describe("T-03: two-positionals refusal (AT-24 parser half, TSPEC §5 row 2, BR-01)", () => {
-    it.skip("T-12: two positionals yields ok:false naming the offending second positional", async () => {
+    it("T-12: two positionals yields ok:false naming the offending second positional", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       const result = parseStatsArgv(["a", "b"]);
@@ -80,7 +80,7 @@ describe("T-03: parseStatsArgv", () => {
       expect(result.message).toEqual(expect.stringContaining("b"));
     });
 
-    it.skip("T-12: three or more positionals still refuse with the same {ok:false} shape", async () => {
+    it("T-12: three or more positionals still refuse with the same {ok:false} shape", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       const result = parseStatsArgv(["a", "b", "c"]);
@@ -91,7 +91,7 @@ describe("T-03: parseStatsArgv", () => {
   });
 
   describe("T-03: the {ok:false,message} shape is closed (BR-01's closed surface)", () => {
-    it.skip("T-12: an ok:true result carries exactly feature, json and cwd alongside ok — no extra keys", async () => {
+    it("T-12: an ok:true result carries exactly feature, json and cwd alongside ok — no extra keys", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       const result = parseStatsArgv(["pdlc-stats", "--json"]);
@@ -100,7 +100,7 @@ describe("T-03: parseStatsArgv", () => {
       expect(Object.keys(result).sort()).toEqual(["cwd", "feature", "json", "ok"]);
     });
 
-    it.skip("T-12: an ok:false result carries exactly message alongside ok — no extra keys, no feature/json/cwd leak", async () => {
+    it("T-12: an ok:false result carries exactly message alongside ok — no extra keys, no feature/json/cwd leak", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       const result = parseStatsArgv(["a", "b"]);
@@ -112,7 +112,7 @@ describe("T-03: parseStatsArgv", () => {
   });
 
   describe("T-03: total — never throws", () => {
-    it.skip("T-12: an empty-string positional and an unrecognised bare token still return a value, not a throw", async () => {
+    it("T-12: an empty-string positional and an unrecognised bare token still return a value, not a throw", async () => {
       const { parseStatsArgv } = await import("../lib/stats.mjs");
 
       expect(() => parseStatsArgv(["", "--unknown-but-not-this-fn's-job"])).not.toThrow();
