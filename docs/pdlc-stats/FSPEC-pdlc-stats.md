@@ -57,6 +57,15 @@ command re-reads are all already made in one place in the shipped pipeline —
 for the post-mortem `RESOLVED:` marker, all in `pdlc/workflows/orchestrate-dev.js`. §4's rules
 name observable outcomes of those classifications and never restate their internals.
 
+One classification is **not** among them, and the boundary matters. `parseResolvedMarker`
+classifies a post-mortem's *contents*; nothing in the driver classifies a `POSTMORTEM-*` **listing**
+— the driver constructs `docs/{feature}/POSTMORTEM-{phase}-{feature}.md` from a phase id it already
+holds and probes that one path. Selecting which files in a directory are this feature's post-mortems
+is therefore a match this command makes itself, against the artifact convention's documented
+basename form (BR-12). That is not a C-5 divergence: there is no driver classification of that
+listing to diverge from. C-5 binds the resolution tagging, which is `parseResolvedMarker`'s, and
+this document states no marker-matching rule of its own.
+
 **Audiences.** The human mode's reader is a pipeline operator scanning for convergence
 regressions across a feature or a fleet. The JSON mode's reader is a future automated caller
 (REQ NG-1 keeps that integration out of scope, but REQ-STATS-02 requires the surface be stable
