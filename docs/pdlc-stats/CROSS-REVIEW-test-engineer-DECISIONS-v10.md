@@ -55,6 +55,21 @@ as both documents now say.
 
 ## Options Considered
 
+The document is frozen, so the only options open to me are dispositions of this round.
+
+| Option | Shape | Why not / why |
+|---|---|---|
+| Approve as a null round ("only TSPEC moved, and it moved the way I asked") | Treat the erratum landing as sufficient | **Rejected.** DEC-ERR-03 is explicit that items landing is necessary, not sufficient. The interesting consequence of an erratum landing is not that the upstream defect is gone — it is that *this* document's record of that defect is now describing a version of TSPEC that no longer exists. Approving on the item list would have missed exactly the finding this round exists to catch. |
+| Raise the stale divergence-record as **High** and halt | Treat "cites upstream text upstream no longer says" as gating on its face | **Rejected.** The gating test is whether a decision, oracle, falsifier, type or task sizing is falsified. Here the opposite happened: K-3's arithmetic (literal seven, feature makes eight, title and comment move with it) is *correct*, and TSPEC has now moved into agreement with it. An implementer following K-3 literally still lands the right edit. What is false is a meta-claim about a disagreement, not the engineering content. Halting a phase over a discharged erratum's residue would be severity inflation. |
+| Re-open TSPEC §2.1 or re-route the erratum | File a fresh `ERRATUM: TSPEC` | **Rejected.** The erratum v9 routed is discharged, and I verified the repair against HEAD rather than against TSPEC's own account of it. Re-routing a satisfied item would burn a bounded round on work already done — the precise failure mode DEC-ERR-03's "necessary, not sufficient" framing warns about in the other direction. |
+| Confirm faithfulness, record the stale record and the carried items as non-gating | Approve, leave the one-line repairs owed to the next DECISIONS touch | **Chosen** |
+
+One thing I deliberately did **not** do: match this round's finding into a demand that DECISIONS
+now delete its divergence clause *in this round*. DECISIONS is frozen with an approved PLAN
+downstream of it, and the clause is inert — it misdescribes upstream without mis-sizing any task.
+Editing it here would manufacture a downstream obligation to discharge a cosmetic staleness, which
+is the same reasoning v1.5 used when it declined to edit TSPEC from a DECISIONS dispatch.
+
 ## Decision
 
 ## Consequences
