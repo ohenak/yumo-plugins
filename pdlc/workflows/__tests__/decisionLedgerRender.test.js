@@ -74,7 +74,7 @@ function makeRecord(overrides = {}) {
   };
 }
 
-describe.skip("T-15: renderDecisionLedgerBlock and the frozen text constants (TSPEC §4.3, §7.5; PROP-REND-01…08, P-LINE)", () => {
+describe("T-15: renderDecisionLedgerBlock and the frozen text constants (TSPEC §4.3, §7.5; PROP-REND-01…08, P-LINE)", () => {
   test("T-15: PROP-REND-01 (BR-1, E-6) — renderDecisionLedgerBlock({selected: []}) returns exactly \"\" — no header, no preamble, no rule text, no trailer, no whitespace", async () => {
     const { renderDecisionLedgerBlock } = await import(DEV_MODULE_PATH);
 
@@ -259,7 +259,7 @@ describe.skip("T-15: renderDecisionLedgerBlock and the frozen text constants (TS
 // pipe and backtick characters"). Model (`escapeStatementForLine`,
 // `expectedIndexLine` above) is this file's own, independent of the
 // production renderer, per O-8's discipline.
-describe.skip("T-15: P-LINE — one physical line per decision (TSPEC §7.5, PROP-REND-05)", () => {
+describe("T-15: P-LINE — one physical line per decision (TSPEC §7.5, PROP-REND-05)", () => {
   // Word/token generator for statements: alphanumeric words interleaved with
   // the four special tokens the property must cover, joined by single
   // spaces so a raw `\n`/`\r\n` inside the joined string is unambiguously
