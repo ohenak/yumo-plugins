@@ -79,7 +79,37 @@ restate §4.3's behaviour as the specified behaviour it is.
 
 ## Interfaces
 
+No interface claim moved. REQ v1.7 adds no verb, no flag, no output token and no exit code; its
+erratum note states "one clause decided, no rule added" and "No other change", and the diff bears
+that out (§0 changelog plus one paragraph, nothing else).
+
+Checked specifically, because these are the product-visible seams REQ-STATS-06 owns:
+
+| Seam | REQ v1.7 requirement | TSPEC at HEAD | Still faithful? |
+|---|---|---|---|
+| Ratio outcome vocabulary | `harvested`, not-available, or a measured ratio; tokens per mode are FSPEC material (O-1) | §5's `state: "measured" \| "harvested" \| "unavailable"` | Yes — unchanged, and REQ still delegates tokens to FSPEC |
+| Harvested precedence | harvested reported rather than a value that "would silently undercount" | §4.3: harvested disjunct evaluated before `specBytes === 0` | Yes |
+| Out-of-catalogue basename, byte side | "contributes no process bytes" | §4.3: the file "contributes **neither** side" | Yes |
+| Out-of-catalogue basename, remaining-file side | "counts as no file of its family remaining" → **harvested** | §4.3: `crossReviews` is grammatical membership, so it does not count as remaining | Yes, in the sketch — but §4.3's prose says the opposite is arguable (F-01) |
+| Malformed reporting of the same basename | REQ-STATS-03 reports it malformed (C-5) | §5's `malformed: string[]`; §7.2 AT-09 lists the four such basenames with `reason: "bad_doc_type"` | Yes — and REQ v1.7 now explicitly cross-references this, where v1.6 set it in tension |
+
+The last row is worth naming as a gain rather than a risk: REQ v1.6 had the same basename
+simultaneously *malformed* (REQ-STATS-03) and *a survivor* (REQ-STATS-06). TSPEC has always reported
+both facts — malformed in `malformed[]`, absent from `crossReviews` — which was coherent only under
+BR-16's reading. REQ v1.7 makes that coherence upstream-sanctioned rather than a layer-local choice.
+
 ## Data Model
+
+Nothing in §5 is disturbed. `RatioState`'s three-valued `state` union, `DodRounds`, `malformed:
+string[]` and the five-key JSON literal all predate the erratum and none of them carried a
+discriminator for the contested scoping — which is precisely what §4.3 asserted when it wrote "No
+type, signature, exit code or other oracle depends on the outcome." That claim was true and the
+decision confirms it: the settled question changes no field, no union member and no rendered key.
+
+I re-verified the one place where a decision *could* have leaked into data: §5's `malformed` entries
+carry `reason: "bad_doc_type"` for the out-of-catalogue form, and `crossReviews` is a separate
+grammar-filtered set. The two sets stay disjoint under REQ v1.7 exactly as under BR-16. No
+re-stamp is needed anywhere in §5.
 
 ## Test Strategy
 
