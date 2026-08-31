@@ -103,6 +103,25 @@ mechanism*.
 
 ## Fixtures
 
+No fixture obligation changed in this round, and I checked the two that a conjunct-3 rewrite could
+have disturbed.
+
+- **FX-BASELINE (T-02's committed merge-base recording).** `PLAN`:161 now states explicitly that
+  §7.4's recording "holds no `report` key set and no baseline notices array and is cited here for
+  the prompt clause alone", and the §Definition of Done bullet (`PLAN`:500–519) repeats it. That is
+  the *same* referent split this document already carries in §FX-BASELINE's *Recorded stream
+  deliberately narrow* note and in PROP-OFF-05. The fixture's recorded stream — reviewer-prompt
+  bytes only — is unchanged, so nothing recorded needs re-capturing.
+- **`CONFIG-GATE-SPELLINGS`.** Untouched by the round. PROP-OFF-02/03's requirement that the arm
+  **consume** the config text it varies still lands on `PLAN`:160's T-10 row verbatim.
+- **The frozen corpus fixture and its transcribed literals** (`M-*` ids, the 6,305 / 10,859-byte
+  and 41 / 63-id assertions in `PLAN`:159's T-09 row). Byte-identical across the diff. No digest, no
+  bound and no hand-transcribed literal moved, so §Fixtures' corpus digest still pins the same
+  artefact.
+- **The three census constants as test operands.** `PLAN`:217 now agrees with `PROPERTIES`:894–895
+  that `decisionLedgerCensus.test.js` is the sole home of all three. This is the one fixture-shaped
+  disagreement that existed at v4, and it is closed in this document's favour.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
