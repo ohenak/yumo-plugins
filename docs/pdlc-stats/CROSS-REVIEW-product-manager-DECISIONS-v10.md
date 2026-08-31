@@ -145,7 +145,51 @@ defect; recorded, not raised as a finding against DECISIONS.
 
 ## Consequences
 
-_pending_
+**For Phase D / PLAN.** Not blocked, and marginally better off than at v9. PLAN reads DECISIONS' ten
+-site table, the K-row partition and the falsifier column; all three are intact and now agree with
+TSPEC §2.1 on **both** the site set and the include-count direction. The one place the two documents
+disagreed for four rounds is gone, so a PLAN author no longer has to pick a number. The co-change set
+still partitions mechanically: ten in-repo sites, four K-rows covering them with deliberate overlap,
+two sibling-document edits owned separately under K-7 and explicitly outside the ten, one site
+(`pdlc/README.md`) flagged as having no falsifier behind it.
+
+**For the implementer.** Unchanged from v8/v9. The array-equality warning on `c8.include` still
+matters (P9-02 asserts `toEqual`, so position matters, not just membership); the `MODULE_NAMES`
+copied-versus-packed distinction (4 → 5 and 5 → 6 are two different counts and must **not** be
+synchronised to each other) still matters; K-9's `pdlc/README.md` site still has no red behind it and
+is caught only by review. One thing gets easier: the test title and comment words in
+`coverageInstrumentation.test.js` are now described identically by TSPEC and DECISIONS, so the
+implementer who follows either lands the same edit.
+
+**For upstream (TSPEC).** Nothing further owed to this document. TSPEC v1.7 discharged the one item
+DECISIONS routed to it. I want to record the shape of the fix approvingly: rather than editing the
+shipped test title to match the spec, it corrected the *spec* to the measurement and named the title
+and comment as independently stale at HEAD. That keeps the spec a description of the repository
+rather than a wish about it.
+
+**For upstream (REQ / FSPEC).** Nothing owed. Neither moved this round. TSPEC §8.3's
+REQ-STATS-06-versus-BR-16 conflict is still open upstream and still outside what DECISIONS decides —
+it settles AT-17's fourth-leg expected value, not a module boundary or a seam. If that reconciliation
+ever reaches the parser-catalogue seam, `DEC-STATS-03`'s bundle-identity oracle is where to re-check;
+nothing today makes that likely. This is the second consecutive round in which substantial upstream
+movement landed entirely outside this document's subject matter, which is a healthy signal about the
+seam: a document confined to module boundaries and co-change cost should be able to sit through
+upstream revisions of halt states, harvested-family scoping and basename shape without owing a round.
+
+**For harvest.** One durable signal, and I flag it as `Process` rather than inflating its severity or
+proposing a `DOMAIN-CONSTRAINTS.md` entry:
+
+- **A routed erratum leaves a stale claim in the document that routed it.** DECISIONS correctly
+  recorded "this divergence is owed upstream and not resolved here". When upstream resolved it, that
+  clause silently became false, and nothing in the pipeline retires it — no phase re-reads a frozen
+  downstream document to check whether its outstanding-debt notes are still outstanding. The fix is a
+  line in the erratum checklist: when an erratum lands upstream, note the downstream documents whose
+  routing clauses it retires. That is a workflow-prompt shape, not a domain invariant.
+
+**On the previously-harvested signal, unchanged.** The v9 observation stands: an attestation that
+reads "upstream did not move" is only sound if the round compared *two* hashes — the previously
+grounded one and the current one. This round's TSPEC v1.7 changelog does exactly that correctly,
+which is evidence the lesson has already taken hold.
 
 ## Delta-Confirmation Findings
 
