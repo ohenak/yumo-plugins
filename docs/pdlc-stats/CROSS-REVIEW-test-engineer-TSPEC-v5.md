@@ -38,6 +38,52 @@ The document still derives from *this* upstream state.
 
 ## Routed Items — Verification
 
+### Item 1 — §2.1 sweep-derivation claim (Low | delta | local) — **RESOLVED**
+
+The old text asserted "the number is *sweep-derived*, not hand-counted" while the named query
+returned a wider set than the count. v1.3 replaces the assertion with a **two-halved, re-runnable
+derivation**: sweep, then one stated filter. I re-ran both halves at HEAD.
+
+| Half | Claim in v1.3 | Measured at HEAD | Agrees |
+|---|---|---|---|
+| Sweep | repo-scoped `git grep -l` for `lib/loop-session.mjs`, restricted to sources (excluding `docs/`) | `git grep -l` → 44 files; minus `docs/` → **24** | yes |
+| Filter | keep sites that enumerate the class or pin its size/membership; drop the **14** that merely consume a member | dropped: `pdlc/engine/bin/cli.mjs`, `orchestrate-dev.js`, `orchestrate-queue.js`, `pdlc/workflows/dist/pdlc-cli.mjs` + **10** `loop*`/`loopSession*` test files = **14** | yes |
+| Residue | `24 − 14 = 10` | 10 keepers: `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs`, `_tspec-packed-set.mjs`, `package.json`, `loop-distribution.test.js`, `coverageInstrumentation.test.js`, `run.test.js`, `learningsPremises.test.js`, `README.md` | yes |
+
+The keeper set is exactly the ten rows of §2.1's co-change table (the two sibling-feature `docs/`
+rows are correctly *outside* the sweep, since the sweep excludes `docs/`, and are counted
+separately as "plus two document edits" — the arithmetic does not double-count them). The internal
+partition also closes: five enumerations holding six symbols across five files (
+`_tspec-packed-set.mjs` holds two), four test files that pin them, and `README.md` as the tenth —
+5 + 4 + 1 = 10.
+
+The filter's discriminator is stated in falsifiable terms ("a consumer needs no edit when a *new*
+member is added; an enumerator does"), which is the property that makes re-running it deterministic
+rather than a judgement call. This is what RK-1's residue argument and `DEC-STATS-03`'s
+re-evaluation trigger needed, and they now inherit a reproducible number instead of an asserted one.
+
+One thing I checked specifically, because it is the easiest place for a corrected count to go
+wrong: the residual occurrences of "nine" in the document. There is exactly one, at the **v1.2
+changelog entry** (line 39), where it is a historical record of what round 3 did. That is correct
+as history and must not be rewritten. Every live claim — §2.1 prose, §2.1 table, §6.4's vendoring
+row, §7.3's cost paragraph, RK-1, and §9's rejected-alternative re-evaluation trigger — carries
+**ten**. No stale count survives.
+
+### Item 2 — `coverageInstrumentation.test.js` row omits P9-02's test title (Low | delta | local) — **RESOLVED**
+
+The row now names the title alongside the `c8.include` literal and the real-c8-run driver, and
+states explicitly that the title carries no assertion and is corrected for the same reason the
+`learningsPremises.test.js` row's is. Verified against HEAD:
+
+- `pdlc/workflows/__tests__/coverageInstrumentation.test.js:264` — `test("P9-02: the include set is
+  exactly the six modules the feature owns, no more and no fewer", ...)`. The "six" is real, the
+  six → seven correction is right, and no assertion depends on it.
+- The parallel `learningsPremises.test.js` row still names its own title ("exactly four workflow
+  modules"), so the two rows are now symmetric — which was the asymmetry the finding flagged.
+
+The stronger half of the row survives intact: P9-02's shipped assertion is `toEqual`, so
+array-equality and hence entry *position* still matters, and that is still stated.
+
 ## Collateral Check on Untouched Approved Material
 
 ## Positive Observations

@@ -35,7 +35,57 @@ one finding below is a Low quote-fidelity nit that predates this round and does 
 
 ## Delta-Confirmation Findings
 
-_pending_
+### Item (a) — §2.1 sweep-derivation claim (mine, v4 F-01): landed, and verified by re-running it
+
+The claim is no longer an assertion I have to trust. §2.1 now states both halves — the sweep and the
+filter — and I reproduced each:
+
+| Half | What §2.1 claims | What I measured at HEAD |
+|---|---|---|
+| Sweep | `git grep -l` for `lib/loop-session.mjs`, repo-scoped, restricted to sources (excluding `docs/`) → **24** candidates | 44 tracked files total; 24 outside `docs/` — exact match |
+| Filter | drop the **14** that merely consume a member: `bin/cli.mjs`, `orchestrate-dev.js`, `orchestrate-queue.js`, `dist/pdlc-cli.mjs`, and ten `loop*`/`loopSession*` test files | those 14 are exactly the sweep output minus the ten named sites; the ten test files are `loop-cli`, `loopCalibrationIsolation`, `loopEntryVocabulary`, `loopProperties`, `loopQueueDriver`, `loopSessionConfig`, `loopSessionDirective`, `loopSessionPreflight`, `loopSessionReport`, `loopSessionState` |
+| Arithmetic | 24 − 14 = 10 | holds; the ten rows in §2.1's table are exactly the 24 minus those 14 |
+
+That is the product point behind the finding: RK-1's residue argument and `DEC-STATS-03`'s
+re-evaluation trigger both rest on the co-change set being *exhaustive*, and exhaustiveness is now
+falsifiable by a reader with a shell rather than by trusting the paragraph. The stated filter
+("enumerates the class, or pins its size or membership" vs. "merely consumes a member"), plus the
+one-sentence justification for it ("a consumer needs no edit when a *new* member is added; an
+enumerator does"), is a sound and checkable rule, not a restatement of the answer.
+
+The set also **grew** under the re-derivation — `pdlc/README.md` joins as the tenth site. I checked
+that this is a real site and not padding: `pdlc/README.md:231` carries the sentence quoted verbatim
+in the new row, `MODULE_NAMES` is genuinely four members and the packed `WORKFLOW_MEMBERS` genuinely
+five, so §2.1's insistence that these are *different* classes (4 → 5 vs. 5 → 6) and "must not be
+synchronised to each other" is correct and is the kind of trap worth naming. Nine → ten is propagated
+consistently: §6.4's vendoring row, §7.3's cost paragraph, RK-1 and the rejected-alternative
+re-evaluation trigger all read ten. RK-1 now carries the new site as an explicitly **un-oracled,
+task-owned** residue item rather than implying coverage it does not have — the honest form.
+
+### Item (b) — §2.1 `coverageInstrumentation.test.js` row (te-review): landed
+
+The row now names the title edit, and the quoted title is verbatim against the shipped test:
+`coverageInstrumentation.test.js:264` reads `P9-02: the include set is exactly the six modules the
+feature owns, no more and no fewer`. The row states that the title carries no assertion and is
+corrected for parity with the `learningsPremises.test.js` row — matching the routed item exactly. No
+assertion, expectation or oracle changed.
+
+### What I re-checked for damage, and found intact
+
+§6.4's classifier-purity split (round item (e), not routed to me) touches an oracle I approved at v3,
+so I checked it for product-lens damage: it does **not** weaken `DEC-STATS-03`'s detector, it narrows
+non-aliasing to the three object-returning classifiers where it is meaningful and substitutes A-B-A
+for `deriveDodRoundIndex`, and §6.4's prose states plainly what A-B-A does *not* falsify (a correct
+memo). Stating a residual blind spot rather than overclaiming coverage is the behaviour I would ask
+for. No requirement loses its detector.
+
+### Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Finding |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | local | §2.1, `learningsPremises.test.js` row | The row attributes to P-1 the title `"exactly four workflow modules"`, in quotation marks; the shipped title (`learningsPremises.test.js:78`) is `MODULE_NAMES is exactly the four canonical workflow modules`. The referenced test is unambiguous and no assertion is affected, but this row is now the parity standard the `coverageInstrumentation.test.js` row was corrected *against*, and an implementer grepping the quoted phrase during the co-change finds nothing. Quote it verbatim or drop the quotation marks. |
+
+FINDING: Low | inherited | local | §2.1, `learningsPremises.test.js` row's P-1 title quote | The row quotes P-1's title as "exactly four workflow modules"; the shipped title at `learningsPremises.test.js:78` is "MODULE_NAMES is exactly the four canonical workflow modules". No assertion is affected and the test referenced is unambiguous, but this row is the parity standard the `coverageInstrumentation.test.js` row was corrected against this round, and a grep for the quoted phrase during the co-change returns nothing — quote it verbatim or drop the quotation marks.
 
 ## Positive Observations
 
