@@ -66,3 +66,36 @@ New claims checked against HEAD:
 - **AT-15's removal probe converts the enumeration assertion from containment to set-equality in one clause.** "Removing any one of the nine changes its side's total by exactly that file's size" is stronger than listing the nine, because it fails for an implementation that enumerates eight — which was the defect. Same for AT-19's "three, no more" on the fleet key set.
 - **AT-02 was rewritten away from a negative-only oracle without being asked.** v1's "no metric equals the sum of the two directories" became byte-identity against the same tree with the archive absent, and the document says why: the realistic BR-02 violation is a merged read that deduplicates by basename, which the sum check would not catch. That is a sharper test than the finding that prompted the neighbourhood.
 - **A-3 was narrowed in the right direction.** The role catalogue stays inherited from the pipeline; the document-type catalogue is now explicitly enumerated and owned here, because D-4 makes the row set observable output — and D-8's `REVIEW` case is cited as the proof that a seventh spelling reaching the driver is not hypothetical. That is the assumption most likely to have rotted silently.
+
+## Recommendation
+
+**Needs revision**
+
+All three v1 High findings are resolved, and resolved substantively rather than by wording: the
+empty-directory contradiction is gone, the unclassified entry has a carrier in both modes, and the
+halts metric now states its own match instead of citing a driver rule that does not exist. Every
+Medium is closed too — the derived oracles are literals, the enumeration is set-equality by removal
+probe, and §6.11's EC matrix is exactly the artefact whose absence let the v1 F-01 contradiction
+survive authoring.
+
+One High remains, and it is a delta: closing v1 F-04 narrowed BR-20 to "report or not-found", while
+the same round's EC-09 edit declared the `docs/`-root failure to be neither. §3.1 A2 exits there
+before A3 can produce a not-found, so `--json` stdout on that path is now undefined — empty or
+BR-30's error object, both conforming — and AT-27's "neither prints a report" does not choose. One
+sentence in BR-20 and one assertion in AT-27's root leg close it.
+
+The three Mediums need no behavioural decision. F-02 and F-04 ask for records, not changes: two
+departures from REQ criteria (REQ-STATS-09's Given sweeping in the no-root case, REQ-STATS-07's
+"reports it by name as missing") that the FSPEC decides correctly but files as neither D-row nor
+erratum. F-03 asks AT-24 to name the tokens BR-01 singles out, since a flag list copied from
+`doctor`'s row passes AT-24 as written while accepting three flags BR-01 forbids. The two Lows are
+one over-claiming matrix row and one platform-portability split.
+
+Everything else verified against HEAD this round — the six-type catalogue, the `REVIEW` case and its
+four real files, the phase-id absence, the exclusion set's continued set-equality, and both archive
+literals — is accurate.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 2}
