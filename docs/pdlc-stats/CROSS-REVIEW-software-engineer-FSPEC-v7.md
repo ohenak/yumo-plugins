@@ -109,15 +109,59 @@ REQ-STATS-03 decided that case in `D-8`'s direction.
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+§5 re-read against REQ v1.4. `EC-01`…`EC-09` are unchanged. `EC-09`'s inherited problem persists: it
+and `D-9` assert a deliberate departure from `REQ-STATS-09`'s *Given*, but REQ v1.4 added the
+no-`docs/`-root carve-out that removes the departure. The behaviour EC-09 specifies is correct and
+agrees with the REQ; it is the framing — "we diverge here" — that is now false. Carried forward
+below.
+
+No new edge case is opened by this round, because this round edited nothing. The routed item raises
+no error-path question: a missing row in an enumeration co-change table is a build-time and
+release-gate concern, covered by K-1's `loop-distribution.test.js` red and TSPEC §6.4's vendoring
+oracle, not by any runtime error scenario this FSPEC owns.
 
 ## Acceptance Tests
 
-_pending_
+§6.1–§6.11 re-read. `AT-01`…`AT-28` are unchanged and still discharge the §2.1 matrix; §6.11's
+test-to-rule table still closes the loop from every `BR-*` back to an `AT-*`. The v6 round's
+sharpened fixtures — `AT-12` and `AT-17`'s legs over the documented basename grammars, tightened at
+`8136d2150` — remain as approved.
+
+On the routed item's testing surface, for the record rather than as a finding: the obligation it
+describes **is** oracle-covered where it actually lives. `DECISIONS-pdlc-stats.md:464` names
+`loop-distribution.test.js`'s `P7-02`, which reads both sibling documents off disk and matches their
+member-count sentences against the class size derived from `tspecPackedCount` at test time — so a
+helper amended without the sibling documents goes red. K-7 also records the one gap honestly:
+`P7-02` does not cover `PK-26`'s *existence as a row*, which is logged as a residual. That is the
+right place for both the obligation and its residual. This FSPEC neither needs nor should acquire an
+acceptance test for it.
 
 ## Open Questions
 
-_pending_
+§7.1's decisions (`D-1`…`D-9`) and §7.4's assumptions (`A-1`…`A-3`) are unchanged and remain
+consistent with REQ v1.4.
+
+§7.2 (open for TSPEC) is unchanged. Note that the routed item's subject matter is squarely §7.2/TSPEC
+territory, and the TSPEC has already taken it up — a further confirmation that the FSPEC is not the
+document with the gap.
+
+§7.3, *"Upstream errata raised, not folded in"*, remains this document's weakest section and is the
+subject of the largest carried-forward finding. It correctly closed and removed the three
+harvested-predicate errata in the v6 round. The **five** it still lists as open against the REQ are,
+on my re-read of REQ v1.4 at HEAD, **all settled upstream**:
+
+| §7.3 bullet | Claimed open against | Status at REQ v1.4 |
+|---|---|---|
+| REQ-STATS-05 post-mortem classification vs `C-5` | C-5 enumeration | carve-out landed |
+| REQ-STATS-03 malformed swallows `-REVIEW-` files | REQ-STATS-03 wording | decided, `D-8`'s direction |
+| REQ-STATS-09 *Given* sweeps no-`docs/`-root | REQ-STATS-09 wording | carve-out landed |
+| REQ-STATS-07 "reports it by name as missing" | REQ-STATS-07 wording | criterion states BR-27's rule |
+| REQ-STATS-02 / REQ-STATS-08 wording (Low) | both criteria | both corrected |
+
+The section therefore reports **zero** real disagreements as five. No behaviour turns on this — the
+FSPEC's behavioural spine agrees with REQ HEAD everywhere I checked, in this round as in the last.
+The cost is directional: TSPEC reads §7.3 for intent, and five phantom open errata are a standing
+invitation to "fix" agreement back into divergence.
 
 ## Delta-Confirmation Findings
 
