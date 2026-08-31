@@ -62,6 +62,51 @@ is untouched by this edit.
 
 ## Dependencies
 
+Upstream-fidelity measurement (DEC-ERR-03). I re-read the TSPEC v1.2 text this PLAN now leans on and
+compared it operand-by-operand, because a numerically-correct-but-wrongly-wired partition is exactly
+the failure §7.3 warns about.
+
+**The two partitions are distinguished correctly.** TSPEC §7.3's *The size of the owned list, stated
+once* is the authority for the count, and warns that "§7.3's *Forbidden token set* row states a
+second, numerically identical but membership-different partition", so "a bare 'six ∪ eight =
+fourteen' cited elsewhere could be wired to the wrong operands. Cite the phrase with its nouns, or
+cite this paragraph." The PLAN does **both**, at both sites — T-11 and the Definition of Done each
+name the operands inline (`CENSUS_TOKENS`'s six *data-carrying names* ∪ `CENSUS_EXEMPT`'s eight
+*plumbing declarations*), state why they are named inline, and cite the authority paragraph by its
+title. This is the strongest form §7.3 permits; it is not an independent restatement of the
+arithmetic, so it does not trip §7.3's ban on a "*third* kind of site".
+
+**Membership, not just cardinality.** Both operand lists are enumerated in T-11 and every member
+matches TSPEC §7.3's *Forbidden token set* row verbatim:
+
+| Operand | PLAN T-11 members | TSPEC §7.3 |
+|---|---|---|
+| `CENSUS_TOKENS` (6) | `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` | identical, same order |
+| `CENSUS_EXEMPT` (8) | `parseDecisionLedgerConfig`, `buildDecisionLedgerInjector`, `DECISION_LEDGER_DEFAULTS`, `DECISION_HEADING_RE`, `DECISION_CORPUS_ARGV`, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, `DECISION_LEDGER_NOTICES` | identical, each with §7.3's reason |
+| `OWNED_DECLS` (14) | union of the above | = §4.1–§4.4's six functions + eight top-level constants |
+
+The two decompositions cross-check: the six functions of the owned list are `CENSUS_EXEMPT`'s two
+plus `CENSUS_TOKENS`'s four, and the eight constants are `CENSUS_EXEMPT`'s six plus `CENSUS_TOKENS`'s
+two. Fourteen from either direction, disjointly. The arithmetic is now internally falsifiable rather
+than asserted.
+
+**Regex-widening conjunct.** The PLAN's new sentence — the precedent's `DECL_RE` widened to recognise
+top-level `const` and `let` (`export`-prefixed or not) alongside `function`, "since eight of the
+fourteen owned declarations are `const`s" — is a faithful compression of §7.3's *The precedent's
+declaration regex must be widened, not cloned verbatim*, including the reason (a verbatim clone finds
+no boundary at a catalogue's declaration line, leaving its body in the remainder and reddening the
+census on its own literals) and the guard that catches it (non-empty-slice plus resolves-to-exactly-one).
+That guard is the falsifiable half, and the PLAN keeps it attached to the instruction rather than
+stating the regex change on its own — which is what makes the task's red meaningful.
+
+**§7.2 flag-off oracle.** The Definition of Done's rewritten bullet matches §7.2 conjunct 3
+term-for-term: symmetric difference of the flag-off and flag-on `report` key sets exactly
+`{decisionLedger}`, asserted as set equality **in both directions**, plus `NTC-DECLEDGER-*` set-equal
+to empty, plus the referent split (§7.4's recording is cited for the *prompt* conjunct only, since it
+captures reviewer-prompt streams and never `report` keys). §7.2 itself closes with "which is the form
+PLAN T-10a already states" — and T-10a still states it. No both-directions conjunct was lost when the
+bullet was re-worded, and no absence-only oracle crept back in.
+
 ## Verification
 
 ## Positive Observations
