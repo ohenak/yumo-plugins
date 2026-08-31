@@ -84,6 +84,12 @@ files removed by `harvest-learnings` after `guard-harvest-before-delete`'s condi
 **NG-7** No new decision-ledger, glossary, or size-tiering mechanism (`docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html`
 moves M4/R3-3/R3-5) is introduced or altered by this REQ.
 
+**NG-8** Dispatch count is out of scope. `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §4
+names "rounds, dispatches, payload bytes, halts" and §5.2 names "dispatch count"; this REQ delivers
+rounds, halts and the byte ratio only, because a dispatch leaves no artifact on disk that C-1's
+read-only stance can count. Erratum events are likewise counted only as post-mortem halts
+(REQ-STATS-05), never from erratum changelog rows. Both may become a later REQ.
+
 ## 4. Constraints
 
 **C-1 (read-only surface).** `pdlc stats` performs no filesystem write, no file deletion, and no
