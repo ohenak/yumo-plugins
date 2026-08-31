@@ -13,7 +13,25 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.6 | 2026-08-31 |
+| Draft | se-author | 1.7 | 2026-08-31 |
+
+**v1.7 — erratum round 7** (targeted versioned edit; no restructuring, no re-litigation).
+Re-grounded on upstream HEAD first: REQ `sha256:5f3e8051…` and FSPEC `sha256:c7d2c832…` are the same
+documents v1.6 absorbed (FSPEC v1.7 / REQ v1.6), so **no upstream decision is absorbed this round**
+— no new `BR-`, `E-` or `AC-` row, and no vocabulary rename, appears at HEAD that v1.6 did not
+already carry. One measured defect is corrected, raised independently by `pm-review`, `se-author`
+and `te-review`: §2.1's `coverageInstrumentation.test.js` row stated P9-02's title move as *six →
+seven*, but HEAD's `REQUIRED_INCLUDES` holds **four** entries (`build-runtime.mjs` and, per
+`CODE_REVIEW v1 §1-1`, `scripts/check-wave-resume-delta-coverage.mjs` alongside the two
+orchestrators), so the shipped literal is `4 + 1 + 2` = **seven** members already. The title's
+printed word `six` and the adjacent comment's "six-member literal … REQUIRED_INCLUDES' three
+entries" are therefore stale **at HEAD**, before this feature touches anything. The row now states
+the measurement rather than the printed word: the feature moves the set **seven → eight** and
+restates the comment's arithmetic as four + one + three. The stale `six → seven` narration in the
+v1.3 changelog row is neutralised in place, since a superseded changelog row must not read as a
+live count. No behavioural claim, type, signature, exit code, oracle or code sketch changed, and no
+other count in this document moves — §2.1 still derives **ten** co-change sites, and the packed and
+copied vendoring classes are untouched.
 
 **v1.6 — erratum round 6** (targeted versioned edit; no restructuring, no re-litigation).
 **Upstream moved, and v1.5's changelog said otherwise.** v1.5 attested that REQ and FSPEC "neither
