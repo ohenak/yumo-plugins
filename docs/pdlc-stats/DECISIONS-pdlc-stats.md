@@ -259,15 +259,17 @@ class or oracle. This feature takes the same route one member further: `PK-26`
 count from five to six. **What this paragraph is the single site of is the carve-out's
 justification, not its execution** — the two sibling-document edits are a `PLAN`-visible obligation
 with an owning task, recorded as K-7 in the Consequences table, and the same table's K-1/K-2 own the
-five in-repo enumeration sites and K-8 the sixth site that pins four of their sizes. Downstream documents — PLAN, PROPERTIES, the implementation's tests — **cite `DEC-STATS-01` and do
+five in-repo enumeration sites, K-8 the test file that pins four of their sizes, and K-9 the two
+`MODULE_NAMES`-fencing tests the sweep found. Downstream documents — PLAN, PROPERTIES, the implementation's tests — **cite `DEC-STATS-01` and do
 not restate this text**: `pdlc-engineering-loop`'s LEARNINGS records verbatim restatement of one
 clause across three documents as a defect generator, and a carve-out is exactly the clause shape
 that attracts it. The growth path is precedented rather than novel: the same class already went from
 three members to five when `lib/loop-session.mjs` and `lib/escalation-view.mjs` were added, recorded
 as `PK-24`/`PK-25` in that helper's own comments.
 
-**Reversibility: hard.** Undoing it means amending the five enumerations, the test file that pins
-four of their sizes, and the sibling feature's frozen table a second time. Not a one-way door — no data or published contract is committed — but
+**Reversibility: hard.** Undoing it means amending all nine sites — the five enumerations and the
+four test files that pin their membership or size — and the sibling feature's frozen table a second
+time. Not a one-way door — no data or published contract is committed — but
 each reversal costs what the original cost.
 
 **Re-evaluation triggers.**
@@ -281,10 +283,14 @@ each reversal costs what the original cost.
   therefore what this trigger would change:** `prepack.mjs`'s `MODULE_NAMES`,
   `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`,
   `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`, `pdlc/workflows/package.json`'s `c8.include`,
-  `coverageInstrumentation.test.js`'s expected include literal, and — in the sixth co-change site —
-  `loop-distribution.test.js`'s `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`,
-  `D2_D3_BASELINE` and `D5_BASELINE`: **eleven hand-written lists across seven files** (ten distinct
-  member facts; `D1_BASELINE` and `D5_BASELINE` hold identical content). The last five are
+  `coverageInstrumentation.test.js`'s expected include literal, `loop-distribution.test.js`'s
+  `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`, `D2_D3_BASELINE` and
+  `D5_BASELINE`, `run.test.js`'s two manifest `deepEqual` lists and its `scratchWorkflows` copy list,
+  and `learningsPremises.test.js`'s P-1 literal: **fifteen hand-written lists across nine files**
+  (twelve distinct member facts — `D1_BASELINE` and `D5_BASELINE` hold identical content, as do
+  `run.test.js`'s three lists; the transcription cost is nonetheless paid per list, not per fact).
+  This count and the site table are now derived from the same sweep, so they cannot disagree again.
+  The five inside `loop-distribution.test.js` are
   transcriptions of the same membership facts as the first four, and their own comment says so —
   *"transcribed once, here … never derived from a directory listing"* — so they are precisely what a
   derive-at-pack-time change would stop transcribing, and understating them by five understates the
@@ -323,9 +329,11 @@ decides now what a future consumer would otherwise litigate after shipping.
 
 **Reversibility: easy.** One constant and three hoists in one function.
 
-**Re-evaluation trigger.** A second JSON-only field appears. Two hoists is where an explicitly named
-envelope type (`JsonEnvelope<T>`) becomes cheaper than repeating the hoist, and the oracle can then
-be stated over the envelope's payload rather than over an exception list.
+**Re-evaluation trigger.** A second JSON-only **field** appears. Two such fields — not two hoist
+sites — is where an explicitly named envelope type (`JsonEnvelope<T>`) becomes cheaper than repeating
+the hoist, and the oracle can then be stated over the envelope's payload rather than over an exception
+list. Today's shape is one field hoisted at three sites, so the trigger has **not** fired; the
+reversibility line above counts sites, this one counts fields.
 
 ### DEC-STATS-03: The driver's four classifiers are injected as a bundle and pinned by an identity oracle
 
