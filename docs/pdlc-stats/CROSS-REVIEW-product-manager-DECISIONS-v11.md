@@ -45,7 +45,50 @@ it rather than asserting the carve-out held.
 
 ## Options Considered
 
-_(pending)_
+DECISIONS' bytes are frozen for me. What is under test is the relationship between those bytes and
+REQ v1.7, so the readings are about that relationship, not about re-opening a decision.
+
+**Reading 1 — REQ-STATS-06 is not cited by DECISIONS, so nothing re-grounds. Insufficient on its
+own.** True as far as it goes: `grep` over DECISIONS returns no occurrence of `REQ-STATS-06`,
+`survivor`, `catalogue`, or `harvested`. But DEC-ERR-03 asks whether the document is still a faithful
+compression of upstream *as it now stands*, not whether the edited id appears in it. A REQ edit can
+change what a constraint DECISIONS **does** cite means. So I tested the citations rather than the
+id list.
+
+**Reading 2 — the erratum widens what C-5 costs, so DEC-STATS-03's seam must be re-checked.
+Adopted, and it passes.** DECISIONS leans on REQ **C-5** four times (DEC-STATS-01's opening premise,
+DEC-STATS-03's rationale, the option table's "why not discharge REQ C-5" column, K-4's
+construction-site conjunct). C-5's own text is byte-unchanged by this erratum — the diff touches it
+only as a parenthetical cite inside REQ-STATS-06. What changed is the *consequence* of a C-5
+divergence at the catalogue: before v1.7, a basename outside the driver's document-type catalogue
+was a survivor, so a stats-side catalogue that disagreed with the driver's shifted a ratio's
+denominator; after v1.7, the same disagreement flips a whole feature-row between **harvested** and a
+measured ratio. That is a larger, more visible product failure for the same underlying defect.
+DEC-STATS-03 chose Option A — an injected `StatsParsers` bundle with an identity oracle asserting
+`===` against `orchestrate-dev.js`'s exports at the single production construction site — precisely
+*because* injection is the capability that can hide a production divergence from C-5. The erratum
+raises the stakes of that divergence; it does not change which option discharges it. **The erratum
+corroborates DEC-STATS-03 rather than straining it.**
+
+**The one way this could have broken, tested mechanically.** If the driver's document-type catalogue
+were a *fifth* export — separate from the four classifiers DECISIONS names — then REQ v1.7 would have
+made a parsing rule load-bearing that DECISIONS' four-classifier bundle does not reach, and K-4's
+"four-classifier object literal occurs exactly once" conjunct would be understated. That would be a
+High. I read the source rather than assuming: in `pdlc/workflows/orchestrate-dev.js`,
+`parseReviewFilename` tests catalogue membership internally (`REVIEW_DOC_TYPES.includes(docType)`)
+and returns the outcome as `{ ok: false, reason: "bad_doc_type" }`. The catalogue is not a separate
+seam — its verdict is already carried on the return value of a classifier DECISIONS injects. Nothing
+in REQ v1.7 requires a fifth member, so DEC-STATS-03's bundle shape and K-4's exactly-once
+construction-site conjunct are both still correctly sized.
+
+**Reading 3 — edit the frozen bytes to record the erratum. Rejected, for the reason v10 gave.**
+Nothing in DECISIONS is falsified by REQ v1.7, so there is no false sentence to repair; and editing
+frozen bytes would open a downstream re-confirmation obligation on PLAN and PROPERTIES that nobody
+asked to discharge.
+
+**Not re-opened:** `DEC-STATS-01`'s chosen option, `DEC-STATS-02`, `DEC-STATS-03`'s option table,
+K-1 through K-9 on their merits, or the standing-costs bullets. None changed; all approved across
+v5–v10.
 
 ## Decision
 
