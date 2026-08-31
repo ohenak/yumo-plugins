@@ -174,3 +174,54 @@ export function realStatsIo() {
     },
   };
 }
+
+// ── buildArtifactTree — the artifact-directory tree builder every fixture uses (TSPEC §6.1) ──
+//
+// `fakeStatsIo`'s `tree` parameter is a flat map keyed by absolute path: directory
+// entries map to `{dirs, files}` name lists, file entries map to a string of contents.
+// Hand-maintaining that flat map — one entry per ancestor directory, kept in sync as
+// files are added or removed — is exactly the kind of duplication every stats fixture
+// (T-04..T-11) would otherwise repeat. `buildArtifactTree(root, files)` takes the
+// natural shape a fixture actually wants to declare — a root absolute path plus a map
+// of root-relative file paths to their string contents — and derives the full flat
+// tree, including every intermediate directory's `dirs`/`files` listing, so a fixture
+// never hand-writes a `dirs`/`files` array itself.
+export function buildArtifactTree(root, files = {}) {
+  const normRoot = root.endsWith("/") ? root.slice(0, -1) : root;
+  const tree = {};
+
+  const ensureDir = (absDir) => {
+    if (!tree[absDir]) {
+      tree[absDir] = { dirs: [], files: [] };
+    }
+  };
+
+  ensureDir(normRoot);
+
+  for (const [relPath, contents] of Object.entries(files)) {
+    const parts = relPath.split("/").filter((part) => part.length > 0);
+    if (parts.length === 0) {
+      throw new Error(`buildArtifactTree: empty relative path for root ${normRoot}`);
+    }
+
+    let currentAbs = normRoot;
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const dirName = parts[i];
+      ensureDir(currentAbs);
+      if (!tree[currentAbs].dirs.includes(dirName)) {
+        tree[currentAbs].dirs.push(dirName);
+      }
+      currentAbs = `${currentAbs}/${dirName}`;
+      ensureDir(currentAbs);
+    }
+
+    const fileName = parts[parts.length - 1];
+    ensureDir(currentAbs);
+    if (!tree[currentAbs].files.includes(fileName)) {
+      tree[currentAbs].files.push(fileName);
+    }
+    tree[`${currentAbs}/${fileName}`] = contents;
+  }
+
+  return tree;
+}
