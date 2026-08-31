@@ -92,7 +92,37 @@ v5–v10.
 
 ## Decision
 
-_(pending)_
+**Approved with minor changes.** Zero High, zero Medium, two Low — both `inherited`/`nonlocal`,
+neither actionable inside the document while its bytes are frozen. **DECISIONS still holds as
+approved against REQ v1.7.**
+
+Every REQ claim DECISIONS leans on, re-read at the current version rather than trusted from v10:
+
+| Claim DECISIONS makes about REQ | Status against REQ v1.7 |
+|---|---|
+| **C-5** requires every artifact classification `pdlc stats` makes to be the driver's classification over the same bytes (DEC-STATS-01 premise) | True — C-5's text is byte-unchanged by this erratum; the diff cites it, does not amend it |
+| C-5's four classifiers are shipped exports of `orchestrate-dev.js` — `parseResolvedMarker`, `parseReviewFilename`, `deriveRoundWindow`, `deriveDodRoundIndex` | True at HEAD; and REQ v1.7 adds no fifth rule — the document-type catalogue is internal to `parseReviewFilename`, surfaced as `reason: "bad_doc_type"` |
+| C-5 is "the constraint the whole design exists to satisfy" (DEC-STATS-03) | Still true, and now more so: a catalogue divergence flips a row to **harvested** rather than shifting a denominator |
+| **REQ-STATS-02** requires the JSON top-level key set to be set-equal to the printed metric set plus one schema-version field (DEC-STATS-02) | True — REQ-STATS-02 untouched this round |
+| **REQ R-5** rests a consumer-stability guarantee on `schemaVersion` existing | True — untouched |
+| **REQ G-4** frames this as a read-only reporting command | True — untouched |
+| This REQ carries no non-goal forbidding edits to `pdlc/engine/` (DEC-STATS-01's trade is open) | True — the non-goal set is untouched; NG-6 still concerns harvest deletion only |
+
+**The bar I am applying is the one set at v9 and held at v10, unchanged.** Under a decision freeze,
+only two things block: a defect the revision introduced (there is no revision to this document, so
+that limb is vacuous), or a factual contradiction between the document and upstream/repository HEAD.
+The second limb is this round's whole job, and it produced no contradiction. The one substantive
+risk the erratum opened — a catalogue rule escaping the injected four-classifier bundle — I tested
+against the source and it does not obtain.
+
+**Both Low findings are inherited and carried, not new.** F-01 is the K-3 routing clause that still
+says an include-count divergence is "owed upstream in TSPEC, not resolved here" after TSPEC v1.7
+resolved it; TSPEC did not move this round, so the staleness is unchanged from v10. F-02 is the v1.6
+changelog's present-tense upstream-grounding line, which asserts *"REQ HEAD (v1.4) matches its
+pin"*; REQ is now v1.7, so this round widens a gap that was already there at v10 (REQ was v1.6
+then). Neither is `delta`: this round's edit created neither, it only made F-02's staleness more
+conspicuous. Tagging both `inherited` is the honest reading, and it is what keeps this round
+non-gating.
 
 ## Consequences
 
