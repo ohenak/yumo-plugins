@@ -161,12 +161,23 @@ the second stage of `pdlc/workflows/package.json`'s `test:coverage`
 (`--per-file --branches 85`), which exists precisely so a small module cannot hide inside
 `orchestrate-dev.js`'s aggregate; a new module of a few hundred lines wants that gate.
 
-**Carve-out against a completed sibling feature — stated once, here.** Adding
-`vendor/workflows/lib/stats.mjs` to `pdlc/engine/__tests__/_tspec-packed-set.mjs`'s
-`WORKFLOW_MEMBERS`, and moving `tspecPackedCount`'s vendored term from `5` to `6`, amends
-enumerations that `docs/completed/pdlc-engine-distribution/` approved and froze (its TSPEC §5.4
-`PK-*` table and FSPEC §5.2's per-class counts). This paragraph is that amendment's single site.
-Downstream documents — PLAN, PROPERTIES, the implementation's tests — **cite `DEC-STATS-01` and do
+**Carve-out against a completed sibling feature — the reasoning is stated once, here; the edits are
+owned by K-7.** Adding `vendor/workflows/lib/stats.mjs` to
+`pdlc/engine/__tests__/_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`, and moving `tspecPackedCount`'s
+vendored term from `5` to `6`, amends enumerations that `docs/completed/pdlc-engine-distribution/`
+approved and froze (its TSPEC §5.4 `PK-*` table and FSPEC §5.2's per-class counts). This decision
+does **not** override that helper's "never this file alone" co-change rule and does not leave the
+sibling's documents to go stale: it complies with the rule, spec-first, by the route
+`pdlc-engineering-loop` already used. That precedent is explicit in the sibling's own changelog —
+its 0.15 row records a *"versioned co-change amendment by `pdlc-engineering-loop`"* that added
+`PK-24` and `PK-25`, corrected the vendored-members note from three to five, moved the derived
+total, and amended FSPEC §5.2's per-class count in the same change, while touching no other row,
+class or oracle. This feature takes the same route one member further: `PK-26`
+(`vendor/workflows/lib/stats.mjs`), the note from five to six, and FSPEC §5.2's "Workflow members"
+count from five to six. **What this paragraph is the single site of is the carve-out's
+justification, not its execution** — the two sibling-document edits are a `PLAN`-visible obligation
+with an owning task, recorded as K-7 in the Consequences table, and the same table's K-1/K-2 own the
+five in-repo enumeration sites. Downstream documents — PLAN, PROPERTIES, the implementation's tests — **cite `DEC-STATS-01` and do
 not restate this text**: `pdlc-engineering-loop`'s LEARNINGS records verbatim restatement of one
 clause across three documents as a defect generator, and a carve-out is exactly the clause shape
 that attracts it. The growth path is precedented rather than novel: the same class already went from
@@ -178,10 +189,20 @@ frozen table a second time. Not a one-way door — no data or published contract
 each reversal costs what the original cost.
 
 **Re-evaluation triggers.**
-- `pdlc/workflows/lib/` becomes a routinely-growing directory (a third runtime-reachable member
-  added after `stats.mjs`). At that point the transcription stops being amortisable and the four
-  vendoring enumerations should be *derived* from a directory listing at pack time, with the
-  packed-set test asserting the derived set rather than a literal.
+- `pdlc/workflows/lib/` becomes a routinely-growing directory — a **fourth** runtime-reachable
+  member added after `stats.mjs`. At HEAD the runtime-reachable members are `lib/loop-session.mjs`
+  and `lib/escalation-view.mjs` (exactly the two `lib/` entries in `prepack.mjs`'s `MODULE_NAMES`),
+  so `stats.mjs` is itself the third; the detector is `MODULE_NAMES.length` exceeding five. At that
+  point the transcription stops being amortisable and the transcribed enumerations should be
+  *derived* from a directory listing at pack time, with the packed-set test asserting the derived
+  set rather than a literal. **Which enumerations are still literal transcriptions at HEAD, and
+  therefore what this trigger would change:** `prepack.mjs`'s `MODULE_NAMES`,
+  `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`,
+  `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`, `pdlc/workflows/package.json`'s `c8.include`, and
+  `coverageInstrumentation.test.js`'s expected include literal — six hand-written lists. K-1's
+  "derived rather than transcribed" describes only TSPEC §6.4's *count* conjunct
+  (`vendoredClassSize === MODULE_NAMES.length + 1`), which ties one transcribed number to its
+  source; the member arrays themselves are all still literals.
 - A future REQ forbids editing `pdlc/engine/`, as `pdlc-loop-economics`'s NG-3 did. Under that
   constraint option A is unavailable and DEC-LOOPECON-08's inverse trade applies instead.
 - `pdlc/engine/package.json` gains a coverage gate with a per-file floor, which would remove option
