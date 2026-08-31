@@ -187,6 +187,44 @@ EC-05's "or a document type outside BR-09's six" leg, which the delta correctly 
 
 ## Acceptance Tests
 
+Two tests grew legs this round. Both new legs are genuinely falsifying, which is the bar I care about
+most in an erratum round — a leg added to answer a wording finding is usually where an unfalsifiable
+oracle sneaks in, and neither of these did.
+
+**AT-12's third directory** (`LEARNINGS` + `CODE_REVIEW-{feature}-draft.md` + another feature's
+`CODE_REVIEW-{other}-v2.md` → `harvested`) is the right fixture: it carries **two** distinct
+non-matching shapes, so an implementation that special-cases only the `-draft` suffix, or only the
+foreign-feature name, fails one half. Combined with the first two directories (`4` and `harvested`),
+the test now defeats a constant implementation in three directions rather than two. It also composes
+with AT-28, which pins the same two shapes on BR-10's numeric side — the pair covers "does not raise
+the number" and "does not suppress `harvested`" separately, so neither can false-green the other.
+
+**AT-17's fourth directory** (`CODE_REVIEW` intact, only out-of-catalogue `CROSS-REVIEW-` basenames →
+`harvested`) is the leg BR-16's new clause needed, and it is stated over a constructed fixture, not the
+real `docs/completed/pdlc-advisory-wave-gate/` — correct, and the reason F-02 is Medium rather than
+High: the prose citation is wrong but the test that would have inherited the error does not. The
+four-fixture set now covers each family's absence separately, both absent, and the grammar-failure
+case, which is set-equal to BR-16's own disjunction. That is the enumeration I would have asked for.
+
+**The one gap the delta opened (F-03).** AT-15 is the only test asserting BR-14's enumeration by
+removal, and its "files on neither list" set is `LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`,
+`SIZING-*.md`. After this round BR-16 asserts an equivalence with BR-14's numerator that AT-15 cannot
+falsify, because no `CROSS-REVIEW-`-prefixed non-matching basename appears anywhere in AT-15's fixture.
+Minimal fix, one clause: add `CROSS-REVIEW-{role}-REVIEW-v1.md` to AT-15's neither-list enumeration and
+assert both totals are unchanged by its presence. That closes the "contributes no bytes" half against
+the only implementation that would plausibly get it wrong — one that globs `CROSS-REVIEW-*` for the
+numerator while parsing the grammar for the round counts. Alternatively, assert `processBytes` in
+AT-17's fourth leg; the AT-15 route is cheaper because the removal-probe machinery is already there.
+
+**Traceability (§6.11) re-derived, not trusted.** BR-11 → AT-12, BR-16 → AT-17, BR-25 → AT-18 all
+still resolve, and no EC row lost its cover. The delta added no rule and no edge case, so no row needed
+adding; correctly, none was.
+
+**Real-path literals re-measured.** BR-06's "four such files sit in
+`docs/completed/pdlc-advisory-wave-gate/`" and AT-09's "the `TSPEC` row still reads `6`" are both
+correct at HEAD (four `-REVIEW-v{1,2}` files across two roles; TSPEC cross-reviews run to v6 for both
+product-manager and test-engineer). AT-18's loose-file literal is correct and now, via BR-25, complete.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
