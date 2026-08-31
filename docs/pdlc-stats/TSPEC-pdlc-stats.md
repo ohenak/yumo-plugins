@@ -93,7 +93,9 @@ five — a different number from the packed class's five → six) is added as a 
 and named explicitly in RK-1's residue with an owning task. (c) The `loop-distribution.test.js` row
 gains an eighth assertion edit: P7-02's `vendoredClassWord` ternary, which matches the sibling
 FSPEC's count *word*, not its digit. (d) The `coverageInstrumentation.test.js` row names P9-02's test
-title (six → seven), no assertion affected. (e) §6.4's classifier-purity oracle is **split by return
+title as a co-change site, no assertion affected. *(The move v1.3 recorded here as "six → seven" was
+wrong on HEAD's measurement and is corrected to seven → eight at v1.7; this row is left as the
+record of what v1.3 wrote, with the number removed so it cannot be read as a live claim.)* (e) §6.4's classifier-purity oracle is **split by return
 type**: non-aliasing is scoped to the three object-returning classifiers, and `deriveDodRoundIndex`,
 typed `=> number`, gets an **A-B-A same-instance** conjunct instead — deleting the conjunct would
 have removed `DEC-STATS-03`'s only mechanical detector, and what A-B-A does and does not falsify is
