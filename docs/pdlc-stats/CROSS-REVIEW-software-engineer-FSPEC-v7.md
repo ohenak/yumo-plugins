@@ -212,8 +212,36 @@ defect is in the routing, not in any document.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+No High findings, so nothing gates this confirmation. The FSPEC is byte-identical to the bytes I
+approved at v6, its upstream REQ is byte-identical to the pinned `UPSTREAM-STATE` anchor, and my
+DEC-ERR-03 re-read of the whole document against REQ v1.4 at HEAD found no new divergence.
+
+On the routed item: **no FSPEC edit is required, and none should be made.** The obligation it
+describes is real but belongs to `DECISIONS-pdlc-stats.md`, where DEC-STATS-01's table already
+carries nine sweep-derived sites and `K-7` already owns both sibling-feature document edits
+(`TSPEC §5.4` gaining `PK-26`; the sibling `FSPEC §5.2`'s per-class count moving five → six). I
+recommend the orchestrator close the item against DECISIONS rather than re-dispatching it here, and
+consider Q-01 on router disambiguation so cross-feature obligations naming another feature's `FSPEC`
+are not resolved to the feature under review.
+
+What I would ask of the next ordinary FSPEC revision — none of it urgent, none of it behavioural:
+
+1. **Rewrite §7.3 to report reality (F-02).** All five remaining bullets are settled at REQ v1.4.
+   Either close them the way the round-6 edit closed the three harvested-predicate errata, or, if any
+   is genuinely still open, say against which current REQ sentence. Five phantom disputes are a
+   standing invitation for the TSPEC to reintroduce divergence.
+2. **Fix the three in-place erratum notices that echo §7.3** — BR-27's mis-attribution of `G-3`'s
+   wording to `REQ-STATS-07` (F-03), EC-09/D-9's claimed departure from `REQ-STATS-09` (F-04), and
+   BR-06's "wording defect of the upstream criterion" (F-05). In each case the *behaviour* is right
+   and agrees with the REQ; only the surrounding claim that a dispute is live is false. These are
+   sentence-level edits.
+
+Doing (1) and (2) together is one coherent pass — they are the same defect, that the document's
+record of upstream disagreement was not updated when the upstream agreed.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 2}
