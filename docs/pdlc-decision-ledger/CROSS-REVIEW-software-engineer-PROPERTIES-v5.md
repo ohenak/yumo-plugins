@@ -22,8 +22,8 @@ two axes that were open:
 1. **The census contract.** `PLAN` v0.7 declared `DECISION_LEDGER_CENSUS_TOKENS` production code
    written into `orchestrate-dev.js` by T-18, a member of a **fifteen**-member owned list
    (six ∪ nine), and named the fourteen-member reading the "**rejected**" resolution. `PLAN` v0.9
-   reverses all five sites — the T-11 row (`PLAN`:158), the T-18 row (:167), both file-ownership
-   manifest rows (:217, :229) and the §Definition of Done census bullet (:500–:517) — onto
+   reverses all five sites — the T-11 row (`PLAN`:162), the T-18 row (:168), both file-ownership
+   manifest rows (:217, :229) and the §Definition of Done census bullet (:500–:519) — onto
    **fourteen owned declarations, all three census constants test-file constants of
    `decisionLedgerCensus.test.js`**. That is exactly what PROP-INV-06, PROP-INV-07, PROP-INV-11 and
    the §Coverage Matrix census paragraph already say. The residual "fifteen" occurrences in `PLAN`
