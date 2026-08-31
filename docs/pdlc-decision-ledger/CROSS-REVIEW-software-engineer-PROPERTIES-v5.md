@@ -48,6 +48,30 @@ Two Medium findings and one Low. None falsifies a property; all three are one-pa
 
 ## Properties
 
+I re-read every property that leans on a changed `PLAN` region, against the current `PLAN` text
+rather than against my v4 notes.
+
+| Property | `PLAN` v0.9 says | Still faithful? |
+|---|---|---|
+| **PROP-INV-06** (`PROPERTIES`:407) | T-11 (`PLAN`:162): owned list **fourteen**, sliced declaration-line-to-next-top-level-declaration over *all* top-level declarations | **Yes.** Identical operand, identical slicing rule. The count and its nouns match `TSPEC`:1423–1425. One under-specification remains — F-01. |
+| **PROP-INV-07** (`:408`) | T-11's companion assertion: `CENSUS_TOKENS` ∪ `CENSUS_EXEMPT` = `OWNED_DECLS`, disjoint, export set-equality named the rejected form | **Yes.** `PLAN` v0.7's competing six ∪ nine = fifteen is gone; the operands `PLAN` now names inline are the ones this property asserts. |
+| **PROP-INV-08** (`:409`) | T-11: "Each slice asserted non-empty before counting", now additionally the conjunct that catches a regex which missed a declaration form | **Yes**, and strengthened in purpose rather than in text. |
+| **PROP-INV-09** (`:410`) | T-11: `decisionLedger` not a member; its obligation discharged behaviourally by T-10a's live arm, and the flag-off pairing is the both-directions symmetric-difference equality | **Yes.** The hand-off target moved from the retired referent to PROP-WIRE-12's form, which is where this property already sends it. |
+| **PROP-INV-11** (`:412`) | T-11: each of the **fourteen** owned members resolves to exactly one top-level declaration at HEAD | **Yes.** Count and conjunct unchanged. |
+| **PROP-WIRE-11** (`:347`) | T-18 (`PLAN`:168): `report.decisionLedger` set only when the injector is non-null, conditional spread | **Yes**, untouched by the round. |
+| **PROP-WIRE-12** (`:348`) | T-10a conjunct 3 (`PLAN`:161): symmetric difference of the paired flag-off/flag-on `report` key sets exactly `{decisionLedger}`, both directions; referent is the arm's own paired runs, never §7.4's recording | **Yes — and this is the property `PLAN` moved *to*.** The two documents are now word-for-word compatible, including the referent-split note. |
+| **PROP-OFF-05** (`:362`) | §Definition of Done (`PLAN`:500–519) and T-10a: emitted `NTC-DECLEDGER-*` notice set **set-equal to empty**, FX-BASELINE holds no notices array | **Yes.** `PLAN` v0.7's "set-equal to the baseline notices array" — the clause this property expressly refused — is retired. |
+| **PROP-DISC-08 / T-20 tracing** | `PLAN`:170's T-20 row, unchanged (batch 10, version bump constrained by `pdlcPluginCompat`) | **Yes.** No task id, batch, dependency or ownership assignment moved in this round, so §Coverage Matrix's all-24 two-way trace is intact. |
+
+**Nothing in the changed `PLAN` regions falsifies a property, and no property is left without an
+owner.** The one substantive addition `PLAN` v0.9 makes that this document has not yet absorbed is
+the declaration-regex widening (F-01); the two stale passages are bookkeeping (F-02, F-03).
+
+I re-checked the two counts that a partition change would normally disturb: the family totals
+(INV 11, WIRE 12, total 103) are unaffected, because no property was added, removed or re-homed by
+this round — the census family's *content* was already at the fourteen-member form when I approved
+v4.
+
 ## Oracles
 
 ## Fixtures
