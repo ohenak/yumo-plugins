@@ -136,16 +136,50 @@ The G-6 real-path gap row (`:540`) records its measurement date and re-measureme
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | The three Medium/Low items carried open from v3 (F-01 EC-19 shipped-seam trace, F-03 PROP-ERR-10's superset warranty, F-04/F-05 trace and wording nits) are untouched by this erratum and remain open for the next ordinary round. Nothing in this round changes their disposition; I re-raise none of them here, because a cascade confirmation is not the channel for them. |
+| Q-02 | Now that REQ, FSPEC and PROPERTIES all state the out-of-catalogue rule, is TSPEC §4.3's ratio description carrying the same reading? TSPEC was not re-pinned this round and is outside this confirmation's question, but if it still describes out-of-catalogue basenames as survivors it will need the same one-clause correction. Worth a look at the next TSPEC touch. |
 
 ## Positive Observations
 
-_pending_
+- **The erratum resolved the dissent in the downstream document's favour, which is the outcome that
+  costs least.** PROP-RATIO-08's fourth leg has been asserting the v1.7 reading since v1. Rather than
+  three documents editing to match a REQ clause that contradicted its own rationale, one REQ sentence
+  moved and PROPERTIES, FSPEC BR-16 and AT-17 all stood still. That is the cascade working the right
+  direction: the level with the reasoning error corrected itself.
+- **PROPERTIES' scoping phrase and REQ's new one are near-verbatim.** "over exactly the file set the
+  numerator sums" (`:173`) against "evaluated over exactly the file set whose bytes the process side
+  sums" (REQ-STATS-06). When a downstream compression and its upstream converge on the same phrasing
+  independently, the trace is doing real work rather than being asserted.
+- **The PROP-RATIO-06 / PROP-RATIO-08 pairing anticipated the argument the erratum makes.** The two
+  properties split "sized as nothing" from "not counted as remaining" and cite BR-14 and BR-16
+  separately. That decomposition is exactly the inference v1.7 spells out; the document had the
+  premises wired before the REQ drew the conclusion.
+- **No collateral damage across metrics.** The word "remaining" carries weight in four predicates
+  (REQ-STATS-03, -04, -06 and the DoD side). I checked all four; the erratum's scope really is the
+  one clause its note claims, and PROP-DOD-04 already resolved the analogous DoD question the same
+  direction.
 
 ## Recommendation
 
-_pending_
+**Approved**
+
+PROPERTIES remains a faithful compression of REQ-STATS-06 as it now stands. The erratum did not
+invalidate any claim the document makes; it removed a conflict in which REQ contradicted PROPERTIES,
+and it resolved that conflict to PROPERTIES' reading. No property, oracle, fixture or trace requires
+an edit as a consequence of this round, and I am raising no finding — not because the document was
+unexamined, but because I re-derived the three properties and two fixtures that sit on the changed
+clause and each one holds.
+
+The Medium and Low items carried open from v3 stay open and stay non-gating; they belong to the next
+ordinary revision round, not to this confirmation.
 
 ## Delta-Confirmation Findings
 
-_pending_
+No findings.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
