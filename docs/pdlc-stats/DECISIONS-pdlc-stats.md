@@ -13,7 +13,26 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.3 | 2026-08-31 |
+| Draft | se-author | 1.4 | 2026-08-31 |
+
+**v1.4 (cross-review round 4).** Fixes the sweep's **scope** and its **tool**, and the one cost claim
+that depended on both. Scope: the sweep is restated over tracked sources (`git grep -l "escalation-view"
+-- . ':!docs/' ':!*/dist/*'`, 25 files at HEAD) instead of over two `__tests__/` directories, because a
+test-directory query structurally cannot see `publish-preflight.mjs:205-219`'s deliberate
+production-side copy of the engine `lib/` class — which is why v1.3 listed that file among the sites
+option **B does not pay** when B in fact pays it. B is re-priced **three → four** sites (TE F-01,
+High); the verdict is untouched, since B's disqualifier is its absent coverage gate, not its site
+count. Tool: `grep -rln` silently drops files containing NUL bytes (`loopProperties.test.js:370`,
+`lib/escalation-view.mjs`), returning 23 where `git grep -l` returns 25 — recorded as a clause,
+because a dropped *transcriber* would be the exact miss the sweep exists to end (PM F-02 / TE F-02).
+The repo-scoped sweep also surfaces a tenth transcription, `pdlc/README.md:231`'s prose member list;
+it is **not** a tenth site-table row — the table holds falsifiers and nothing pins that line — but the
+edit is owed and is now owned by K-9 and recorded under *Standing costs accepted* (PM F-01 / TE F-03).
+K-9's promoted constraint carries the query, its scope, its NUL caveat, its probe-choice rule (PM
+Q-01) and `publish-preflight.mjs` as the worked example. K-3 gains K-8's message-string clause,
+covering P9-02's stale title count and its stale *"three entries"* comment (PM F-03). K-9's falsifier
+cell answers TE Q-02 on why K-3's single-check pair stays a separate task. Option A's nine sites, the
+site table, K-1's partition and DEC-STATS-01/02/03 are unchanged.
 
 **v1.3 (cross-review round 3).** Replaces the per-file reading of the co-change set with a **mechanical
 sweep**, cited so the next reader can tell completeness was established by a command rather than by
