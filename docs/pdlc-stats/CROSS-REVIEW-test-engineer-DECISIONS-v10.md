@@ -72,6 +72,65 @@ is the same reasoning v1.5 used when it declined to edit TSPEC from a DECISIONS 
 
 ## Decision
 
+**The document is unchanged and remains a faithful compression of REQ v1.6 / FSPEC v1.7 / TSPEC
+v1.7 at HEAD. No decision, oracle, falsifier, type, count or task sizing is falsified by TSPEC
+v1.7. No High finding, old or new.** Two Medium and two Low findings stand, none gating.
+
+I re-read the upstream text this document leans on at its current version, rather than checking the
+item list. Since REQ and FSPEC are byte-identical to v9's pins, the whole surface at risk is what
+this document says about **TSPEC**.
+
+### The one thing TSPEC v1.7 changed about this document's standing
+
+K-3 carries a clause that is now a claim about a version of TSPEC that no longer exists:
+
+> **Upstream divergence, owed to TSPEC and not resolved here (TE F-05).** TSPEC §2.1's row for this
+> site describes P9-02's title count as moving *six → seven*, which reads the stale title as if it
+> were the true HEAD state.
+
+At HEAD, TSPEC §2.1's row says the opposite of what this clause attributes to it — it states the
+title and comment are already stale, measures the literal at seven, and moves it seven → eight. The
+same stale attribution appears twice more, in the v1.5 changelog's *"carried unresolved by design"*
+paragraph and in the v1.6 changelog's *"records TSPEC §2.1's 'six → seven' as an erratum owed
+upstream"* sentence.
+
+This is a genuine DEC-ERR-03 finding — the document cites upstream text upstream no longer says —
+and it is `delta`-provenanced: the pre-round bytes of TSPEC made the clause **true**, and this
+round's edit is what falsified it. It is nonetheless **Medium**, because the direction of the
+change is convergence, not divergence:
+
+| What K-3 asserts | Status at HEAD |
+|---|---|
+| `REQUIRED_INCLUDES` holds **four** entries | holds — measured four |
+| the literal is `4 + 1 + 2` = **seven** | holds — `c8.include` is seven at HEAD |
+| this feature makes it **eight** | holds |
+| the shipped title's `six` and the `three entries` comment are **already wrong at HEAD** | holds — both still stale in the code |
+| the title and comment move with the include literal, as a clause not a row | holds — neither is load-bearing on a check |
+| **TSPEC disagrees and owes an erratum** | **false at HEAD — TSPEC v1.7 agrees and the erratum is discharged** |
+
+Every engineering conjunct survives. Only the disagreement bookkeeping rotted. An implementer
+reading K-3 today is told the arithmetic correctly and is additionally told to distrust a TSPEC row
+that is now trustworthy — which costs a reader one cross-check, not a mis-sized task. That is a
+freshness defect, not a falsified compression.
+
+### What I checked that did *not* move
+
+- **No new upstream decision to absorb.** TSPEC v1.7's changelog attests no new `BR-`, `E-` or
+  `AC-` row and no vocabulary rename, and I confirmed the delta touches only the changelog and the
+  §2.1 row — §6.4's classifier-purity oracle, §7.3's probe totals and §4.3's BR-16 scoping are
+  byte-unchanged in this range. Nothing owed to `DEC-STATS-01/02/03`.
+- **§7.3's 25-vs-24 probe reconciliation is untouched**, so v9's withdrawal of its own v8 F-02 still
+  stands: the two totals are probe-variants over the same ten transcribers, and this document's
+  probe-invariance table already reconciles them.
+- **K-8's "seven → eight" assertion-edit headline is a different count from K-3's include-set
+  count** and was not disturbed. The coincidence of the words is not a coupling — one counts
+  assertion edits in `loop-distribution.test.js`, the other counts `c8.include` members. Neither
+  moved.
+- **K-1's four-way partition still covers all ten sites** without overlap, and site 10's "pinned by
+  no oracle" residue is still stated in three places. TSPEC v1.7 added no site.
+- **Option B's cost still prices correctly.** `pdlc/engine/package.json` still declares no `c8`
+  block and no coverage dependency, so B still does not pay the include-set edit.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
