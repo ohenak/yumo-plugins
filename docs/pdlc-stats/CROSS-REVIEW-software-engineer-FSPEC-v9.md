@@ -128,9 +128,6 @@ FINDING: High | delta | local | §4.2 BR-16 provenance sentence | Says the cited
 | ID | Severity | Scope | Finding | Section ref |
 |----|----------|-------|---------|------------|
 | F-01 | High | Local | BR-16's new provenance sentence undercounts the cited real directory as "two" out-of-catalogue cross-reviews where HEAD has four, contradicting §4.2 BR-06 ("Four such files sit in…") and AT-09's "all four basenames" oracle. One document, two counts of the same directory; a reader who trusts BR-16 and "corrects" AT-09 breaks a passing oracle. Change `two` to `four` in BR-16; leave BR-06 and AT-09 as they are. | §4.2 BR-16 |
-## Findings
-
-## Open Questions
 
 ## Positive Observations
 
