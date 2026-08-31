@@ -66,7 +66,51 @@ upstream version survives anywhere in this document.
 
 ## Options Considered
 
+**(a) Re-stamp the approval on the strength of the routed-item list.** The dispatch names the routed
+items; TSPEC's v1.3 changelog asserts that nothing is absorbed and no measured value moves; both
+statements are true. Rejected anyway. DEC-ERR-03 measures scope by upstream **at HEAD**, not by the
+item list, precisely because a document can be broken by an upstream sentence nobody routed. An
+author's own changelog is a claim about the edit, not evidence about the citation; taking it as
+evidence is how a cascade confirmation becomes a rubber stamp.
+
+**(b) Re-review DECISIONS end to end against TSPEC v1.3.** Rejected. Sections approved in iterations
+1–6 are not reopened by an upstream move that does not touch what they cite, and re-litigating them
+would spend a round to re-derive conclusions no evidence has disturbed.
+
+**(c) Enumerate this document's TSPEC-dependent claims, then re-read each cited upstream locus at its
+current version on disk.** Chosen. The unit of work is the *citation*, not the diff — which is what
+catches the case the diff cannot: a claim that was already false, or one falsified by an upstream
+sentence outside the routed set. Every line in the verification log above was read at HEAD with
+`grep`/`sed` against the file, never inferred from either document's prose. Where the claim was about
+absence (`ERR-3`/`ERR-4` still open, no current-position numerals survive) I checked for the positive
+marker's absence across the whole file rather than reading the two rows I expected to find.
+
 ## Decision
+
+**DECISIONS v1.6 still holds against TSPEC v1.3.** Confirmation approved.
+
+Three findings from the sweep, none of them gating:
+
+1. **The erratum cannot reach this document.** Its five touched sections are the TSPEC header, §4.1,
+   §6.1's F-13 row, §7.6's AT-14 row and the changelog. This document cites exactly one of them
+   (§4.1, as DEC-DECLEDGER-15's mechanism pointer), and §4.1's *substance* is byte-unchanged — the
+   edit moved a pointer numeral inside it, not the rule DEC-DECLEDGER-15 rests on. The other two
+   touched body sites have no downstream dependency here at all.
+
+2. **The citation-form migration is convergent, not divergent.** TSPEC moved its FSPEC pointers from
+   numeral to id; this document has cited `E-7` by id at all four of its sites since before this
+   round. There is no re-pinning work owed downstream, which is the point of `DEC-DOC-01` and now the
+   fourth consecutive round in which this document's mechanism-and-anchor citation style has survived
+   an upstream rewrite without a false claim.
+
+3. **My v6 F-01 is closed, by the v1.6 erratum rather than by this round.** The two stale
+   `TSPEC v0.7` current-position recitals are gone, and the fix chosen — de-versioning to "at HEAD"
+   rather than re-pinning to `v1.3` — is the right one from a testing lens: a re-pin would have been
+   guaranteed to go stale on the next erratum round and would have re-filed the same finding
+   indefinitely. Removing the version-dependence removes the finding class, not just the instance.
+
+Two Low findings are recorded and neither gates: a carried changelog miscount (v6 F-02, untouched and
+still accurate) and the dispatch/anchor mismatch described in `## Context`.
 
 ## Consequences
 
