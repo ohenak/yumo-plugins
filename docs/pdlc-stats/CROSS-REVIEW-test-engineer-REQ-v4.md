@@ -124,3 +124,7 @@ FINDING: Low | delta | local | §4 C-5, post-mortem discovery carve-out | The ca
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 1}
+
+APPROVAL-HASH: sha256:c4588c8b08d3138b1d2498adda75aa9896f5cd3dee9eb8ed4d1b7c5d92376126
+APPROVAL-HASH-NORMALIZED: sha256:c4588c8b08d3138b1d2498adda75aa9896f5cd3dee9eb8ed4d1b7c5d92376126
+REVIEWED-COMMIT: 50dffe8c8f9dfc6b30f797fc5f7fb6ac1669889b
