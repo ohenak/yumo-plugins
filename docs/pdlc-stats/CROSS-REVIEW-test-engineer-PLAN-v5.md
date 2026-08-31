@@ -53,6 +53,29 @@ and are non-gating now.
 
 ## Batches
 
+Only four PLAN rows can touch REQ-STATS-06's byte-ratio predicate. I re-derived each against REQ v1.7
+and, for the two real-path rows, re-measured the archive at HEAD rather than trusting the document.
+
+| Task | What it claims | Status under REQ v1.7 |
+|---|---|---|
+| T-04 | 🔴 `computeFeatureStats` reds over `fakeStatsIo`, incl. "byte ratio (AT-15 incl. the removal probe, AT-16, **AT-17's four directories**)" and "Branch-order conjuncts of TSPEC §4.3 asserted explicitly" | **Holds, and is now unambiguous.** Names no expected value for any AT-17 leg, so the erratum cannot falsify it. The fourth leg's value is TSPEC-owned; §4.3 implements BR-16, which REQ now ratifies. |
+| T-18 | 🟢 Real-path AT-09 (`docs/completed/pdlc-advisory-wave-gate/` — TSPEC row `6`, four `…-REVIEW-v{1,2}.md` basenames malformed) | **Holds.** Asserts a `TSPEC` round number and a malformed list, not a ratio verdict. Re-measured at HEAD: 62 `CROSS-REVIEW-*`, of which 4 out-of-catalogue → **58 grammatical remain**, `CODE_REVIEW` = 2, `LEARNINGS` = 1. Neither harvested disjunct fires, so the directory reports **measured** under v1.7 exactly as under v1.6. |
+| T-18 | 🟢 Real-path AT-10 (`pdlc-headless-engine` — TSPEC `13`, **five rows `harvested`**) | **Holds.** Re-measured at HEAD: `LEARNINGS` = 1, `CODE_REVIEW` = **0**, out-of-catalogue basenames = **0**. The harvested verdict is carried by the `dodReviews.length === 0` disjunct, which the erratum does not touch. Independent of the delta. |
+| T-26 | 🟢 Mutation evidence: four TSPEC §6.6 mutants, incl. swap `unmeasurable`/`harvested` and swap BR-16's harvested test against BR-15's zero-denominator test | **Holds.** Both ratio mutants concern the *ordering* of the zero-denominator and harvested branches, not the out-of-catalogue scoping. Their killing fixtures (T-04's `LEARNINGS`-sibling collision) are unchanged. |
+
+**Direction-of-change check.** The settlement only ever moves a directory from `measured` toward
+`harvested` — it enlarges the harvested set by reclassifying out-of-catalogue basenames as absent. That
+asymmetry is why no PLAN expectation can silently flip: AT-10's row already expects `harvested` (a
+widened predicate cannot un-harvest it), and AT-09's directory is held `measured` by 58 grammatical
+survivors that the erratum leaves untouched. The only leg whose value the delta *could* decide is
+AT-17's fourth, and PLAN deliberately does not name it.
+
+**No new task is required.** The clause REQ v1.7 adds — a feature whose only `CROSS-REVIEW-` basenames
+are out-of-catalogue reports `harvested` — is precisely FSPEC AT-17's fourth leg, which T-04 already
+claims. The companion clause, that such a basename "contributes no process bytes", is already pinned by
+AT-15's neither-list (TSPEC: the file "reach[es] neither side"), which T-04 also already claims. Both
+halves of the new sentence land on tasks that exist. No coverage gap opens.
+
 ## Dependencies
 
 ## Verification
