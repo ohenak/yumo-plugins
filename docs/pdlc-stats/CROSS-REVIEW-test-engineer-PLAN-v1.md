@@ -198,8 +198,57 @@ the *only* place the production `statsIo` is exercised behaviourally. F-08.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does `realStatsIo()` in T-02 exist because the shipped `statsIo()` lives in `bin/cli.mjs` and is awkward to import from the workflows suite? If so, would moving `statsIo()` into `lib/stats.mjs` (leaving `cmdStats` to call it) collapse F-01, F-04 and F-06 into one seam with one oracle, at the cost of one more exported function on the §3.3 surface? |
+| Q-02 | T-11's read-only snapshot excludes the `.tmp-*` prefix the **workflows** suite creates under `pdlc/workflows/`, but T-11 runs in the **engine** suite, which CI executes as a separate job. Is the exclusion there for local `npm test`-both runs, and is the "exclusion is non-empty and pre-run-empty" guard conjunct expected to be green in CI where nothing creates the prefix? |
+| Q-03 | Batch 10 lands five clusters at once with `assertAdditiveOnly` red mid-batch by design. If the wave gate's `postWaveCommand` runs between tasks rather than at batch end, does the mid-batch red surface as a wave failure? The PLAN says the gate is measured at batch end — is that guaranteed by the dispatcher, or by convention? |
+
 ## Positive Observations
+
+- **The batch column is arithmetically correct on all 27 rows** — re-derived independently from the
+  `Deps` edges, no understated batch anywhere. That is rarer than it should be, and it is what keeps
+  terminal tasks from running before their wiring.
+- **The File Ownership Manifest is the right instrument, used correctly.** The single multi-writer
+  file is serialized by real dependency edges across five distinct batches, not by a note asking
+  implementers to be careful. The batch-10 disjointness claim survives a row-by-row check.
+- **T-20 as a deliberately-red gate ahead of the co-change batch** converts `DEC-STATS-01` `K-1`'s
+  "a partial edit ships an engine that fails only for installed users" from a discipline problem
+  into an ordering property. This is the strongest structural idea in the PLAN.
+- **Anti-echo discipline is explicit where it matters:** T-20's `MODULE_NAMES.length + 1` derived
+  rather than transcribed; T-06's key sets as literal transcriptions with `schemaVersion === 1`
+  pinned to the literal rather than the module's own constant; T-19's PROP-3 stated over a
+  *generated permutation* rather than a repeated call. Each of these is the difference between a
+  test that can fail and one that cannot.
+- **Set-equality, not containment, is asked for in every enumerated contract** — the doc-type
+  catalogue, the exclusion set, the construction-site count, the `StatsIo` key set, the read-only
+  snapshot pair, and the fleet entry discriminant. A deleted case reds in each.
+- **T-08's exclusion-set oracle uses an independent witness** (the artifact-naming convention)
+  rather than the leading-underscore predicate under test. That is exactly right: an oracle
+  partitioned by the predicate it checks agrees with any predicate at all.
+- **Real-path literals are declared measurements** with a re-measure command, and the PLAN
+  explicitly forbids path-rewriting them when the archive moves — the correct reading of the
+  `doc-moves-break-pinned-tests` pattern.
+- **The vendoring site table is complete.** A `git grep -l escalation-view` sweep finds no
+  enumeration outside the twelve rows; `bin/cli.mjs` and `loop-cli.test.js` reference `lib/` modules
+  by per-module path, so they genuinely need no co-change.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding gates: F-01. TSPEC §2.4 spends a section arguing that `lstat`-not-`stat` is
+load-bearing, and the PLAN then assigns the behaviour exclusively to a fake that cannot see the
+difference. What must change to clear the bar: give AT-15's symbolic-link leg a real-filesystem
+test (a temp dir with a symlink whose target is much larger than the link) owned by a named task, or
+add a structural conjunct to T-10 pinning `lstatSync` as the call `statsIo().fileSize` makes —
+ideally both, since the first proves the behaviour and the second names the mechanism.
+
+The eight Medium and Low findings are recorded, not gating; F-02, F-03 and F-08 are each a
+one-line correction that removes a predictable mid-wave stall, and are worth folding into the same
+revision.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 5, "low": 3}
