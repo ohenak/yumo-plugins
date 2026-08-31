@@ -70,3 +70,36 @@ matches only the `CROSS-REVIEW`, `CODE_REVIEW` and `ADVISORY` tokens, so a `POST
 is neither permitted nor blocked by it — the hook is simply blind to the family.
 
 F-01 therefore stands exactly as filed, with its evidence strengthened rather than weakened.
+
+## 3. Why the unresolved premise still blocks, in implementation terms
+
+Restating the impact from the build side, because "a doc contradicts a doc" undersells it.
+
+REQ-STATS-06 (`REQ-pdlc-stats.md:193-195`) makes the survive side a *shipped-behaviour fact*:
+"harvest deletes cross-reviews and DoD reviews while post-mortems survive, so the numerator is only
+*partially* deleted". That sentence is the entire justification for the AC's harvested trigger being
+**per-family and cross-review/DoD-only** — the predicate fires when the `CROSS-REVIEW` family or the
+`CODE_REVIEW` family is absent, and deliberately does not consult post-mortems at all.
+
+Its converse is load-bearing one AC earlier. REQ-STATS-05 (`REQ-pdlc-stats.md:182-183`) ends "no
+post-mortem file is zero halts, never an error" — it has **no harvested state**, alone among the
+metrics, and can only be correct if a surviving post-mortem set is complete evidence.
+
+The two ACs consume the same premise in opposite directions, so whichever way it resolves, one is
+wrong today:
+
+- **If post-mortems survive** (SKILL:28/59/129): both ACs are correct as written and the only defect
+  is a missing citation for a claim the REQ asserts bare.
+- **If post-mortems are deleted** (SKILL:77, OPERATIONS:296): REQ-STATS-05 prints `0 halts` for a
+  harvested feature that in fact halted, and REQ-STATS-06's "only *partially* deleted" rationale is
+  false — the numerator is *wholly* deleted, which changes what the harvested token even means.
+
+The second branch is precisely the silent undercount NG-6 (`:74`) and R-6 (`:251-253`) exist to
+prevent, and REQ-STATS-03/04/06 all carry harvested states specifically to avoid. An implementer
+cannot resolve this at TSPEC: they would have to pick a side of a contract question about another
+skill's behaviour, and picking wrong ships a metric that lies about halts on exactly the corpus
+(`docs/completed/`, per R-6) the feature is aimed at.
+
+Because F-01's bytes predate this round and this round edited nothing, it is `inherited` — it routes
+back through the REQ's ordinary revision loop rather than halting the phase, which remains the right
+disposition.
