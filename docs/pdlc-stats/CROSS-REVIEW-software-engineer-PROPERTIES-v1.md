@@ -186,8 +186,86 @@ require a case-sensitive volume to run.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §PLAN tasks says "All fifteen new **test files** were confirmed absent at HEAD". The count of fifteen files is right, but two of them are not test files: `helpers/statsDoubles.js` is a double bundle and `_stats-scratch-prefixes.mjs` is a one-constant module. Worth saying "fifteen new files (thirteen test suites plus two helper modules)" so a reader counting suites against the jest run does not come up short? Not a finding — the artefact list itself is correct. |
+| Q-02 | PROP-DRIFT-06 requires `lib/stats.mjs` in `c8.include` **and** in `coverageInstrumentation.test.js`'s P9-02 literal "at the same index". At HEAD that test is titled `"P9-02: exactly six modules …"` and its literal spreads `REQUIRED_INCLUDES` + `CAPTURE_SCRIPT_INCLUDE` + two `lib/` modules. PLAN T-24 does call out "correcting stale count words in P9-02's title comment", so this is covered — but PROP-DRIFT-06's own text mentions only the array. Should the property name the count-word co-change too, so the property and its task agree on the full edit? |
+| Q-03 | G-7 records that `docs/completed/` children are unfiltered, so a future `docs/completed/_archive-notes/` would be reported as a feature. PROP-DISC-06 asserts every directory under `docs/completed/` appears as a row exactly once at `integration-fs` over the real archive. When that future directory lands, PROP-DISC-06 goes green (it *is* a row) while the report is wrong. Is G-7 the right home for that, or does it want a leading-underscore guard note so the eventual fix has a named landing site? |
+
 ## Positive Observations
+
+- **The real-path literals are genuinely measured, not asserted.** I executed all four driver
+  classifiers over the four named archive directories and every number reproduced exactly —
+  `startIndex` 7 and 14, `deriveDodRoundIndex` 3, `parseResolvedMarker` `{ok:true,resolved:true}`,
+  `bad_doc_type` for `…-REVIEW-v1.md`, `not_cross_review` for `LEARNINGS-x.md`. G-6's re-measurement
+  narrative is accurate down to the return values. In a repo where nonexistent-authority citations
+  have shipped three times, this is the first PROPERTIES document I have reviewed where the fixture
+  table survived execution intact.
+- **The mutation kill map does the hard part.** Both `− 1` mutants are killed by literals over *two
+  independent corpora* (`pdlc-advisory-wave-gate` and `pdlc-headless-engine`), with the explicit
+  reasoning that a single archival change cannot silently disarm the mutant. The two branch-order
+  mutants each get a fixture that *defeats the earlier branch* — PROP-RATIO-09's harvested-and-
+  zero-spec-bytes case and PROP-RR-11's collision-plus-`LEARNINGS` case are the only configurations
+  on which the two orders disagree, and the document says so and builds exactly those.
+- **Implementation echoes are hunted deliberately, not avoided by luck.** PROP-JSON-03 forbids
+  `Object.keys` of the implementation's own output; PROP-JSON-09 asserts the literal `1` rather than
+  the module's `SCHEMA_VERSION`; PROP-DISC-05 forbids reading the module's export; PROP-RR-08 names
+  the reason — "transcription tautology cannot appear in the assertion". §Oracles' "Real-path" row
+  states the general rule against derivation and cites DC-14.
+- **Absence-only oracles are ruled out structurally.** §Oracles' first rule binds PROP-RR-07,
+  PROP-DOD-03 and PROP-RATIO-08 to three positive conjuncts each and states plainly that
+  `state !== "measured"` is never the assertion. PROP-RO-01's conjunct (a) — "a binary that prints
+  nothing, or crashes, fails this property" — is the read-only stance's liveness pair, and it is
+  repeated on the failure paths in PROP-RO-02. PROP-RATIO-03 pairs its no-change claim with a
+  positive presence assertion on the fixture listing.
+- **Set-equality where a deleted case must fail.** PROP-JSON-03/07/08, PROP-CLI-05, PROP-RO-05,
+  PROP-RR-13 and PROP-DISC-05 all specify set-equality "in both directions", several with an
+  explicit "never containment". PROP-DRIFT-03's construction-site *count* is the sharpest of these:
+  an "at least one" check would leave PROP-DRIFT-01 pinning a function nobody calls, and the
+  document says exactly that.
+- **PROP-PBT-03 shows real property-based-testing literacy.** Stating order-independence over a
+  generated *permutation* rather than two identical calls, with the reasoning that JS object keys
+  and `Set` iteration are insertion-ordered so a repeat-call property is green for a
+  filesystem-ordered implementation — plus the second conjunct pinning order to the constant so a
+  stably wrong order also fails — is the difference between a property and a placeholder.
+- **The pyramid is argued, not assumed.** 67 properties falsifiable with no filesystem and no
+  process, 13 at `integration-fs` because `lstat` semantics and real basenames *are* the claim, 22
+  at the CLI edge because flag closure and exit codes are not observable below it, and zero spawned
+  E2E — with a sentence justifying each band. PROP-RATIO-04/05's split of the symlink claim into a
+  behavioural conjunct on a real filesystem and a structural conjunct on the source, because "a
+  behavioural test alone can be satisfied on a platform where the link and its target happen to
+  agree", is exactly right.
+- **The gaps are honest.** G-1 declines to assert a provisional predicate rather than writing a test
+  it will have to rewrite; G-3 refuses a wall-clock assertion and calls it a flake generator; G-5
+  admits that a promoted constraint "is a review instrument, not an oracle"; G-7 records an omission
+  as a decision rather than letting it read as an oversight. All seven name an owner.
+- **Internal bookkeeping is exact under machine check** — 102 unique property IDs, a clean partition
+  across six levels with matching declared counts, and every property's `Level` cell agreeing with
+  the band it is filed under. Zero discrepancies in either direction.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. This is the strongest PROPERTIES document I have reviewed in this repo: the
+oracles are falsifiable, the fixture literals survive execution against HEAD, the coverage matrix is
+complete over every REQ criterion, all 30 BRs, all 29 ATs and all 21 ECs, all 27 PLAN tasks are
+traced, and every named test file's present/absent status is correct. Implementation can proceed on
+this document as written.
+
+The three findings are all documentation-accuracy items, none of which blocks a wave:
+
+- **F-01 (Medium)** should be fixed before PLAN T-08 is implemented, because that task transcribes
+  from the table the finding corrects. It is a one-line edit in two places.
+- **F-02** and **F-03 (Low)** are bookkeeping and wording; they can ride along with F-01 or land in
+  any later revision.
+
+I found no defect in any upstream document. PROP-DRIFT-05's "derived from `MODULE_NAMES`" clause,
+which I flagged for myself as a possible oracle-disarming echo, verified as a legitimate
+cross-enumeration tie between two independently maintained lists and contradicts neither DC-14 nor
+DEC-STATS-01 K-2. No erratum is raised.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
