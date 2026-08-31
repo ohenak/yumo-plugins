@@ -15,11 +15,13 @@ depends-on:
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.5 | 2026-08-31 |
+| Draft | pm-author | 1.6 | 2026-08-31 |
 
-Round 6 (v1.5): REQ-STATS-05 gains a harvested state, so an absent post-mortem family can no longer
-read as a clean run; REQ-STATS-06's rationale drops the falsified premise that post-mortems survive
-harvest; G-3 restated to match REQ-STATS-07's gap rule. No other change.
+Round 7 (v1.6): REQ-STATS-05's harvested halt state withdrawn and `0` restored. Both universal
+readings of what harvest does to post-mortems were falsified in turn, so the AC no longer rests on
+either: it reports what is on disk and R-6 records the resulting `0` conflation as an accepted
+residual. NG-6 scopes the harvested states to the two families harvest removes; REQ-STATS-02 and R-6
+propagated. No other change.
 
 ## 1. Problem / Context
 
@@ -70,11 +72,12 @@ semantics, or to any convergence logic: `pdlc stats` only reads what those mecha
 **NG-5** No changes to the `POSTMORTEM-*` `RESOLVED:` lifecycle, the erratum channel or the
 fail-closed gate: `pdlc stats` never writes a `RESOLVED:` line or participates in clearing a halt.
 
-**NG-6** No retroactive recovery of metrics for deleted artifacts (cross-reviews, DoD reviews or
-post-mortems removed by `harvest-learnings`). `pdlc stats` reports only what is on disk — but says so
-where it applies, per the harvested states. `LEARNINGS-{feature}.md` is only ever the discriminator
-separating harvested from a genuine zero — its `Harvested from` row is never parsed to reconstruct a
-deleted count.
+**NG-6** No retroactive recovery of metrics for artifacts no longer on disk. The harvested states
+cover the two families `harvest-learnings` removes — cross-reviews and DoD reviews; an absent
+post-mortem is reported as REQ-STATS-05's measured `0`, not recovered and not relabelled.
+`pdlc stats` reports only what is on disk — but says so where it applies, per the harvested states.
+`LEARNINGS-{feature}.md` is only ever the discriminator separating harvested from a genuine zero —
+its `Harvested from` row is never parsed to reconstruct a deleted count.
 
 **NG-7** No new decision-ledger, glossary or size-tiering mechanism (proposal moves M4/R3-3/R3-5) is
 introduced or altered here.
@@ -140,7 +143,7 @@ under REQ-STATS-08's read-only stance.
 `consolidate-learnings`). **Given:** REQ-STATS-01's feature argument plus a `--json` flag.
 **When:** `pdlc stats {feature} --json` runs. **Then:** stdout is exactly one well-formed JSON
 document whose top-level key set is set-equal to REQ-STATS-01's printed metric set plus one
-schema-version field — REQ-STATS-03's malformed and unmeasurable states and REQ-STATS-03/04/05/06's
+schema-version field — REQ-STATS-03's malformed and unmeasurable states and REQ-STATS-03/04/06's
 harvested state ride in their own metric's value, never as extra top-level keys — so a metric added
 to human mode without a JSON field fails; nothing else is mixed into stdout in this mode.
 
@@ -181,12 +184,11 @@ more `POSTMORTEM-{phase}-{feature}.md` files. **When:** the command computes hal
 reports one entry per distinct phase with a post-mortem file present, each tagged resolved or open
 **exactly as the pipeline's own `RESOLVED:` marker rule classifies that file (C-5)** — this REQ
 states no marker-matching rule of its own, so case, duplicate markers and fenced-block placement are
-decided in one place. Absence alone never decides the count, because harvest is observed to delete
-post-mortems as well as reviews: `docs/completed/pdlc-advisory-tier/` retains its LEARNINGS and no
-post-mortem, yet that LEARNINGS' `Harvested from` row names two it deleted. So where
-`LEARNINGS-{feature}.md` is present **and** no `POSTMORTEM-{phase}-{feature}.md` file remains, halts
-report **harvested**, never `0`; a plain `0` is reserved for absence that truly means never halted —
-no post-mortem **and** no LEARNINGS. Neither is an error, and any surviving post-mortem yields
+decided in one place. Where no `POSTMORTEM-{phase}-{feature}.md` file is present, halts report `0`.
+No harvested state is drawn here: the post-mortem family is not one this REQ treats as
+harvest-removed (NG-6). A `0` therefore means only that no halt evidence is on disk, and
+deliberately does not distinguish a feature that never halted from one whose post-mortem files are
+gone; R-6 records that accepted residual. Neither is an error, and any surviving post-mortem yields
 measured entries as above.
 
 ### REQ-STATS-06 Process-to-spec byte ratio (P0)
@@ -259,7 +261,10 @@ field is present — while the field spellings themselves stay FSPEC material (O
 
 **R-6** A harvested feature's deleted evidence could read as a genuine zero, corrupting any baseline
 over `docs/completed/`, where most features are already harvested. Mitigated by
-REQ-STATS-03/04/05/06's harvested state, reported distinctly from a measured value.
+REQ-STATS-03/04/06's harvested state, reported distinctly from a measured value. For halts the
+residual is **accepted, not mitigated**: REQ-STATS-05 reports `0`, which unions "never halted" with
+"post-mortem files no longer on disk". A consumer baselining halts over `docs/completed/` must not
+read `0` as evidence a feature ran clean.
 
 ## 7. Obligations / Open Questions
 
