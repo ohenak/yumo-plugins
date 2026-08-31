@@ -10,14 +10,26 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5,6}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5,6,7,8,9}.md` |
 | Post-Mortem | `POSTMORTEM-R-pdlc-decision-ledger.md` (Phase R round budget exhausted; this version applies its Recommendation) |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2** — the measured extent of the closed-decision corpus, cited by `M-*` id |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.9 | 2026-08-28 |
+| Draft | pm-author | 1.10 | 2026-08-30 |
+
+**v1.10 erratum — round 9's three REQ-local items, and nothing else.** C-5's `maxBytes`
+rationale stated its 3,204-byte slack as if all of it were per-record framing; it is the
+allowance for **both** per-line and block framing of the rendered index, which is what C-5
+already scopes the bound to. The header *Cross-Reviews* row named v1–v6 while v7–v9 exist,
+and the v1.9 note named `§1` as a swept site when the re-pinned line sits in `§2` G-1. Two
+round-9 items are not this document's: the Baseline's *Cited by* propagation list omits `§6`
+R-5, `§7` A-1 and `§7` O-6, fixed in the Baseline itself with no REQ change and no id moving;
+AC-01's id-only expected-value basis stays routed to FSPEC, as v1.7 recorded. The stale
+`TSPEC v0.7` literals raised into this round live in `DECISIONS-pdlc-decision-ledger.md`
+(`§ Context`, the DEC-DECLEDGER-10/-12 re-evaluation-trigger row), not in this REQ, which
+names no TSPEC version anywhere — routed to se-author, unedited here.
 
 **v1.9 erratum — the two stale Baseline pins in the body, and nothing else.** The header pinned
 Baseline **v1.2** at v1.8, but §1 and §5 REQ-DECLEDGER-01 still read `v1.1`, so the REQ
