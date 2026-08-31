@@ -74,6 +74,33 @@ v4.
 
 ## Oracles
 
+The oracles this document specifies are unaffected in *shape*; one is affected in its *named
+mechanism*.
+
+- **The census oracle (`decisionLedgerCensus.test.js`, PROP-INV-06…11).** Its operands, its scanned
+  source and its four conjuncts (zero occurrences, partition, resolves-to-exactly-one, non-empty
+  slice) are unchanged. What changed upstream is the instruction for building the **boundary set**:
+  `TSPEC`:1448 and `PLAN`:162 now both require that the precedent's declaration regex be **widened,
+  not cloned verbatim**, to recognise top-level `const` and `let` alongside `function`. This
+  document names the precedent (`loopEconomicsAnchorGuard.test.js`'s `bodyOf` over
+  `allTopLevelDecls`) without that caveat — F-01.
+- **The red→green edge.** `PLAN`:162 still commits T-11 skipped in batch 2 and un-skips it at T-18
+  (batch 8), but the *reason* is now the one this document already gives: the owned members resolve
+  only once batches 3–8 have landed, not because T-18 writes a census constant. §Coverage Matrix's
+  census-module paragraph (`PROPERTIES`:894–909) states exactly that reason and is correct at HEAD —
+  except for its closing two sentences, which are now false (F-02).
+- **The live composition-root oracle (`decisionLedgerMain.test.js`, PROP-WIRE-01…12, PROP-OFF-01).**
+  `PLAN`:161's three arms are unchanged in structure; arm 3's conjuncts are now the ones PROP-WIRE-12
+  and PROP-OFF-05 specify. The `_git`-call-count spy and the ends-with-block assertion are untouched.
+  No property owed an edit here.
+- **The delta-coverage gate.** `PLAN`:168 retains T-18's per-wave manual run of
+  `check-wave-resume-delta-coverage.mjs` and its commit-then-run ordering. No property in this
+  document claims that gate, and none needs to — it is a task acceptance condition, correctly left
+  at `PLAN` altitude.
+- **`documentOracles.test.js` / the terminal `102` control (PROP-DISC-05, PROP-DISC-07).**
+  `PLAN`:169's T-19 row is unchanged, including the twelve-module count and the `102` complement pin.
+  Since T-18 no longer adds a production census constant, no module-surface count moved either.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
