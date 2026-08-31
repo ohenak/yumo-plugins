@@ -206,9 +206,10 @@ Every cost below was measured against the tree at HEAD, not estimated.
 | D | `pdlc/workflows/lib/stats.mjs`, **not vendored** | none | same as A |
 
 **Option A's ten sites**, each confirmed at HEAD to contain the member list it is claimed to contain.
-Four *hold* the enumerations; five *pin* them from two other packages, which is why a per-file scan of
-the holders reaches none of the five (see *What the sweep found*); the tenth transcribes the class in
-prose and is pinned by nothing, which its own row says in place of a falsifier:
+**Five** *hold* the enumerations; **four** *pin* them from two other packages, which is why a per-file
+scan of the holders reaches none of the four (see *What the sweep found*, where the first measurement
+scanned the holders and found exactly those five); the tenth transcribes the class in prose and is
+pinned by nothing, which its own row says in place of a falsifier:
 
 | Site | Symbol | Members at HEAD |
 |---|---|---|
