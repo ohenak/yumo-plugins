@@ -143,10 +143,53 @@ outcomes and the command must measure the corpus as it is.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For a feature with **no** `LEARNINGS-{feature}.md` and no post-mortems, is a plain zero halt count right, or should an unharvested feature with zero post-mortems also be distinguished from one never run through the pipeline? I believe plain zero is correct there and the fix in §3 preserves it, but the boundary is worth one sentence in the AC. |
+| Q-02 | Should `pdlc stats` read `LEARNINGS`' `Harvested from` row to *recover* the deleted post-mortem count, rather than only reporting harvested? That would make the metric measured rather than not-available for archives like `pdlc-advisory-tier`, but it adds a parsing rule and C-5 would then bind it. My recommendation is **no** for this REQ — report harvested, keep the parsing surface small — but the choice belongs to the author. |
+
 ## Positive Observations
+
+- **The document is genuinely stable.** Byte-identical to v1.4 with a clean working tree; the
+  erratum channel has stopped churning this document. Everything I approved in v5 is still true of
+  the bytes, and I re-derived that mechanically rather than assuming it.
+- **REQ-STATS-06 already models the pattern REQ-STATS-05 needs.** The harvested-vs-measured
+  distinction, the refusal to emit a misleading computed value, and the deferral of tokens to FSPEC
+  are all correct there. The fix in §3 is not new machinery — it is applying an idiom this document
+  already owns to the one metric that was left without it.
+- **C-5's deference discipline held up under a hostile check.** REQ-STATS-05 pins the `RESOLVED:`
+  classification to the pipeline's own marker rule rather than restating it, so case, duplicate
+  markers and fenced-block placement stay decided in one place. That is exactly why the defect I
+  found is in the *discovery* step and not in the classification step — the deferral worked.
+- **The archive-preference rule in C-2 is honestly labelled.** It names itself as this REQ's own
+  decision rather than an inherited convention, and cites where the archive location *is*
+  verifiable. That labelling is what let me check the corpus at all.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01). REQ-STATS-05's halt oracle reads a harvest-deleted post-mortem as a clean
+run, which is demonstrably wrong for `docs/completed/pdlc-advisory-tier/` — a feature whose own
+LEARNINGS records two post-mortems and their deletion. The criterion as written would be pinned into
+the suite as a false green against a real archive, and it is absence-only, so it cannot fail for the
+reason it exists.
+
+The change is bounded and REQ-local: give REQ-STATS-05 a harvested state mirroring REQ-STATS-06's,
+paired with the positive `LEARNINGS`-present conjunct, and soften REQ-STATS-06's "post-mortems
+survive" rationale to the true weaker claim. No FSPEC material needs to move upward; rendering
+tokens stay under O-1. F-02 and F-03 remain non-gating and can ride along with that edit.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | High | inherited | nonlocal | §5 REQ-STATS-05 halt zero rule (and REQ-STATS-06 rationale) | "No post-mortem file is zero halts, never an error" is an absence-only oracle that reads harvest-deletion as a clean run. `docs/completed/pdlc-advisory-tier/` has zero `POSTMORTEM-*` yet its `LEARNINGS-pdlc-advisory-tier.md:15` records "Two POSTMORTEMs" and `:11` lists both as "deleted by this harvest", so the metric reports 0 halts for a feature that halted twice, with no gap flag. REQ-STATS-06's premise "post-mortems survive" is falsified by the same archive; upstream is self-contradictory (`pdlc/skills/harvest-learnings/SKILL.md:28` deletes two families, `:77` and `pdlc/OPERATIONS.md:296` say three). Fix: harvested state for REQ-STATS-05 keyed on LEARNINGS-present + post-mortem-family-absent; soften REQ-STATS-06's rationale. Not touched by this round (REQ bytes unchanged), hence inherited. |
+| F-02 | Medium | inherited | nonlocal | §2 Goals, G-3 (`REQ-pdlc-stats.md:47`) | Carried from v5 F-01, unchanged. G-3 still says artifacts "missing or fail to parse" are "reported missing/malformed", contradicting REQ-STATS-07: readable-but-empty is a normal zero row, only an unreadable directory is a by-name gap, and malformed is a within-metric state (REQ-STATS-03). |
+| F-03 | Low | inherited | nonlocal | §4 C-4 doc-type placeholder vs REQ-STATS-03 | Carried from v5 F-02, unchanged. C-4's `{doc-type}` is open while the driver's catalogue is closed (`pdlc/workflows/orchestrate-dev.js:10105-10112`, rejected `:10144` `bad_doc_type`), so `CROSS-REVIEW-product-manager-REVIEW-v1.md` is malformed under REQ-STATS-03 but a survivor under REQ-STATS-06. Worth one clause noting the predicate is deliberately set-membership over C-4. |
+
+FINDING: High | inherited | nonlocal | §5 REQ-STATS-05 halt zero rule | "No post-mortem file is zero halts, never an error" is an absence-only oracle that reads harvest-deletion as a clean run: docs/completed/pdlc-advisory-tier/ has zero POSTMORTEM files yet its LEARNINGS records two post-mortems deleted by harvest, so the metric silently reports 0 halts for a feature that halted twice, and REQ-STATS-06's "post-mortems survive" rationale is falsified by that same archive.
+FINDING: Medium | inherited | nonlocal | §2 Goals, G-3 | G-3's "artifacts missing or failing to parse are reported missing/malformed" contradicts the corrected REQ-STATS-07: a readable-but-empty directory is a normal zero row, only an unreadable directory is a by-name gap, and malformed is a within-metric state rather than a feature-level label.
+FINDING: Low | inherited | nonlocal | §4 C-4 doc-type placeholder | C-4's open {doc-type} placeholder admits CROSS-REVIEW-{role}-REVIEW-v{N}.md as a REQ-STATS-06 survivor while REQ-STATS-03 classifies the same real files as malformed under the driver's closed REVIEW_DOC_TYPES catalogue.
 
 ## Verdict
