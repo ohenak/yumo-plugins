@@ -70,6 +70,63 @@ seam's default and its paired guard; this decision records which *kind* of guard
 
 ## Options Considered
 
+Every cost below was measured against the tree at HEAD, not estimated.
+
+### DEC-STATS-01 — where the pure metric logic lives
+
+| Option | Location | Enumeration co-change (verified) | Coverage gate (verified) |
+|---|---|---|---|
+| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | five edit sites; vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass |
+| B | `pdlc/engine/lib/stats.mjs` | engine `lib/*.mjs` class 15 → 16 (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3), plus the same `tspecPackedCount` amendment | **none** — `pdlc/engine/package.json`'s only test script is `node __tests__/_run-suite.mjs`; the package declares no `c8` block and no coverage dependency at all |
+| C | inline in `pdlc/engine/bin/cli.mjs` | none | **none**, same reason as B |
+| D | `pdlc/workflows/lib/stats.mjs`, **not vendored** | none | same as A |
+
+**Option A's five sites**, each confirmed to contain the member list it is claimed to contain:
+
+| Site | Symbol | Members at HEAD |
+|---|---|---|
+| `pdlc/engine/scripts/prepack.mjs` | `MODULE_NAMES` | `orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs` |
+| `pdlc/engine/scripts/publish-preflight.mjs` | `WORKFLOW_MEMBERS` | the same four, `vendor/workflows/`-prefixed, plus `VENDOR-MANIFEST.json` |
+| `pdlc/engine/scripts/fixture-machine.mjs` | `WORKFLOW_MODULE_NAMES` | the same four |
+| `pdlc/engine/__tests__/_tspec-packed-set.mjs` | `WORKFLOW_MEMBERS` and `tspecPackedCount` | the five; `tspecPackedCount` returns `4 + 15 + 5 + 1 + (licence ? 1 : 0)` |
+| `pdlc/workflows/package.json` | `c8.include` | seven `**/`-anchored entries, including both existing `lib/*.mjs` members |
+
+**B rejected.** It pays a co-change of the same order — `_tspec-packed-set.mjs`'s count conjunct has
+to move either way, since `tspecPackedCount` sums the `lib` class and the vendored class in one
+expression — and buys nothing back: the engine package measures no coverage, so the new module's
+branch coverage would be unenforced. It also still has to load the vendored driver across the
+`resolveWorkflowRoot()` seam, so the C-5 relationship is no closer.
+
+**C rejected.** `pdlc/engine/bin/cli.mjs` is 57.0 KB at HEAD and is in no coverage include set;
+adding a few hundred lines of pure computation to it puts the feature's entire correctness surface
+outside every gate the repo has.
+
+**D rejected — and it is the option worth naming, because a `pdlc/workflows/lib/` member can in fact
+skip the vendoring co-change.** `pdlc/workflows/lib/document-oracles.mjs` is such a member: it
+appears in none of the four vendoring enumerations, only in `pdlc/workflows/package.json`'s
+`c8.include`. The reason it can is that its only importers are tests
+(`pdlc/workflows/__tests__/documentOracles.test.js`) — it is never reached by a shipped code path.
+`lib/stats.mjs` is reached by `pdlc stats` on an installed engine, where `resolveWorkflowRoot()`
+resolves to the vendor tree; unvendored, the command would work in a checkout and fail only for
+installed users. D is therefore not a cheaper A, it is a broken A, and the asymmetry with
+`document-oracles.mjs` is explained by runtime reachability, not by precedent for skipping.
+
+### DEC-STATS-02 — where `schemaVersion` lives
+
+| Option | Shape | Consequence for TSPEC §6.3's cross-mode oracle |
+|---|---|---|
+| **A (chosen)** | a `renderJson` obligation; module constant `SCHEMA_VERSION`, hoisted identically into all three documents | oracle stays exception-free: every key it compares across modes is a metric |
+| B | a field on `StatsReport` | the human renderer reads a value carrying a JSON-only key; the oracle needs a permanent per-key exception, and BR-21's set-equality would have to be restated as set-equality-minus-one |
+| C | a field on `FeatureStats` | worse than B: it would also appear per fleet entry, contradicting BR-23's "BR-21's document minus its hoisted `schemaVersion`" |
+
+### DEC-STATS-03 — how the driver's classifiers reach `computeFeatureStats`
+
+| Option | Mechanism | Why it does or does not discharge REQ C-5 |
+|---|---|---|
+| **A (chosen)** | injected `StatsParsers` bundle + an identity oracle asserting `===` against `orchestrate-dev.js`'s exports at the single production construction site | identity cannot be satisfied by a re-implementation at all, so C-5 holds for every input, not just tested ones |
+| B | direct static `import` in `lib/stats.mjs` | discharges C-5 structurally, but forces every unit test to evaluate an 816.5 KB module and leaves `deriveRoundWindow`'s `ok: false` branch reachable only by constructing a colliding-filename fixture |
+| C | injection + behavioral-equivalence tests over a corpus | passes for a re-implementation that agrees on today's corpus; C-5 is about agreement on *all* bytes, so this is the one option that cannot enforce it |
+
 ## Decision
 
 ## Consequences
