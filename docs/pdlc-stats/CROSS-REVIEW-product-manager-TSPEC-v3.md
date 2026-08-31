@@ -60,15 +60,62 @@ currently owns that sweep. That is a pipeline lesson, not a pdlc-stats one.
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | FSPEC §7.3's closure notice covers the three harvested-predicate errata. My v2 review left three Medium test-governance findings open against §6.5/§4.3 (the `.tmp-*` snapshot exclusion, the guard conjunct, the halt negative test), and the first of those asked for an FSPEC erratum against AT-21/AT-22's *Given*. That erratum is not in FSPEC §7.3 at HEAD and the TSPEC's §8.3 does not carry it either. Is it expected to land in the TSPEC's next ordinary revision round, or was it dropped? I am not raising it as a finding of this confirmation — it is inherited from v2 and belongs to the TSPEC's own loop, not to the cascade — but it should not fall through the gap between the two. |
+| Q-02 | FSPEC BR-16 now says a directory holding only out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files "reports `harvested`, not a measured ratio". Those same files are simultaneously reported to the operator as **malformed** by BR-06 (TSPEC §6.1's AT-09 row pins four of them with `reason: "bad_doc_type"`). Both are right per the rules, but is the combined operator-facing story — "this feature's process bytes are harvested" *and* "here are four malformed files that are the only process files present" — the reading the FSPEC intends? It is an FSPEC/REQ presentation question, not a TSPEC one, which is why it is a question rather than a finding. |
 
 ## Positive Observations
 
-_pending_
+- **The cascade moved upstream toward this document, not away from it.** Every substantive FSPEC
+  edit in this round — BR-11's grammar qualifier, BR-16's "exactly the file set BR-14's numerator
+  sums", AT-12's third directory, AT-17's fourth — lands on the reading the TSPEC had already taken
+  and argued for from REQ C-4. That is the erratum channel working exactly as designed: the TSPEC
+  declined to reinterpret upstream silently, routed the ambiguity, and the ambiguity got resolved in
+  the TSPEC's favour. The three stale citations in F-01…F-03 are the *cost of success*, not a defect
+  of judgement.
+- **No product guarantee moved.** I checked each REQ criterion the edits touch. REQ-STATS-04 and
+  REQ-STATS-06 narrowed *which files count as evidence*, not what the operator is promised: a
+  harvested feature still reports `harvested` rather than a misleading `0` or a phantom ratio, which
+  is the whole user-facing point. The TSPEC's `n > 0` DoD branch, its `crossReviews.length === 0 ||
+  dodReviews.length === 0` ratio branch, and its harvested-before-zero-denominator ordering all
+  implement the narrowed text unchanged.
+- **BR-25's new loose file is a no-op for the design, and the TSPEC already had it right.** I listed
+  `docs/completed/` at HEAD: `QUEUE-HISTORY-rows-0-1.md` and `REQ-completed.md` are both there.
+  §4.4's `isDirectory`-only discovery drops both without knowing either name, and §6.1's AT-18 row is
+  deliberately stated as invariants rather than counts — so the archive gaining a second loose file
+  cannot falsify it. This is the `doc-moves-break-pinned-tests` hazard the TSPEC declined to walk
+  into, and it paid off within one round.
+- **The approval anchors did their job.** Both recorded `UPSTREAM-STATE` hashes re-derived exactly
+  from `REVIEWED-COMMIT`, which is what let this confirmation read a precise 46/33-line delta instead
+  of re-reading a 76 KB FSPEC. Worth saying out loud, because it is the mechanism that keeps cascade
+  confirmations cheap.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+The TSPEC still holds against FSPEC v1.4 and REQ v1.4. Nothing it specifies has to change: every
+branch table, type, oracle and traceability row remains a faithful compression of the upstream text
+as it now stands, and on the four points upstream edited, upstream moved to meet this document.
+
+Four non-gating changes, none touching specified behaviour, all confined to prose that describes
+upstream:
+
+1. **§4.3, DoD rounds** — replace the "FSPEC BR-11's wording is looser … routed as an erratum (§8.3)"
+   passage with a statement that BR-11 v1.4 and REQ-STATS-04 now agree on the grammar-matching
+   reading the branch implements. (F-01)
+2. **§4.3, byte ratio** — retire "and that is a choice" and "the two readings genuinely disagree";
+   BR-16 v1.4 specifies the grammatical membership and names the `pdlc-advisory-wave-gate` shape
+   itself. Keep the REQ C-4 grounding — it is now the FSPEC's grounding too. (F-02)
+3. **§8.3** — delete the BR-16, BR-11 and BR-25 bullets; all three are closed upstream, per FSPEC
+   §7.3 and BR-25's own text. Keep the BR-26/EC-10 feature-recognition-predicate bullet, which is
+   still open. (F-03)
+4. **§4.3 / §6.1** — cite AT-17's fourth leg (and AT-12's third) instead of presenting the harvested
+   boundary fixture as a locally-invented one. (F-04)
+
+Because these are all Medium/Low, this confirmation is approving: the TSPEC does not need to
+re-enter its review loop for them, and they can be folded into whatever edit it next receives.
 
 ## Verdict
 
