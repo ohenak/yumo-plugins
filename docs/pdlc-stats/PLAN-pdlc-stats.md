@@ -287,12 +287,14 @@ a workflow file or `ci-arrangement.test.js`.
 
 ### Acceptance-test coverage
 
-Every FSPEC acceptance test is owned by exactly one task. Verified against the FSPEC's own AT list
+Every FSPEC acceptance test is owned by **at least one** task, and where ownership is split the
+split is named in the row (AT-24's parser half and process half, for instance, genuinely belong to
+different suites). Verified against the FSPEC's own AT list
 (AT-01 … AT-28, with AT-14b) — 29 tests, all assigned:
 
 | AT | Task | AT | Task |
 |---|---|---|---|
-| AT-01 | T-06 | AT-15 | T-04 |
+| AT-01 | T-06 | AT-15 | T-04 (size arithmetic, removal probe), T-18 (symbolic-link leg, real fs) |
 | AT-02 | T-05 | AT-16 | T-04 |
 | AT-03 | T-07 | AT-17 | T-04 |
 | AT-04 | T-07, T-09 | AT-18 | T-05 (constructed roots), T-18 (real `docs/`) |
@@ -315,10 +317,12 @@ edge is carried by AT-26 (T-05, T-07) as FSPEC records.
 
 | Oracle (TSPEC §6.4/§6.5/§6.6) | Task | Suite |
 |---|---|---|
-| Parser identity (`===` against the driver's exports) | T-10 | engine |
+| Parser identity — `===` against the driver's exports **and** the bundle `cmdStats` hands `runStats` is that same object | T-10 | engine |
 | Classifier purity (non-aliasing ×3, A-B-A for `deriveDodRoundIndex`) | T-10 | engine |
 | Construction-site count (exactly one four-classifier literal) | T-10 | engine |
 | No-write capability (`StatsIo` has exactly four members) | T-10 | engine |
+| `lstat`-not-`stat` seam: `statsIo().fileSize` names `lstatSync`, and `realStatsIo()` makes the identical call set | T-10 | engine |
+| AT-15's symbolic-link leg over a real filesystem (link's own size, not the target's) | T-18 | workflows |
 | Doc-type catalogue set-equality | T-08 | workflows |
 | Exclusion-set equality over the real `docs/` root | T-08 | workflows |
 | Vendoring co-change, `MODULE_NAMES.length + 1` derived | T-20 | engine |
@@ -333,8 +337,12 @@ Not asserted from the upstream documents — re-checked at HEAD, because a PLAN 
 implementer cannot find is a PLAN that halts a wave:
 
 - All four driver classifiers are present and `export`ed in `pdlc/workflows/orchestrate-dev.js`.
-- `pdlc/workflows/lib/` holds `loop-session.mjs` and `escalation-view.mjs`; **`stats.mjs` does not
-  exist** — every row naming it declares it new.
+- `pdlc/workflows/lib/` holds **three** modules at HEAD — `loop-session.mjs`, `escalation-view.mjs`
+  and `document-oracles.mjs`; **`stats.mjs` does not exist** — every row naming it declares it new.
+  `document-oracles.mjs` is in **neither** `prepack.mjs`'s `MODULE_NAMES` nor `package.json`'s
+  `c8.include` (nor either `WORKFLOW_MEMBERS` copy, nor `WORKFLOW_MODULE_NAMES`): directory
+  membership is therefore *not* what obliges the co-change. `stats.mjs` owes it because the shipped
+  engine CLI loads it at runtime — see the Overview and T-21.
 - `MODULE_NAMES` (4 entries), both `WORKFLOW_MEMBERS` copies (5 entries each),
   `WORKFLOW_MODULE_NAMES` (4 entries), `tspecPackedCount`'s `4 + 15 + 5 + 1`, and `c8.include`'s
   seven `**/`-anchored entries are all as the TSPEC describes them.
@@ -345,7 +353,7 @@ implementer cannot find is a PLAN that halts a wave:
   `…-REVIEW-v{1,2}.md` basenames, `pdlc-headless-engine`'s `CROSS-REVIEW-software-engineer-TSPEC-v13.md`,
   `LEARNINGS-…` and four `POSTMORTEM-{D,F,I,T}-…` files, `pdlc-loop-economics`'s two `CODE_REVIEW`
   files, and `pdlc-wave-resume`'s `POSTMORTEM-PR-…`.
-- `pdlc/workflows/__tests__/helpers/` exists (21 modules, `.js`), so T-02 adds a peer, not a
+- `pdlc/workflows/__tests__/helpers/` exists (20 `.js` modules at HEAD), so T-02 adds a peer, not a
   directory; `pdlc/engine/__tests__/` has no `helpers/` directory, which is why T-11's constant
   lands as `_stats-scratch-prefixes.mjs` beside the engine suite's other `_`-prefixed helpers.
 - `pdlc/engine/__tests__/bin-guard-structure.test.js` and `loop-cli.test.js` exist and carry the
@@ -377,8 +385,10 @@ Named so the DoD reviewer inherits them rather than discovering them. None is cl
       **derived**, not transcribed.
 - [ ] The read-only oracle passes on both a success and a failure invocation, with a non-empty
       scratch-prefix constant and the guard conjunct green.
-- [ ] The parser-identity, classifier-purity, construction-site-count, no-write-capability,
-      doc-type-catalogue and exclusion-set oracles are all green.
+- [ ] The parser-identity oracle is green on **both** conjuncts (`===` members and the pass-through
+      bundle `cmdStats` hands `runStats`), and the classifier-purity, construction-site-count,
+      no-write-capability, `lstat`-not-`stat` seam, doc-type-catalogue and exclusion-set oracles are
+      all green.
 - [ ] PROP-1, PROP-2 and PROP-3 pass; PROP-3 is stated over a **generated permutation**, not over a
       repeated call.
 - [ ] All four mutants of TSPEC §6.6 are killed, each by a **named** test, recorded in
