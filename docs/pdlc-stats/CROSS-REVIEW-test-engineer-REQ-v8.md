@@ -157,6 +157,30 @@ harvest removed, both families are described accurately and no further edit is n
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+My one blocking-class concern from v7 is resolved, and the resolution improved the AC rather than
+patching around it: REQ-STATS-05 is now a measured value with a two-directional oracle, no archive
+in the corpus is reported as something its own LEARNINGS contradicts, and the accepted residual is
+stated where a baselining consumer will read it. Nothing in the delta broke a surface I approved in
+earlier rounds — I re-derived the harvested enumeration and the O-1 wording rather than assuming.
+
+Two non-gating findings remain, and they are the same sentence twice: NG-6 justifies a correct
+scoping decision with an incorrect claim about what `harvest-learnings` removes. Re-cast that
+sentence as this REQ's scoping choice and both close. It can ride along with FSPEC authoring as a
+targeted erratum; it does not gate this phase.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | NG-6's new sentence scopes the harvested states to "the two families `harvest-learnings` removes — cross-reviews and DoD reviews". The scoping is fine; the justification is a claim about existing behavior that HEAD contradicts. The skill's delete instructions name two families (`pdlc/skills/harvest-learnings/SKILL.md:28`, `:59`, `:128`, `:129`), but its LEARNINGS template row names three (`:77`, "CROSS-REVIEW + CODE_REVIEW + POSTMORTEM files, now deleted"), as does `pdlc/OPERATIONS.md:296`, and authors followed the template: `docs/completed/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md:11` lists two `POSTMORTEM-*` among deleted files, neither on disk. No oracle depends on the claim (REQ-STATS-05 reports on-disk state either way, R-6 names the union), so this is precision, not correctness. Fix: state the two-family scope as this REQ's own choice, not as an observed property of harvest. | §3 NG-6 (`REQ-pdlc-stats.md:75-77`) |
+| F-02 | Low | inherited | nonlocal | Mirror of F-01 on the cross-review side: NG-6 characterises the harvested states as being about removal, but REQ-STATS-03 reports `harvested` for a feature that never produced cross-reviews — `docs/completed/pdlc-loop-economics/` holds a LEARNINGS, zero `CROSS-REVIEW-*`, and states positively that none ever existed (`LEARNINGS-pdlc-loop-economics.md:71`). REQ-STATS-03's bytes did not move this round and I am not re-opening them; the F-01 wording fix covers this case too. | §3 NG-6 / §5 REQ-STATS-03 (`:164-168`) |
+
+FINDING: Medium | delta | local | §3 NG-6 (`REQ-pdlc-stats.md:75-77`) | NG-6 justifies its two-family harvested scope by asserting that cross-reviews and DoD reviews are the families `harvest-learnings` removes; HEAD contradicts this — `pdlc/skills/harvest-learnings/SKILL.md:77` and `pdlc/OPERATIONS.md:296` define the `Harvested from` row as also covering `POSTMORTEM-*`, and `docs/completed/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md:11` lists two deleted post-mortems that are indeed absent from disk. No oracle depends on the claim, so non-gating; re-cast the sentence as this REQ's scoping choice rather than an observed property of harvest.
+FINDING: Low | inherited | nonlocal | §5 REQ-STATS-03 (`REQ-pdlc-stats.md:164-168`) | The harvested state for cross-reviews is likewise satisfied by "never produced": `docs/completed/pdlc-loop-economics/` has a LEARNINGS, zero `CROSS-REVIEW-*` files, and its LEARNINGS states none ever existed (`LEARNINGS-pdlc-loop-economics.md:71`), so it reports `harvested` for every document type. Unchanged bytes, not re-opened; the F-01 wording fix resolves it.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
