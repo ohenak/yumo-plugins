@@ -145,6 +145,31 @@ No edge-case row is now under- or over-specified relative to the current REQ.
 
 ## Acceptance Tests
 
+**AT-17 is the oracle for the moved clause, and it already pins the v1.7 reading.** Its fourth
+directory is *"one holding `CODE_REVIEW` files intact plus, as its only `CROSS-REVIEW-` basenames, the
+out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form BR-16 names"*, and its *Then* requires that
+directory to report `harvested` — *"the fourth not a measured ratio, because files whose bytes BR-14
+refuses are equally files BR-16 does not count as remaining"*. Under the pinned REQ v1.6 this test
+asserted the opposite of what the REQ said, and a strict implementer could have argued AT-17 was
+wrong. Under v1.7 it is exactly right. The cascade turns a latent conflict into agreement without a
+byte moving in §6.
+
+This is worth stating plainly because it is the one place where the erratum could have gone the other
+way: had v1.7 *entrenched* the survivor reading instead of withdrawing it, AT-17's fourth case and
+BR-16's third sentence would both have had to be rewritten, and this confirmation would be a High
+finding. It went the other way.
+
+**AT-15 is unaffected.** Its nine-file removal probe (six BR-14 spec documents, three process
+families) deliberately places the out-of-catalogue file on *neither* list, outside the nine, and
+asserts BR-14's enumeration by set-equality and by removal. The erratum agrees with that placement —
+"contributes no process bytes" is the numerator half of the same claim — so AT-15's arithmetic and its
+BR-16 assertion both stand. **AT-16** (`n/a` on zero spec bytes) and **AT-09** (all four basenames
+appear in the malformed list by name) are untouched: AT-09 asserts naming, which REQ-STATS-03 owns and
+the erratum preserves.
+
+§8's trace rows `BR-16 | AT-15, AT-17` and `BR-14 | AT-15` remain correct — the tests that assert
+BR-16 are still exactly those two, and no test dropped or gained a rule.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
