@@ -310,8 +310,37 @@ not here; I note it so the TSPEC author does not treat the single leg as the cei
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | BR-11's harvested predicate still tests the bare `CODE_REVIEW-*` prefix; REQ-STATS-04 v1.3 now tests the `CODE_REVIEW-{feature}-v{N}.md` version grammar. On a harvested directory retaining an off-grammar or foreign-feature `CODE_REVIEW-` file the REQ requires `harvested` and BR-11 yields `0`. §7.3's third bullet explicitly bet that no divergence would arise while the erratum stayed upstream; the erratum has landed and inverted the bet. No AT discriminates: AT-12's two fixtures pass under both readings. Fix: BR-11's predicate, §3.1 A6's decision question, and one AT-12 leg over an off-grammar survivor asserting `harvested` with the falsifier named. Do **not** propagate the narrowing to BR-16 — REQ-STATS-06 kept the prefix reading deliberately. | BR-11, §3.1 A6, AT-12, EC-07, §7.3 |
+| F-02 | Medium | delta | local | EC-21 degrades an unexpected metric-computation failure to a gap row citing BR-27, and §2.1 credits AT-20's second leg to REQ-STATS-07. The erratum deleted the phrase that authorised this ("or fail to parse") and restricted the criterion to a directory that cannot be read; BR-27 and §3.2 B5 now match that scope exactly. AT-20's own leg says it tests a path B5's read guard does not cover, so the trace is self-contradicting. Decide EC-21 as a below-criterion robustness guard (drop the BR-27 authority and the §2.1 credit, distinguish the reason string) or raise it as a REQ erratum. Note this withdraws my v4 F-02, which asked to widen BR-27 the way the REQ has since forbidden. | EC-21, BR-27, AT-20, §2.1 REQ-STATS-07 row, §3.2 B5 |
+| F-03 | Medium | delta | local | All seven errata in §7.3 have been resolved upstream in REQ v1.3, but §7.3 still presents them as open disagreements ("this FSPEC records which reading it derived from so the two documents can be reconciled without guessing", "the criterion needs the carve-out", "the erratum stays with the REQ"). A reader deciding whether REQ and FSPEC agree — a TSPEC author, or the next reviewer — is told they do not, on a P1 criterion, when they now do. One bullet is worse than stale: the REQ-STATS-04 bullet asserts "this FSPEC introduces no divergence", which F-01 shows is now false. Fix: rewrite §7.3 as a resolved ledger stamped `REQ v1.3` (raised → decided → landed) or delete it, and correct the REQ-STATS-04 bullet as part of F-01's fix rather than leaving it as a live claim. | §7.3, and each of its seven bullets |
+| F-04 | Low | delta | local | Four in-rule sentences quote or characterise pre-erratum REQ text that no longer exists: EC-09's "That departs from REQ-STATS-09's *Given*, which sweeps this case in"; D-9's question framing ("A repository with no `docs/` root at all satisfies REQ-STATS-09's *Given*"); D-8's "The cost … is a defect of the upstream criterion and is raised as an erratum"; BR-27's quotation of "missing or fail to parse … reports it by name as missing/malformed" plus "so the wording is raised as an erratum". All four now hold behaviour the REQ endorses, so nothing is untestable and no AT moves — but a rule that quotes deleted upstream text is a citation that cannot be checked, and these are the sentences a reader uses to decide whether to trust the rule above them. Fix: one clause each, restating the decision as upstream-aligned rather than as a departure. | EC-09, D-8, D-9, BR-27 |
+
+FINDING: High | delta | local | BR-11 / §3.1 A6 / AT-12 | BR-11's harvested predicate still reads the bare `CODE_REVIEW-*` prefix while REQ-STATS-04 v1.3 reads the `CODE_REVIEW-{feature}-v{N}.md` version grammar; an off-grammar or foreign-feature survivor makes the REQ say `harvested` and BR-11 say `0`, and AT-12's fixtures pass under both readings so no test discriminates.
+FINDING: Medium | delta | local | EC-21 / BR-27 / §2.1 REQ-STATS-07 row | The erratum deleted "or fail to parse" and restricted REQ-STATS-07's gap row to an unreadable directory, leaving EC-21's computation-failure gap row citing BR-27 without upstream authority and AT-20's second leg credited to a criterion it explicitly does not test.
+FINDING: Medium | delta | local | §7.3 | All seven §7.3 errata landed in REQ v1.3 but §7.3 still presents them as open disagreements, and its REQ-STATS-04 bullet asserts "this FSPEC introduces no divergence", which F-01 shows is now false.
+FINDING: Low | delta | local | EC-09 / D-8 / D-9 / BR-27 | Four in-rule sentences quote or characterise pre-erratum REQ wording that no longer exists, telling the reader the FSPEC departs from a criterion that now agrees with it.
+
+## Recommendation
+
+**Needs revision.** The FSPEC no longer holds against the REQ as it now stands on one path: BR-11 and
+REQ-STATS-04 report different values for the same directory, and no acceptance test can tell the
+readings apart. That is a High and it gates by the standing rule.
+
+It is a narrow revision, and none of it is re-litigation. F-01 is one clause on BR-11, one decision
+question in §3.1 A6, and one AT-12 leg with its falsifier named — plus the §7.3 bullet whose
+assumption it invalidates. F-02 is a disposition choice on EC-21 (robustness guard or REQ erratum)
+and the §2.1 credit that follows from it. F-03 and F-04 are the stale-upstream sweep this erratum
+made necessary and can be done in one pass.
+
+Everything else confirmed clean. Seven of the nine REQ edits are upstream adopting decisions this
+FSPEC had already made and defended, and in those places the two documents now agree word for word —
+BR-16, BR-12, §1's fidelity anchor, BR-27's scope, EC-03, EC-05, BR-22 and the whole of AT-27, AT-13
+and AT-17 are unaffected. No acceptance test is withdrawn or re-fixtured by this cascade; the AT set
+gains one leg and loses none.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
