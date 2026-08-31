@@ -148,6 +148,36 @@ DEFERRED: §7.3's precedence rule ("this paragraph is right and the row is the d
 
 ## Positive Observations
 
+- The pin phrase now carries its own nouns — "six functions ∪ eight constants = fourteen" — and the
+  paragraph names the *reason* the nouns are there (the numerically identical, membership-different
+  `CENSUS_TOKENS` ∪ `CENSUS_EXEMPT` partition). That is exactly the shape a citable invariant should
+  have: a downstream document can no longer copy the phrase into the wrong operands.
+- The single-siting claim was weakened to something HEAD actually supports, rather than being
+  defended. Replacing "stated nowhere else" with an authority/enumeration/history hierarchy plus a
+  precedence rule is a stronger contract than the original claim was, and it is checkable.
+- §4.3's answer to PM F-03 is normative rather than descriptive, and it names the guard that
+  enforces the norm. It also correctly protects the byte pin's oracle by re-stating that the pin
+  measures rendered output — the one property that keeps the pin true under either source spelling.
+- Every repository citation in the changed text verifies at HEAD: the function-only precedent regex
+  at `pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js:61`, and the five shipped
+  `/Decision/i`-matching declarations in `pdlc/workflows/orchestrate-dev.js` (lines 88, 4640, 4738,
+  6914, 7037) that make the "enumerate, never pattern-match" argument true.
+- Upstream pins are unmoved and were re-measured in the edit (REQ v1.9 `sha256:ce6b133f…3c7b7c`,
+  FSPEC v1.3 `sha256:2bd5c3ef…5aed39`, Baseline v1.2), and the four corpus literals
+  (6,305 / 10,859 / 12,059 / 441) are untouched.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves my v12 F-01 and breaks nothing I previously approved. The one defect it
+introduces (F-01) is a stale bookkeeping claim in the changelog about a sibling document's state; it
+is factually wrong at HEAD but load-bearing for nothing in the spec — no operand, count, budget,
+oracle or traceability row depends on it. Under the freeze it is recorded, not gating. Correct it in
+the next touch of this document: PLAN is at v0.8 and already carries the fourteen-member owned list
+with all three census constants homed in the test file, so PM F-01 is resolved downstream, not open.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
