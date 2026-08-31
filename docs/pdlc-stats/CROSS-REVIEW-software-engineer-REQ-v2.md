@@ -45,3 +45,37 @@ unchanged sections already accepted in v1 were not re-litigated.
 - The **unmeasurable** state (F-07's fix) is better than what I asked for. I asked for *some* stated outcome; the REQ names the state, requires the colliding role be printed, and that role is exactly what the driver already hands back (`orchestrate-dev.js:10225-10231`). An operator gets a fixable message rather than a blank cell.
 - The **harvested** state (new in v2, with R-6) is a genuine find the review round did not ask for. `docs/completed/` is where the baseline corpus lives and it is almost entirely harvested; reporting a measured `0` there would have made the first baseline look like the pipeline never reviewed anything. Distinguishing it from `0` is the difference between a usable measurement tool and a misleading one. F-02 above is a correction to one sentence of its rationale, not to the state itself.
 - C-5's widening (F-05's fix) is the strongest edit in the diff. Naming the three re-read rules explicitly and then declining to restate any of them — verified against `parseResolvedMarker`, whose fenced-block and single-marker behaviour C-5 now inherits for free — means the measurement tool cannot drift from the thing it measures without someone editing the driver. F-01 is precisely a case where an AC slipped out from under that constraint, which is why it is worth fixing rather than waiving.
+
+## Recommendation
+
+**Needs revision** — on one High finding, with a narrow and mechanical path to approval.
+
+All eight v1 findings are resolved, and four of them (the Highs) are resolved well: the two
+nonexistent-authority citations are repaired against files I re-read, the `docs/completed/` phantom
+feature is closed by typing the directory as a container, and REQ-STATS-03 now states an outcome
+rather than borrowing the driver's round window. The revision also went past its brief in a way
+that improves the feature — the harvested state and R-6 are new, correct, and they are what make a
+baseline over `docs/completed/` mean anything.
+
+F-01 is the one blocker, and it is a single clause. REQ-STATS-04 acquired a malformed-basename
+requirement this round that has no counterpart in the pipeline's DoD parser: `deriveDodRoundIndex`
+skips a non-matching `CODE_REVIEW-*` name exactly as it skips an unrelated file, and its `v(\d+)`
+accepts the leading-zero forms that "REQ-STATS-03's terms" would call malformed. Either drop the
+clause (a non-matching name simply does not contribute — this matches the driver and costs nothing,
+since DoD reviews are engine-written and the malformed case is close to hypothetical) or keep it and
+have C-5 own it as this REQ's own addition with the round token named as `\d+`. Both are one-sentence
+edits; I have no preference between them.
+
+F-02 is a Medium worth taking in the same pass because it is one sentence in the same neighbourhood:
+keep REQ-STATS-06's harvested outcome, but state the true reason — harvest deletes cross-reviews and
+DoD reviews while post-mortems survive, so the ratio would undercount rather than be absent. F-03 is
+a three-word correction to C-5's closing aside. The three Questions do not gate; Q-01 and Q-02 are
+each one clause if the author would rather settle them here than let FSPEC pick.
+
+No structural rework is needed and nothing in the v1-approved material regressed. I expect v3 to
+converge on the first read.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
