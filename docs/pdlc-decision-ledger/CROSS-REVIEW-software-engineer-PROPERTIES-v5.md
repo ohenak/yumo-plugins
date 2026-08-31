@@ -136,4 +136,32 @@ FINDING: Low | delta | nonlocal | The Upstream row pins `TSPEC` v1.0 / `PLAN` v0
 
 ## Recommendation
 
+**Approved with minor changes**
+
+`PROPERTIES` remains a faithful compression of `PLAN` as it now stands. I verified that against the
+current `PLAN` text and the current `TSPEC` text rather than against either changelog: every property
+that leans on a changed region — PROP-INV-06…11, PROP-WIRE-11/12, PROP-OFF-05, and the §Coverage
+Matrix trace — still holds, and two of them (PROP-WIRE-12, PROP-OFF-05) are now word-for-word the
+form `PLAN` v0.9 adopted. The upstream-vs-upstream contradiction I recorded in v4 is closed, and it
+closed on this document's side: `PLAN` moved to the fourteen-member owned list with all three census
+constants living in `decisionLedgerCensus.test.js`. No count, family total, task-id trace or fixture
+literal moved.
+
+Three non-gating findings, all one-passage edits, none blocking implementation:
+
+- **F-01 (Medium)** — add one clause to PROP-INV-06: the cloned boundary regex must recognise
+  top-level `const` and `let` alongside `function`, because eight of the fourteen owned declarations
+  are `const`s and the precedent's `DECL_RE` (`loopEconomicsAnchorGuard.test.js:61`) is
+  function-only. This is the one piece of new upstream material the round added that this document
+  has not absorbed. It cannot produce a false green — the non-empty-slice and resolves-to-one
+  conjuncts red on a missed declaration form — but an implementer cloning the precedent verbatim
+  will burn a batch-8 wave discovering it.
+- **F-02 (Medium)** — retire the two passages that describe the closed divergence as live, and
+  strike the discharged `ERRATUM: PLAN`. Leaving the routed item in place is the concrete risk here:
+  it can mint a follow-up round against an upstream that has already converged.
+- **F-03 (Low)** — re-measure the header pin to `TSPEC` v1.2 / `PLAN` v0.9 and drop the in-body
+  version labels, per the discipline `PLAN` v0.8 adopted for exactly this failure mode.
+
+I raise no High finding, and I raise no erratum: there is nothing left for `PLAN` to answer.
+
 ## Verdict
