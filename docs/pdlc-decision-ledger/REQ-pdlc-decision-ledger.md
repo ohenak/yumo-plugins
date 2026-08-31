@@ -32,7 +32,7 @@ AC-01's id-only expected-value basis stays routed to FSPEC, as v1.7 recorded. Th
 names no TSPEC version anywhere — routed to se-author, unedited here.
 
 **v1.9 erratum — the two stale Baseline pins in the body, and nothing else.** The header pinned
-Baseline **v1.2** at v1.8, but §1 and §5 REQ-DECLEDGER-01 still read `v1.1`, so the REQ
+Baseline **v1.2** at v1.8, but §2 G-1 and §5 REQ-DECLEDGER-01 still read `v1.1`, so the REQ
 disagreed with its own pin and the `M-7b`/`M-7c` ids C-5's default rests on did not resolve at
 the cited version. Both now read `v1.2`. No measured value moves: v1.2 records `M-1`…`M-6` at
 the same `Verified at` commit as v1.1 (`M-7e`), so `M-1d`/`M-2e` and the enumeration
@@ -191,7 +191,7 @@ not left to TSPEC to invent:
 |---|---|---|---|---|
 | `decisionLedger.enabled` | `false` | boolean | operator, `.claude/pdlc.config.json` → `decisionLedger` | Tier 3: off by default per proposal §6 |
 | `decisionLedger.maxEntries` | `70` | non-negative integer | operator, same block | Floor taken once against the Baseline's named commit and cited, not re-derived here: `M-6b` (63), with `M-6c` recording that 70 clears it by 7. A default below `M-6b` drops a line against the standing corpus on day one. **Non-negative**: `0` is a valid admits-nothing value, not a malformed one falling back to `70` |
-| `decisionLedger.maxBytes` | `12500` | non-negative integer | operator, same block | Measured, not analogised: the Baseline's `M-7c` records that 12,500 clears the `M-7b` worst standing case (9,296 substance bytes over 63 records) by 3,204 — 50 bytes per record of framing allowance — while 8,000 sits *below* `M-7b` and drops lines on day one. Non-negative as above |
+| `decisionLedger.maxBytes` | `12500` | non-negative integer | operator, same block | Measured, not analogised: the Baseline's `M-7c` records that 12,500 clears the `M-7b` worst standing case (9,296 substance bytes over 63 records) by 3,204 — the allowance covering the rendered index's per-line *and* block framing, which is the form C-5 bounds — while 8,000 sits *below* `M-7b` and drops lines on day one. Non-negative as above |
 
 `maxBytes` bounds **the rendered index text alone** — the index block as it appears in the
 prompt, not its contribution to total dispatch size, nor the underlying records. When the
