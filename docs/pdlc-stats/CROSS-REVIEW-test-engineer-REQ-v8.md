@@ -133,6 +133,26 @@ harvest removed, both families are described accurately and no further edit is n
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Closed. My v7 Q-01 asked whether the plain-`0` halts branch was reachable over `docs/completed/`. Under v1.6 it is the only halts branch, so the question no longer arises. |
+
+## Positive Observations
+
+- **Withdrawal was the right instrument, and it is the rarer choice.** Two rounds in a row proposed
+  a universal reading of what harvest does to post-mortems; both were falsified by the corpus. v1.6
+  stops trying to be right about the mechanism and reports the file-system fact instead. The AC got
+  shorter, gained a falsifiable oracle, and lost its dependency on an upstream contradiction the REQ
+  has no power to settle — the pattern I want authors to reach for when a premise keeps failing.
+- **The residual was moved, not buried.** The clause deleted from REQ-STATS-05 reappears as an
+  explicit consumer warning in R-6 (`:264-267`). Precision that a document declines to deliver is
+  fine; precision it silently drops is not. This is the first.
+- **Propagation held under a mechanical re-derivation.** I re-derived the harvested enumeration from
+  the ACs themselves rather than trusting the changelog: three metrics carry the state
+  (REQ-STATS-03 `:166`, REQ-STATS-04 `:179`, REQ-STATS-06 `:196+`), and both enumeration sites say
+  `03/04/06`. A same-round edit that widens then narrows a cross-referenced list usually leaves one
+  stale site; this one left none, in either direction across v1.5 and v1.6.
+
 ## Positive Observations
 
 ## Recommendation
