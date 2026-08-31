@@ -43,7 +43,7 @@ const REPO_ROOT = resolve(WORKFLOWS, "../..");
 // §3.4's transcribed literal — the exact resolved value of
 // `implementation.testCommand` in `.claude/pdlc.config.json`.
 const EXPECTED_TEST_COMMAND =
-  "cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'";
+  "(cd pdlc/engine && npm test) && cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'";
 
 function run(cmd, args, opts = {}) {
   return execFileSync(cmd, args, { encoding: "utf8", ...opts });

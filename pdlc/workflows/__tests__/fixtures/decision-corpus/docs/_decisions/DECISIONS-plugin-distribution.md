@@ -1,0 +1,211 @@
+# DECISIONS — plugin workflow distribution
+
+Project-level decisions about how a plugin's workflow scripts reach the runtime that executes them.
+Promoted by `/pdlc:consolidate-learnings` on 2026-07-29. Read by `se-author` before TSPEC/PLAN.
+
+This topic is the clearest cross-feature promotion in the first consolidation pass:
+`orchestrate-dev-workflow` **raised it as an open question and could not close it** — `OQ-05` survived
+all 5 FSPEC iterations unresolved, and its LEARNINGS flagged it as "this exact problem will recur for
+every future workflow-bearing plugin in this repo". `pdlc-workflow-distribution` **answered it**. What
+follows is the answer, recorded at project level so the next workflow-bearing plugin inherits it
+rather than rediscovering it.
+
+---
+
+> **DEC-DIST-02, DEC-DIST-03 and DEC-DIST-04 superseded by `pdlc-plugin-retirement`, 2026-08-18.** The built-artifact / untracked-consumer-copy tiering (DEC-DIST-02), the sync's skip-not-clobber refusal and `--force` upgrade path (DEC-DIST-03), and the SessionStart drift announcement and queue drift gate (DEC-DIST-04) are all removed: `pdlc`'s SKILL.md files no longer load a workflow bundle from a consumer copy at all — each delegates to the installed `@kaneho/pdlc-engine` CLI (`pdlc dev <req-path>` / `pdlc queue`), which vendors the workflow modules directly at pack time (DEC-DIST-05 through DEC-DIST-07, both still current, describe that surviving channel). The three entries below are kept for their origin record and testability history, not as live guidance; `git log` on `docs/completed/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` cites the decision. DEC-DIST-01 (runtime environment limits) still applies to the vendored source.
+
+## DEC-DIST-01: The workflow runtime is a constrained execution environment; treat its limits as binding
+
+**Decision:** Workflow scripts run in the Claude Code workflow runtime, which is **not Node**. Binding
+limits, verified by measurement:
+
+- `export const meta` must be the **first statement** and a **pure literal**; no other `export` is
+  permitted.
+- `import`, dynamic `import()`, `process`, `fs`, and `fetch` **do not exist**.
+
+**Consequence:** authored sources cannot be the artifacts the runtime loads. Do not write file access,
+subprocess logic, or module imports into a workflow source on the assumption that a Node API is
+available — verify the primitive list first and state it in the REQ Assumptions (DC-02).
+
+**Origin:** `orchestrate-dev-workflow` (DEC-ODW-03 records `fs.existsSync` in TSPEC v1.0 as a draft
+error, caught by TE review as a contradiction, not as a viable alternative);
+`pdlc-workflow-distribution` (the constraint set that forced the build step).
+
+**Testability:** Enforced by `__tests__/runtimeBundle.test.js`, which asserts the structural
+constraints against every built artifact, so a source that violates them fails the suite rather than
+failing at invocation time.
+
+---
+
+## DEC-DIST-02: Three tiers — tested source, built artifact, untracked consumer copy
+
+**Decision:** Separate the three roles rather than copying one file between them.
+
+| Tier | Location | Tracked? | Edited by hand? |
+|---|---|---|---|
+| **Source of truth** — ES modules with jest coverage | `pdlc/workflows/*.js` | yes | yes, this is what you edit |
+| **Built artifact** — runtime-legal bundle | `pdlc/workflows/dist/` | yes | **never** — generated |
+| **Consumer copy** — what the runtime actually loads | `.claude/workflows/` | **no** | **never** — synced |
+
+`node pdlc/workflows/build-runtime.mjs` generates the middle tier;
+`pdlc/hooks/scripts/sync-workflows.sh` installs the bottom tier from the middle one. The order is not
+interchangeable. `runtime-adapter.js` is **inlined by the build, never imported**: it re-expresses
+Node capabilities as `agent()` calls and reaches the pipeline through the modules' existing
+dependency-injection parameters (`_agent`, `_readFile`, `_writeFile`, `_checkFile`, `_checkCi`,
+`_mergeWorktree`, …), so the tested modules remain the single source of truth.
+
+**Consequence for anyone editing a workflow source:** every injected IO call must be `await`ed (the
+adapter's implementations are async; the test doubles are sync), and `pdlc/workflows/dist/` must be
+rebuilt **in the same commit**.
+
+**Origin:** `orchestrate-dev-workflow` (raised the two-copy problem — canonical plugin source vs.
+runtime-loaded copy — as `OQ-05`, unresolved across 5 FSPEC iterations, with manual copy as the
+provisional decision); `pdlc-workflow-distribution` (replaced the manual copy with this three-tier
+mechanism).
+
+**Testability:** `build-runtime.mjs --check` exits non-zero on a stale `dist/` artifact;
+`sync-workflows.sh --check` exits non-zero when the consumer copy has drifted;
+`__tests__/runtimeBundle.test.js` asserts freshness plus the structural constraints. **Note the
+falsification history:** the freshness gate was itself a dead oracle until DoD-03 — it had only ever
+been run on an already-fresh tree asserting exit 0, and neutralising both staleness assignments left
+all 997 tests green (DC-03).
+
+---
+
+## DEC-DIST-03: A sync refuses to overwrite what it cannot prove it wrote
+
+**Decision:** `sync-workflows.sh` classifies each consumer file and **skips rather than clobbers** two
+states: `local-edit` (hand-edited since it was synced) and `unverified` (**no sync-manifest entry**, so
+provenance is unknown). `--force` overwrites skipped rows, and every overwrite is backed up first.
+
+**Rationale:** `unverified` is the state every pre-existing `.claude/workflows/` tree lands in the
+first time the mechanism runs — the copies predate the manifest, so nothing records where they came
+from. The state is deliberately safe in **both** directions: an unverified file is never assumed to be
+a stale generated artifact, and never assumed to be precious. `--force` exists because the tool cannot
+distinguish your edits from a stale copy; it is the operator's assertion, not a default.
+
+**Consequence:** do not run `--force` reflexively, and read the warnings before forcing when `--check`
+exits non-zero on a tree you did not expect to be dirty.
+
+**Origin:** `pdlc-workflow-distribution`.
+
+**Testability:** the drift-state classification, the invalidation ladder, and the backup-then-write
+path are covered by the `drift*` suites under `pdlc/workflows/__tests__/`, exercised through a
+`PDLC_FAULT` fault-injection grammar. **Known residual:** the run-wide skip comparator's C1/C2 clauses
+evaluate over an empty record set on any non-root runner — a uid-0 inventory cannot be exercised at
+uid 501. Recorded, not fixed.
+
+---
+
+## DEC-DIST-04: Drift is announced, and can gate the queue
+
+**Decision:** A stale consumer copy is **reported, never silently executed**. The
+`check-workflow-drift` `SessionStart` hook reports drift advisorily and **always exits 0**;
+`orchestrate-queue` consults the recorded drift-state record **before `QUEUE.md` is even read** and can
+refuse the whole invocation with `outcome: "blocked", reason: "Drift gate row N: …"`. A repo opts out
+per `.claude/pdlc.config.json` → `distribution.checkEnabled: false`, and the queue then notes the skip
+in its run report rather than ignoring it silently.
+
+**Origin:** `pdlc-workflow-distribution`.
+
+**Testability:** the hook's always-exit-0 guarantee is a P0 invariant. Note the falsification lesson
+attached to it: the `trap 'exit 0' ERR EXIT` implementation was correct for the right reason and had
+**no detector** — reverting the `EXIT` arm left all 8 tests of the suite added to close that finding
+green (codebase G-02). A detector is constructible with a one-fixture addition and is booked as
+follow-up work; until it lands, a P0-absolute guarantee rests on reasoning.
+
+## DEC-DIST-05: The engine ships as a scoped **public npm package**
+
+**Decision:** the pdlc engine (`pdlc/engine/`) is distributed through public npm as a scoped
+package. Consumers install and upgrade with one npm command and pin a version per project; the
+registry itself supplies immutability and the yank primitive.
+
+**Why this channel, over the two alternatives considered:**
+
+| Channel | Verdict | Deciding reason |
+|---|---|---|
+| Public npm (scoped) | **chosen** | Republishing an existing version is refused by the registry, so a version pointer is immutable without any discipline of ours; `npm deprecate` is a real yank primitive; publishing is one CI step |
+| Git-tag install | rejected | A bare tag is force-pushable, so the version pointer is mutable — the one property the distribution contract most needs |
+| Private registry | rejected | Cost without benefit: the prompt corpus it would protect (`pdlc/skills/**`, and the copies embedded in `pdlc/workflows/orchestrate-dev.js`) is already world-readable in a public repo |
+
+**Premise, stated so its failure is visible:** the repo is public. If it ever goes private, this
+decision must be re-opened — not because npm stops working, but because the reasoning that made
+privacy a non-discriminator disappears.
+
+**Consequence:** publishing requires a licence. `pdlc/engine/package.json` says
+`"license": "UNLICENSED"` today, which is incompatible with public publication; settling it is an
+operator obligation (O-8 in `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`),
+blocking the first publish and nothing earlier. Release automation for the package is queue row 8
+`pdlc-release-ci`, renarrowed for exactly this purpose.
+
+**Origin:** `pdlc-engine-distribution` O-1, decided 2026-08-13 (operator delegated adjudication).
+
+---
+
+## DEC-DIST-06: The npm scope is `@kaneho`
+
+**Decision:** the scoped package DEC-DIST-05 chose publishes under the npm scope `@kaneho`,
+giving the published name `@kaneho/pdlc-engine`. This is an npm account the operator owns —
+DEC-DIST-05 decided *that* the package is scoped-public but named no scope, and O-8 blocker 2
+(`N-6` in `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) is exactly this gap:
+nothing on the registry catches a wrong or unregistered scope the way `npm publish` itself
+catches `"private": true`, so the choice has to be recorded before anything downstream can cite
+it as fact.
+
+**Consequence:** `pdlc/engine/package.json`'s `name` field and `pdlc/engine/README.md`'s
+install/upgrade/pairing literals (TSPEC §5.1, §9.1) read this scope from this record — they do
+not invent it, and this record is what they read. Downstream engineering tasks (manifest edit,
+README authoring, the docs-uniqueness oracle's install-command key) cite `@kaneho/pdlc-engine`
+because it is what this entry says, not the other way around; a future rescoping is a new
+decision entry here, followed by the co-change everywhere the name is quoted.
+
+**Origin:** `pdlc-engine-distribution` N-6 / O-8 blocker 2, decided 2026-08-13 (operator
+delegated adjudication, same episode as DEC-DIST-05).
+
+**Testability:** `pdlc/engine/__tests__/packaging.test.js`'s `PF-3` asserts
+`pdlc/engine/package.json`'s `name` field against this record, never against a literal
+authored in the TSPEC or the test itself.
+
+---
+
+## DEC-DIST-07: The engine publishes under the MIT licence
+
+**Decision:** `pdlc/engine` publishes under the MIT licence (SPDX id `MIT`). This discharges
+O-8 blocker 3 (`N-2` in `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md`) —
+DEC-DIST-05 committed the package to public npm distribution but left the licence itself as an
+operator obligation, since a licence choice is a legal/policy decision no spec can invent.
+
+**N-2 recorded:** yes
+
+**Why MIT, over the alternatives considered:**
+
+| Licence | Verdict | Deciding reason |
+|---|---|---|
+| MIT | **chosen** | Matches the repo's existing "world-readable public repo" posture (DEC-DIST-05's premise); permissive, one-file, no copyleft obligation for consumers embedding the CLI |
+| Apache-2.0 | rejected | Patent grant and NOTICE-file bookkeeping are unneeded ceremony for a CLI wrapper with no patent surface of its own |
+| UNLICENSED (status quo) | rejected | Incompatible with public npm publication (DEC-DIST-05); this is exactly the gap DEC-DIST-07 closes |
+
+**Consequence:** `pdlc/engine/LICENSE` carries the MIT licence text, and
+`pdlc/engine/package.json`'s `license` field reads `MIT`, replacing the prior
+`"UNLICENSED"` value. `pdlc/engine/__tests__/packaging.test.js`'s `PF-4` reads this record's
+`**N-2 recorded:**` line — never `pdlc/engine/LICENSE`'s presence in the tree — to decide
+whether `LICENSE` belongs in the expected packed set (TSPEC:349, TSPEC:374-386).
+
+**Origin:** `pdlc-engine-distribution` N-2 / O-8 blocker 3, decided 2026-08-15 (operator
+delegated adjudication).
+
+**Testability:** `pdlc/engine/__tests__/packaging.test.js`'s `licenceRecorded()` asserts
+`/^\*\*N-2 recorded:\*\*\s*yes/m` against this file; `PF-4`'s both-directions packed-set
+equality goes red if `pdlc/engine/LICENSE` and this record's flip do not land together.
+
+---
+
+---
+
+## Open at project level
+
+| Item | Where it is bound |
+|---|---|
+| Full `pdlc install`; loading workflows from the plugin path with **no copy at all**; auto-sync; detecting a plugin cache behind the marketplace; **per-worktree consumer state** (a self-created `git worktree add` tree is not a supported consumer — its `.claude/workflows/` is empty while the drift tooling resolves the main worktree and reports green) | D-DIST-01/02/03/05/07 → queue row 6 `pdlc-install-mechanism` — **closed 2026-08-13** (`pdlc-engine-distribution` O-3): D-DIST-01/02/03/05 absorbed by REQ-EDIST-03, D-DIST-07 dissolves with the consumer copy that `pdlc-plugin-retirement` removes, re-opening against queue row 6 only if retirement does not land |
+| Release automation on `yumo-plugins` (tag/publish workflow, marketplace step). **Partially discharged out of band:** the PR-test half landed in `3ef6ac7`; release automation has not | D-DIST-06 → queue row 7 `pdlc-release-ci` — **still open 2026-08-13**, renarrowed to release automation for the npm package chosen in DEC-DIST-05; now queue row 8 |
+| Rendered version lines in the queue run report | R-12 → PLAN §7 follow-up REQ |

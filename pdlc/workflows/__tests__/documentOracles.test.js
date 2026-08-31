@@ -411,6 +411,11 @@ describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 
     // file-ownership manifest owns their census).
     // pdlc-stats adds suites under its reserved `stats*.test.js` namespace
     // (its PLAN §2 owns their census), so they are excluded below.
+    // pdlc-decision-ledger adds new suites under its reserved `decisionLedger*.test.js`
+    // namespace (three in batch 1, nine more in batch 2), excluded on the same
+    // precedent (this PLAN's §Per-phase file-ownership manifest owns their census,
+    // T-00a). The literal stays 102 pre-sweep; T-19 owns the terminal re-check that
+    // the filtered count is still 102 once all twelve modules exist.
     const count = readdirSync(testDir).filter(
       (name) =>
         name.endsWith(".test.js") &&
@@ -418,7 +423,8 @@ describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 
         !name.startsWith("waveResume") &&
         !name.startsWith("loop") &&
         !name.startsWith("escalationView") &&
-        !name.startsWith("stats")
+        !name.startsWith("stats") &&
+        !name.startsWith("decisionLedger")
     ).length;
     expect(count).toBe(102);
   });
