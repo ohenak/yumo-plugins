@@ -38,3 +38,68 @@ Three, all introduced by this round's edit, all Medium. None gates.
 **Scope-tag note.** All three are `Local`: each is repairable inside this TSPEC (plus one upstream
 erratum, raised through the erratum channel rather than folded in here), and none restates a
 `DOMAIN-CONSTRAINTS.md` entry or a promoted decision.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §6.4's exclusion-set subset half accepts "carries no files at all" as a feature witness, to keep EC-03's readable-but-empty feature row green. RK-5 correctly names the residue — an *empty* bare-named non-feature directory still reports as a feature with zero-state metrics. Is that residue acceptable to ship, or should the FSPEC erratum's answer be treated as a release blocker for REQ-STATS-07? My reading is that it is acceptable (an empty directory carries no misleading numbers, only a zero row), but the call is the FSPEC's, not this document's. |
+| Q-02 | §6.4's candidate set for the doc-type probe includes `CODE_REVIEW`. That token contains an underscore, so `CROSS-REVIEW-software-engineer-CODE_REVIEW-v1.md` will almost certainly fail the strict pattern's *shape* rather than its doc-type membership, returning `trailing_junk` rather than `bad_doc_type`. The oracle still behaves correctly (the token is not collected either way), but the candidate is doing no work. Worth replacing with a token that actually reaches the membership check, so the candidate set's size is honest about its coverage. |
+| Q-03 | §6.1's AT-18 row is stated as invariants rather than counts, with the reasoning that "a literal that every routine archival falsifies buys nothing". I agree, and it is the right answer to the `doc-moves-break-pinned-tests` pattern this repository has already been bitten by. One check: FSPEC §6 requires literal, non-derived expectations on real paths (RK-4 cites this). Does stating AT-18 as invariants need the FSPEC's blessing, or is "exactly once, never `completed`" already a literal in the sense §6 means? Raised as a question rather than a finding because I read it as the latter. |
+
+## Positive Observations
+
+- **Every measured literal in the new §6.1 baseline table is correct.** I re-derived all six against
+  the tree at HEAD rather than trusting the prose: `docs/completed/pdlc-advisory-wave-gate/` tops out
+  at `CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v6.md` and holds exactly four
+  `-REVIEW-v{1,2}.md` files (AT-09 = `6`, four malformed); `docs/completed/pdlc-headless-engine/`
+  holds one surviving cross-review at `v13` **and** a `LEARNINGS-pdlc-headless-engine.md`, so AT-10's
+  "`13`, other five `harvested`" is right in both halves; `docs/completed/pdlc-loop-economics/`
+  carries `CODE_REVIEW-…-v{1,2}.md` (AT-11 = `2`, and the `3` the mutation table names is exactly
+  what dropping the `- 1` produces); `POSTMORTEM-PR-pdlc-wave-resume.md` line 3 reads
+  `RESOLVED: yes`; `docs/completed/pdlc-headless-engine/` carries exactly `POSTMORTEM-{D,F,I,T}`,
+  lexicographically `D`, `F`, `I`, `T` per BR-13. Turning v1's inventory into asserted values with a
+  re-measurement command per literal is precisely what RK-4 needed and did not have.
+- **The vendoring oracle's `+ 1` is derived from a real asymmetry, not invented to make a number
+  work.** `MODULE_NAMES` in `pdlc/engine/scripts/prepack.mjs:20-25` lists four modules;
+  `WORKFLOW_MEMBERS` in `pdlc/engine/__tests__/_tspec-packed-set.mjs:51-57` lists five, the extra
+  being `vendor/workflows/VENDOR-MANIFEST.json` — which `runPrepack` writes rather than copies, so it
+  has no `MODULE_NAMES` entry. `MODULE_NAMES.length + 1` is therefore the honest invariant, and it
+  ties the hand-written `5` in `tspecPackedCount` to its source. This is the `EXPECTED_TEST_COMMAND`
+  lesson applied correctly, and it is the difference between an oracle and a second transcription.
+- **PROP-3's restatement is the single best change in this revision.** v1's "two calls produce
+  byte-identical stdout" was green by construction — JavaScript object keys are insertion-ordered
+  and `Set` iteration is too, so a deterministic implementation whose row order came entirely from
+  the filesystem passed it. Permuting the generated listing and pinning the order to
+  `REVIEW_DOC_TYPE_ROWS` rather than to "stable" makes BR-09, BR-13 and BR-18 falsifiable for the
+  first time. The document says so in its own words rather than quietly swapping the property.
+- **The mutation table names its killer per mutation, and each one is a real discriminator.** The
+  two `- 1` mutations are killed by literals that already exist (`3` vs `2`, `7` vs `6`, `14` vs
+  `13`). More impressively, the two branch-order mutations are killed by fixtures the document
+  *constructs* because it noticed the existing ATs do not discriminate: AT-25's *Given* does not name
+  `LEARNINGS`, so the `unmeasurable`/`harvested` swap needs a unit fixture that adds it, and the
+  document says so instead of claiming the AT covers it. "Some test goes red" is exactly the
+  unfalsifiable claim this table refuses to make.
+- **The doc-type oracle's residue is bounded and the boundary is named.** Recovering a module-private
+  catalogue behaviourally can only ever be set-equality *over the probed candidates*, and rather than
+  paper over that, §6.4 states the residue, prices the alternative (exporting `REVIEW_DOC_TYPES` from
+  the sibling's frozen surface), rejects it against §2.1's already-priced co-change cost, and leans
+  on FSPEC §7.4 A-3 for the rest. That is the shape a real trade-off writes up as.
+- **The provisional-predicate table is a model for how an engineering artifact should hold an open
+  product question.** Three possible FSPEC answers, the observable each implies, and the blast radius
+  of each — plus the containment argument (nothing but `discoverFeatures` and its unit tests depends
+  on the classification). It ships the feature without pretending the question is closed, and it
+  makes adopting any answer a bounded edit. §4.4 is now the clearest section in the document.
+- **`cmdStats`' `try`/`catch` is written rather than described, and for the stated reason.** §5's
+  last row and the code sketch can no longer disagree, `cwd` is resolved once at the edge so nothing
+  below reads ambient process state, and the document names which function the injected-throw test
+  drives (`cmdStats`, not `runStats`). Exporting `statsParsers` so §6.4's identity oracle has a real
+  referent — plus the second conjunct that the bundle `cmdStats` passes to `runStats` is that same
+  object — is the builder-not-wired sweep done pre-emptively: the recording double can never become
+  the production path.
+- **The parallel-worker flake is diagnosed from the actual suite, not hypothesised.** I confirmed
+  every load-bearing fact: the in-tree `mkdtempSync` under `SCRATCH_ROOT`, the comment explaining why
+  it must live inside jest's `rootDir`, and the `test` / `test:coverage` split where only the latter
+  passes `--runInBand`. Weighing and rejecting serialisation on cost, in writing, is the right call
+  and the right record of it. My F-01 and F-02 are about how the resulting decision is *governed*,
+  not about whether it is correct.
