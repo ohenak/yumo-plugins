@@ -91,7 +91,29 @@ orchestrator can route it rather than lose it.
 
 ## Verification
 
-_(pending)_
+Claims I re-measured at HEAD for this round, rather than carrying from v4:
+
+| Claim | How measured | Result |
+|---|---|---|
+| REQ at HEAD is the dispatch's `f75c348f…` | `shasum -a 256 docs/pdlc-stats/REQ-pdlc-stats.md` | **Matches** the dispatch pin exactly |
+| My v4 approval pinned a REQ that no longer exists | `git show 1847dd9c0:…/REQ-pdlc-stats.md \| shasum -a 256` → `5f3e8051…`, equal to v4's `UPSTREAM-STATE: REQ` | **Confirmed**; the cascade is real, not a spurious re-stamp |
+| FSPEC did **not** move in this cascade | dispatch pin `c7d2c832…` vs v4's `UPSTREAM-STATE: FSPEC c7d2c832…` | **Identical.** REQ moved onto FSPEC; FSPEC held still |
+| The erratum is one clause, not a restructuring | `git show e12b78fd8 --stat` | 1 file, **12 insertions, 3 deletions** — consistent with the "one clause decided, no rule added" the changelog claims |
+| The withdrawn text is gone from REQ | `grep -n "is a survivor" docs/pdlc-stats/REQ-pdlc-stats.md` | No hit outside the changelog's own description of the withdrawal |
+| PLAN carries no REQ version pin that would now be stale | `grep -n "v1\.[0-9]" PLAN-pdlc-stats.md` filtered of its own review/PLAN version strings | **Zero hits.** PLAN pins no upstream version in prose; only the lineage row at `PLAN:9` names REQ at all |
+| PLAN cites no REQ-STATS-06 text directly | `grep -n "REQ-STATS-06" PLAN-pdlc-stats.md` | **Zero hits.** The cascade reaches PLAN only through FSPEC/TSPEC, both of which already held the surviving reading |
+| AT-17's fourth leg still expects `harvested` | `FSPEC-pdlc-stats.md:749-757` read at HEAD | **Yes** — "all four report `harvested` — the third not `n/a`, the fourth not a measured ratio" |
+| T-04 still owns AT-17 | AC coverage table, `PLAN:300-327` | **Yes**, `AT-17 → T-04`, unchanged |
+
+**The two Low findings from v4 remain open in PLAN bytes.** Since the PLAN was not edited, T-24's
+transcription still carries the added backticks around `` `lib/` `` and T-23's citation still anchors
+`loop-distribution.test.js:73-77` where the quoted message sits at `:77`. Both are inherited and
+non-gating, exactly as in v4; I re-record them below only so the ledger stays honest across the
+cascade, not as new objections.
+
+**Nothing in the Definition of Done (`PLAN:387-416`) references the withdrawn clause.** Its ratio-
+adjacent items — the four mutants killed by named tests, the doc-type-catalogue and exclusion-set
+oracles green — are stated over TSPEC oracles, none of which the erratum moved.
 
 ## Delta-Confirmation Findings
 
