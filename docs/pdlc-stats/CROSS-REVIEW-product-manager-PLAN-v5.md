@@ -66,7 +66,28 @@ so nothing needs restoring; no task now over-covers, so nothing is scope creep.
 
 ## Dependencies
 
-_(pending)_
+**Ordering is untouched.** The erratum changed no observable, so it changed no dependency edge. TSPEC
+§4.3 anticipated exactly this and bounded the blast radius in advance: "When it settles, exactly three
+things here re-stamp — this paragraph, BR-16's version pin above, and AT-17's fourth-leg expectation
+named next. **No type, signature, exit code or other oracle depends on the outcome**"
+(`TSPEC-pdlc-stats.md:797-800`). All three re-stamp sites are TSPEC's and FSPEC's, none is PLAN's.
+The PLAN's batch derivation (`PLAN:210-233`), its ordering-edge rationale (`PLAN:234-266`) and its
+integration points (`PLAN:267-277`) each survive byte-for-byte correct.
+
+**One PLAN section is now stale in the direction of *less* to carry, not more.** My v4 F-01 (Medium,
+inherited from v3) held that the Residual-risks table (`PLAN:375-385`) named one open erratum where
+TSPEC §8.3 named two: it carried RK-5's provisional leading-underscore predicate but not the
+REQ-STATS-06-versus-BR-16 disagreement. **That second erratum is now closed by this very commit.**
+There is no longer a second open erratum for the table to carry, so the omission I flagged is now
+simply correct. F-01's basis is superseded upstream rather than addressed by the author — which is a
+legitimate way for a finding to die, and I record it as resolved rather than carrying it forward.
+
+The residual risk the table *does* carry — "The leading-underscore discovery predicate is
+**provisional** on an open FSPEC erratum … blast radius is `discoverFeatures` plus AT-26's fixture"
+— remains open and remains correctly stated. TSPEC §8.3's own header still reads "**Two remain open**"
+and still carries the now-decided REQ-STATS-06 bullet, but that is TSPEC's bookkeeping to re-stamp,
+not the PLAN's, and it is out of scope for a PLAN confirmation. I note it as a question below so the
+orchestrator can route it rather than lose it.
 
 ## Verification
 
