@@ -172,7 +172,39 @@ re-grounding pass.
 
 ## Positive Observations
 
-_pending_
+- **Most of DECISIONS survived a two-round upstream rewrite untouched, and that is a structural
+  property, not luck.** TSPEC moved +170/−59 lines across two erratum rounds; the divergences below
+  are five, and four of them are one number and one paragraph each. DEC-STATS-01's reasoning
+  (coverage gate as the discriminant, not site count), DEC-STATS-02, DEC-STATS-03's trigger, and the
+  K-2/K-4/K-5/K-6/K-7 rows all re-read as faithful against v1.3 without an edit. The document
+  compresses upstream's *reasons* and only cites its numbers where a task needs them — which is why
+  the blast radius of a large upstream edit is small and locatable.
+- **The one place the two documents disagree on fact, DECISIONS is right.** Its v1.4 changelog caught
+  that `REQUIRED_INCLUDES` plus `CAPTURE_SCRIPT_INCLUDE` plus two `lib/` modules is seven, not the
+  six P9-02's title claims — a defect already at HEAD before this feature. TSPEC's new row states
+  "six → seven" and walks past it. A downstream document catching an arithmetic error its upstream
+  re-introduced is the review loop working in the direction it least often works in.
+- **K-1's "reds first" analysis anticipated exactly the paragraph TSPEC later wrote.** K-1 has said
+  since v1.4 that `loop-distribution.test.js`'s `assertAdditiveOnly` fires before §6.4's new oracle
+  exists, and that sites 8 and 9 sit in *different* required checks either side of the package
+  boundary. TSPEC v1.3's new "this oracle is not what reds first" paragraph and RK-1's rewritten
+  mitigation say the same thing in the same order. The compression was ahead of its source.
+- **The purity conjunct DECISIONS routed upstream is the one that landed.** DEC-STATS-03 declined to
+  restate the conjunct as a rule of its own document and routed it to TSPEC §6.4 as an erratum
+  (K-6). It landed — as two of §6.4's seven oracles. F-02 is the cost of that correct routing choice:
+  when upstream refines a routed item, the routing document owes a re-read. That is a cheap price for
+  keeping one owner per claim, and it is precisely what this cascade confirmation exists to collect.
+- **`DEC-ERR-03`'s "necessary, not sufficient" earned its keep here.** Every routed erratum item
+  landed in TSPEC; an item-list check would have returned green. The two High findings are visible
+  only by re-reading the upstream text this document leans on, at its current version. This
+  confirmation is a worked example for why that rule is written the way it is.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: once README is a site-table row with an empty falsifier column, does the table still mean one thing? Its stated contract has been "every row reds on a partial edit". TSPEC has admitted a row that reds on nothing, marked as residue. That may be right — an un-oracled obligation is more likely to be done if it is on the checklist than in a prose aside — but the table now mixes falsifiers with reminders, and DECISIONS is the document that made the earlier argument. Whichever way DECISIONS lands, it should say which contract the table now carries, because K-9's promoted constraint will teach the next feature to build one. |
+| Q-02 | On F-05: when a downstream document is provably right and its upstream is provably wrong on a mechanical fact, is a routed erratum the whole remedy? The erratum fixes the TSPEC row. It does not stop the *next* downstream author from silently "correcting" DECISIONS into agreement with an upstream that is wrong — the pin says upstream is authoritative. A one-line marker in DECISIONS naming the divergence and its direction would make the trap visible. Raising it as a question rather than a finding since it is a process shape, not a defect in these bytes. |
 
 ## Delta-Confirmation Findings
 
