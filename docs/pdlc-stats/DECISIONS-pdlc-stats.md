@@ -300,6 +300,18 @@ not what BR-24's increment rule is. DEC-STATS-01 decides a file path, not any me
   expectations on real paths; the mitigation is that each literal is declared in its test as a
   *measurement of the archive*, re-measured when the archive changes, never path-rewritten.
 
+### Residuals — obligations with no oracle at HEAD
+
+Named here so PLAN and the DoD reviewer inherit them as known risks rather than discovering them.
+Each is a claim these decisions rest on that nothing currently makes red; two have a routed fix and
+one does not.
+
+| Residual | Why it is not closed today | Disposition |
+|---|---|---|
+| **A second `StatsParsers` construction site** voids DEC-STATS-03's identity oracle without failing it (K-4). REQ C-5's enforcement would degrade to human vigilance at exactly the seam the decision exists to protect | TSPEC §6.4's identity oracle ranges over `statsParsers()` and the bundle `cmdStats` hands `runStats`; a construction elsewhere is outside both conjuncts | **Closed by erratum**: the construction-site count conjunct in K-4, routed to TSPEC §6.4. Open only until that row lands |
+| **The driver exports gaining state** is invisible to every conjunct in the design — reference identity survives a cache, and the recording double inherits the shared state rather than exposing it | Reference identity is chosen because it is total over inputs; totality is what makes it blind to the guard's own precondition | **Closed by erratum**: the purity conjunct named in DEC-STATS-03's trigger, routed to TSPEC §6.4. Until it lands, the trigger is observable only by review of `orchestrate-dev.js` |
+| **The sibling feature's document edits (K-7)** have no mechanical falsifier: `_tspec-packed-set.mjs` and the packed tarball can agree while `docs/completed/pdlc-engine-distribution/`'s TSPEC §5.4 and FSPEC §5.2 stay at five | The co-change rule lives in a source header comment; nothing compares a shipped enumeration to a completed feature's prose table | **Accepted.** Building that oracle is a repo-wide mechanism, not this feature's scope. Mitigated by K-7's single owning task and by the mitigation in Standing costs accepted below: every literal bound to `docs/completed/` is declared as a *measurement*, re-measured when the archive changes, never path-rewritten — the same discipline the carve-out inherits |
+
 ### Relationship to project-level decisions
 
 Neither contradicted nor re-litigated: `DECISIONS-seam-defaults.md` (DEC-SEAM-01) governs the
