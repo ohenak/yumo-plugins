@@ -76,6 +76,40 @@ implementation echoes.
 
 ## Dependencies
 
+**Unchanged, and structurally unreachable by this delta.** Batch numbers, task ids, ownership
+columns and dependency lists all live below line 150; the diff touches lines 7 and 19. I re-confirmed
+the two edges the census contract rests on are still as I approved them at v10: T-11 is committed
+skipped in batch 2 and un-skipped by T-18 in batch 8 (the ordinary red-before-green edge), and T-18
+still writes **no** census constant — its `orchestrate-dev.js` row is the wiring run and the
+loop/prompt parameters only, with `decisionLedgerCensus.test.js` still named in the file-ownership
+manifest as the sole home of all three frozen census lists.
+
+**Phasing still tracks product priority.** The question a PM owns here — does P0 work precede P1
+work, and does every P0/P1 requirement own a task — is untouched by a header pin and a changelog
+paragraph. It was settled in the rounds that approved the batch structure and I do not re-litigate
+it. The one ordering property worth restating because the delta's paragraph brushes against it:
+T-09's `DEC-DECLEDGER-13` shipped-default assertions sit in batch 2 and depend on T-01 and T-03,
+and it is those assertions the DEC-16 sweep ranged over. The sweep concluding "no edit" is precisely
+what leaves that dependency untouched.
+
+**Upstream faithfulness beyond the item list (DEC-ERR-03).** DECISIONS moved from `…4fb89a` to v1.5,
+so I read what moved rather than only what the entry says moved. Two entries landed:
+
+- **v1.4** — "TSPEC's propagation has landed, and nothing else." It re-grounds **three** passages on
+  TSPEC's landed propagation. The PLAN's summary says "v1.4 re-grounds three passages on TSPEC's
+  landed propagation" — a faithful compression: DECISIONS names exactly three (the Context
+  measurement rule's live exception, `DEC-DECLEDGER-10/-12`'s discharge list, and
+  `DEC-DECLEDGER-03/-13`'s reading of §7.3 with §7.3's own corrected rationale).
+- **v1.5** — `DEC-DECLEDGER-16`'s predicate, and nothing else. The PLAN's one-clause statement of the
+  corrected rule — "a ceiling may enter only where substituting the true, smaller drafted value
+  preserves the claim" — is a verbatim-in-substance transcription of DECISIONS' `## Decision` row,
+  and the PLAN's statement of its scope ("assertions, pinned expected values and prose stating a
+  figure as a standing fact") matches DECISIONS' scope predicate clause for clause.
+
+Neither entry moves a standing decision, and the PLAN does not claim either does. No requirement was
+dropped, no out-of-scope behaviour appeared, and no acceptance criterion was narrowed, broadened or
+re-triggered by this edit.
+
 ## Verification
 
 ## Delta-Confirmation Findings
