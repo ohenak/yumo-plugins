@@ -6,14 +6,23 @@ feature: pdlc-stats
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-stats/REQ-pdlc-stats.md` (v1.4) |
+| Upstream | `docs/pdlc-stats/REQ-pdlc-stats.md` (v1.7) |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{role}-FSPEC[-v{N}].md` |
 | LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.7 | 2026-08-31 |
+| Draft | pm-author | 1.8 | 2026-08-31 |
+
+Erratum round (v1.8): re-grounded on REQ v1.7; **no rule changed**. The raised item was the
+contradiction between REQ-STATS-06's "a grammatical basename outside the driver's catalogue is a
+survivor" and BR-16's `harvested` on the same `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file. REQ v1.7
+withdrew that clause and decided the case BR-16's way — an unrecognised basename counts as no file
+of its family remaining — so the item is **absorbed**, not open: BR-16, BR-14 and REQ-STATS-06 now
+read one file set, and PROP-RATIO-08's fourth leg asserts that same outcome. The stale `Upstream`
+pin (REQ v1.4) is corrected to v1.7, the version this document is re-grounded against. No other
+change.
 
 Revision (v1.7): three record corrections, no rule changed. BR-16's citation of
 `docs/completed/pdlc-advisory-wave-gate/` said "two" out-of-catalogue cross-reviews; it holds four,
