@@ -201,3 +201,6 @@ of FSPEC; it does not touch a rule, an oracle or an expected value.
 FINDING: Low | inherited | nonlocal | FSPEC header `Upstream` field pins REQ v1.4; REQ is v1.7 and the approval base was v1.6 — record pointer only, no rule or oracle depends on it | Header metadata block (`Upstream` row)
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
