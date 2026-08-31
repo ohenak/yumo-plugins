@@ -10,17 +10,19 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root). Design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §4 (CLI surface), §5.2 (measurement closes the loop). Proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §5, "Measurement plan" |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v{1,2}.md`, `CROSS-REVIEW-test-engineer-REQ-v{1,2}.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v{N}.md`, `CROSS-REVIEW-test-engineer-REQ-v{N}.md` (harvested to LEARNINGS at Phase H) |
 | LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.4 | 2026-08-31 |
+| Draft | pm-author | 1.5 | 2026-08-31 |
 
-Erratum round 3 (v1.4): REQ-STATS-06's harvested predicate now names the two process families by
-C-4's documented basename grammars rather than bare `CROSS-REVIEW-*` / `CODE_REVIEW-*` globs, so a
-foreign-feature file cannot suppress the harvested state — the same scoping REQ-STATS-04 already
-carries. No other change.
+Round 6 (v1.5): REQ-STATS-05 gains a harvested state. A zero post-mortem count is ambiguous —
+`docs/completed/pdlc-advisory-tier/` retains its LEARNINGS and no `POSTMORTEM-*` file, yet that
+LEARNINGS' `Harvested from` row names two post-mortems "deleted by this harvest" — so absence alone
+can no longer read as a clean run. REQ-STATS-06's rationale drops the falsified premise that
+post-mortems survive harvest for the weaker claim that actually holds. G-3 restated to match
+REQ-STATS-07's gap rule. No other change.
 
 ## 1. Problem / Context
 
@@ -45,8 +47,9 @@ process-to-spec byte ratio — from artifacts already on disk under `docs/{featu
 JSON document on stdout, so a skill or script can consume it without re-deriving anything.
 
 **G-3 (fleet mode with explicit gaps).** Invoked with no feature argument, `pdlc stats` reports the
-same metrics across every discoverable feature; any feature whose artifacts are missing or fail to
-parse is reported as missing/malformed — never silently dropped.
+same metrics across every discoverable feature; any feature whose directory cannot be read is
+reported by name with the reason, never silently dropped, while artifacts that are absent or fail to
+parse surface inside their own metric's value rather than as a feature-level label.
 
 **G-4 (read-only, always).** The command never writes, moves or deletes a file, never issues a
 network call and never runs a `git` write command, in either mode, on success or failure — a
