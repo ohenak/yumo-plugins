@@ -163,10 +163,75 @@ directly rather than merely diverge from BR-16.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | delta | local | TSPEC presents the out-of-catalogue basename question as an open REQ-versus-FSPEC dispute and quotes REQ's withdrawn "a survivor" clause verbatim in three places. REQ v1.7 decided it in favour of BR-16/`harvested` — the side §4.3 already implements. Re-stamp the three sites TSPEC itself names and close the §8.3 bullet per that section's own DEC-ERR-01 rule. No behaviour changes. | §4.3 ratio passage (`TSPEC:790-806`), §8.3 second bullet (`TSPEC:1308-1321`), §0 v1.6 changelog (b) (`TSPEC:51-55`) |
+| F-02 | Medium | delta | local | §0's grounding attestation pins upstream at "FSPEC v1.7 / REQ v1.6" and states "no upstream decision is absorbed this round". REQ is v1.7 at HEAD and a decision was absorbed. v1.6's changelog was corrected for exactly this failure mode — citing a hash without diffing it against the previously grounded version — so the pin should move with the re-stamp. | §0 changelog (`TSPEC:20`, `TSPEC:39`) |
+
+FINDING: High | delta | local | §4.3 ratio passage / §8.3 second erratum bullet / §0 changelog (b) | TSPEC states the out-of-catalogue cross-review basename question is contested upstream and quotes REQ-STATS-06 v1.6's withdrawn "a grammatical basename outside the driver's document-type catalogue is a survivor" clause verbatim; REQ v1.7 (commit e12b78fd8) withdrew that clause and now requires harvested, the value §4.3 and AT-17 leg 4 already carry, so the three sites TSPEC names for re-stamp must re-stamp and the §8.3 bullet must close as settled.
+FINDING: Medium | delta | local | §0 changelog grounding attestation | §0 pins upstream at "FSPEC v1.7 / REQ v1.6" and claims no upstream decision is absorbed; REQ is v1.7 at HEAD and one decision was absorbed, so the grounding line is stale.
+
+Both findings are `delta`: `e12b78fd8` is what made these sentences false. Both are `local`: they sit
+in the exact passages the upstream edit bears on, and §4.3 pre-declares them as the sites that move
+when the dispute settles. Neither is a design change — no type, signature, exit code, oracle, code
+sketch or acceptance-test expected value moves.
+
+**Scope tags for harvest.** F-01 is `Process` — the durable signal is that a TSPEC which correctly
+routes an upstream dispute must also be re-stamped when the dispute settles, and that the settling
+edit lands in the *upstream* document where a bytes-unchanged downstream never notices it. That is
+the cascade-confirmation round's whole reason to exist, and it worked here. F-02 is `Local`.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | When §4.3's contested paragraph is rewritten, does it keep a one-line record that the survivor reading was raised and withdrawn? I would prefer yes — the same in-place-voiding treatment v1.7's changelog gave the stale `six → seven` count — so a later reader does not re-raise it. Not blocking; either treatment satisfies REQ. |
+| Q-02 | Does closing this leave §8.3 with a single open erratum (BR-26/EC-10)? If so its "**Two remain open**" count word moves to one, which is the kind of count that goes stale in silence. |
 
 ## Positive Observations
 
+- **The design was already right, and right for a stated reason.** §4.3 chose BR-16 — its immediate
+  upstream — and refused to guess the reconciliation. REQ has now landed on that side. Implementing
+  the nearest upstream and routing the conflict, rather than picking the reading the author preferred,
+  is exactly what kept this erratum from becoming a rework.
+- **The blast radius was pre-declared and it held.** §4.3 wrote "exactly three things here re-stamp —
+  this paragraph, BR-16's version pin above, and AT-17's fourth-leg expectation." I checked the whole
+  document against that claim and it is accurate; F-01 is a re-stamp of precisely that list plus the
+  §8.3 bullet it also named. A document that states its own contingency footprint in checkable terms
+  makes a cascade confirmation cheap, and this one did.
+- **"No type, signature, exit code or other oracle depends on the outcome" was a true claim.** It is
+  the sentence that lets me say with confidence that a P0 acceptance criterion is unaffected by an
+  upstream reversal. Isolating a contested reading to prose plus one expected value, rather than
+  letting it reach the type layer, is good defensive design.
+- **§8.3's preamble already contains the rule that resolves this round.** The three bullets it removed
+  when their answers landed set the precedent, with the reasoning written down (`DEC-ERR-01`'s
+  anti-pattern). The remediation needs no new judgement — the document tells the author what to do.
+- **The malformed/survivor tension is now resolved in the direction TSPEC's data model always
+  reported.** `malformed[]` carrying the basename while `crossReviews` excludes it was coherent only
+  under the harvested reading; REQ v1.7 makes that coherence upstream-sanctioned.
+
 ## Recommendation
 
+**Needs revision** — one High finding, mechanically bounded.
+
+To close, exactly:
+
+1. **§4.3** (`TSPEC:790-806`) — rewrite "What the shape itself yields is contested upstream and is not
+   decided here" as settled: REQ-STATS-06 **v1.7** and FSPEC BR-16 v1.7 agree that an out-of-catalogue
+   `CROSS-REVIEW-{role}-REVIEW-v{N}.md` contributes no process bytes and counts as no file of its
+   family remaining, so a directory holding only those reports `harvested`. Drop the withdrawn
+   "survivor" quotation. Move the REQ pin to v1.7.
+2. **§4.3's AT-17 annotation** (`TSPEC:804-807`) — state the fourth leg's expected `harvested` as
+   specified by both upstreams; remove "the row to re-stamp if the reconciliation lands the other way".
+3. **§8.3** (`TSPEC:1308-1321`) — remove the second erratum bullet as closed at REQ v1.7 / FSPEC v1.7,
+   per the section's own preamble rule, and move its "**Two remain open**" count to one (Q-02).
+4. **§0** (`TSPEC:20`, `TSPEC:39`) — move the grounding pin to REQ v1.7 and record this round's
+   absorbed decision (F-02), replacing "no upstream decision is absorbed this round".
+
+Nothing else. No type, signature, exit code, oracle, code sketch, acceptance-test expected value or
+count outside §8.3's "two" changes, and no previously approved section is reopened.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
