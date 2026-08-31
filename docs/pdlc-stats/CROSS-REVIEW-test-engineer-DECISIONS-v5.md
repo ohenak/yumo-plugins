@@ -129,3 +129,10 @@ that is a question, not a finding, and the answer may reasonably be "leave it".
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:04267ef0e06ddea0a0fc22b85525b79aa55c1bf43024aa5814db1547e0657287
+APPROVAL-HASH-NORMALIZED: sha256:6ac77133dfc63ec823369986dfacb584ffdcb45a4c69c469ccf000d240a709d1
+REVIEWED-COMMIT: 42cf8850d7366d1fd4cdba498efa280fe63bdfdd
+UPSTREAM-STATE: REQ sha256:60a516fb2ede925b2428dca1bc8e4e61587c52827ea55b9e4965ea57b9a8f1c9
+UPSTREAM-STATE: FSPEC sha256:0b8864d624cad46274ccb98a80e5da2672370bead258311446f6b482918017b0
+UPSTREAM-STATE: TSPEC sha256:db285ea2f1eb0267f2a49392979eade2e78ead59a1f243ec7e0438aeb3c4b5be
