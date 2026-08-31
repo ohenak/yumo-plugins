@@ -121,7 +121,45 @@ survives either reconciliation outcome.
 
 ## Verification
 
-_pending_
+**What I re-measured at HEAD** rather than reading off either document — the confirmation rests on
+these, not on TSPEC's or PLAN's narration of them:
+
+| Claim | Command | Result | Verdict |
+|---|---|---|---|
+| `c8.include` size at HEAD | `python3 -c "json.load(open('pdlc/workflows/package.json'))['c8']['include']"` | **seven** `**/`-anchored entries | PLAN's "seven" row correct; TSPEC v1.7's correction lands on PLAN's existing number |
+| P9-02's printed count word | `grep -n 'six\|REQUIRED_INCLUDES' pdlc/workflows/__tests__/coverageInstrumentation.test.js` | title at `:264` and comment at `:260-261` both still print `six`; stale at HEAD | T-24's "correcting the stale count words" is the right instruction and carries no number to go stale |
+| AT-09 fixture | `ls docs/completed/pdlc-advisory-wave-gate/ \| grep -c '^CROSS-REVIEW-'` and the out-of-catalogue form | 62 total, **4** out-of-catalogue → 58 grammatical | matches TSPEC §4.3's new measurement and TSPEC §7.2's unchanged AT-09 row; T-18's literal holds |
+| PLAN bytes since approval | `git diff 628cf244..HEAD -- docs/pdlc-stats/PLAN-pdlc-stats.md` | one hunk, T-01's status cell `⬚` → `✅` | no claim changed; the confirmation premise is sound |
+| PLAN's upstream pins | `grep -n 'TSPEC v1\|FSPEC v1\|REQ v1\|sha256' docs/pdlc-stats/PLAN-pdlc-stats.md` | no matches | PLAN transcribes no upstream version or hash, so no pin went stale in this cascade |
+
+**Falsifiability of the confirmation itself.** The way this confirmation could be wrong is if PLAN
+had transcribed a number TSPEC has now corrected. I looked for exactly that, and the only candidate —
+the c8 include-set count — resolves the other way: PLAN measured seven, TSPEC printed six, and v1.7
+moved TSPEC to seven. Every other count PLAN carries (the ten co-change rows, `4 + 15 + 5 + 1` →
+`4 + 15 + 6 + 1`, the `5` → `"six"` word map, the four post-mortems' `D, F, I, T` sequence, the DoD
+`2`, the `TSPEC` rows `6` and `13`) sits in a TSPEC section this delta did not touch, and I spot-read
+§7.2's baseline table to confirm it is byte-unchanged.
+
+**One inherited observation, recorded and not gating.** PLAN's T-23 counts **nine** assertion edits on
+`loop-distribution.test.js` while TSPEC §2.1's row for the same file still says **eight**. This is
+not a delta of this round — it predates my v2 approval, where I credited PLAN's ninth edit
+(P7-02's `postFixMembers` concatenation and `assertAdditiveOnly`'s hard-coded message) as the fix for
+my round-1 F-09. PLAN is the *superset* and names the extra edit with its rationale, so no coverage
+is lost by the disagreement; it is a transcription divergence in the upstream, not a PLAN defect. I
+record it here so a later reader does not read it as this cascade's damage. **F-03, Low, inherited,
+nonlocal.**
+
+**DoD checklist and coverage floor — unchanged.** T-24 still carries the per-file obligation
+(`lib/stats.mjs` branch coverage ≥ 85, remedied by adding tests inside the batch and never by
+lowering the floor), and the batch-10 green gate still measures it at batch end. The TSPEC delta
+touches neither the floor nor the gate command.
+
+**Verdict on the one question asked.** PLAN is still a faithful compression of TSPEC as it now
+stands. Every routed item in the TSPEC delta either lands on a PLAN surface that already encoded the
+corrected reading (the c8 count, the ten-site scoping, the AT-09 measured expectation) or on a
+surface PLAN deliberately delegates upstream rather than transcribing (AT-17's expected value). No
+High finding, delta or inherited, is open. The two Lows are worth folding in before batch 10 and
+batch 2 respectively, and neither blocks the wave.
 
 ## Delta-Confirmation Findings
 
