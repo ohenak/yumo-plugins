@@ -118,7 +118,34 @@ narrower and more falsifiable, not broader.
 
 ## Dependencies
 
-_pending_
+**No dependency edge moved in this delta.** The `Batch` and `Depends on` columns are byte-identical
+across all 27 task rows; the diff touches only prose cells, one status cell, one AC-coverage cell and
+two residual-risk rows. T-16 still sits in batch 7 depending on `T-15, T-07`; T-23, T-24 still sit in
+batch 10 depending on `T-20`; T-04 still sits in batch 2 depending on `T-01, T-02`.
+
+Two ordering points worth stating plainly, since both are places a careless delta could have done
+damage and this one did not:
+
+- **The AT-15 coverage cell gained `T-09` without gaining a dependency.** `PLAN:308` now reads
+  `AT-15 | T-04 (size arithmetic, removal probe), T-18 (symbolic-link leg, real fs), T-09 (shipped
+  seam, end-to-end)`. T-09 already carried that leg in its own row — it names the "symbolic-link leg
+  on production path … reported byte total is the *link's own* size (EC-19)" (`PLAN:103`). So this
+  edit records an assignment the task table already made; it is the anti-drift reconciliation te F-01
+  asked for, and it introduces no new work, no new task and no new edge. This is the correct shape of
+  fix for a coverage-table omission: make the table agree with the row, do not invent a task.
+- **The discharged-erratum row changes no blast radius.** The Residual risks table's new row
+  (`PLAN:385`) is explicitly carried "**only to close it**", and states its whole blast radius was
+  "the harvested disjunct and T-04's AT-17 fourth-leg expected value; both already carried the winning
+  reading, so no task changes and nothing re-stamps". Consistent with what I measured under
+  **Batches**. The surviving open row (`PLAN:383`) is now qualified as BR-26/EC-10, "the **only**
+  erratum TSPEC §8.3 still carries open" — which matches `TSPEC-pdlc-stats.md:1311` exactly.
+
+**Ordering versus the ledger.** The one place ordering and reality now disagree is not in the
+document's edges but in its status column: T-16 (batch 7) is marked done while its declared
+predecessor T-15 (batch 6) still reads `⬚`, even though T-15's renderers exist at
+`pdlc/workflows/lib/stats.mjs:561` and `:585`. Read as a dependency claim that would be incoherent;
+read as a lagging ledger — which is what it is, since the code for both landed — it is merely
+incomplete. Recorded as F-01, Low. The *plan's* ordering is sound and unchanged.
 
 ## Verification
 
