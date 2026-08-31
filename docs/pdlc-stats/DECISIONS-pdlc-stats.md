@@ -13,7 +13,12 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.0 | 2026-08-31 |
+| Draft | se-author | 1.1 | 2026-08-31 |
+
+**v1.1 (cross-review round 1).** Corrects Option D's evidence sentence against HEAD; makes the
+sibling-feature amendment an owned obligation (K-7) rather than a claim this file discharges alone;
+re-states K-1/K-3/K-4's falsifiers to name the oracles that actually assert them and records the
+three residuals that remain; fixes the re-evaluation triggers' threshold and detectors.
 
 Records the three load-bearing alternatives TSPEC §8.4 routes here: module placement,
 `schemaVersion`'s home, and how the driver's parsers reach the new module. Each is stated once here
