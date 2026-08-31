@@ -195,11 +195,11 @@ measured entries as above.
 ratio. **Then:** it reports process bytes (C-4 set, present files only) divided
 by spec bytes (C-3 set, present files only); when spec bytes total zero, it reports the ratio as
 not-available rather than dividing by zero or crashing. Where `LEARNINGS-{feature}.md` is present and at least one of the two
-harvest-deleted process families is entirely absent — no file matching C-4's
+review families named next is entirely absent — no file matching C-4's
 `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains, or no file matching its
 `CODE_REVIEW-{feature}-v{N}.md` grammar does, or neither — the ratio is **harvested**, not measured:
-at least one family harvest deletes is gone from the numerator, so a computed value would silently
-undercount rather than be absent; how much of the numerator harvest removes is not asserted here.
+a family harvest deletes is gone from the numerator, so a computed value would silently undercount
+rather than be absent. How much of the numerator harvest removes is not asserted here.
 The predicate is set-membership over C-4's grammars, so a grammatical basename outside the driver's
 document-type catalogue is a survivor even where REQ-STATS-03 reports it malformed. The rendering precision
 and the exact not-available / harvested tokens per mode are FSPEC material (O-1).
