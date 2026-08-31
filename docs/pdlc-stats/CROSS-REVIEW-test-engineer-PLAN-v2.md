@@ -118,6 +118,47 @@ keeps the manifest single-owner and states where a surviving mutant is remediate
 
 ## Dependencies
 
+**No edge changed.** The revision touched one dependency *rationale* (T-18) and the
+File Ownership Manifest's presentation, not the graph. The batch column, the `Deps`
+column and the acyclicity property are byte-identical to the version approved on
+arithmetic in round 1, so the 27-row re-derivation is not repeated.
+
+**T-18's rationale is now internally consistent — this was round-1 F-06.** The old text
+justified `T-18 → T-17` by claiming T-18 "runs the shipped command", which contradicted
+the row's own suite placement (`pdlc/workflows/__tests__/statsRealPaths.test.js`, while
+the Overview puts CLI-driving tests in the engine suite). The new text states the real
+reason: T-18 runs workflows-side over `realStatsIo()`, and that helper is only
+trustworthy once the seam it mirrors exists and is pinned — T-17 authors `statsIo()`,
+T-10 pins the equivalence. The edge is therefore justified by a *dependency*, not by a
+misdescription, and T-09 is correctly named as the place the shipped command is
+exercised. Accepted.
+
+**File Ownership Manifest — the split is safe, with one presentational cost.** The
+single row
+
+`| **pdlc/workflows/lib/stats.mjs** | T-12 (creates, b3), T-13 (b4), T-14 (b5), T-15 (b6), T-16 (b7) | new |`
+
+became five rows, each naming one task, with the batch carried in a parenthetical after
+the path (`**pdlc/workflows/lib/stats.mjs** (creates it, batch 3)`, `… (batch 4)`, …).
+The safety property the manifest exists to protect is unchanged and still holds: the
+five writers sit in five *distinct* batches (3, 4, 5, 6, 7) chained by real `Deps`
+edges T-12 → T-13 → T-14 → T-15 → T-16, so no two concurrent implementers can write the
+file and silently drop each other's work. The same-new-file guard is green.
+
+The cost is that the manifest's first column no longer holds bare paths for this file:
+a mechanical same-batch/same-file grouping pass keyed on the column text now sees five
+distinct keys. That is a Low (F-05), not a correctness problem — the parenthetical is
+outside the backticked path, so a reader and a path-extracting matcher can both recover
+it — but the convention is worth stating once so a future feature does not disambiguate
+by mutating the path itself.
+
+**Batch-10 disjointness re-checked for the delta.** T-21, T-23 and T-24 all grew text in
+this revision; none gained a *file*. T-21 still owns `{prepack.mjs, run.test.js,
+learningsPremises.test.js, pdlc/README.md, DOMAIN-CONSTRAINTS.md}`, T-23 still owns
+`{loop-distribution.test.js}` alone, T-24 still owns `{package.json,
+coverageInstrumentation.test.js}`. No new overlap was introduced, and T-20's
+deliberately-red gate still precedes all five clusters.
+
 ## Verification
 
 ## Findings
