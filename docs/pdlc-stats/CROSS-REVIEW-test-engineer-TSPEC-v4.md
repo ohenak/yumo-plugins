@@ -169,3 +169,56 @@ third directory and AT-17's fourth leg exist in FSPEC §6.4/§6.6 with the wordi
 including AT-17's "`CODE_REVIEW` files intact", which is the conjunct v3's F-03 asked for. FSPEC §7.3
 opens "The three harvested-predicate errata this section carried are **closed**", which grounds
 §8.3's deletion. Nothing the TSPEC cites has moved or now says something different.
+
+## Risks
+
+RK-1's rewrite is an improvement and I want to record why, because the residue sentence is the part
+that matters. Naming `publish-preflight.mjs`'s production-side copy as unreachable by a
+`__tests__/`-scoped sweep, and naming `loop-distribution.test.js`'s `assertAdditiveOnly` as what
+reds first, both turn a vague "co-change is risky" row into two checkable claims — and both check
+out. The new residue sentence is honest in the way that is hard to be: `PK-26`'s existence row in
+the sibling TSPEC's table genuinely has no mechanical falsifier, only the *count* half does via the
+D-4 document oracle, and saying so beats implying oracle coverage the design does not have.
+
+F-02 is the same residue class one site further out, which is why I file it as a finding rather than
+a note. `pdlc/README.md`'s member list has no falsifier either, and unlike `PK-26` it is not
+acknowledged anywhere — not in §2.1's table, not in RK-1's residue sentence, not in §7's cost
+paragraph. An unlisted un-falsified site is worse than a listed one: `DEC-STATS-01`'s `K-7` gives
+`PK-26` a single owning task, and there is nothing analogous to own the README line.
+
+I considered and rejected raising RK-1's rewrite as understating the purity oracle's risk. It does
+not: RK-1 is scoped to vendoring co-change, and `DEC-STATS-03`'s trigger is a DECISIONS-owned
+re-evaluation trigger, not a TSPEC risk row. §6.4's paragraph is the right home for it and it is
+there.
+
+## Recommendation
+
+**Needs revision** — one High, both of the others cheap. No behavioural claim, type, signature, code
+sketch, `if` chain, key set, exit code or traceability row needs to move.
+
+1. **§6.4, classifier-purity row and the paragraph beneath it (F-01).** Scope the non-aliasing
+   conjunct to the three classifiers §3.2 types as returning objects — `parseReviewFilename`,
+   `deriveRoundWindow`, `parseResolvedMarker` — and say why: `deriveDodRoundIndex` returns a
+   `number` (`orchestrate-dev.js:12384`, `return max + 1`), so two equal results are `===` and the
+   conjunct would red against a correct implementation. Then give the number-returning classifier
+   its own state detector rather than dropping it to `deepEqual`-only, which detects nothing: call
+   it **A, B, A** within the same fresh module instance and assert the third result equals the
+   first. That is red against an accumulating ledger or an order-dependent memo — the shape a
+   primitive return can actually acquire — and it keeps `DEC-STATS-03`'s trigger closed for all
+   four. Keep the fresh-module-instance requirement and its vacuity rationale unchanged; it applies
+   to all four.
+2. **§2.1's site table and the paragraph above it, §7's cost paragraph, RK-1 (F-02).** Add
+   `pdlc/README.md` as a tenth in-repo site (symbol: the "four workflow modules it dispatches"
+   sentence's member list and its count word; edit: add `lib/stats.mjs`, four → **five**), and move
+   the counts from nine to ten in the four places the round just synchronised. Because nothing pins
+   that sentence, extend RK-1's residue sentence to name it alongside `PK-26` — or, better, give it
+   the same treatment `PK-26` got and route it to a `DEC-STATS-01` owning task, so the one site with
+   no falsifier is not also the one site with no owner.
+3. **§2.1's `loop-distribution.test.js` row (F-03).** Add the `vendoredClassWord` ternary
+   (`vendoredClassSize === 5 ? "five"` → `6 ? "six"`) to the row's symbol list and correct "Seven
+   assertion edits" to eight. Optionally note that `assertAdditiveOnly`'s length equality is derived
+   and only its failure message goes stale, so the row does not over-promise an edit that is not
+   one.
+
+If the §6.4 repair lands as described, I expect this green in one pass. The purity oracle is the
+right instrument and I would rather see it scoped than weakened.
