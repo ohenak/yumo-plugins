@@ -49,3 +49,29 @@ One further piece of ground truth changed the character of this round: **impleme
 - **PLAN's premise for dropping the seam qualifier checks out, and PROPERTIES is why it could be dropped.** PLAN reasons that no boundary needs delimiting because `bin/cli.mjs` carries no `statSync`/`lstatSync` at all; I re-measured at HEAD and its only `fs` predicate is `fs.existsSync` (`pdlc/engine/bin/cli.mjs:262`). PROPERTIES' insistence (`:277`) that `lstat`-vs-`stat` is "structurally invisible below the real filesystem" is what forced the conjunct to `process` level in the first place, which is what made the whole-file matcher available.
 - **PROP-RO-03 anticipated this checkout's actual state.** It requires snapshot-vs-snapshot comparison rather than a fixed literal, naming untracked developer files as the failure mode `coveredViolations` produces (`:224`). This working tree currently holds untracked `pdlc/workflows/lib/stats.mjs` — the precise situation the property was written against. Writing a property because a failure mode is *foreseeable* and then having it show up is the good version of this pipeline working.
 - **No absence-only oracles in anything this round touched.** PROP-RATIO-05's structural absence claim is explicitly paired with PROP-RATIO-04's behavioural one, in the property text itself; the §Oracles table (`:272`) states the pairing rule generally and names the properties that follow it. Both of this round's findings are about *scope of a claim*, not about a claim resting on a negative alone.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High finding is open anywhere in the document — none inherited from v1 or v2, and none introduced this round, since this round introduced no bytes. The two upstream pins that moved (TSPEC, PLAN) do not falsify any load-bearing claim PROPERTIES makes: I checked each PLAN v1.2 change against the properties it could touch, and re-measured PLAN's own repository premise at HEAD rather than taking it on trust.
+
+This is a frozen round, so I want to be explicit about what I am *not* doing with the two new findings. Neither qualifies as a blocking cause: F-01 and F-02 are trace and wording lags behind an upstream that moved *after* this document was last written, not defects a revision introduced, and neither states something false about the repository. F-01 is the one worth doing promptly — not because coverage is missing today, but because PLAN has now made an explicit judgement about where EC-19's shipped-seam evidence lives, and a properties document that does not reflect that judgement will let the T-09 symlink leg be dropped at implementation time with no property going red. It is already absent from the landed T-09 test.
+
+For the next ordinary round, in priority order:
+
+1. **F-01 (Medium)** — trace EC-19's shipped-seam behavioural leg from a `PROP-RATIO-*` property and add it to §PLAN tasks' T-09 row.
+2. **F-03 (Medium, carried from v2)** — restate PROP-ERR-10's superset warranty to match the direction its oracle actually closes.
+3. **F-02, F-04, F-05 (Low)** — the `stats` seam qualifier, PROP-DISC-10's T-06 trace, and `F-EXCLUDED-ONLY`'s "real directory" wording. Three one-line edits.
+
+DEFERRED: decide whether §PLAN tasks' "(new)" annotations should be re-stated as "created by this feature" now that T-09's and T-10's test files are tracked at HEAD and the annotation reads as false to a literal reader.
+DEFERRED: untracked `pdlc/workflows/lib/stats.mjs` sits in this working tree; confirm it is intended in-flight T-12 work before it reaches a document oracle that walks the whole tree.
+
+## Delta-Confirmation Findings
+
+Not applicable. This is an ordinary iteration-3 cascade re-confirmation of an unrevised document, not an erratum delta confirmation, so findings carry the ordinary-round `Scope` legend (`Local` / `Cross-Feature` / `Process`). The `FINDING:` lines emitted to the orchestrator carry provenance and locality tags as the gate requires: both are `inherited` (the document's bytes did not change this round — the divergence opened underneath it when PLAN moved) and `nonlocal` (there is no edited section for anything to sit inside).
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 3}
