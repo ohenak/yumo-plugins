@@ -98,7 +98,43 @@ than it was. Correcting it *against* the chosen option's interest is the right i
 
 ## Interfaces
 
-_pending_
+This is the DEC-ERR-03 half of the job: §4.3 was rewritten to lean on upstream text, so I re-read
+that upstream text at HEAD rather than accepting the round's characterisation of it. **Every citation
+holds.**
+
+| TSPEC §4.3 now claims | FSPEC/REQ at HEAD | Faithful |
+|---|---|---|
+| BR-11 v1.4 states the DoD harvested condition in the same terms as REQ-STATS-04, naming the version grammar | BR-11: "no `CODE_REVIEW-{feature}-v{N}.md` file whose version matches the grammar remains (REQ-STATS-04)" | yes |
+| BR-16 v1.4 phrases the condition over BR-14's grammar and is evaluated over exactly the set BR-14's numerator sums | BR-16: "…either no file matching BR-14's `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains… It is evaluated over exactly the file set BR-14's numerator sums, so the two never disagree" | yes |
+| BR-16 names the `docs/completed/pdlc-advisory-wave-gate/` shape and reports it `harvested` | BR-16 names that directory explicitly, and the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files it carries | yes |
+| A stray `CODE_REVIEW-{feature}-draft.md` or foreign `CODE_REVIEW-` file does not hold the DoD family open | BR-16 says exactly this, in those words | yes |
+| REQ-STATS-06 v1.4 carries the same scoping | confirmed in the REQ at the pinned hash | yes |
+| AT-17's fourth leg is a FSPEC-owned boundary fixture, not a local invention | AT-17's fourth leg: `LEARNINGS` present, one `CODE_REVIEW` intact, only out-of-catalogue `CROSS-REVIEW-` basenames → `harvested` | yes |
+| FSPEC §7.3 records the three harvested-predicate errata as closed | §7.3: "The three harvested-predicate errata this section carried are **closed** … BR-11, BR-16, AT-12 and AT-17 state and pin that form; nothing about them is routed upstream now" | yes |
+
+**The behaviour did not move — only its justification did.** This is the distinction that decides
+whether an erratum is safe, so I checked it specifically. At v3 §4.3 implemented the grammar-matching
+reading and defended it as a *TSPEC choice* against a looser FSPEC ("the two readings genuinely
+disagree", "and that is a choice", routed as an erratum in §8.3). At v1.2 the same branch is
+described as the *specified* behaviour, because upstream moved to meet it. The matcher, the escaping
+idiom, the precedence of the harvested test over the zero-denominator test, and the EC-16/AT-28
+"silent, not malformed" disposition are all unchanged. That is precisely what my v3 F-01 and F-02
+asked for, and it is the correct direction: a downstream document should stop claiming authorship of
+a decision once upstream has taken it.
+
+**The one place I looked hardest for a contradiction, and did not find one.** §4.3 now says the
+`pdlc-advisory-wave-gate` directory reports `harvested` for the ratio, while §6.1's AT-09 row says
+the four `CROSS-REVIEW-{role}-{doc-type}-REVIEW-v{1,2}.md` basenames in that *same* directory are
+listed as `malformed` (`reason: "bad_doc_type"`). Those look like they collide. They do not: they
+are different metrics — BR-06 malformed-disposition for the review-round metric, BR-16 harvested for
+the byte ratio — and FSPEC BR-16 itself makes the joint reading explicit by describing them as "the
+out-of-catalogue … files BR-06 reports as malformed". The TSPEC holds both dispositions for one
+fixture directory without blurring them, which is the harder and the right thing to do.
+
+I also note FSPEC §7.3 still carries an open REQ-STATS-03 erratum about whether reporting those four
+files to an operator as "malformed" is the intended wording. The TSPEC does not restate it, and
+should not — it is REQ-owned, already recorded upstream, and restating it here would be the
+verbatim-restatement defect generator §2.1 explicitly avoids.
 
 ## Data Model
 
