@@ -527,7 +527,11 @@ non-numeric states exist precisely so that none of these has to be a crash.
 
 Each test names Who / Given / When / Then. Fixtures are constructed artifact directories unless a
 test names a real path in this repository; where it does, the named path is what makes the
-expectation checkable against a tree that already exists.
+expectation checkable against a tree that already exists. A real-path test states its expectation as
+a **literal**, never as "whatever the mechanism derives" — an expectation computed by the code under
+test agrees with a wrong implementation. Those literals are measurements of the archive as it stands
+and are permitted to be re-measured when the archive changes; what is not permitted is replacing the
+literal with a derivation to avoid re-measuring it.
 
 ### 6.1 Single-feature reporting
 
@@ -540,8 +544,10 @@ catalogue order), DoD rounds, halts, and the byte ratio, in that order; exit 0.
 **AT-02 — the live directory wins over the archive.**
 *Who:* pipeline operator. *Given:* the same feature name exists under both `docs/{feature}/` and
 `docs/completed/{feature}/`, with different artifacts in each. *When:* `pdlc stats {feature}`.
-*Then:* every reported number derives from `docs/{feature}/` alone, the header names that path,
-and no metric equals the sum of the two directories (EC-02).
+*Then:* the report is byte-identical to the report for the same tree with
+`docs/completed/{feature}/` absent, and the header names `docs/{feature}/` (EC-02). Byte-identity is
+the assertion, not a negative probe: the likeliest way BR-02 is violated is a merged read that
+deduplicates by basename, which no "the total is not the sum" check would catch.
 
 **AT-03 — a subdirectory contributes nothing.**
 *Who:* pipeline operator. *Given:* a feature directory containing a subdirectory whose files carry
@@ -566,7 +572,11 @@ value, not as additional top-level keys (BR-21, BR-22).
 *Who:* automated caller. *Given:* the same feature. *When:* both modes are run over an unchanged
 tree. *Then:* every value shown in the human table is recoverable from the JSON document, and the
 ratio's two-decimal rendering matches the JSON number (BR-15); a metric present in one mode and
-absent from the other fails this test.
+absent from the other fails this test. *And:* the same comparison over a **fleet** run, where the
+row is permitted to differ from the JSON entry in exactly the two ways D-7 records — malformed
+basenames as a count rather than a list, halts as `{n} ({r} resolved)` rather than per-phase entries
+— and in no other way: every remaining field is recoverable from the row, and the JSON document's
+`unclassified` array is set-equal to the marked rows.
 
 ### 6.3 Review rounds
 
@@ -585,13 +595,19 @@ that row reads `1`, not `0` (BR-05).
 `CROSS-REVIEW-`-prefixed basename that fails the grammar, and unrelated artifacts
 (`LEARNINGS-*.md`, `HANDOFF-PROMPT.md`). *When:* the report is produced. *Then:* the round count
 reflects only the grammatical file; the failing basename is listed as malformed by name; and no
-unrelated artifact appears in the malformed list (BR-06, EC-05).
+unrelated artifact appears in the malformed list (BR-06, EC-05). *And:* over
+`docs/completed/pdlc-advisory-wave-gate/`, whose files include
+`CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` written by the pipeline's own
+Phase CR, all four basenames appear in the malformed list by name, no row of the six-type table
+counts them, and the `TSPEC` row still reads `6` — the highest index among that directory's
+grammatical TSPEC cross-reviews.
 
 **AT-10 — partial harvest splits per document type.**
 *Who:* pipeline operator. *Given:* `docs/completed/pdlc-headless-engine/` — `LEARNINGS` present,
 one surviving TSPEC cross-review, no cross-review for the other five types. *When:*
-`pdlc stats pdlc-headless-engine`. *Then:* the TSPEC row carries the measured index derived from
-the surviving file, and the other five rows read `harvested`; no row reads `0` (BR-08, EC-07).
+`pdlc stats pdlc-headless-engine`. *Then:* the TSPEC row reads exactly `13` — the surviving file is
+`CROSS-REVIEW-software-engineer-TSPEC-v13.md` — and the other five rows read `harvested`; no row
+reads `0` (BR-08, EC-07).
 
 ### 6.4 DoD rounds
 
@@ -603,17 +619,20 @@ disagree with the highest version on a partially harvested directory (BR-10).
 
 **AT-12 — DoD harvested only when its own evidence is gone.**
 *Who:* pipeline operator. *Given:* two directories, both with `LEARNINGS-{feature}.md`: one with a
-surviving `CODE_REVIEW` file, one with none. *When:* both are reported. *Then:* the first reports
-the measured highest version and the second reports `harvested`; neither reports `0` in place of
-the other's state (BR-11).
+surviving `CODE_REVIEW-{feature}-v4.md` and no other, one with none. *When:* both are reported.
+*Then:* the first reads exactly `4` and the second reads `harvested`; neither reports `0` in place
+of the other's state (BR-11).
 
 ### 6.5 Halts
 
 **AT-13 — one entry per phase, resolution as the driver classifies it.**
 *Who:* pipeline operator. *Given:* `docs/completed/pdlc-wave-resume/`, which carries
-`POSTMORTEM-PR-pdlc-wave-resume.md`. *When:* the report is produced. *Then:* exactly one halt entry
-appears, for phase `PR`, tagged with the resolution the pipeline's own `RESOLVED:` rule yields for
-that file's bytes; the report states no marker-matching rule of its own (BR-12).
+`POSTMORTEM-PR-pdlc-wave-resume.md`, whose line-leading marker reads `RESOLVED: yes`. *When:* the
+report is produced. *Then:* the halt set is exactly one entry, `{phase: "PR", resolution:
+"resolved"}` — the literal, not a re-derivation. *And:* the companion fixture, the same file with
+`RESOLVED: no`, yields `{phase: "PR", resolution: "open"}`. The pair is what makes the test
+falsifying: an implementation that returns one classification for every input passes either half
+alone and fails the two together (BR-12).
 
 **AT-14 — no post-mortem is zero halts, and an unreadable marker is `open`.**
 *Who:* pipeline operator. *Given:* one feature with no post-mortem file, and one whose post-mortem
@@ -624,11 +643,15 @@ and exits 0 (BR-13, EC-14).
 ### 6.6 Byte ratio
 
 **AT-15 — the ratio is process over spec, over the fixed sets.**
-*Who:* pipeline operator. *Given:* a directory holding spec documents, cross-reviews, a post-mortem,
-a `CODE_REVIEW`, and files on neither list (`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`). *When:* the
-report is produced. *Then:* the reported process and spec byte totals equal the on-disk sizes of
-exactly the BR-14 members present, and adding a file on neither list to the directory leaves both
-totals unchanged.
+*Who:* pipeline operator. *Given:* a directory carrying **all six** BR-14 spec documents
+(`REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS`) and **all three** process families
+(a cross-review, a post-mortem, a `CODE_REVIEW`), every one of the nine a distinct size, plus files
+on neither list (`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`). *When:* the report is
+produced. *Then:* the two totals equal the literal sums of their members; adding a file on neither
+list leaves both unchanged; **and** removing any one of the nine changes its side's total by exactly
+that file's size. The removal probe is what makes the assertion set-equality rather than containment
+— without it, an implementation that omits `DECISIONS-{feature}.md` or the post-mortem family from
+its enumeration still passes (BR-14).
 
 **AT-16 — zero denominator is `n/a`, not a crash.**
 *Who:* pipeline operator. *Given:* a directory with cross-reviews but no spec document. *When:* the
@@ -653,9 +676,11 @@ appears exactly once; no excluded directory appears as a feature; no phantom fea
 
 **AT-19 — the exclusion set is asserted, not assumed.**
 *Who:* pipeline operator. *Given:* a new directory at the `docs/` root that is neither in the
-exclusion set nor a feature. *When:* `pdlc stats`. *Then:* the report still prints and names that
-directory as an unclassified entry; it is neither silently reported as a feature nor silently
-dropped (BR-26, EC-10).
+exclusion set nor a feature. *When:* `pdlc stats` and `pdlc stats --json`. *Then:* the human run
+still prints its report and carries that directory as a marked row naming it (BR-18); the JSON run's
+top-level keys are exactly `schemaVersion`, `features`, `unclassified` — three, no more — with
+`unclassified` set-equal to `["{that directory}"]` and `features` carrying no key of that name. In
+neither mode is it silently reported as a feature or silently dropped (BR-23, BR-26, EC-10).
 
 **AT-20 — gap rows are rows, and one bad feature does not sink the fleet.**
 *Who:* pipeline operator. *Given:* a fleet in which one feature directory cannot be read. *When:*
@@ -695,7 +720,37 @@ with no value, and `pdlc stats a b`. *When:* each is run. *Then:* each exits 1 w
 stderr naming the offending token, and stdout is empty in every case — including under `--json`,
 so a caller never parses half a document (BR-01, EC-08).
 
-### 6.10 Test-to-rule traceability
+### 6.10 States and edge cases
+
+**AT-25 — a round-1 collision is `unmeasurable`, and only for its own row.**
+*Who:* pipeline operator. *Given:* a directory where one role carries both
+`CROSS-REVIEW-{role}-TSPEC.md` and `CROSS-REVIEW-{role}-TSPEC-v1.md`, and the other five document
+types carry grammatical cross-reviews at known indices. *When:* the report is produced in both
+modes. *Then:* the TSPEC row reads exactly `unmeasurable` and names that role (JSON:
+`state: "unmeasurable"`, `rounds: null`, `collidingRole` the role's slug); the other five rows carry
+their measured indices unchanged; and exit is 0 (BR-07, BR-19, BR-22, EC-06).
+
+**AT-26 — an empty feature directory is a measurement, not a gap.**
+*Who:* pipeline operator. *Given:* a readable, empty `docs/{feature}/`. *When:* `pdlc stats
+{feature}` and `pdlc stats` are both run. *Then:* all six review-round rows read `0`, DoD rounds
+reads `0`, halts is empty, the ratio reads `n/a`; exit is 0; and in fleet mode the feature is a
+normal row, carrying no gap marker and no reason string (EC-03, BR-27).
+
+**AT-27 — an unreadable feature directory gaps the fleet and fails the single run.**
+*Who:* pipeline operator. *Given:* a feature directory that cannot be read. *When:* `pdlc stats
+{feature}`, then `pdlc stats`. *Then:* the single-feature run emits no report, names the feature and
+the reason on stderr, and exits 1; the fleet run carries that feature as a gap row with the same
+reason, reports every other feature normally, and exits 0. Both halves are asserted, because D-6's
+decision is precisely that the two modes differ here (EC-11, EC-21).
+
+**AT-28 — a non-matching `CODE_REVIEW-` basename is silent, not malformed.**
+*Who:* pipeline operator. *Given:* a directory holding `CODE_REVIEW-{feature}-v2.md` and
+`CODE_REVIEW-{feature}-draft.md`. *When:* the report is produced. *Then:* DoD rounds reads `2`, and
+the non-matching basename appears in no malformed list in either mode — the asymmetry against EC-05
+is asserted, not merely stated, because an implementer symmetrising the two sides gets exactly this
+wrong (EC-16, BR-06).
+
+### 6.11 Test-to-rule traceability
 
 | Rule | Covered by |
 |---|---|
@@ -704,8 +759,8 @@ so a caller never parses half a document (BR-01, EC-08).
 | BR-03 | AT-03 |
 | BR-04 | AT-23 |
 | BR-05 | AT-07, AT-08 |
-| BR-06 | AT-09 |
-| BR-07 | AT-01 (row rendering), EC-06 |
+| BR-06 | AT-09, AT-28 |
+| BR-07 | AT-25 |
 | BR-08 | AT-10 |
 | BR-09 | AT-01 |
 | BR-10 | AT-11 |
@@ -716,19 +771,37 @@ so a caller never parses half a document (BR-01, EC-08).
 | BR-15 | AT-16, AT-06 |
 | BR-16 | AT-17 |
 | BR-17 | AT-01 |
-| BR-18 | AT-18, AT-20 |
-| BR-19 | AT-06, AT-10, AT-16 |
-| BR-20 | AT-04 |
+| BR-18 | AT-18, AT-20, AT-06, AT-19 |
+| BR-19 | AT-06, AT-10, AT-16, AT-25 |
+| BR-20 | AT-04, AT-24 |
 | BR-21 | AT-05 |
-| BR-22 | AT-05 |
-| BR-23 | AT-20 |
+| BR-22 | AT-05, AT-25 |
+| BR-23 | AT-19, AT-20 |
 | BR-24 | AT-05 |
 | BR-25 | AT-18 |
 | BR-26 | AT-19 |
-| BR-27 | AT-20 |
+| BR-27 | AT-20, AT-26, AT-27 |
 | BR-28 | AT-21, AT-22 |
 | BR-29 | AT-22, AT-24 |
 | BR-30 | AT-23 |
+
+Every edge case in §5 is likewise traced. The table below is the one whose absence let §3.2's B5 and
+EC-03 contradict each other through authoring: a rule-only matrix cannot show that an edge case has
+no oracle.
+
+| EC | Covered by | EC | Covered by |
+|---|---|---|---|
+| EC-01 | AT-23 | EC-12 | AT-16 |
+| EC-02 | AT-02 | EC-13 | AT-17 |
+| EC-03 | AT-26 | EC-14 | AT-14, AT-13 |
+| EC-04 | AT-03 | EC-15 | AT-13 (companion fixture bears a foreign-feature basename) |
+| EC-05 | AT-09 | EC-16 | AT-28 |
+| EC-06 | AT-25 | EC-17 | AT-18 (`docs/pdlc-halt-hardening/` is a discovered row) |
+| EC-07 | AT-10, AT-12 | EC-18 | AT-18 |
+| EC-08 | AT-24 | EC-19 | AT-15 (one process-side member is a symbolic link) |
+| EC-09 | AT-27 (root leg) | EC-20 | AT-18 |
+| EC-10 | AT-19 | EC-21 | AT-27 |
+| EC-11 | AT-27 | | |
 
 ## 7. Open Questions
 
