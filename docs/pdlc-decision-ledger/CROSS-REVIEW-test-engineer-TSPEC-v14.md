@@ -140,7 +140,34 @@ the ≥85% branch floor I approved at v1.2 apply unchanged.
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The v1.3 changelog's PLAN-state paragraph is now the **second** round in which this document has described a sibling document's state and been overtaken by it (v13 F-01, and F-01 below). Is a changelog the right place to assert a sibling's *current* version at all? A route-record that names the item and the owning phase — without reciting the sibling's version, list size and constant siting — would be immune to this class of staleness. Consider that form on the next touch. |
+
+**Assumptions I am carrying forward, unchanged from v13:**
+
+1. §7.3 remains the single home of the owned-declaration count; downstream documents cite the
+   paragraph rather than restating the arithmetic as their own assertion.
+2. The freeze is in force for this document: Medium and Low findings are recorded, not gating.
+3. Erratum-round scope is the delta plus upstream fidelity, not a fresh full read (DEC-ERR-03).
+
+**Risks:** none that gate. The single recorded defect is inert — no operand, count, budget, oracle,
+AT row or traceability edge reads the changelog paragraph in question, so an implementer following
+this TSPEC cannot be misled by it. The correct downstream state (PLAN v0.9, fourteen members, all
+three census constants test-file-homed) is already what PLAN carries, and §7.3 — which is the
+authority — agrees with it.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta lands the header re-grounding and the three id-citations cleanly, is verified faithful to
+REQ v1.10 and FSPEC v1.4 at HEAD, and breaks nothing I previously approved. The routed PLAN item is
+correctly declined here and correctly routed, and it is in fact already resolved downstream at PLAN
+v0.9. The one defect is a stale recital of PLAN's version and list size inside the new changelog
+paragraph — the same bookkeeping staleness I recorded at v13, restated in this round's bytes. It is
+Medium, `delta`/`local`, and non-gating under the freeze. Fix it on the next touch of this document
+by deleting the sibling-state recital and keeping only the route record (see Q-01).
 
 ## Delta-Confirmation Findings
 
