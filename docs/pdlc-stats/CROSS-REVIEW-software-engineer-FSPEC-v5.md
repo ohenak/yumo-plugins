@@ -176,7 +176,26 @@ and REQ-STATS-05 is unchanged.
 
 ## Acceptance Tests
 
-_pending_
+No acceptance test is invalidated by REQ v1.3, and no AT asserts the divergent reading, which is
+why F-01 is a one-clause fix rather than a re-derivation.
+
+| AT | Bearing on the REQ edit |
+|---|---|
+| AT-12 (DoD harvested) | Its two fixtures are "a surviving `CODE_REVIEW-{feature}-v4.md`" and "none". Both are grammar-matching-or-absent, so AT-12 passes identically under BR-11's current wording and under REQ-STATS-04 v1.3. It does **not** pin the divergence — which also means the divergence would ship untested if BR-11 is left alone. |
+| AT-28 (non-matching `CODE_REVIEW-` basename) | Fixture holds `CODE_REVIEW-{feature}-v2.md` **and** `CODE_REVIEW-{feature}-draft.md`, and asserts the count reads `2` and the non-matching name is in no malformed list. Because a grammar-matching file survives, the harvested branch is never entered, so AT-28 does not reach the disagreement either. |
+| AT-17 (ratio harvested) | Pins BR-16's three-arm predicate on three fixtures — now the REQ's own predicate. Unchanged and still correct. |
+| AT-09 (malformed, on the real `docs/completed/pdlc-advisory-wave-gate/` directory) | REQ-STATS-03 v1.3 explicitly names `CROSS-REVIEW-{role}-REVIEW-v{N}.md` as malformed, so AT-09 now pins a criterion-level obligation rather than a literal reading of a disputed one. Strictly stronger. |
+| AT-23, AT-24, AT-27 (not-found, usage, root failure) | Unchanged. AT-27's root leg still runs the full eight-cell `{absent, unreadable} × {single-feature, fleet} × {human, --json}` product and still asserts the non-null `feature` conjunct; REQ-STATS-09's carve-out endorses that product rather than contesting it. |
+| AT-20, AT-26 (fleet gaps) | Unchanged; REQ-STATS-07 v1.3 now states the readable-but-empty row AT-26 asserts. |
+| AT-21, AT-22 (read-only) | Unchanged; REQ-STATS-08's edit was punctuation. |
+
+**Coverage gap opened by F-01.** Once BR-11 is corrected, no existing AT exercises it. The cheapest
+sufficient leg is a third fixture on AT-12: `LEARNINGS-{feature}.md` present, one
+`CODE_REVIEW-{feature}-draft.md` (or a foreign-feature `CODE_REVIEW-`) present, no grammar-matching
+file — *Then:* the DoD metric reads `harvested`, not `0`, and the non-matching basename appears in
+no malformed list (BR-11, BR-10's grammar, EC-16). That leg fails under today's BR-11 and passes
+under the corrected one, which is what makes the correction real rather than editorial. Whether it
+lands as an AT-12 leg or its own number is the FSPEC author's call.
 
 ## Delta-Confirmation Findings
 
