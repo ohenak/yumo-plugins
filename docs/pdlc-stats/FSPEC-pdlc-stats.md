@@ -13,7 +13,13 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.5 | 2026-08-31 |
+| Draft | pm-author | 1.6 | 2026-08-31 |
+
+Revision (v1.6): two carried findings. BR-16 now cites
+`docs/completed/pdlc-advisory-wave-gate/` for the malformed *basename shape* only — that directory
+holds grammar-matching cross-reviews too and reports a measured ratio. AT-15's neither-list gains a
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` file, pinning the half of BR-16 no test reached: bytes of a
+`CROSS-REVIEW-`-prefixed basename outside BR-09's types reach neither side. No rule changed.
 
 Erratum round (v1.5): the raised item was §7.3's two entries against REQ-STATS-09 (no-`docs/`-root
 case) and REQ-STATS-07 (zero-state row), stale because REQ v1.4 already carries both carve-outs.
