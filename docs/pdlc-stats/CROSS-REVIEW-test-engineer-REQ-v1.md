@@ -24,7 +24,30 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For a document type where `test-engineer` reached v5 and `product-manager` reached v3, what single number does REQ-STATS-03 report — 5, 3, or a per-role breakdown? (F-01) |
+| Q-02 | Should a harvested feature's round count read `0`, or a distinct "harvested" state? The `LEARNINGS-{feature}.md`-present signal makes either answer implementable; only one of them is honest to read. (F-02) |
+| Q-03 | Is `pdlc stats` expected to be runnable on a repo where `docs/completed/` does not exist at all (a fresh consuming repo)? C-2's fallback and REQ-STATS-07's discovery both assume it, but no AC states the absent-directory outcome. |
+
 ## Positive Observations
+
+- **C-5 is the single best decision in this document.** Defining round-count fidelity by reference to the driver's own derivation, and explicitly refusing to define a second parsing rule, forecloses the entire class of drift bug where a reporting tool and its subject disagree about the same filenames. F-01 asks it to name the quantity more precisely; it does not ask it to change shape.
+- **REQ-STATS-06's zero-denominator clause is exactly the right altitude.** It names the failure mode (no spec document yet on disk, mid-authoring), states the observable outcome (not-available), and rules out both alternatives (divide-by-zero, crash) — testable as written, once F-11's token is fixed.
+- **R-2 and C-2 together close the mid-archival double-count.** A feature present in both locations during an archive move is a real transient state in this repo, and the fixed preference order with an explicit "never both summed" is directly assertable with a two-directory fixture.
+- **REQ-STATS-09 refuses the silent-empty failure mode** and pins it in *both* modes, including "an error object rather than a truncated or partial success document" — that last clause is what stops a JSON consumer from mistaking a failure for an empty result.
+- **The non-goals do real work.** NG-3 through NG-7 close off the adjacent mechanisms (`decisionLedger`, `cascade.pinCheck`, `review.derivativeStop`, the `RESOLVED:` lifecycle, the erratum channel) rather than leaving them ambiguous, which is what keeps this feature's blast radius genuinely read-only.
 
 ## Recommendation
 
+**Needs revision**
+
+Five High findings. The two that most affect testability are F-01 (the round-count oracle names the driver's forward *budget* window, not a historical count, so REQ-STATS-03 — the feature's headline metric — cannot be asserted without a clarifying question) and F-02 (that metric reads `0` for 11 of the 13 features under `docs/completed/`, which is precisely the corpus PROPOSAL §5's baseline protocol and DESIGN §5.2's regression comparison are aimed at). F-03 and F-05 are each a one-clause fix with an on-disk counterexample already in the repo; F-04 asks REQ-STATS-08 to pair its three negative conjuncts with a positive one on the same invocation.
+
+To reach Approved: name the counted quantity and its cross-role aggregation in C-5/REQ-STATS-03 (F-01); add a harvested-vs-measured distinction to REQ-STATS-03/06 (F-02); pin the `RESOLVED:` marker to the engine's parser rather than restating it (F-03); add a positive success conjunct to REQ-STATS-08 (F-04); and exclude `docs/completed/` as a container in REQ-STATS-07 (F-05).
+
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 5, "low": 2}
