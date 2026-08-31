@@ -13,7 +13,14 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.0 | 2026-08-31 |
+| Draft | se-author | 1.1 | 2026-08-31 |
+
+**v1.1** addresses cross-review round 1 (`CROSS-REVIEW-product-manager-TSPEC-v1.md`,
+`CROSS-REVIEW-test-engineer-TSPEC-v1.md`): the JSON document's key sets and `schemaVersion` are now
+a stated contract (§4.2) with a literal-transcription oracle (§6.3); the doc-type catalogue and
+vendoring oracles are repaired and a fifth exclusion-set oracle added (§6.4); the read-only
+snapshot's isolation, the determinism property and the halt matcher's phase capture are pinned
+(§6.5, §6.6, §4.3).
 
 ## 1. Overview
 
@@ -298,13 +305,14 @@ specifies a drift oracle that fails if the driver's catalogue and this row set s
 
 ### 3.4 The CLI surface
 
-Three edits to `pdlc/engine/bin/cli.mjs`, all additive:
+Four edits to `pdlc/engine/bin/cli.mjs`, all additive:
 
 | Site | Edit |
 |---|---|
 | `FLAGS_BY_COMMAND` | add row `stats: ["json", "cwd"]` |
 | `main()`'s `switch (cmd)` | add `case "stats": if (checkFlags(rest, "stats")) await cmdStats(rest); break;` |
 | `USAGE` | add the `pdlc stats [feature] [--json] [--cwd <path>]` line |
+| module surface | add `cmdStats` and **`export async function statsParsers()`** — the single production construction site of the `StatsParsers` bundle (§2.5), exported so §6.4's identity oracle has a real referent rather than a module-private one it cannot reach |
 
 Four existing mechanisms are **reused unchanged**, and BR-01's "the closed-flag *mechanism* existing
 commands use, not their flag *lists*" is satisfied by exactly this reuse:
@@ -327,14 +335,30 @@ commands use, not their flag *lists*" is satisfied by exactly this reuse:
 `cmdStats` is ~25 lines and contains no metric logic:
 
 ```js
-async function cmdStats(argv) {
+export async function cmdStats(argv) {
   const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
-  const outcome = runStats({ argv, io: statsIo(), parsers: await statsParsers(), cwd });
-  if (outcome.stdout) process.stdout.write(outcome.stdout);
-  if (outcome.stderr) process.stderr.write(outcome.stderr);
-  process.exitCode = outcome.exitCode;
+  try {
+    const outcome = runStats({ args: argv, io: statsIo(), parsers: await statsParsers(), cwd });
+    if (outcome.stdout) process.stdout.write(outcome.stdout);
+    if (outcome.stderr) process.stderr.write(outcome.stderr);
+    process.exitCode = outcome.exitCode;
+  } catch (err) {
+    // §5's last row: an unexpected throw anywhere — including the dynamic
+    // import in `statsParsers()` — is a stderr message and exit 1, never a
+    // stack trace on stdout, and never a truncated JSON document.
+    process.stderr.write(`pdlc stats: ${err && err.message ? err.message : String(err)}\n`);
+    process.exitCode = 1;
+  }
 }
 ```
+
+The `try`/`catch` is the wrapper §5's last row names; it is written here rather than described so
+that the sketch and the error table cannot disagree, and the test that drives an injected throw
+through `statsParsers()` asserts against **this** function, not against `runStats`. The property
+argument is `runStats`'s: it returns `{stdout, stderr, exitCode}` and never throws for a decided
+scenario, so this catch is reached only by a genuinely unexpected fault. Note the parameter name:
+`runStats` takes `args` (§3.3), and the `argv` local is passed into it under that key — the two
+spellings name one value.
 
 `statsParsers()` mirrors the existing `loopSessionModule()` / `escalationViewModule()` /
 `devWorkflowModule()` helpers: `resolveWorkflowRoot()` for the root, then a dynamic
