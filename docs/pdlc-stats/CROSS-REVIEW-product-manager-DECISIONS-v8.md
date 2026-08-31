@@ -103,6 +103,46 @@ not actionable here. Nothing blocks Phase D.
 
 ## Consequences
 
+**For Phase D / PLAN.** Not blocked, and materially better served than at v1.5. A PLAN author reading
+v1.5's bytes saw an obligations table that ended at K-3, six obligations rendered as prose, and K-3
+with no falsifier column — the input to a mis-sized task list. That is now a nine-row table with a
+falsifier cell on every row. Combined with the reconciled ten, PLAN can partition the co-change set
+mechanically: ten site-table rows, four K-rows covering them without overlap, one site (`pdlc/README.md`)
+flagged twice as having no red behind it.
+
+**For the implementer.** Unchanged from v7 — the purity detector, the array-equality warning on
+`c8.include`, and the `MODULE_NAMES`-vs-packed-class mismatch note all survive this round untouched.
+The one behavioural risk the document still carries is K-9's third site going green-but-undone, which
+the document names rather than hides.
+
+**For upstream (TSPEC).** One erratum stays owed: §2.1's `coverageInstrumentation.test.js` row
+(*"six → seven"*, TSPEC `:51`). Two approved documents disagree on a mechanical fact until it lands,
+with DECISIONS holding the correct value. The residual product risk is direction-of-travel — the pin
+says TSPEC is authoritative, so a later reader could "correct" DECISIONS into agreement with a number
+that is wrong. K-3's clause naming the divergence and its direction is the strongest mitigation a
+downstream document can apply unilaterally, and it survived this round's rejoin intact.
+
+**For harvest.** One signal from this round looks durable beyond the feature, and I flag it for
+`docs/_constraints/DOMAIN-CONSTRAINTS.md` rather than inflating a severity here:
+
+- **A count word and its decompositions drift apart when only the count is routed.** This was my v7
+  F-01, and it is now the third round in this document where a total moved and a nearby enumeration of
+  that total did not (v1.3's `six → seven`, v1.4's option-B re-pricing, v1.5's `nine → ten`). The
+  mechanical form of the lesson: when a routed finding moves a count, the round must sweep every
+  decomposition of it, not just the assertion the finding cited. v1.6 closed the instance; the pattern
+  is what is worth keeping.
+
+- **A long table cell rewritten in place can silently terminate its table.** K-3's row was split by an
+  interleaved paragraph during a *content* edit two rounds earlier, and no review round caught it
+  until te-review read the rendered shape. Cheap mechanical guard: after any edit to a markdown table
+  row, check that every row in that table carries the same delimiter count. This is `Process` scope —
+  it belongs in a review checklist, not in a domain constraint.
+
+**On the stale dispatch pin (carried from my v7 Q-01).** For the second consecutive round the dispatch
+cited a TSPEC hash matching no revision on this branch; this round the dispatch omits the hash
+entirely. The document handled it correctly both times by re-grounding on HEAD under `DEC-ERR-03`.
+Still a pipeline observation rather than a document defect, so it stays a question.
+
 ## Delta-Confirmation Findings
 
 ## Positive Observations
