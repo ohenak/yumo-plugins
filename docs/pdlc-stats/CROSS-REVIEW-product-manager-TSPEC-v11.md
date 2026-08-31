@@ -213,3 +213,48 @@ No findings.
 |----|---------|
 | Q-01 | Answered by the revision, recorded for the trail: v10's Q-01 asked whether the withdrawn survivor reading would be kept as an in-place record. It was, in both §4.3 ("*Record of a withdrawn reading, so it is not re-raised*") and §0's v1.6 entry ("*Superseded — this row is history, not a live claim*"). Nothing further needed. |
 | Q-02 | Also answered: §8.3's count moved two → one alongside the bullet's removal, and the closed-count moved three → four. Verified by counting bullets, not by reading the numeral. |
+
+## Positive Observations
+
+- **The remediation was exactly the list, and only the list.** My v10 Recommendation named four
+  edits. The revision landed four commits, one per site, each scoped to its own section, totalling
+  +52/−44 with no collateral. Reviewing a frozen round is only cheap when the author resists
+  improving adjacent things, and this author did.
+- **The re-stamp quotes REQ correctly rather than paraphrasing it.** §4.3's new quotation is verbatim
+  against `REQ-pdlc-stats.md:211-214`. The failure mode I was watching for — replacing a stale
+  verbatim quote with a fresh *approximate* one — did not happen. A downstream reader comparing the
+  two documents will find them identical, which is what makes the compression trustworthy.
+- **The withdrawn reading was voided in place, not deleted.** Both §4.3 and §0's v1.6 entry keep the
+  survivor reading on the record with an explicit supersession marker. Deleting it would have made
+  the document read as though the question were never live and invited a later reviewer to re-raise
+  it; keeping it unmarked would have left a false live claim. The in-place void is the third option
+  and the right one, and it matches the treatment v1.7 gave the stale `six → seven` count.
+- **The version pin moved with an honest parenthetical.** "BR-16 at v1.8 (unchanged since v1.7)"
+  distinguishes *the document advanced* from *the rule changed*. That one clause saves a future
+  reader a diff, and it is verifiably true against FSPEC's own changelog.
+- **§8.3's counts moved with their bullets.** Both the open count and the closed count were updated
+  in the same commit that removed the bullet. Count words that drift from what they count are the
+  cheapest possible stale claim to ship, and this document has now handled that correctly twice.
+- **The prediction held under a real reversal.** §4.3 pre-declared its blast radius in checkable
+  terms and, when upstream actually flipped, the radius was what it said. That property — not the
+  particular outcome — is what made this two-round cascade cost prose edits instead of rework.
+
+## Recommendation
+
+**Approved.**
+
+Both v10 findings are closed and verified against sources rather than against the document's own
+account of itself: F-01's three re-stamped sites plus the closed §8.3 bullet, F-02's re-grounded
+pins confirmed by measuring both upstream files at HEAD. No High finding is open, old or new. The
+revision introduced no defect — no type, signature, exit code, oracle, code sketch, expected value
+or count outside §8.3's own moved, and every claim the delta asserts about REQ, FSPEC, the archive
+baseline and the co-change enumeration checks out at HEAD.
+
+No changes requested. The one item I found is an implementation-side stale count word recorded as
+`DEFERRED` for the DoD sweep; it is not a defect in this document, which prescribes the correct end
+state.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
