@@ -135,7 +135,7 @@ function buildCase({ nProject, nFeature, statements }) {
   return { entries, fullOrder };
 }
 
-describe.skip("T-16: BND — bounds invariant as a property (O-8, PROP-BND-01…04, 07, 12)", () => {
+describe("T-16: BND — bounds invariant as a property (O-8, PROP-BND-01…04, 07, 12)", () => {
   test("PROP-BND-01…04, 12: for any set × line sizes × bounds, the block is \"\" or satisfies all four conjuncts, and maxBytes bounds the index block alone", async () => {
     const { selectDecisions, renderDecisionLedgerBlock } = await import(DEV_MODULE_PATH);
 
@@ -188,7 +188,7 @@ describe.skip("T-16: BND — bounds invariant as a property (O-8, PROP-BND-01…
   });
 });
 
-describe.skip("T-16: AT-13 — example anchors, both bounds hold on index text alone", () => {
+describe("T-16: AT-13 — example anchors, both bounds hold on index text alone", () => {
   test("a set exceeding maxEntries alone is truncated to maxEntries lines, prefix-ordered", async () => {
     const { selectDecisions, renderDecisionLedgerBlock } = await import(DEV_MODULE_PATH);
 
@@ -240,7 +240,7 @@ describe.skip("T-16: AT-13 — example anchors, both bounds hold on index text a
   });
 });
 
-describe.skip("T-16: AT-15 — a single oversized line is omitted whole, no fragment, remaining lines render", () => {
+describe("T-16: AT-15 — a single oversized line is omitted whole, no fragment, remaining lines render", () => {
   test("one line alone exceeding maxBytes is absent in full; the other lines still render", async () => {
     const { selectDecisions, renderDecisionLedgerBlock } = await import(DEV_MODULE_PATH);
 
