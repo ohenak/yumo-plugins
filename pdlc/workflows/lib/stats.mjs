@@ -369,3 +369,135 @@ export function discoverFeatures(io, docsRoot) {
 
   return { features, unclassified };
 }
+
+// --- TSPEC §4.2.1: renderHuman / renderJson -------------------------------
+
+// BR-24: an integer, 1 at first release. A `renderJson` obligation, not a
+// `StatsReport`/`FeatureStats` field (TSPEC §4.2.1).
+const SCHEMA_VERSION = 1;
+
+// BR-19: the non-numeric tokens are fixed across both render modes, except
+// the zero-denominator byte-ratio state, which is human-only `n/a`.
+function docTypeToken(docType) {
+  if (docType.state === "measured") return String(docType.rounds);
+  if (docType.state === "harvested") return "harvested";
+  return `unmeasurable (colliding role: ${docType.collidingRole})`;
+}
+
+function dodToken(dodRounds) {
+  return dodRounds.state === "measured" ? String(dodRounds.rounds) : "harvested";
+}
+
+function ratioToken(byteRatio) {
+  if (byteRatio.state === "measured") return byteRatio.ratio.toFixed(2);
+  if (byteRatio.state === "harvested") return "harvested";
+  return "n/a";
+}
+
+// --- BR-17: single-feature human layout -----------------------------------
+
+function renderReviewRoundsBlock(reviewRounds) {
+  const lines = ["Review rounds"];
+  for (const docType of REVIEW_DOC_TYPE_ROWS) {
+    lines.push(`  ${docType.padEnd(12)}${docTypeToken(reviewRounds.byDocType[docType])}`);
+  }
+  if (reviewRounds.malformed.length > 0) {
+    lines.push(`  malformed: ${reviewRounds.malformed.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+function renderHaltsBlock(halts) {
+  if (halts.length === 0) return "Halts           none";
+  const rows = halts.map((h) => `  ${h.phase.padEnd(4)}${h.resolution}`);
+  return ["Halts", ...rows].join("\n");
+}
+
+function renderSingleHuman(stats) {
+  const header = `Feature: ${stats.feature}   (${stats.dir})`;
+  const reviewRoundsBlock = renderReviewRoundsBlock(stats.reviewRounds);
+  const dodLine = `DoD rounds      ${dodToken(stats.dodRounds)}`;
+  const haltsBlock = renderHaltsBlock(stats.halts);
+  const ratioLine =
+    `Byte ratio      ${ratioToken(stats.byteRatio)}` +
+    `  (process ${stats.byteRatio.processBytes} B / spec ${stats.byteRatio.specBytes} B)`;
+
+  return [header, "", reviewRoundsBlock, "", dodLine, haltsBlock, ratioLine].join("\n");
+}
+
+// --- BR-18: fleet human layout (two reductions — D-7) ----------------------
+
+function renderFleetHaltsCell(halts) {
+  const resolved = halts.filter((h) => h.resolution === "resolved").length;
+  return `${halts.length} (${resolved} resolved)`;
+}
+
+function renderFleetRow(name, entry) {
+  if ("gap" in entry) {
+    return `  ${name}  gap: ${entry.gap}`;
+  }
+  const docTypeCells = REVIEW_DOC_TYPE_ROWS.map(
+    (docType) => `${docType}=${docTypeToken(entry.reviewRounds.byDocType[docType])}`,
+  ).join(" ");
+  return (
+    `  ${name}  ${docTypeCells}` +
+    `  DoD=${dodToken(entry.dodRounds)}` +
+    `  Halts=${renderFleetHaltsCell(entry.halts)}` +
+    `  Ratio=${ratioToken(entry.byteRatio)}` +
+    `  malformed=${entry.reviewRounds.malformed.length}`
+  );
+}
+
+function renderFleetHuman(report) {
+  const rows = report.results.map((r) => renderFleetRow(r.feature, r));
+  const unclassifiedRows = report.unclassified.map((name) => `  ${name}  unclassified`);
+  return ["Fleet", ...rows, ...unclassifiedRows].join("\n");
+}
+
+/**
+ * Total over `StatsReport` (TSPEC §4.2). Never recomputes a metric — every
+ * token comes from the report's own values.
+ * @param {StatsReport} report
+ * @returns {string}
+ */
+export function renderHuman(report) {
+  if (report.kind === "single") return renderSingleHuman(report.result);
+  if (report.kind === "fleet") return renderFleetHuman(report);
+  return `Error: ${report.message}`;
+}
+
+// --- BR-21/BR-23/BR-24/BR-30: the JSON projection --------------------------
+
+function toMetricObject(stats) {
+  return {
+    reviewRounds: stats.reviewRounds,
+    dodRounds: stats.dodRounds,
+    halts: stats.halts,
+    byteRatio: stats.byteRatio,
+  };
+}
+
+/**
+ * A projection of `StatsReport`, not a serialisation of it: `feature` and
+ * `dir` never reach the document (TSPEC §4.2.1). Key order is fixed by
+ * object-literal construction (BR-18/PROP-3).
+ * @param {StatsReport} report
+ * @returns {Object}
+ */
+export function renderJson(report) {
+  if (report.kind === "single") {
+    return { schemaVersion: SCHEMA_VERSION, ...toMetricObject(report.result) };
+  }
+  if (report.kind === "fleet") {
+    const features = {};
+    for (const entry of report.results) {
+      features[entry.feature] = "gap" in entry ? { gap: entry.gap } : toMetricObject(entry);
+    }
+    return { schemaVersion: SCHEMA_VERSION, features, unclassified: report.unclassified };
+  }
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    error: { reason: report.reason, message: report.message },
+    feature: report.feature,
+  };
+}
