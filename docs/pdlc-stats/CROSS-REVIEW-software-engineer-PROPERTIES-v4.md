@@ -102,6 +102,36 @@ those literals stands as written.
 
 ## Fixtures
 
+One fixture carries the whole of this round's exposure, so I re-read it against REQ v1.7 directly.
+
+**`F-HARVEST-FOUR`** (§Fixtures): "four directories, each with `LEARNINGS-{f}.md`: cross-reviews
+intact / no `CODE_REVIEW`; `CODE_REVIEW` intact / no cross-review; neither, and no spec documents;
+`CODE_REVIEW` **intact** plus only out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` basenames",
+serving PROP-RATIO-08 and PROP-RATIO-09.
+
+Each leg against REQ-STATS-06 v1.7:
+
+- **Legs 1–3** exercise the disjunction REQ states unchanged ("either… or… or neither"), each with
+  `LEARNINGS-{feature}.md` present as REQ's gate requires. Untouched by the erratum.
+- **Leg 4** is the leg the erratum decided. Under v1.6 this fixture asserted `harvested` while REQ
+  called the same basename a survivor — the fixture would have been asserting against its own cited
+  authority. Under v1.7 the fixture's expected value is what REQ states: the only `CROSS-REVIEW-`
+  basenames present are unrecognised, so they contribute no process bytes and count as no file of
+  that family remaining, and the directory reports `harvested`. **The fixture body needs no edit.**
+- **Leg 3 doubles as PROP-RATIO-09's discriminator** (harvested *and* zero spec bytes), which the
+  erratum does not touch, since REQ still states no precedence between the harvested and
+  zero-denominator tests.
+
+The `LEARNINGS-{f}.md` present in all four directories is load-bearing and remains correct: REQ v1.7
+keeps the harvested state gated on that file's presence, and the new sentence adds a condition on
+the *family-absence* half only, not on the gate.
+
+**No other fixture is reached.** The erratum's sentence is scoped to the ratio's harvested predicate.
+The real-path fixtures (PROP-RR-05's archive table), the halt fixtures, and the spec-side removal
+probe (PROP-RATIO-02's nine-file fixture) take no input from it. PROP-RATIO-06's out-of-catalogue
+fixture shares the basename shape but asserts the *byte* consequence, which REQ v1.7 now states
+explicitly rather than in tension.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
