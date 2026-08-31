@@ -770,6 +770,7 @@ describe("PROP-SWEEP-2/PROP-SWEEP-3: L-3's sweep command (AC-1.2, FSPEC L-2, L-3
     "**/POSTMORTEM-*.md",
     "pdlc/workflows/__tests__/fixtures/CODE_REVIEW-*.md",
     "pdlc/workflows/__tests__/fixtures/planParse/**",
+    "pdlc/workflows/__tests__/fixtures/decision-corpus/**",
     "docs/_queue/QUEUE.md",
     "docs/pdlc-plugin-retirement/**",
     "docs/pdlc-advisory-wave-gate/**",
