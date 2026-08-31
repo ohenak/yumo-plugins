@@ -861,8 +861,20 @@ citation out of the rendered line and re-opens the file, touching no field of `D
 
 The framing — header, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, trailer and the blank
 lines between them — is charged to `maxBytes` (D-5), so its size is part of the bound's arithmetic and
-is therefore **pinned, not left to drift**: the four constants together must render to **≤ 1,200
-bytes**, asserted by a pure unit test against that literal. Without the pin the framing is an
+is therefore **pinned, not left to drift**: the four framing pieces together must render to **≤ 1,200
+bytes**, asserted by a pure unit test against that literal. **Only two of the four are top-level
+constants** (PM v12 F-03): `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT` are named as
+`{CONST}` placeholders in the rendered form above precisely because they are declarations of
+`orchestrate-dev.js`, whereas the header and trailer sentinel lines (`--- CLOSED DECISIONS (do not
+re-open without new evidence) ---` and `--- END CLOSED DECISIONS ---`) appear in that block as
+literal text and ship that way — **inline string literals inside `renderDecisionLedgerBlock`'s
+body**, not top-level bindings. That is a normative statement about the shipped shape, not a
+description of one: hoisting either sentinel to a top-level `const` would introduce a
+feature-declared name absent from `DECISION_LEDGER_OWNED_DECLS`, which §7.3's classify-or-redden
+guard fires on. The count §7.3 pins is therefore unmoved by this paragraph, and the 1,200-byte pin
+measures rendered output, not a constant count — it is a unit test over
+`renderDecisionLedgerBlock`'s emitted framing, so it stays honest however the sentinels are spelled
+in source. Without the pin the framing is an
 unmeasured quantity sitting inside a measured budget, and §3.6's headroom arithmetic would be
 unfalsifiable prose. If a future edit to the rule text needs more than 1,200 bytes, the pin reddens and
 the budget is re-decided deliberately — which is the point. **1,200 is a budget the rule text must be
