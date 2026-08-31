@@ -147,44 +147,51 @@ no task edits `pdlc/workflows/dist/` and no batch expects it to move.
 One file, one owning task per batch — the premise batch-safety rule 2 rests on, stated mechanically
 so it is auditable rather than asserted.
 
-| File | Owning task(s) | New? |
-|---|---|---|
-| `pdlc/workflows/__tests__/statsPreflight.test.js` | T-01 | new |
-| `pdlc/workflows/__tests__/helpers/statsDoubles.js` | T-02 | new |
-| `pdlc/workflows/__tests__/statsArgv.test.js` | T-03 | new |
-| `pdlc/workflows/__tests__/statsMetrics.test.js` | T-04 | new |
-| `pdlc/workflows/__tests__/statsDiscovery.test.js` | T-05 | new |
-| `pdlc/workflows/__tests__/statsRender.test.js` | T-06 | new |
-| `pdlc/workflows/__tests__/statsOutcome.test.js` | T-07 | new |
-| `pdlc/workflows/__tests__/statsAntiDrift.test.js` | T-08 | new |
-| `pdlc/engine/__tests__/stats-cli.test.js` | T-09 | new |
-| `pdlc/engine/__tests__/stats-cli-structure.test.js` | T-10 | new |
-| `pdlc/engine/__tests__/stats-read-only.test.js` | T-11 | new |
-| `pdlc/engine/__tests__/_stats-scratch-prefixes.mjs` | T-11 | new |
-| **`pdlc/workflows/lib/stats.mjs`** (creates it, batch 3) | T-12 | new |
-| **`pdlc/workflows/lib/stats.mjs`** (batch 4) | T-13 | exists from T-12 |
-| **`pdlc/workflows/lib/stats.mjs`** (batch 5) | T-14 | exists from T-12 |
-| **`pdlc/workflows/lib/stats.mjs`** (batch 6) | T-15 | exists from T-12 |
-| **`pdlc/workflows/lib/stats.mjs`** (batch 7) | T-16 | exists from T-12 |
-| `pdlc/engine/bin/cli.mjs` | T-17 | exists |
-| `pdlc/workflows/__tests__/statsRealPaths.test.js` | T-18 | new |
-| `pdlc/workflows/__tests__/statsProperties.test.js` | T-19 | new |
-| `pdlc/engine/__tests__/stats-vendoring.test.js` | T-20 | new |
-| `pdlc/engine/scripts/prepack.mjs` | T-21 | exists |
-| `pdlc/engine/__tests__/run.test.js` | T-21 | exists |
-| `pdlc/workflows/__tests__/learningsPremises.test.js` | T-21 | exists |
-| `pdlc/README.md` | T-21 | exists |
-| `docs/_constraints/DOMAIN-CONSTRAINTS.md` | T-21 | exists |
-| `pdlc/engine/__tests__/_tspec-packed-set.mjs` | T-22 | exists |
-| `docs/completed/pdlc-engine-distribution/TSPEC-pdlc-engine-distribution.md` | T-22 | exists |
-| `docs/completed/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` | T-22 | exists |
-| `pdlc/engine/__tests__/loop-distribution.test.js` | T-23 | exists |
-| `pdlc/workflows/package.json` | T-24 | exists |
-| `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | T-24 | exists |
-| `pdlc/engine/scripts/publish-preflight.mjs` | T-25 | exists |
-| `pdlc/engine/scripts/fixture-machine.mjs` | T-25 | exists |
-| `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | T-26 | new |
-| `pdlc/OPERATIONS.md` | T-27 | exists |
+**Reading the table.** The `File` column holds a **bare path and nothing else**, so a same-batch /
+same-file grouping pass keyed on that column sees one key per file. Where one file is written across
+several batches — `pdlc/workflows/lib/stats.mjs`, built up by T-12…T-16 — it takes one row per
+batch, and the batch lives in its own `Batch(es)` column. Disambiguating duplicate rows by appending
+prose *to the path* would defeat exactly the grouping pass this manifest exists to feed: the next
+feature should add a column, never decorate a path.
+
+| File | Batch(es) | Owning task(s) | New? |
+|---|---|---|---|
+| `pdlc/workflows/__tests__/statsPreflight.test.js` | 1 | T-01 | new |
+| `pdlc/workflows/__tests__/helpers/statsDoubles.js` | 1 | T-02 | new |
+| `pdlc/workflows/__tests__/statsArgv.test.js` | 2 | T-03 | new |
+| `pdlc/workflows/__tests__/statsMetrics.test.js` | 2 | T-04 | new |
+| `pdlc/workflows/__tests__/statsDiscovery.test.js` | 2 | T-05 | new |
+| `pdlc/workflows/__tests__/statsRender.test.js` | 2 | T-06 | new |
+| `pdlc/workflows/__tests__/statsOutcome.test.js` | 2 | T-07 | new |
+| `pdlc/workflows/__tests__/statsAntiDrift.test.js` | 2 | T-08 | new |
+| `pdlc/engine/__tests__/stats-cli.test.js` | 2 | T-09 | new |
+| `pdlc/engine/__tests__/stats-cli-structure.test.js` | 2 | T-10 | new |
+| `pdlc/engine/__tests__/stats-read-only.test.js` | 2 | T-11 | new |
+| `pdlc/engine/__tests__/_stats-scratch-prefixes.mjs` | 2 | T-11 | new |
+| `pdlc/workflows/lib/stats.mjs` | 3 | T-12 | new |
+| `pdlc/workflows/lib/stats.mjs` | 4 | T-13 | exists from T-12 |
+| `pdlc/workflows/lib/stats.mjs` | 5 | T-14 | exists from T-12 |
+| `pdlc/workflows/lib/stats.mjs` | 6 | T-15 | exists from T-12 |
+| `pdlc/workflows/lib/stats.mjs` | 7 | T-16 | exists from T-12 |
+| `pdlc/engine/bin/cli.mjs` | 8 | T-17 | exists |
+| `pdlc/workflows/__tests__/statsRealPaths.test.js` | 9 | T-18 | new |
+| `pdlc/workflows/__tests__/statsProperties.test.js` | 9 | T-19 | new |
+| `pdlc/engine/__tests__/stats-vendoring.test.js` | 9 | T-20 | new |
+| `pdlc/engine/scripts/prepack.mjs` | 10 | T-21 | exists |
+| `pdlc/engine/__tests__/run.test.js` | 10 | T-21 | exists |
+| `pdlc/workflows/__tests__/learningsPremises.test.js` | 10 | T-21 | exists |
+| `pdlc/README.md` | 10 | T-21 | exists |
+| `docs/_constraints/DOMAIN-CONSTRAINTS.md` | 10 | T-21 | exists |
+| `pdlc/engine/__tests__/_tspec-packed-set.mjs` | 10 | T-22 | exists |
+| `docs/completed/pdlc-engine-distribution/TSPEC-pdlc-engine-distribution.md` | 10 | T-22 | exists |
+| `docs/completed/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` | 10 | T-22 | exists |
+| `pdlc/engine/__tests__/loop-distribution.test.js` | 10 | T-23 | exists |
+| `pdlc/workflows/package.json` | 10 | T-24 | exists |
+| `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | 10 | T-24 | exists |
+| `pdlc/engine/scripts/publish-preflight.mjs` | 10 | T-25 | exists |
+| `pdlc/engine/scripts/fixture-machine.mjs` | 10 | T-25 | exists |
+| `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | 11 | T-26 | new |
+| `pdlc/OPERATIONS.md` | 11 | T-27 | exists |
 
 **The one multi-owner file is `pdlc/workflows/lib/stats.mjs`**, and it is serialized rather than
 noted: its five writing tasks sit in five **distinct** batches (3, 4, 5, 6, 7), forced by real
