@@ -107,3 +107,55 @@ The cost claims are equally intact. Option B's "four edit sites" still prices co
 `learningsPremises.test.js`, `prepack.mjs` or `fixture-machine.mjs`, and `pdlc/engine/package.json`
 still declares no `c8` block and no coverage dependency, which is what makes B's and C's "no coverage
 gate" column true rather than rhetorical. Option A's ten remain the ten.
+
+## Consequences
+
+**For the PLAN implementer, nothing changes.** The K-1…K-9 obligations table, the site table, the
+three `DEC-STATS-*` verdicts and every falsifier cell are byte-identical to the set I approved at v8.
+K-3's rejoined row still parses as six pipe-delimited fields with its `Owner` and `Falsified by`
+cells populated, so the red test per obligation is still readable where PLAN reads it. The two
+conjuncts K-3 names remain correctly split into one live oracle (P9-02's `expect(include).toEqual([…])`,
+which reds at HEAD the moment `package.json` moves without the test literal) and one new one (the
+c8-run driver importing `lib/stats.mjs`, plus `json-summary` naming it — the only conjunct that
+catches a declared-but-unresolving glob under `allow-external`).
+
+**For upstream, one erratum is still owed and is now the only one.** TSPEC §2.1's
+`coverageInstrumentation.test.js` row (`TSPEC:236`) still describes P9-02's title as moving *six →
+seven*. Re-measured at HEAD: `REQUIRED_INCLUDES` holds four, `CAPTURE_SCRIPT_INCLUDE` one and the two
+`lib/` modules two, so the shipped literal is seven today and this feature moves it to **eight**; the
+shipped *title* is stale at six, so the title moves *six → eight* while the count it describes moves
+*seven → eight*. TSPEC v1.6's changelog reproduces the same "(six → seven)" phrasing at `TSPEC:96`,
+so the erratum survived the round rather than being repaired by it. DECISIONS carries the correct
+arithmetic in K-3 and records the divergence instead of matching it — still the right call, still
+un-actionable from this document. Routed below as an `ERRATUM: TSPEC` line.
+
+**For the next DECISIONS touch, one freshness item.** The v1.6 changelog's grounding attestation
+(*"Upstream re-grounded first and did not move: TSPEC HEAD is v1.4 … FSPEC HEAD is v1.5 … REQ HEAD
+(v1.4) matches its pin"*) was true when written and is false of HEAD, where the three are v1.6, v1.7
+and v1.6. I have done the absorption check this round and the answer is *nothing owed* — but the
+attestation is the artifact a later round reads to decide whether re-grounding is needed, and TSPEC
+v1.6's own changelog documents exactly this failure mode one document upstream (*"Citing a current
+hash is not the same check as diffing it against the previously grounded one"*). Recorded as F-01,
+Medium, non-gating: the fix is a one-line re-grounding note whenever DECISIONS next opens, not a
+round of its own.
+
+**No consequence for oracles, types or counts.** Nothing in this round moves a falsifier, a test
+level, a coverage claim or a co-change total.
+
+## Positive Observations
+
+- The document survived three upstream revisions without a byte changing, and it survived them
+  *because* of how it was written: it cites REQ and FSPEC by spec id and section, not by line, so
+  REQ's +38/−23 and FSPEC's +26/−9 could not invalidate a single citation. The only line anchors it
+  uses are the ones where position **is** the measurement — the eight grep hits — and all eight still
+  resolve.
+- The probe-invariance table is the piece that earned its keep this round. It is what let me catch
+  my own v8 F-02 as a measurement error rather than propagating a false erratum to TSPEC: the
+  document had already stated that 25 and 24 are the same ten reached by different probes, and
+  re-running both queries confirmed it.
+- Refusing to match TSPEC's known-wrong "six → seven" remains correct after another upstream round
+  in which TSPEC could have fixed it and did not. Two documents agreeing on a mis-sized task is the
+  failure this refusal prevents, and the divergence is still recorded where PLAN will read it.
+- K-1's four-way partition of the ten sites still covers site 10 without overlap, and the tenth
+  site's "pinned by no oracle" cell is still stated in three places. A green suite will not remind
+  anyone about `pdlc/README.md:231`; the document does, three times.
