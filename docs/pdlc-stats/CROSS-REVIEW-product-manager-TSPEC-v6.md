@@ -99,8 +99,50 @@ FINDING: Low | inherited | nonlocal | §2.1's `learningsPremises.test.js` row, P
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Not a TSPEC defect — an upstream nit found while re-grounding, recorded here so it is not lost. FSPEC §7.3's **E-5** row cites its standing sites as "BR-27, AT-19", but AT-19 is the exclusion-set test; the zero-state row E-5 settles is pinned by **AT-26** (and FSPEC's own EC-03 ↔ AT-26 matrix row agrees). TSPEC §8.3 cites EC-03/AT-26 and is correct; only FSPEC's record row mis-points. Worth a line in whatever FSPEC edit comes next, and worth nothing more than that. |
+| Q-02 | Carried unchanged from v5, still a PLAN-phase concern rather than a TSPEC gap: two of the ten sites (`pdlc/README.md`'s prose and the sibling TSPEC's `PK-26` existence row) are un-oracled by design and held together only by `DEC-STATS-01` `K-7`'s single-owning-task convention. Does PLAN surface those two as checklist items inside the same task body, rather than leaving them to the task's prose? |
+
 ## Positive Observations
+
+- **The round did the harder half of its job, not just the routed half.** The item list was
+  reported absorbed upstream, and the honest failure mode there is to confirm nothing and move
+  on. Instead the author re-grounded on an upstream that had genuinely moved (FSPEC v1.4 → v1.5)
+  and wrote out, site by site, why §3–§6 needs no re-derivation. Every one of those claims held
+  when I checked it against the FSPEC diff. That is the behaviour DEC-ERR-03 is asking for.
+- **The §1 fix removes a number instead of correcting one.** Restating ten at §1 would have
+  fixed this round and seeded the next; citing §2.1 as the owner means the count can only ever
+  be wrong in one place. This is `pdlc-engineering-loop`'s LEARNINGS applied rather than quoted.
+- **The §6.4 disambiguation is verifiable, and I verified it.** "Four" versus "ten" now names
+  which four and why the oracle reaches only those; `assertAdditiveOnly`'s four call sites match
+  the four named sites exactly, in §2.1's order, and the "sites 8 and 9" cross-reference is
+  right too. A reader can falsify the sentence by opening one file — that is the standard the
+  ten-site derivation set at v1.3, held here.
+- **Open errata were kept open honestly.** BR-26/EC-10 is still live at FSPEC v1.5 and the
+  document still says so, while the three that closed were removed rather than left to
+  re-route a settled question. Distinguishing "closed upstream" from "still open" correctly,
+  in the same round upstream closed five things, is the part that is easy to get wrong.
+- **Scope discipline held again.** Two edits, both in sentences the round named, nothing
+  else touched in a 1,200-line document.
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+The delta resolves what it set out to resolve and breaks nothing previously approved. More
+importantly for this round: I re-read the upstream at HEAD rather than the item list, found
+that FSPEC had in fact moved to v1.5 since my last substantive reading, and confirmed the TSPEC
+is still a faithful compression of REQ v1.4 and FSPEC v1.5 — no rule, exit code, edge case or
+acceptance test the document leans on has changed, and every claim the changelog makes about
+that move checks out against the diff.
+
+No High findings, so nothing here gates. F-01 (Medium) is a one-word fix in the sentence this
+round edited and should be taken with F-03, which is the same word at RK-1; F-02 is a
+one-clause fix in the other edited sentence. All three are cheap and none justifies a round of
+its own — fold them into whichever versioned edit comes next, along with F-04 from v5.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
