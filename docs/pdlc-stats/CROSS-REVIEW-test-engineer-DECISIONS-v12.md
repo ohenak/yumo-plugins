@@ -93,6 +93,48 @@ is the correct disposition; I carry it below as Low rather than re-escalating.
 
 ## Consequences
 
+### What the delta did not disturb
+
+Scanned only the changed sections, per the delta protocol. K-3's *arithmetic* is byte-identical
+either side of the edit — only the bookkeeping paragraph moved — so the obligation is not re-sized,
+no new falsifier is owed, and the K-3 task decomposition ("two conjuncts, one live one new") is
+untouched. `DEC-STATS-01/02/03`, the option table, every verdict and every re-evaluation trigger are
+outside the four hunks and unchanged. No `BR-`, `E-` or `AC-` row is added, so nothing downstream
+(PLAN, PROPERTIES) is re-pointed by this round.
+
+### An observation the freeze puts out of scope, worth stating because it is load-bearing later
+
+The v1.7 changelog is the first in this document's history whose upstream pins all resolve. That
+matters beyond bookkeeping: for three rounds the cascade's baseline was recovered only because a
+reviewer noticed the trailer disagreed with the body and chose the body. A mechanism whose
+correctness depends on reviewer attention is not a check. v1.7 says so in the document itself and
+routes it to harvest — which is the right place for it, and is why I am not re-escalating F-04.
+
+### The prediction K-3 made, and the branch state that confirms it
+
+K-3 warned: *"An implementer who follows this row literally lands a passing test whose title
+misstates its own assertion by two."* At branch HEAD that has now happened —
+`pdlc/workflows/__tests__/coverageInstrumentation.test.js:264` reads *"exactly the seven modules"*
+while the literal it asserts holds eight members (`:267–272`), and `:260–261`'s comment still says
+"six-member" / "three entries" against a four-entry `REQUIRED_INCLUDES` (`:37–45`). The count word
+was moved by one from the *printed* number instead of onto the *measured* one — the precise error
+K-3 named. Neither string is load-bearing on an assertion, so nothing is red; it is a documentation
+defect inside a test file, for the implementation phase to close. It is not a defect of this
+document, and under DECISION FREEZE it is not a blocking finding here. Recorded as `DEFERRED`.
+
+### Positive observations
+
+- **The repairs are repairs, not restatements.** F-01 was discharged by moving the *upstream*
+  document onto this document's measurement, not by softening the clause — the two documents now
+  state one move, and the disagreement bookkeeping is retired rather than hidden.
+- **Version-scoping beats rewriting.** Marking the v1.6 entry version-scoped, and leaving its
+  `file:line` forms intact, keeps the changelog an honest record of what was believed when, while
+  making the live statement unambiguous. That is the right shape for a document whose upstream
+  churns faster than it does.
+- **Every count word in the delta is mechanically re-derivable.** 5 + 4 + 1 = 10 against the table;
+  25 files against a stated `git grep`; `4 + 1 + 2` = 7 against `main`'s `package.json`. A reviewer
+  can falsify each without trusting a single sentence of prose.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
