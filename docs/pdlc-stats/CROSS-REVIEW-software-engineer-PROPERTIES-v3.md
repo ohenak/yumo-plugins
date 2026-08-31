@@ -34,6 +34,13 @@ Claims re-derived at HEAD this round (not carried over from v2):
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | AT-15's neither-list gained a `CROSS-REVIEW-{role}-REVIEW-v{N}.md` member at FSPEC v1.7, and §8 now routes BR-16 → AT-15. The behaviour is pinned (PROP-RATIO-06), but PROP-RATIO-03 — the AT-15 fixture transcription — still lists the old three plus `HANDOFF-PROMPT.md`, and the §Traceability AT-15 and BR-16 rows do not name PROP-RATIO-06. Coverage is real; the map to it is stale. | §Properties → PROP-RATIO-03, PROP-RATIO-06; §Traceability → AT-15, BR-16 |
+| F-02 | Medium | delta | nonlocal | REQ-STATS-06 v1.6 now calls a grammatical-but-out-of-catalogue basename **a survivor**, which contradicts FSPEC BR-16 v1.7 on the same file and inverts PROP-RATIO-08's fourth leg. PROPERTIES asserts the BR-16 reading — the correct choice, matching TSPEC §4.3 — but records the dispute nowhere, and PROP-RATIO-08's Traces column still cites `REQ-STATS-06` as authority for the leg REQ-STATS-06 now contradicts. | §Properties → PROP-RATIO-08; §Gaps |
+
+Both are Medium and neither gates. Provenance is `delta` because the upstream edits of this round left these items unlanded in PROPERTIES; locality is `nonlocal` because PROPERTIES itself has no changed sections this round.
+
 ## Findings
 
 ## Questions
