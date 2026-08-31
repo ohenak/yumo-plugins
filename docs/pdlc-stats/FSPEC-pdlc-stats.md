@@ -627,9 +627,11 @@ of the other's state (BR-11).
 
 **AT-13 — one entry per phase, resolution as the driver classifies it.**
 *Who:* pipeline operator. *Given:* `docs/completed/pdlc-wave-resume/`, which carries
-`POSTMORTEM-PR-pdlc-wave-resume.md`, whose line-leading marker reads `RESOLVED: yes`. *When:* the
+`POSTMORTEM-PR-pdlc-wave-resume.md`, whose line-leading marker reads `RESOLVED: yes`, alongside a
+copied `POSTMORTEM-P-some-other-feature.md`. *When:* the
 report is produced. *Then:* the halt set is exactly one entry, `{phase: "PR", resolution:
-"resolved"}` — the literal, not a re-derivation. *And:* the companion fixture, the same file with
+"resolved"}` — the literal, not a re-derivation; the foreign-feature basename contributes nothing
+and appears in no list (EC-15). *And:* the companion fixture, the same file with
 `RESOLVED: no`, yields `{phase: "PR", resolution: "open"}`. The pair is what makes the test
 falsifying: an implementation that returns one classification for every input passes either half
 alone and fails the two together (BR-12).
@@ -645,11 +647,13 @@ and exits 0 (BR-13, EC-14).
 **AT-15 — the ratio is process over spec, over the fixed sets.**
 *Who:* pipeline operator. *Given:* a directory carrying **all six** BR-14 spec documents
 (`REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS`) and **all three** process families
-(a cross-review, a post-mortem, a `CODE_REVIEW`), every one of the nine a distinct size, plus files
+(a cross-review, a post-mortem, a `CODE_REVIEW`) — one process-side member being a symbolic link
+whose target is far larger than the link — every one of the nine a distinct size, plus files
 on neither list (`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`). *When:* the report is
 produced. *Then:* the two totals equal the literal sums of their members; adding a file on neither
 list leaves both unchanged; **and** removing any one of the nine changes its side's total by exactly
-that file's size. The removal probe is what makes the assertion set-equality rather than containment
+that file's size. The link contributes its own size, not its target's (EC-19). The removal probe is
+what makes the assertion set-equality rather than containment
 — without it, an implementation that omits `DECISIONS-{feature}.md` or the post-mortem family from
 its enumeration still passes (BR-14).
 
@@ -671,8 +675,12 @@ cross-review; one with neither and no spec documents either. *When:* all three a
 *Who:* pipeline operator. *Given:* this repository's `docs/`, which holds feature directories, the
 eight excluded directories, and the loose file `docs/PLAN-pdlc-integration-boundary-gates.md`.
 *When:* `pdlc stats`. *Then:* every feature directory under `docs/` and under `docs/completed/`
-appears exactly once; no excluded directory appears as a feature; no phantom feature named
-`completed` appears; and the loose file produces no row (BR-25).
+appears exactly once — including `docs/pdlc-halt-hardening/`, which carries only a PLAN and is a
+row like any other (EC-17); no excluded directory appears as a feature; no phantom feature named
+`completed` appears; and the loose file produces no row (BR-25). *And*, over two constructed roots:
+one holding only excluded directories yields a header and no feature rows at exit 0 (EC-20); one
+holding two directories whose names differ only in case yields two distinct rows, in lexicographic
+order, with no case folding of its own (EC-18, BR-04).
 
 **AT-19 — the exclusion set is asserted, not assumed.**
 *Who:* pipeline operator. *Given:* a new directory at the `docs/` root that is neither in the
@@ -741,7 +749,9 @@ normal row, carrying no gap marker and no reason string (EC-03, BR-27).
 {feature}`, then `pdlc stats`. *Then:* the single-feature run emits no report, names the feature and
 the reason on stderr, and exits 1; the fleet run carries that feature as a gap row with the same
 reason, reports every other feature normally, and exits 0. Both halves are asserted, because D-6's
-decision is precisely that the two modes differ here (EC-11, EC-21).
+decision is precisely that the two modes differ here (EC-11, EC-21). *And:* over a tree whose
+`docs/` root is absent, and again over one where it cannot be read, both modes exit 1 carrying the
+same root message — not a not-found message — and neither prints a report (EC-09).
 
 **AT-28 — a non-matching `CODE_REVIEW-` basename is silent, not malformed.**
 *Who:* pipeline operator. *Given:* a directory holding `CODE_REVIEW-{feature}-v2.md` and
@@ -794,12 +804,12 @@ no oracle.
 | EC-01 | AT-23 | EC-12 | AT-16 |
 | EC-02 | AT-02 | EC-13 | AT-17 |
 | EC-03 | AT-26 | EC-14 | AT-14, AT-13 |
-| EC-04 | AT-03 | EC-15 | AT-13 (companion fixture bears a foreign-feature basename) |
+| EC-04 | AT-03 | EC-15 | AT-13 (foreign-feature basename in fixture) |
 | EC-05 | AT-09 | EC-16 | AT-28 |
-| EC-06 | AT-25 | EC-17 | AT-18 (`docs/pdlc-halt-hardening/` is a discovered row) |
-| EC-07 | AT-10, AT-12 | EC-18 | AT-18 |
-| EC-08 | AT-24 | EC-19 | AT-15 (one process-side member is a symbolic link) |
-| EC-09 | AT-27 (root leg) | EC-20 | AT-18 |
+| EC-06 | AT-25 | EC-17 | AT-18 (`docs/pdlc-halt-hardening/`) |
+| EC-07 | AT-10, AT-12 | EC-18 | AT-18 (case leg) |
+| EC-08 | AT-24 | EC-19 | AT-15 (symbolic-link member) |
+| EC-09 | AT-27 (root leg) | EC-20 | AT-18 (empty-root leg) |
 | EC-10 | AT-19 | EC-21 | AT-27 |
 | EC-11 | AT-27 | | |
 
