@@ -258,7 +258,96 @@ blocking work before batch 2 is dispatched.
 
 ## Verification
 
-*(pending)*
+### Commands
+
+| Command | Where | What it gates |
+|---|---|---|
+| `cd pdlc/workflows && npm test` | jest | every `stats*.test.js` in the workflows suite, plus the two amended pins (`coverageInstrumentation`, `learningsPremises`) |
+| `cd pdlc/workflows && npm run test:coverage` | c8 + jest `--runInBand` | the `Unit tests (ubuntu-latest, node 20)` check, including the per-file `--branches 85` pass that `lib/stats.mjs` joins at T-24 |
+| `cd pdlc/engine && npm test` | `node __tests__/_run-suite.mjs` | the `Engine tests (ubuntu-latest)` check: `stats-cli`, `stats-cli-structure`, `stats-read-only`, `stats-vendoring`, plus the amended `run.test.js`, `loop-distribution.test.js`, `_tspec-packed-set.mjs` |
+| `bash -n` over tracked `*.sh` | CI | unaffected — this feature adds no shell script |
+| `pdlc/engine/scripts/fixture-machine.mjs` legs | CI | the install leg exercises the **packed tarball**, so a missed vendoring entry surfaces there rather than in the field (RK-1) |
+
+The four required checks named in `CLAUDE.md`'s CI table are unchanged in membership; no task edits
+a workflow file or `ci-arrangement.test.js`.
+
+### Acceptance-test coverage
+
+Every FSPEC acceptance test is owned by exactly one task. Verified against the FSPEC's own AT list
+(AT-01 … AT-28, with AT-14b) — 29 tests, all assigned:
+
+| AT | Task | AT | Task |
+|---|---|---|---|
+| AT-01 | T-06 | AT-15 | T-04 |
+| AT-02 | T-05 | AT-16 | T-04 |
+| AT-03 | T-07 | AT-17 | T-04 |
+| AT-04 | T-07, T-09 | AT-18 | T-05 (constructed roots), T-18 (real `docs/`) |
+| AT-05 | T-06 | AT-19 | T-05, T-06, T-08 (set-equality half) |
+| AT-06 | T-06 | AT-20 | T-07 |
+| AT-07 | T-04 | AT-21 | T-11 |
+| AT-08 | T-04 | AT-22 | T-11 |
+| AT-09 | T-04 (fixture), T-18 (real path) | AT-23 | T-06, T-09 |
+| AT-10 | T-18 | AT-24 | T-03 (parser half), T-09 (process half) |
+| AT-11 | T-18, T-09 (end-to-end conjunct) | AT-25 | T-04 |
+| AT-12 | T-04 | AT-26 | T-05, T-07 |
+| AT-13 | T-04 (companion leg), T-18 (real path) | AT-27 | T-07 (fleet + root-failure), T-09 (single-feature) |
+| AT-14 | T-04 | AT-28 | T-04 |
+| AT-14b | T-18 | | |
+
+FSPEC's own EC table maps EC-01…EC-21 onto these ATs, so EC coverage follows; EC-03's rule-only
+edge is carried by AT-26 (T-05, T-07) as FSPEC records.
+
+### Anti-drift and property coverage
+
+| Oracle (TSPEC §6.4/§6.5/§6.6) | Task | Suite |
+|---|---|---|
+| Parser identity (`===` against the driver's exports) | T-10 | engine |
+| Classifier purity (non-aliasing ×3, A-B-A for `deriveDodRoundIndex`) | T-10 | engine |
+| Construction-site count (exactly one four-classifier literal) | T-10 | engine |
+| No-write capability (`StatsIo` has exactly four members) | T-10 | engine |
+| Doc-type catalogue set-equality | T-08 | workflows |
+| Exclusion-set equality over the real `docs/` root | T-08 | workflows |
+| Vendoring co-change, `MODULE_NAMES.length + 1` derived | T-20 | engine |
+| `c8.include` pair (declared literal + resolved c8 run) | T-24 | workflows |
+| Read-only snapshot pair + scratch-prefix guard | T-11 | engine |
+| PROP-1 / PROP-2 / PROP-3 | T-19 | workflows |
+| Four mutants, each with a named killing test | T-26 | both |
+
+### Claims verified against the tree while writing this PLAN
+
+Not asserted from the upstream documents — re-checked at HEAD, because a PLAN that names a file the
+implementer cannot find is a PLAN that halts a wave:
+
+- All four driver classifiers are present and `export`ed in `pdlc/workflows/orchestrate-dev.js`.
+- `pdlc/workflows/lib/` holds `loop-session.mjs` and `escalation-view.mjs`; **`stats.mjs` does not
+  exist** — every row naming it declares it new.
+- `MODULE_NAMES` (4 entries), both `WORKFLOW_MEMBERS` copies (5 entries each),
+  `WORKFLOW_MODULE_NAMES` (4 entries), `tspecPackedCount`'s `4 + 15 + 5 + 1`, and `c8.include`'s
+  seven `**/`-anchored entries are all as the TSPEC describes them.
+- `docs/` holds exactly the eight non-feature directories `NON_FEATURE_DIRS` names — `_queue`,
+  `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded`, `completed` — and
+  the loose file `docs/PLAN-pdlc-integration-boundary-gates.md` AT-18 names.
+- Every real-path fixture T-18 depends on exists: `pdlc-advisory-wave-gate`'s four
+  `…-REVIEW-v{1,2}.md` basenames, `pdlc-headless-engine`'s `CROSS-REVIEW-software-engineer-TSPEC-v13.md`,
+  `LEARNINGS-…` and four `POSTMORTEM-{D,F,I,T}-…` files, `pdlc-loop-economics`'s two `CODE_REVIEW`
+  files, and `pdlc-wave-resume`'s `POSTMORTEM-PR-…`.
+- `pdlc/workflows/__tests__/helpers/` exists (21 modules, `.js`), so T-02 adds a peer, not a
+  directory; `pdlc/engine/__tests__/` has no `helpers/` directory, which is why T-11's constant
+  lands as `_stats-scratch-prefixes.mjs` beside the engine suite's other `_`-prefixed helpers.
+- `pdlc/engine/__tests__/bin-guard-structure.test.js` and `loop-cli.test.js` exist and carry the
+  structural-count and `captureRun` precedents T-10 and T-09 reuse.
+
+### Residual risks carried into implementation
+
+Named so the DoD reviewer inherits them rather than discovering them. None is closed by a task here:
+
+| Residual | Source | Disposition |
+|---|---|---|
+| `PK-26`'s existence row in the sibling TSPEC's `PK-*` table has no mechanical falsifier (the *count* half does) | `DEC-STATS-01` `K-7` | discharged by T-22 as a single owning task + review |
+| `pdlc/README.md`'s prose enumeration is pinned by no oracle | `K-9`, RK-1 | discharged by T-21 + review; drift here is silent |
+| A second `StatsParsers` construction site would void the identity oracle | `K-4` | T-10's construction-site count is the detector; it is why T-17 depends on T-10 |
+| The leading-underscore discovery predicate is **provisional** on an open FSPEC erratum | TSPEC §4.4, RK-5 | T-14 implements the provisional predicate; the blast radius of every possible answer is `discoverFeatures` plus AT-26's fixture |
+| Real-path literals bind to the live archive | RK-4 | T-18 declares each literal a measurement in its own comment |
 
 ## Definition of Done
 
