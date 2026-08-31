@@ -71,3 +71,61 @@ below was checked by reading the TSPEC line at HEAD, not by trusting either docu
 | Corpus literals 6,305 / 10,859 / 12,059 / 441, allowance `12500 − 1200 = 11,300`, ~4,995 headroom, `maxEntries` 70 clearing the 63-record floor | `TSPEC:691-692`, `TSPEC:701`, `TSPEC:725-731`, `TSPEC:1049`, `TSPEC:1300`; the v1.2 changelog (`TSPEC:22`) re-states the four literals as unchanged | **Holds** |
 | Every surviving mention of `8000` is tensed as retired (DEC-DECLEDGER-10/-12 discharge list, `DECISIONS:398`) | `TSPEC:216`, `:244`, `:658-659`, `:689`, `:745`, `:1820-1824` — all past-tensed or explicitly "retired" | **Holds** |
 | No claim in this document about the size of the owned-declaration list | `grep -n "fifteen\|fourteen\|OWNED_DECLS"` over the document returns nothing, so TSPEC's fifteen→fourteen census correction (`452d72c07`) cannot falsify it | **Holds — nothing to break** |
+
+## Decision
+
+**Approve with minor changes.** No open High finding, old or new. The delta lands the finding it
+was dispatched for, breaks nothing that was approved, and — checked line by line at HEAD — makes
+no false claim about a TSPEC that moved three versions underneath it.
+
+Three things I looked at specifically, because each is where this delta could plausibly have gone
+wrong:
+
+1. **The corrected rule is now runnable as an authoring check, which is the whole point of the
+   finding.** The v4/v5 defect was not that the rule's intent was wrong — it was that a positional
+   predicate gives two different answers to the same claim depending on how the comparison happens
+   to be typed, so no author and no test could apply it mechanically. The restatement replaces
+   position with substitution ("a ceiling may enter a claim only where substituting the true —
+   necessarily smaller — drafted value **preserves** that claim"). That is a decision procedure:
+   take the site, substitute a smaller value for the ceiling, see whether the claim survives.
+   `10,859 + 1,200 ≤ 12,500` survives, `10,859 ≤ 12,500 − 1200` survives, `10,859 + 1,200 = 12,059`
+   does not. One answer per site, and the answer no longer depends on transcription order. From a
+   test-authoring lens this is the difference between a rule PROPERTIES can encode and a rule a
+   reviewer has to arbitrate.
+
+2. **The scope predicate closes the prose-versus-assertion hole without opening a licence.** The
+   rule now binds "assertions and pinned expected values, plus prose stating a figure as a standing
+   fact", and explicitly excludes prose recounting a retired figure or a labelled worst-case upper
+   bound. I checked this against the actual sites rather than against the claim: the two surviving
+   `10,859 + 1,200 = 12,059` sites in TSPEC (`TSPEC:253`, `TSPEC:745`) are both labelled worst-case
+   recounts, and the two assertion sites (`TSPEC:1351`, and conjunct (2)'s sibling at `TSPEC:1306`)
+   are both subtraction-form comparisons. So the corrected predicate classifies TSPEC HEAD as
+   conformant *and* would still redden the round-6/-7 defect (`TSPEC:207-211` records exactly that
+   defect: conjunct (5) once asserted the block equal to 12,059). The rule has not been widened
+   into vacuity to make HEAD pass — the falsifier it exists for is intact.
+
+3. **The re-evaluation trigger no longer licenses un-retiring `12,059`.** This is the one place a
+   "scope predicate" edit could have quietly created a hole: once the framing constants are measured,
+   the ceiling re-classes to a measurement and equalities become assertable. The revised trigger
+   bounds that to "**over that newly measured framing size only**" and says in terms that 12,059 is
+   `10,859 + the ceiling`, so a block total must be re-derived and re-transcribed, "never un-retired
+   as written". A future author reading only the trigger row cannot restore the retired literal by
+   citing it. That closure was `pm-review`'s Q-01 and it is answered where the answer is load-bearing
+   — in the trigger, not only in the narrative.
+
+### Carried finding from v5
+
+My v5 F-01 (the document names TSPEC's HEAD version `v0.7`) is **still open, and is now two
+versions staler**: `DECISIONS:98` and `DECISIONS:398` both read "TSPEC **v0.7**", while TSPEC's
+header (`TSPEC:15-19`) reads **1.2**. This is inherited, not delta — the edit under review did not
+touch either line, and the freeze does not oblige it to. It remains non-gating for the same reason
+it was non-gating in v5: the three pins the sentences actually carry (REQ **v1.9** / FSPEC **v1.3** /
+Baseline **v1.2**) are still exact at `TSPEC:9` and `TSPEC:11`, the arithmetic those sentences
+license is still true at HEAD (verified above), and the stale literal carries no figure. It is a
+visible, self-announcing staleness rather than a silent numeric one. Re-recorded below as
+`inherited` so this round routes rather than halts.
+
+Note for whoever fixes it: the `DECISIONS:36` occurrence is inside the **v1.4** changelog entry and
+is correct as history — a changelog records what was true when it was written. Only `DECISIONS:98`
+(the "at HEAD (…)" statement) and `DECISIONS:398` (the discharge record) assert current position and
+need the re-pin.
