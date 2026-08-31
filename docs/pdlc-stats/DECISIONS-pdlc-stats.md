@@ -13,7 +13,40 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.5 | 2026-08-31 |
+| Draft | se-author | 1.6 | 2026-08-31 |
+
+**v1.6 (erratum round 7).** Targeted versioned edit; no restructuring, no re-litigation.
+**Upstream re-grounded first and did not move:** TSPEC HEAD is v1.4 (`sha256:cb351bb3…`) and FSPEC
+HEAD is v1.5 (`sha256:25af3c47…`) — the same revisions v1.5 absorbed. The dispatch's cited TSPEC
+`sha256:512a9fcf…` again matches no revision of TSPEC on this branch, so re-grounding was done
+against HEAD per `DEC-ERR-03`; this is the second round it has resolved to nothing, and it is a
+workflow-side anchor defect, not a document defect. REQ HEAD (v1.4) matches its pin. No upstream
+decision is owed absorption this round, so the raised items are the whole of the work.
+
+One structural repair and two record corrections. (1) **K-3's row in *Obligations these decisions
+create* was unterminated** — it ended after *"makes it **eight**"* with two delimiters where intact
+rows carry five, and its `Owner` and `Falsified by` cells sat after an interleaved paragraph, so the
+table terminated at K-3 and K-4 through K-9 rendered as literal text outside it. The row is rejoined
+into a single five-delimiter line with the *Upstream divergence* paragraph inside its obligation
+cell, where it was always meant to sit. K-3 now presents the falsifier column PLAN reads to place its
+red test, and the six rows below it are rows again. No cell text changed. (2) **Both count breakdowns
+now name the tenth site.** v1.5 moved the co-change count nine → ten but left the sweep-found
+breakdown and `DEC-STATS-01`'s *Reversibility: hard* clause enumerating 5 + 4 — the five enumerations
+and the four test files — with `pdlc/README.md`'s prose member list dropped from each. Both now list
+all ten, agreeing with the site table, K-1's partition, K-9's ownership and *Standing costs accepted*.
+(3) The **v1.4 changelog entry** gains a superseded-in-part marker: it asserted `pdlc/README.md` is
+*not* a tenth site-table row, which v1.5 reversed. The entry is not rewritten and its `file:line`
+forms stay — a changelog records the document at its own version, and `DEC-DOC-01` governs body
+citations, which v1.5 already converted, not past entries.
+
+One item is **carried unresolved by design**: TSPEC §2.1's `coverageInstrumentation.test.js` row
+still describes P9-02's title as moving *six → seven*, where HEAD measures the include set at seven
+already (`REQUIRED_INCLUDES` is four, so the literal is `4 + 1 + 2`) and this feature makes it eight.
+Both reviewers agree the arithmetic here is correct and the repair belongs upstream in TSPEC. It is
+**not** matched into agreement, and TSPEC is **not** edited from this dispatch: TSPEC is approved and
+downstream of it sits an approved PLAN, so moving it here would create a downstream obligation nobody
+was asked to discharge. The divergence stays recorded in K-3 and routed as an erratum owed upstream.
+Verdicts, options, `DEC-STATS-01/02/03` and every behavioural claim are unchanged.
 
 **v1.5 (erratum round 6 — upstream re-grounding).** Targeted versioned edit; no restructuring, no
 re-litigation. **Upstream moved: TSPEC v1.2 → v1.4** (HEAD `sha256:cb351bb3…`; the dispatch's cited
