@@ -147,7 +147,7 @@ them, on every path including error paths.
 | A3 | Resolve the feature's artifact directory. | Does `docs/{feature}/` exist? | Yes → use it, do not look further (BR-02). No → does `docs/completed/{feature}/` exist? Yes → use it. No → EC-01 not-found: the refusal renders through Flow C, exit 1. |
 | A4 | List the artifact files directly in the resolved directory (BR-03: no subdirectory traversal). | — | A5. |
 | A5 | Compute review rounds per document type (BR-05…BR-09). | Per document type: any well-formed cross-review? a round-1 collision? a `LEARNINGS-{feature}.md` present? | A number, `unmeasurable`, `harvested`, or `0`. Malformed basenames accumulate separately (BR-06). |
-| A6 | Compute the DoD-round count (BR-10, BR-11). | Any `CODE_REVIEW-*` file present? | Highest version found, `harvested`, or `0`. |
+| A6 | Compute the DoD-round count (BR-10, BR-11). | Any `CODE_REVIEW-{feature}-v{N}.md` file present? | Highest version found, `harvested`, or `0`. |
 | A7 | Compute halts by phase (BR-12, BR-13). | Per post-mortem file: what does the driver's `RESOLVED:` rule classify it as? | One entry per phase, tagged `resolved` or `open`. No files → an empty halt set, not an error. |
 | A8 | Compute the process-to-spec byte ratio (BR-14…BR-16). | Is either process family entirely absent alongside a `LEARNINGS-{feature}.md`? Is the spec total zero? | `harvested`, `n/a`, or a rendered ratio. Harvested is checked before the zero-denominator test (BR-16). |
 | A9 | Render (Flow C) and exit 0. | — | Exactly one report on stdout. |
@@ -479,8 +479,10 @@ increment it. Its presence is one of REQ R-5's two observable stability guarante
 ### 4.5 Discovery, exits and the read-only stance
 
 **BR-25 (fleet discovery: directories only, fixed exclusion set).** Discovery considers immediate
-**directories** only. A loose file at either root is never a feature — `docs/PLAN-pdlc-integration-boundary-gates.md`
-and `docs/completed/REQ-completed.md` are both present in this repository and neither is a feature.
+**directories** only. A loose file at either root is never a feature, whatever its basename claims —
+`docs/PLAN-pdlc-integration-boundary-gates.md` at the `docs/` root, and both
+`docs/completed/REQ-completed.md` and `docs/completed/QUEUE-HISTORY-rows-0-1.md` at the archive
+root, are all present in this repository and none of the three is a feature.
 The excluded directory names, fixed by REQ-STATS-07 and not configurable, are `_queue`,
 `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded` and `completed`.
 `completed` is excluded **as a feature** and traversed **as a container**: its children are
@@ -655,7 +657,9 @@ disagree with the highest version on a partially harvested directory (BR-10).
 *Who:* pipeline operator. *Given:* two directories, both with `LEARNINGS-{feature}.md`: one with a
 surviving `CODE_REVIEW-{feature}-v4.md` and no other, one with none. *When:* both are reported.
 *Then:* the first reads exactly `4` and the second reads `harvested`; neither reports `0` in place
-of the other's state (BR-11).
+of the other's state. A third directory, holding `LEARNINGS` plus only
+`CODE_REVIEW-{feature}-draft.md` and another feature's `CODE_REVIEW-{other}-v2.md`, also reads
+`harvested`: neither leftover matches the version grammar, so neither is evidence (BR-11).
 
 ### 6.5 Halts
 
@@ -717,11 +721,14 @@ report is produced. *Then:* the ratio reads `n/a` (JSON `state: "unavailable"`, 
 byte totals are still reported, and exit is 0 (BR-15, EC-12).
 
 **AT-17 — harvested wins over `n/a`, and fires on either family's absence.**
-*Who:* pipeline operator. *Given:* three directories, each with `LEARNINGS-{feature}.md`: one with
+*Who:* pipeline operator. *Given:* four directories, each with `LEARNINGS-{feature}.md`: one with
 cross-reviews intact and no `CODE_REVIEW` file; one with `CODE_REVIEW` files intact and no
-cross-review; one with neither and no spec documents either. *When:* all three are reported.
-*Then:* all three report `harvested` — including the third, which does **not** report `n/a`
-(BR-16, EC-13).
+cross-review; one with neither and no spec documents either; and one holding `CODE_REVIEW` files
+intact plus, as its only `CROSS-REVIEW-` basenames, the out-of-catalogue
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` form — the shape `docs/completed/pdlc-advisory-wave-gate/`
+carries. *When:* all four are reported. *Then:* all four report `harvested` — the third does
+**not** report `n/a`, and the fourth does **not** report a measured ratio, because the files whose
+bytes BR-14 refuses are equally files BR-16 does not count as remaining (BR-16, EC-13).
 
 ### 6.7 Fleet mode
 
@@ -926,16 +933,11 @@ Two REQ cross-review rounds closed *Approved with minor changes* with wording fi
 the REQ text. They are raised as errata against the REQ rather than silently resolved here, and this
 FSPEC records which reading it derived from so the two documents can be reconciled without guessing:
 
-- **REQ-STATS-06's harvested predicate parses two ways** (test-engineer v3 F-01, software-engineer
-  v3 F-01, both Medium). This FSPEC derives BR-16 from the reading the REQ's own adjacent rationale
-  supports: `LEARNINGS` present **and at least one** of the `CROSS-REVIEW-*` / `CODE_REVIEW-*`
-  families entirely absent. AT-17 pins that reading on three fixtures.
-- **REQ-STATS-04's harvested sentence lost its subject** (test-engineer v3 F-02, Low). BR-11 states
-  the intended reading explicitly.
-- **REQ-STATS-04's harvested test is stated over `CODE_REVIEW-*`, broader than the grammar REQ C-5
-  binds it to** (software-engineer v3 F-03, Low). BR-11 follows the REQ literally; a foreign-feature
-  `CODE_REVIEW-` file would suppress the harvested state under both documents, so this FSPEC
-  introduces no divergence, and the erratum stays with the REQ.
+All three of the harvested-predicate errata this section previously carried are **closed**: REQ v1.3
+and v1.4 decided them, scoping REQ-STATS-04's and REQ-STATS-06's harvested tests to the documented
+basename grammars. BR-11, BR-16, AT-12 and AT-17 state and pin that decided form; nothing about the
+harvested predicates is routed upstream any longer.
+
 Two further errata are raised by this round's cross-reviews:
 
 - **REQ-STATS-05 requires a post-mortem-listing classification that C-5 says the REQ defines
