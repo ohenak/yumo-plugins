@@ -43,6 +43,79 @@ Low; they are recorded below and none gates.
 
 ## Batches
 
+Eleven task rows changed. Each was re-read against HEAD; the `Batch` and `Deps`
+columns were untouched by the revision, so the round-1 arithmetic still holds and is
+not re-derived here.
+
+**T-01 (corrected citation) — verified.** `resolveWorkflowRoot` is exported at
+`pdlc/engine/lib/run.mjs:90` (`export function resolveWorkflowRoot({ fs = defaultFs } = {})`),
+and `grep` over `pdlc/engine/bin/cli.mjs` finds no re-export. The row's parenthetical
+now states both halves — where the symbol is, and why asserting it on `cli.mjs`'s
+export surface would red the gate spuriously. A pre-flight gate that reds on a true
+premise is worse than no gate, so this correction matters more than its size.
+
+**T-02 (`realStatsIo()` equivalence pin) — sound, with one ordering note.** The row now
+constrains the helper to the same four calls the shipped seam makes
+(`readdirSync(…, {withFileTypes:true})`, `lstatSync(…).size`, `readFileSync`, `existsSync`)
+and hands the enforcement to T-10. T-02 sits in batch 1 and `statsIo()` does not exist
+until T-17 (batch 8), so the helper is written against a seam that is specified but
+unbuilt — correct for a `[Fake first]` row, and the pin is a *red* conjunct in T-10
+(batch 2) that stays red until T-17 lands. Ordering is consistent.
+
+**T-04 (AT-15 scope narrowed, mutant fixture named) — good.** The row now explicitly
+disclaims the symbolic-link leg with the reason (a fake returns the fixture's declared
+size), which is exactly the round-1 argument, and routes it to T-18. The
+`unmeasurable`/`harvested` mutant's killing fixture is now named in prose — AT-25's
+round-1 collision plus a `LEARNINGS-{feature}.md` sibling — and identified as the only
+configuration in which the two branch orders disagree, so the implementer does not have
+to rediscover it from TSPEC §6.6 during a batch-11 mutation run.
+
+**T-09 (`--cwd`) — verified.** `docs/completed/pdlc-loop-economics/` carries exactly two
+`CODE_REVIEW-pdlc-loop-economics-v{1,2}.md` files, so the DoD-rounds `2` literal remains
+a true measurement, and the `--cwd <repoRoot>` form is now the one the row states. The
+inline reason (`Engine tests` runs `cd pdlc/engine && npm test`; `pdlc/engine/` carries
+no `docs/`) is stated where an implementer will read it.
+
+**T-10 (three additions) — the load-bearing row of this revision.** It now carries the
+parser-identity pass-through conjunct, the `lstat`-not-`stat` source conjunct and the
+`realStatsIo()` equivalence conjunct on top of purity, construction-site count and
+no-write capability. Two observations:
+
+- The two new source-level conjuncts are genuinely falsifiable at HEAD: `bin/cli.mjs`
+  contains **no** `statSync` and **no** `lstatSync` today (its only `fs` predicate is
+  `fs.existsSync` at `pdlc/engine/bin/cli.mjs:262`), so an assertion that the shipped
+  `statsIo().fileSize` names `lstatSync` reds until T-17 writes it, and reds again if a
+  later edit substitutes `statSync`.
+- The `statSync`-absence half needs a boundary-aware match, because `lstatSync`
+  *contains* the substring `statSync`. As written ("contains no `statSync` call in the
+  `stats` seam") the row leaves both the matcher and the seam boundary to the
+  implementer, and the naive `source.includes("statSync")` is unfalsifiable — it matches
+  the correct implementation. F-02 below.
+- The equivalence conjunct compares a helper's source against the shipped seam's source.
+  Two texts pinned to each other can drift together; what stops that is the *separate*
+  literal conjunct anchored to TSPEC §3.1's `lstat().size — never follows a link`. The
+  row has both, in the right order, which is why this is not a finding.
+
+**T-18 (symlink leg + seam statement) — resolves F-01's behavioural half.** The new leg
+builds a temp directory holding one small regular file and a symlink whose target is
+much larger, and asserts the byte total counts the link's own size. That is a positive,
+falsifiable oracle over a real filesystem, and it is not absence-shaped. The residual is
+*which* seam it runs over — see F-01 below.
+
+**T-21, T-23, T-24, T-26 — verified against the shipped sources.** T-21's scoped
+constraint text is measurably true: `document-oracles.mjs` appears in none of
+`prepack.mjs`'s `MODULE_NAMES`, either `WORKFLOW_MEMBERS` copy,
+`fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`, or `package.json`'s `c8.include`
+(re-read: seven entries, ending `lib/loop-session.mjs`, `lib/escalation-view.mjs`), and
+it appears nowhere in `pdlc/engine/` or in the built `pdlc/workflows/dist/pdlc-cli.mjs`
+— so the runtime-reachability framing is the correct discriminant, not directory
+membership. T-23's ninth site exists as described (`loop-distribution.test.js:228-231`
+concatenates `WORKFLOW_MEMBERS.filter(…)` with `NEW_LIB_MEMBERS_VENDORED`;
+`assertAdditiveOnly`'s length message sits at `:73-77`). T-24's second P9-02 test is
+`coverageInstrumentation.test.js:278`, whose driver imports `loop-session.mjs` and
+`escalation-view.mjs` by name at `:283-284`. T-26's "authors no test file" declaration
+keeps the manifest single-owner and states where a surviving mutant is remediated.
+
 ## Dependencies
 
 ## Verification
