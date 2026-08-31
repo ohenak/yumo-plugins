@@ -75,6 +75,48 @@ re-read them.
 
 ## Business Rules
 
+**BR-16 already says what REQ v1.7 now says.** Its second sentence — *"It is evaluated over exactly
+the file set BR-14's numerator sums, so the two never disagree: a basename failing a grammar
+contributes no bytes to the process side and counts as no file remaining"* — is the same rule as the
+REQ's new *"contributes no process bytes and counts as no file of its family remaining"*, in the same
+direction, with the same justification (one file set, evaluated once, so numerator and predicate
+cannot disagree). BR-16's next sentence draws the same consequence the REQ now draws: *"A directory
+whose only `CROSS-REVIEW-` basenames are the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md`
+files BR-06 reports as malformed reports `harvested`, not a measured ratio."* This is a faithful
+compression of the current REQ, not merely a compatible one.
+
+**The provenance sentence still holds, and it never depended on the survivor question.** BR-16 cites
+the basename *shape* from `docs/completed/pdlc-advisory-wave-gate/`, which "carries four of them
+**alongside** grammar-matching cross-reviews and so reports a measured ratio itself; only the shape is
+borrowed, not the verdict." My v10 verified the measured-ratio verdict by an argument that partly
+rested on the out-of-catalogue files counting as survivors — the very reading v1.7 withdraws — so I
+re-derived it from scratch against `origin/main` rather than carry it forward:
+
+| Family | Count in that directory | Effect on BR-16's predicate |
+|---|---|---|
+| `CROSS-REVIEW-{role}-REVIEW-v{N}.md` (out-of-catalogue) | 4 | Contributes nothing; not a survivor under v1.7 |
+| In-catalogue `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` | 58 | Cross-review family **not** entirely absent |
+| `CODE_REVIEW-pdlc-advisory-wave-gate-v{1,2}.md` | 2 | DoD family **not** entirely absent |
+| `LEARNINGS-pdlc-advisory-wave-gate.md` | present | First conjunct satisfied |
+
+Neither harvest-deleted family is absent, so `harvested` does not fire and the directory reports a
+measured ratio — under the new reading and the old one alike, because 58 in-catalogue cross-reviews
+carry the family on their own. The four out-of-catalogue files were never load-bearing for that
+verdict. The sentence is therefore not collateral damage of the erratum, and the "shape borrowed, not
+verdict" distinction it draws is exactly the distinction v1.7 makes upstream.
+
+**The `CODE_REVIEW-` half of BR-16 rests on the unchanged clause.** *"A stray
+`CODE_REVIEW-{feature}-draft.md` or foreign `CODE_REVIEW-` file does not hold the DoD family open"*
+derives from the REQ's grammar-scoped predicate ("no file matching its `CODE_REVIEW-{feature}-v{N}.md`
+grammar"), which was in my pinned bytes and did not move. The erratum's illustrative example is
+`CROSS-REVIEW-`-shaped, but the rule it states is family-neutral, so this sentence gains support
+rather than losing it. BR-14's enumeration, BR-15's rendering and `n/a` token, and BR-16's precedence
+over the zero-denominator test are all untouched by the delta.
+
+BR-06 and BR-11 are consistent with the moved clause: BR-06 reports those basenames as malformed and
+counts them in no row, which is precisely why BR-16 cannot count them as remaining. No business rule
+needs an edit.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
