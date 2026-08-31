@@ -112,6 +112,36 @@ re-triggered by this edit.
 
 ## Verification
 
+Everything below was re-derived at HEAD (`78981215`), not read off the document.
+
+| Check | Method | Result |
+|---|---|---|
+| Delta is only the pin and the entry | `git diff 64666b25..HEAD -- PLAN-*.md` | `1 file changed, 2 insertions(+), 2 deletions(-)`; lines 7 and 19 |
+| Four upstream hashes | `shasum -a 256` on each upstream file | all four match the header pins |
+| DECISIONS version label | frontmatter of `DECISIONS-pdlc-decision-ledger.md` | `Version: 1.5` — the label and the hash agree |
+| Baseline version | `Version` field of `pdlc-decision-corpus-baseline.md` | `1.2` — unmoved, as claimed |
+| Chronology of the re-grounding | `git log` ordering of v10 anchors vs DECISIONS v1.5 commits vs this edit | DECISIONS advanced after both reviews, before this edit |
+| No addition form in PLAN | `grep` for `10,859 + 1,200` and every occurrence of `12,059` | zero addition forms; `12,059` twice, both explicit non-assertions |
+| `441` usage | all three occurrences read in context | worst-case/labelled-margin usage only |
+| DEC-16 predicate transcription | read DECISIONS `## Decision` row and `## Consequences` PROPERTIES row | PLAN's clause matches in substance and in scope |
+| Task rows unmoved | diff line numbers vs row line numbers | every row below line 150; untouched |
+
+**Requirement traceability, re-checked at the two sites the delta could have disturbed.**
+`REQ-DECLEDGER-02` (P0, byte-identical dispatch stream) is proved by T-10a's flag-off arm, whose
+conjunct 3 I confirmed at v10 and which this delta does not touch. `DEC-DECLEDGER-13`'s shipped
+defaults are proved by T-09's four transcribed literals, which the sweep ranged over and left
+unchanged. Both criteria survive the round as written.
+
+**Test-discipline checks I own on the assertions the sweep ranged over.** No implementation echoes:
+T-09's expected values are hand transcriptions from the fixture, and T-07's property model carries
+its own formatter transcribed from TSPEC §4.3 rather than the production renderer. No absence-only
+oracles: T-09's AT-18 pairs the negative (the feature-level statement is absent from the block) with
+the positive (the surviving line's statement, `sourcePath` and `origin` are the project-level
+record's), and the `omitted[]`-empty conjunct on the `M-6b` slice is paired with a set equality on
+the rendered ids. Completeness by set equality rather than containment: the rendered project-level
+ids are asserted **set-equal** to the transcribed 41 and the `M-6b` ids **set-equal** to the
+transcribed 63, so a deleted case fails. All three held at v10 and are byte-identical here.
+
 ## Delta-Confirmation Findings
 
 ## Questions
