@@ -97,6 +97,55 @@ on this axis — which is the substance of F-01 below.
 
 ## Data Model
 
+**v12 F-03 (§4.3's "four constants" named only two) — resolved, and resolved normatively.** §4.3 now
+reads "the **four framing pieces** together must render to ≤ 1,200 bytes" (:900) and then answers the
+question I actually asked: "**Only two of the four are top-level constants**… the header and trailer
+sentinel lines… appear in that block as literal text and ship that way — **inline string literals
+inside `renderDecisionLedgerBlock`'s body**, not top-level bindings. That is a normative statement
+about the shipped shape, not a description of one" (:901–908). That is the right answer for a
+TSPEC: it *decides* the shape rather than describing an unwritten one, so the count this document
+pins cannot move under an implementer's discretion. The paragraph also separates the two pins
+cleanly — 1,200 bytes measures *rendered output*, fourteen counts *declarations* — which is the
+distinction whose absence produced my finding.
+
+**I re-derived the partition after the edit to confirm it did not move.** Six functions
+(`selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`,
+`parseDecisionLedgerConfig`, `buildDecisionLedgerInjector`) ∪ eight top-level constants
+(`DECISION_CORPUS_ARGV`, `DECISION_HEADING_RE`, `DECISION_LEDGER_DEFAULTS`,
+`DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, `DECISION_LEDGER_OMIT_REASONS`,
+`DECISION_LEDGER_CORPUS_OUTCOMES`, `DECISION_LEDGER_NOTICES`) = fourteen, disjoint across the
+forbidden/exempt split (TSPEC:1447 enumerates the exempt eight; the forbidden six are named in the
+same row). With the sentinels ruled inline, no fifteenth name appears. **The count is unmoved by
+this delta, exactly as the changelog claims.**
+
+**Where the delta over-claims (F-02 of this round).** §4.3's new justifying sentence says hoisting a
+sentinel to a top-level `const` "would introduce a feature-declared name absent from
+`DECISION_LEDGER_OWNED_DECLS`, which §7.3's classify-or-redden guard fires on" (:908–910). Read
+against §7.3 as specified, that guard does not fire in this case:
+
+- The set-equality conjunct compares three **frozen literals declared in the census test file**
+  (`DECISION_LEDGER_CENSUS_TOKENS ∪ DECISION_LEDGER_CENSUS_EXEMPT = DECISION_LEDGER_OWNED_DECLS`,
+  TSPEC:1447). Adding an unclassified production `const` to `orchestrate-dev.js` leaves all three
+  literals untouched and still equal — nothing reddens.
+- The resolves-to-exactly-one conjunct ranges over *members of* `DECISION_LEDGER_OWNED_DECLS`. A name
+  that is not a member is not checked.
+- The one path that *can* red is indirect: an unclassified declaration's body is not sliced out, so it
+  stays in the scanned remainder, and reddens **only if it contains one of the six forbidden tokens**.
+  A sentinel string constant contains none. So the guard fires for a newly added *data-carrying*
+  declaration and is silent for an inert one — and the sentinel is precisely the inert case the
+  sentence invokes.
+
+The normative rule ("ship inline") is unaffected and still stands on its own; what is wrong is the
+stated reason a violation would be caught. This matters because the sentence is what a future editor
+will rely on when deciding the pin is self-enforcing. The fix is one clause: say the pin is held by
+this section's normative statement, and that hoisting is caught by review against §7.3's fourteen
+rather than by a red test. I record this as Medium — it is a delta-introduced inaccuracy about a
+test's behaviour, not a change to any count, contract or acceptance criterion.
+
+The same overclaim is present in §7.3's own *Forbidden token set* row ("a symbol added later must be
+classified into one list or the other or the test reddens", :1447). Those are pre-round bytes this
+delta did not touch, so I note it as inherited rather than folding it into F-02.
+
 ## Test Strategy
 
 ## Open Questions
