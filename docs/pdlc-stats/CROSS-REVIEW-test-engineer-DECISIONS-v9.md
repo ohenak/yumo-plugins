@@ -159,3 +159,23 @@ level, a coverage claim or a co-change total.
 - K-1's four-way partition of the ten sites still covers site 10 without overlap, and the tenth
   site's "pinned by no oracle" cell is still stated in three places. A green suite will not remind
   anyone about `pdlc/README.md:231`; the document does, three times.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | The v1.6 changelog attests "Upstream re-grounded first and did not move: TSPEC HEAD is v1.4 … FSPEC HEAD is v1.5 … REQ HEAD (v1.4) matches its pin". At HEAD the three are TSPEC v1.6, FSPEC v1.7, REQ v1.6. True when written, stale now. I performed the absorption check independently and nothing is owed — REQ's halt-state withdrawal, FSPEC's BR-16 shape correction and TSPEC's §4.3 rewrite all sit outside this document's decisions — so no load-bearing claim is falsified. But the attestation is what a later round reads to decide whether to re-ground, and TSPEC v1.6's changelog documents this exact failure mode one document upstream. Fix is a one-line re-grounding note on the next DECISIONS touch | Changelog, v1.6 (erratum round 7), "Upstream re-grounded first and did not move" |
+| F-02 | Low | inherited | nonlocal | The sentence introducing the site table still reads "Four *hold* the enumerations; five *pin* them from two other packages". The prose two paragraphs below, both count breakdowns repaired at v1.6, and TSPEC §7.3 all use 5 + 4 + 1 — `pdlc/workflows/package.json`'s `c8.include` is the fifth enumeration *holder* (a transcribed member list that pins nothing; `coverageInstrumentation.test.js` is what pins it) against four pinning test files. Totals ten either way, so no count word is wrong and no falsifier, membership or K-row is affected. Carried from v8 F-01, unchanged | Options Considered / DEC-STATS-01, paragraph introducing "Option A's ten sites" |
+
+Withdrawn from v8: **F-02** ("TSPEC §7.3's 24 / 14 is stale against a measured 25 / 15") — my error,
+not the document's. Re-running both probes at HEAD returns 25 for this document's query and 24 for
+TSPEC's, and `TSPEC:211-222` states its own probe and its own 24 − 14 = 10 arithmetic. Nothing owed
+upstream on that count. v8's **F-03** is unchanged and re-routed below as the round's one `ERRATUM`.
+
+FINDING: Medium | inherited | nonlocal | Changelog, v1.6 grounding attestation | "Upstream … did not move: TSPEC v1.4 / FSPEC v1.5 / REQ v1.4" is stale at HEAD (v1.6 / v1.7 / v1.6); absorption check done this round returns nothing owed, but the attestation is what a later round reads to skip re-grounding
+FINDING: Low | inherited | nonlocal | Options Considered / DEC-STATS-01 site-table preamble | "Four hold the enumerations; five pin them" contradicts the document's own repaired 5 + 4 + 1 breakdowns and TSPEC §7.3; total is still ten and no oracle is affected
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
