@@ -27,3 +27,18 @@ off the document.
 | F-04 | Low | **Resolved, widened** | K-8 now carries the stale-provenance clause: the constants' header comment, `assertAdditiveOnly`'s *"exactly the two new members"* message and the `"vendored class size must be 5"` literal all move with the values, with the reason they are a clause and not a row |
 
 All four v3 findings are landed. The two new findings below are both introduced by this round's edit.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Cross-Feature | **The corrected B cost is measurably wrong, and the sweep that produced it cannot see why.** The document names `publish-preflight.mjs` among the sites *"B does **not** pay"* and prices B at **three** sites. But `publish-preflight.mjs:205-219` holds its own `LIB_MODULES_AT_HEAD` (12) + `LIB_MODULES_FROM_THIS_FEATURE` (3) — a second, production-side copy of the same engine `lib/` class B moves 15 → 16, feeding `expectedPackedSet()`'s both-directions PF-4 equality at publish time. B pays it. The sweep could not have caught this: it greps `pdlc/engine/__tests__/` and `pdlc/workflows/__tests__/` only, and this pinning copy is production code. The rule K-9 promotes to `DOMAIN-CONSTRAINTS.md` inherits that scope | *What the sweep found*; *Corrected cost claim*; option table row B; K-9 |
+| F-02 | Medium | Local | **The cited sweep command does not reproduce its own stated count.** `grep -rln "escalation-view" pdlc/engine/__tests__/ pdlc/workflows/__tests__/` returns **14** files at HEAD, not fifteen; 14 − 5 transcribers − `loop-cli.test.js` leaves **eight** importers, not ten. `loop-cli.test.js`'s reference count is also six (four `loop-session`, two `escalation-view`, lines 122/637/652/681/827/852), not five. The sentence *"the number is now reproducible rather than accumulated"* is the one sentence in the paragraph a reader will check first | *What the sweep found* |
+| F-03 | Low | Local | **One transcription of the same membership fact sits outside every swept directory and outside every oracle.** `pdlc/README.md:231` spells the class out in prose — *"The four workflow modules it dispatches (`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`)"* — and nothing greps it (`grep -rn "four workflow modules"` outside `docs/` returns that line alone). It is not a tenth *tested* site, so the nine-site table is right as a table of falsifiers; it is a tenth place the number goes stale silently | *Option A's nine sites*; *Standing costs accepted* |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Should the promoted constraint's query be stated over tracked sources rather than over `__tests__/`? F-01's miss is not a test — it is a production script that mirrors the enumeration deliberately (`publish-preflight.mjs:200-203`: *"a deliberate second, production-side copy of the same TSPEC §5.4 table"*). A query scoped to test directories will keep missing exactly this shape, which is the shape that runs at publish time. |
+| Q-02 | K-9 says its two files *"sit in **different** required checks … so a partial edit reds a check on either side of the package boundary"* — true and worth keeping. Is the converse recorded anywhere for K-3's site 7? `coverageInstrumentation.test.js` and `pdlc/workflows/package.json` are one pair inside a *single* check, so a partial edit there reds one check twice rather than two checks once. That asymmetry decides whether K-3 and K-9 can share a task. |
