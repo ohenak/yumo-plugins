@@ -67,3 +67,7 @@ to. Q-02 is not a REQ defect but is worth a half-sentence downstream, since the 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 2}
+
+APPROVAL-HASH: sha256:71ecf55740411bb44e15296e9da53ea37263fd22af3b8f8d534f6d2f4bdb7fdf
+APPROVAL-HASH-NORMALIZED: sha256:71ecf55740411bb44e15296e9da53ea37263fd22af3b8f8d534f6d2f4bdb7fdf
+REVIEWED-COMMIT: bb6f56af27962a1a8ba046c79dceaf8eb8d91178
