@@ -64,8 +64,42 @@ AT-15, AT-18, AT-19, the new §6.10 and §6.11, D-7, D-8, §7.3, A-3). No High f
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Is the "same root message" in AT-27 meant as byte-identity across the absent and unreadable conditions, or as "a root message rather than a not-found message"? EC-09's absent/unreadable clause makes the two readings mutually exclusive. (F-02) |
+| Q-02 | Does the `--json` not-found error object have a fixed key set, and if so is it hoisting `schemaVersion` like the success document does? A caller that must branch on `error` needs the same stability guarantee REQ-STATS-02 gives the success shape. (F-04) |
+| Q-03 | Is AT-13's fixture a copy of `docs/completed/pdlc-wave-resume/` into a temporary root, or the real directory with the two extra files somehow supplied out of band? (F-03) |
+
 ## Positive Observations
+
+- **Every one of the three blocking findings was closed with a rule *and* an oracle, not a rule alone.** F-01 could have been answered with D-8's paragraph; it also landed AT-09's real-path half with three literal conjuncts. F-02 could have been answered with BR-23's third key; it also landed AT-19's "three, no more" set-equality plus the `unclassified` ↔ marked-rows agreement in AT-06's fleet half. That is the difference between a document that has decided something and a document a test can be written from.
+- **The §6 preamble generalises F-03's fix instead of patching the one AT.** "A real-path test states its expectation as a **literal**, never as 'whatever the mechanism derives' — an expectation computed by the code under test agrees with a wrong implementation" is the rule, and the re-measurement licence beneath it ("permitted to be re-measured when the archive changes; what is not permitted is replacing the literal with a derivation to avoid re-measuring it") anticipates exactly the pressure that would otherwise erode it when `docs/completed/` next moves. Both AT-10 and AT-12 were converted in the same edit, so the rule ships with its instances.
+- **AT-13's companion fixture states *why* the pair falsifies.** "An implementation that returns one classification for every input passes either half alone and fails the two together" is the reasoning a test author usually has to reconstruct, written down where it will survive into the TSPEC. AT-15's removal probe carries the same explanation for set-equality versus containment, and AT-02's byte-identity replacement names the failure mode it defeats (a merged read deduplicating by basename).
+- **§6.11's two tables turn coverage into a mechanical check.** BR-01…BR-30 and EC-01…EC-21 each appear exactly once, with the one deliberate non-coverage (EC-03 as a rule-only edge) called out rather than silently omitted. A rule added to §4 without an AT is now visibly a missing row, which is what made F-01 and F-06 above cheap for me to find — the document does the enumeration work its reviewer would otherwise do by hand.
+- **§7.3 routes the upstream half of F-01 as an erratum instead of quietly fixing it downstream.** D-8 follows REQ-STATS-03 literally, records the cost in the same breath ("a pipeline-authored artifact reading as 'malformed'"), and hands the wording decision back to the REQ. Inventing a third bucket here would have been an independent parsing rule and a C-5 divergence in one move; the document declines both and says so.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No open High findings. All three of v1's blocking findings are resolved, each with the rule and the
+falsifiable oracle, and the revision broke nothing I had approved: the coverage tables added this
+round are complete, the new ATs (AT-25 through AT-28) close the seven previously untested edge
+cases, and the real-path literals I re-measured against HEAD (four `REVIEW` files and TSPEC `6` in
+`pdlc-advisory-wave-gate`, TSPEC `13` in `pdlc-headless-engine`, `RESOLVED: yes` at line 3 of the
+`pdlc-wave-resume` post-mortem, PLAN-only `pdlc-halt-hardening`) all hold.
+
+The four Mediums are single-clause edits and none contests a decision the FSPEC was right to make.
+Two are ordinary oracle hygiene on material this round introduced (BR-13's newly-named collation has
+no multi-halt fixture, F-01; AT-25 asserts "unchanged" against no baseline, F-05). Two are worth
+landing before TSPEC because they are the kind of ambiguity that becomes an arbitrary implementation
+choice: AT-27 and EC-09 disagree about whether the absent and unreadable root messages are the same
+string (F-02), and BR-20's newly widened promise of a JSON document on the not-found path meets a
+payload with no defined key set (F-04) — the one machine-readable shape a consumer hits when
+something is wrong, and the only JSON path whose oracle is currently absence-shaped. F-03 is a
+fixture-construction clause that also protects the other real-path ATs from a polluted tree.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 4, "low": 2}
