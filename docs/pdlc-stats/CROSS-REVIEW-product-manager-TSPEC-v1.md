@@ -40,3 +40,39 @@
 - **The two FSPEC gaps the author found are routed, not silently patched.** §8.3 raises the missing feature-recognition predicate and BR-25's incomplete loose-file illustration as errata against the FSPEC instead of inventing REQ-level meaning in a TSPEC. That is the right channel and it is what F-07 asks only to be made provisional, not to be undone.
 
 ## Recommendation
+
+**Needs revision**
+
+Four High findings, so this is mandatory rather than a judgement on the document — which is otherwise
+the most structurally-defended TSPEC this feature could have asked for. Three of the four cluster in
+one place: **REQ-STATS-02's machine-readable contract is the one P0 the design does not pin down.**
+The other is an oracle that cannot fire.
+
+Exactly what must change before approval:
+
+1. **F-01** — introduce `schemaVersion` into the JSON contract (§4.2), fixed at `1`, and assert its
+   presence in §6.3's oracle. Today the identifier does not occur in the document.
+2. **F-02** — state the emitted top-level key sets explicitly: five for single-feature
+   (`schemaVersion`, `reviewRounds`, `dodRounds`, `halts`, `byteRatio`), three for fleet
+   (`schemaVersion`, `features`, `unclassified`), three for the error object (`schemaVersion`,
+   `error`, `feature`) — and name the projection that drops `FeatureStats.feature` and
+   `FeatureStats.dir`. Assert each by set-equality against a literal transcription of BR-21 / BR-23 /
+   BR-30, never by deriving the expectation from the type under test.
+3. **F-03** — add the fifth anti-drift oracle: `NON_FEATURE_DIRS` set-equal to the non-feature
+   directory names at the repository's `docs/` root, and map AT-19 onto it in §6.
+4. **F-04** — repair §6.4's doc-type catalogue probe to use a real role slug
+   (`software-engineer` / `product-manager` / `test-engineer`, per `orchestrate-dev.js:10037-10044`)
+   and assert the accepted set by set-equality over the six rows.
+
+The three Mediums (F-05 citation, F-06 unstated BR-16 reading, F-07 provisional discovery predicate)
+and the Low (F-08 traceability granularity) should be addressed in the same pass but do not
+themselves gate.
+
+Nothing in §2, §3.1–§3.2, §4.3's metric arithmetic, §5 or §6.5 needs to change. The reuse decision,
+the seam design, the fail-closed halt mapping and the read-only proof are all product-faithful as
+they stand.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 3, "low": 1}
