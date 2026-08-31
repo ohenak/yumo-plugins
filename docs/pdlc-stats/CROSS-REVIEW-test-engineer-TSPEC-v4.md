@@ -236,3 +236,8 @@ FINDING: High | delta | local | §6.4 (classifier-purity row and its paragraph) 
 FINDING: Medium | delta | local | §2.1 (co-change table; "sweep-derived" paragraph; §7; RK-1) | The sweep §2.1 now declares authoritative also returns `pdlc/README.md:231`, which enumerates the vendored class and states its size ("four workflow modules … are vendored"); it is omitted from the nine and pinned by no oracle, so it goes stale in silence. Add it as a tenth site, move the four synchronised counts, and give it an owner or name it in RK-1's residue.
 FINDING: Medium | delta | local | §2.1 (`loop-distribution.test.js` row) | "Seven assertion edits" omits an eighth: the D-4 document oracle's `vendoredClassWord` ternary (`=== 5 ? "five"`), which must move to `6`/"six" or the oracle reds after a checklist-complete edit because it matches the sibling FSPEC's word, not its digit.
 FINDING: Low | delta | local | §2.1 (`coverageInstrumentation.test.js` row) | The row omits P9-02's "exactly the six modules the feature owns" test title (→ seven), while the parallel `learningsPremises.test.js` row does name its title; no assertion is affected.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
