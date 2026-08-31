@@ -81,7 +81,7 @@ Every cost below was measured against the tree at HEAD, not estimated.
 
 | Option | Location | Enumeration co-change (verified) | Coverage gate (verified) |
 |---|---|---|---|
-| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | five edit sites; vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass |
+| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | five edit sites; vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass — **contingent on K-3's two conjuncts**: c8 opens only what `include` matches (`all` is not set), so an unincluded module produces no per-file entry and the second stage has nothing to check |
 | B | `pdlc/engine/lib/stats.mjs` | engine `lib/*.mjs` class 15 → 16 (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3), plus the same `tspecPackedCount` amendment | **none** — `pdlc/engine/package.json`'s only test script is `node __tests__/_run-suite.mjs`; the package declares no `c8` block and no coverage dependency at all |
 | C | inline in `pdlc/engine/bin/cli.mjs` | none | **none**, same reason as B |
 | D | `pdlc/workflows/lib/stats.mjs`, **not vendored** | none | same as A |
