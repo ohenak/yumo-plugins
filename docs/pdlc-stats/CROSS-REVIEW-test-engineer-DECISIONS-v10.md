@@ -205,3 +205,6 @@ FINDING: Low | inherited | nonlocal | Options Considered / DEC-STATS-01, site-ta
 FINDING: Low | inherited | nonlocal | v9/v8 UPSTREAM-STATE trailers (cascade mechanism) | Two consecutive rounds recorded a TSPEC pin resolving to no version in history (512a9fcf…, 235fd3dd…) while their bodies measured real hashes; the trailer pin should be emitted from the body's measurement and a non-resolving pin treated as fail-closed.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
