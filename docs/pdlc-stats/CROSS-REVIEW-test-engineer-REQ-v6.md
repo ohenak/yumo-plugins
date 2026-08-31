@@ -193,3 +193,6 @@ FINDING: Medium | inherited | nonlocal | §2 Goals, G-3 | G-3's "artifacts missi
 FINDING: Low | inherited | nonlocal | §4 C-4 doc-type placeholder | C-4's open {doc-type} placeholder admits CROSS-REVIEW-{role}-REVIEW-v{N}.md as a REQ-STATS-06 survivor while REQ-STATS-03 classifies the same real files as malformed under the driver's closed REVIEW_DOC_TYPES catalogue.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
