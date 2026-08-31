@@ -127,7 +127,24 @@ The one thing the delta gets factually wrong is bookkeeping, not test design —
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | v1.2's changelog states that PM F-01 is "**not** addressed and not this document's fix: `PLAN` v0.7 still carries the retired fifteen-member owned list and a production home for `DECISION_LEDGER_CENSUS_TOKENS`". Both halves are false against the repository at HEAD. `PLAN-pdlc-decision-ledger.md` is at **v0.8**, not v0.7 (line 19), and v0.8 is exactly the erratum round that made this correction: commits `0c3c71d7c` ("remove T-18's production census-constant instruction"), `2a13b74a7` ("re-assign census-constant ownership to T-11's test file") and `cc386ebae` ("correct Definition of Done census bullet to fourteen owned decls"), all dated **2026-08-29**, a day before this changelog entry's own date (`3a17387d6`, 2026-08-30). PLAN's T-11 row now reads "**six ∪ eight = fourteen**" with all three census constants homed in `decisionLedgerCensus.test.js`, and T-18 now says "this task writes **no census constant**". The entry describes a state that was already repaired when it was written, and routes an erratum for work that has landed. The document's contract is unaffected — no operand, count, budget or oracle depends on this sentence — which is why it is Medium and not High. Fix: re-measure PLAN at HEAD and record it as **v0.8, corrected downstream-to-here as §7.3 directs**, closing PM F-01 as resolved-downstream rather than leaving it open. | §Revision history, v1.2 entry (document lines 24–27) |
+
+**Scope note.** F-01 is `Local`: it is a stale bookkeeping measurement inside this document's own
+changelog, not a testing constraint that generalises. It is `delta`/`local` — the v1.2 entry
+introduced it, and it sits inside the hunk this edit changed.
+
+No High findings. My v12 F-01 (Low) is resolved and is not carried forward.
+
 ## Deferred
+
+Recorded under DECISION FREEZE as observations, not blocking findings, and not requesting an edit in
+this round:
+
+DEFERRED: §4.3's inline-sentinel normative rule is stated in prose only; a future round could give it a one-line test row (e.g. "no top-level `const` whose value is either sentinel string") so the rule is machine-checked rather than convention-checked, though §7.3's classify-or-redden guard already covers it indirectly.
+DEFERRED: §4.3's 1,200-byte framing pin does not name the extraction method for "framing" (render with ≥1 decision, subtract the decision lines); PROPERTIES is the right home, and Q-01 records it there rather than here.
+DEFERRED: §7.3's precedence rule ("this paragraph is right and the row is the defect") is the correct disambiguation, but nothing mechanically detects paragraph/row disagreement — a set-equality assertion over the enumerated members' count versus the pinned numeral would, if a future round wants the count itself oracle-covered.
 
 ## Positive Observations
 
