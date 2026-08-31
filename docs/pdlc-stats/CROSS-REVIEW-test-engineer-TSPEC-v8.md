@@ -177,3 +177,68 @@ through the other disjunct whatever the cross-review side said. §6.1's AT-09 ba
 asserts `TSPEC` row = `6` with the four basenames in `malformed` (`reason: "bad_doc_type"`), which is
 consistent with the 4/58 split and unaffected by either reading, since AT-09 asserts a round index
 and a malformed listing, not a ratio.
+
+## Open Questions
+
+**The `§7.2's AT-09 row` citation points at the wrong section (F-02).** This round introduces the
+same mis-citation twice: the changelog at `TSPEC:32` ("§7.2's AT-09 row and §6.1's baselines already
+carried the four-file count") and §4.3 at `:766` ("§7.2's AT-09 row and §6.1's measured baselines
+already record the same four-file count").
+
+There is no AT-09 row in §7.2. §7.2 (`:1218`) is "FSPEC open item → decision", a four-row table over
+`O-1`…`O-4`. The AT-09 row is in **§6.1**, at `:926` — the measured-baseline table the same sentence
+already cites correctly by its other half. So the claim is true and the evidence is real; only the
+pointer is wrong, and the correct pointer is sitting in the same clause.
+
+Low, and non-gating: no oracle, expected value or count depends on it, and a reader who follows the
+§6.1 half finds everything. I file it rather than waive it because §4.3's whole purpose in this
+revision is to tell a future re-stamper where things live, and a re-stamper who opens §7.2 finds an
+unrelated table and may conclude the row was already removed. Both occurrences should change to §6.1
+in the same edit.
+
+**Why F-01's REQ/FSPEC conflict is not counted against this document.** Round 7 tagged it
+`inherited` precisely so it would route to the owning phase rather than halt. It has now been routed
+— §8.3 carries it as an open erratum with both readings quoted, both version pins current, and an
+explicit note distinguishing it from the closed E-1 item ("E-1 was bare glob versus grammar, settled
+at REQ v1.4 in favour of the grammar. The live question is narrower"). That distinction is worth
+calling out: re-routing a settled question is `DEC-ERR-01`'s anti-pattern, and the document guards
+against it by name.
+
+The conflict remains live upstream — I confirmed `REQ:205`–`:206` and `FSPEC:371`–`:372` still say
+opposite things about the same basename. It is re-raised as an `ERRATUM: REQ` line in my response
+rather than as a finding here, per the erratum channel: the defect is in the upstream pair, and the
+document in front of me now reports it accurately instead of misreporting it. Note that when the
+owning phase reconciles, F-01 above means the reconciliation must also settle the **byte-side**
+question (does the out-of-catalogue basename contribute process bytes?), not only the
+harvested/measured question. Settling one and not the other would leave AT-15 and AT-17 disagreeing.
+
+**Still open, unchanged, correctly still open.** BR-26/EC-10 remains a TSPEC→FSPEC erratum with its
+circular feature-recognition predicate; §4.4 still ships its discovery predicate as
+stated-provisional with the blast-radius table; RK-1's two un-oracled residues (`PK-26`'s existence
+row, `pdlc/README.md`'s prose count word) remain named accepted residue rather than implied coverage.
+I re-checked that this round's §8.3 edit did not sweep any of these closed by association. It did not
+— the BR-26 bullet is byte-identical and the count moved one → two, not one → one.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both round-7 findings are discharged. F-02's changelog correction is accurate and I verified it
+against the upstream version rows rather than its own account. F-01 is resolved as far as this layer
+can resolve it: the false REQ citation is gone, the BR-16 pin is current at v1.7, the archive-directory
+citation is correctly re-scoped from verdict to basename shape with re-measured counts (62 / 4 / 58,
+all three confirmed at HEAD), and the REQ-versus-FSPEC conflict is routed to §8.3 rather than guessed.
+AT-17's fourth leg carries both readings and names itself as the row to re-stamp, which is the right
+way to hold a contested expectation without blocking implementation.
+
+No open High remains against this document. The two new findings are non-gating and both fixable in
+one targeted edit:
+
+- **F-01 (Medium)** — drop §4.3's claim that AT-15's byte half is "unaffected by the dispute" (the
+  reason given concerns spec-side bytes; AT-15 pins *neither*-side, and REQ v1.6's C-4 membership
+  gives the file **process**-side bytes). Extend the re-stamp list from three sites to four by adding
+  §4.3's byte-membership paragraph, and qualify "no oracle depends on the outcome" to name AT-15.
+- **F-02 (Low)** — correct "§7.2's AT-09 row" to "§6.1's AT-09 row" at `:32` and `:766`.
+
+Neither blocks Phase T. The upstream REQ-STATS-06 / BR-16 reconciliation is raised separately as an
+erratum and should settle the byte-side question at the same time as the harvested/measured one.
