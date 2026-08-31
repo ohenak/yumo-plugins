@@ -40,3 +40,30 @@ FINDING: Low | delta | local | Verification → "Claims verified against the tre
 | Q-01 | T-22 amends two documents of an **archived, approved** feature (`docs/completed/pdlc-engine-distribution/`'s TSPEC §5.4 and FSPEC §5.2). The PLAN handles this properly — `DEC-STATS-01` `K-7`'s carve-out, one owning task, a changelog row in each naming this feature. Is there a standing project rule on amending a completed feature's frozen specs, or does this feature's carve-out establish the precedent? If the latter, it is worth promoting alongside F-01's constraint so the next feature does not re-litigate it. |
 | Q-02 | REQ-STATS-07 fixes the exclusion set "asserted set-equal so a directory added later **fails** rather than silently joining the report", while FSPEC EC-10/BR-26 decide that such a directory is reported as an `unclassified` entry and the report still prints (exit 0). Both are delivered — T-08 owns the set-equality oracle that fails at test time, T-05/T-06 own the `unclassified` reporting — so I read this as "fails in CI, surfaces to the operator at runtime" rather than a contradiction. Confirming that reading is the intended one, since REQ's word is "fails" unqualified. |
 | Q-03 | T-27 puts `pdlc stats`'s flag semantics, exit codes and read-only stance in `pdlc/OPERATIONS.md`, and T-21 adds the command bullet to `pdlc/README.md`. Neither task adds a row to the `## Plugins in this repo` / skills tables in the repo-root `CLAUDE.md`. Is `pdlc stats` deliberately out of that file's scope because it is an engine CLI subcommand rather than a skill? I believe yes, but the PLAN does not say so and a DoD reviewer may flag the absence. |
+
+## Positive Observations
+
+- **Acceptance-test coverage is genuinely complete, and I could not break it.** All 29 FSPEC ATs are assigned, and tracing through the FSPEC's own `BR-01…BR-30` → AT map found no orphan business rule. That closes the product question I care most about here: REQ R-6 (harvested evidence reading as a genuine zero, "corrupting any baseline over `docs/completed/`, where most features are already harvested") is the risk this feature exists to avoid, and all three harvested states have a landing task — `BR-08→AT-10→T-18`, `BR-11→AT-12→T-04`, `BR-16→AT-17→T-04` — with T-26's mutant set explicitly swapping `unmeasurable`/`harvested` and pitting BR-16's harvested test against BR-15's zero-denominator test. The state REQ-STATS-03/04/06 invented is the state the mutation budget is spent on.
+- **The real-path fixtures are measurements, and they are accurate.** Every literal T-18 pins was checkable and every one checked out — including the non-obvious `pdlc-headless-engine` case, where exactly one cross-review survives beside `LEARNINGS-*.md`, which is what makes "TSPEC 13, five rows harvested" a real partial-harvest witness rather than a constructed one. Declaring each literal a measurement in its own comment (RK-4, and the `doc-moves-break-pinned-tests` pattern) is the right disposition: re-measure, never path-rewrite.
+- **No scope creep.** I looked for behavior the PLAN implements that the REQ does not ask for and found none. The one candidate — the `unclassified` outcome, which appears nowhere in the REQ — traces cleanly to FSPEC BR-26/EC-10 and is carried as a *provisional* predicate with an open erratum and a named blast radius (RK-5, T-14). That is the correct way to carry an undecided product question into implementation: implement, mark provisional, name what changes under each answer. Equally, nothing the REQ requires is missing.
+- **The residual-risk table is honest and correctly filtered.** It states "None is closed by a task here" and then lives up to it: the three TSPEC residuals it omits (`RK-2`, `RK-3`, `RK-6`) are each genuinely closed by a task (T-10, T-08, T-11). A table that padded itself with already-closed risks would be easier to write and worth less. Naming `pdlc/README.md`'s unpinned prose enumeration as "drift here is silent" is exactly the kind of thing a DoD reviewer needs handed to them.
+- **The ordering argument is load-bearing, not decorative.** T-20's deliberately-red vendoring oracle gating batch 10 converts `K-1`'s "a partial edit ships an engine whose `pdlc stats` fails only for installed users" from a discipline problem into a mechanical one. Given RK-1 — that this failure is invisible in a checkout and visible only to installed users — closing it by ordering rather than by a checklist is the difference between a promise and a guarantee.
+- **The PLAN caught a pre-existing defect while reading, and owns the fix.** T-24 notes that P9-02's title and comment carry stale count words ("six" against a seven-entry `c8.include`). I confirmed this at HEAD. Fixing a neighbouring inaccuracy you had to read anyway is how a codebase stays honest.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High findings: every P0 and P1 acceptance criterion in the REQ has a landing task, no acceptance criterion is narrowed or reinterpreted, and nothing out of scope is introduced. The PLAN is ready to proceed to PROPERTIES; the four findings below can be addressed in the same revision or folded into implementation, with one exception worth doing before T-21 runs.
+
+Changes requested, in priority order:
+
+1. **F-01 (do this before T-21 lands, not after).** Scope the constraint T-21 promotes to `docs/_constraints/DOMAIN-CONSTRAINTS.md` by runtime-reachability rather than by `lib/` membership, and cite `document-oracles.mjs` as the worked exclusion. This is the only finding with consequences beyond this feature: once the over-broad wording is in `DOMAIN-CONSTRAINTS.md`, every future feature inherits it. No task ordering or batch structure changes.
+2. **F-02.** Correct the `pdlc/workflows/lib/` bullet in "Claims verified against the tree" to name all three modules and say which are vendored.
+3. **F-03.** Change "owned by exactly one task" to "owned by at least one task, and each split is named."
+4. **F-04.** 20 helper modules, not 21 — or drop the count.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
