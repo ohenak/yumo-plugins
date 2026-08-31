@@ -956,8 +956,10 @@ lesson from `pdlc-loop-economics`'s LEARNINGS F-4, applied before it recurs.
 
 **But this oracle is not what reds first, and the PLAN should not assume it is.** It ships with this
 feature; `pdlc/engine/__tests__/loop-distribution.test.js` — §2.1's sixth site — is at HEAD already,
-and its `assertAdditiveOnly` length equality fires the moment the first of the four enumerations is
-edited, before the new oracle exists. Behind both sit `run.test.js`'s manifest `deepEqual`s and
+and its `assertAdditiveOnly` length equality fires the moment the first of the **four script-side
+enumerations** (§2.1's sites 1–4: `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs`,
+`_tspec-packed-set.mjs`) is edited, before the new oracle exists. "Four" here is the subset this
+oracle reaches, not §2.1's ten-site total. Behind both sit `run.test.js`'s manifest `deepEqual`s and
 process-entry `ENOENT` leg and `learningsPremises.test.js`'s P-1 array-equality over the parsed
 `MODULE_NAMES` — sites 8 and 9, and they sit in *different* required checks (`Engine tests
 (ubuntu-latest)` and `Unit tests (ubuntu-latest, node 20)` respectively), so a partial edit reds a
