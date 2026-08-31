@@ -139,3 +139,54 @@ revision introduced no defect in any decision — it retired a paid debt, fixed 
 scoped two changelog entries to their own versions, and all three land correctly. The one factual
 gap it did introduce sits on a bookkeeping attestation with no downstream consumer, so it is
 recorded at Medium and does not gate. **DECISIONS v1.7 holds as approved.**
+
+## Consequences
+
+**For Phase D / PLAN.** Not blocked, and nothing PLAN reads has moved. PLAN consumes the ten-site
+co-change table, the K-row partition and the falsifier column; all three are byte-identical apart
+from K-3's routing sentence, which changes no number, no obligation, no owning task and no falsifier.
+No task boundary or ordering moves.
+
+**For the implementer — one thing worth stating plainly.** The implementation on this branch already
+did what K-1/K-2/K-3 asked: `MODULE_NAMES` is at five with `lib/stats.mjs` appended,
+`c8.include` is at eight with the `**/`-anchored path-qualified entry. The three warnings that
+mattered still matter for the remaining sites: P9-02 asserts `toEqual`, so the new entry's **index**
+must match in `package.json` and in the test literal; the copied class (`MODULE_NAMES`, 4 → 5) and
+the vendored class (`_tspec-packed-set.mjs`, 5 → 6) are one apart and must **never** be synchronised;
+and K-9's `pdlc/README.md` site — count word *four* → *five* plus the member list — is still the one
+row with no red test behind it, so it is the one a green suite will not remind anyone about.
+
+**For upstream.** Nothing is owed from this document. REQ, FSPEC and TSPEC all moved this round and
+all three moves are absorbed here without an amendment to any decision. I am **not** raising an
+erratum for the same baseline-versus-HEAD staleness in TSPEC §2.1, and the reasoning is deliberate: it
+is not a defect in TSPEC's content but an artefact of design documents being pinned to a pre-feature
+baseline while their own implementation lands on the same branch. Routing it upstream would start a
+re-measurement round that every subsequent implementation commit would invalidate again. It belongs in
+the process record, which is where I have put it.
+
+**On the erratum channel, a positive observation worth carrying to harvest.** This is the first round
+of the eight where the channel closed findings rather than absorbing an upstream change: two Lows
+carried since v6 were repaired in three commits totalling +51/−7, with no decision re-opened and no
+downstream re-confirmation obligation created. The disposition of the fourth item is the part worth
+preserving — the non-resolving TSPEC dispatch pin was correctly identified as a **workflow-side**
+defect that no document edit could fix, and routed to harvest rather than pushed upstream as a
+document erratum. Correctly refusing to route something is as much a sign of a healthy channel as
+routing it.
+
+**On K-3's shape, corroborating v11.** At v11 I observed that DEC-STATS-03 held under an upstream
+change because it was framed as a constraint (*"never diverge from the driver's classification"*)
+rather than as a list. K-3 now shows the same property from the other side: because the row kept the
+**correct arithmetic** while the disagreement was open, retiring the divergence required deleting a
+routing sentence and nothing else — no number moved when TSPEC came into line. Carrying the right
+value and flagging the disagreement, rather than matching a number known to be wrong, is what made
+the eventual repair a two-word edit. Worth promoting at harvest.
+
+DEFERRED: design documents pin *"Members at HEAD"* baselines that their own implementation
+invalidates once it lands on the same branch — the pipeline has no convention for marking such a
+column baseline-scoped, so a re-grounding round can attest to a measurement that is no longer true.
+A *"measured at commit `X`"* stamp on baseline tables would fix it generically.
+
+DEFERRED (now closed from this document's side, recorded for harvest): the dispatch's TSPEC pin not
+resolving to any branch revision — five rounds affected, disposition correctly diagnosed at v1.7 as a
+workflow-side trailer defect (emit the trailer from the body's measurement; treat a pin resolving to
+no revision as fail-closed).
