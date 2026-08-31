@@ -44,7 +44,25 @@ text as it now reads.
 
 ## Batches
 
-_(pending)_
+Every PLAN row that touches REQ-STATS-06's ratio, re-measured against REQ v1.7 / FSPEC v1.7 at HEAD.
+The PLAN cites no REQ section directly — its only REQ reference is the lineage row at
+`PLAN-pdlc-stats.md:9` and `REQ C-5` in the Overview — so the cascade reaches it through FSPEC BR-14…BR-16
+and TSPEC §4.3. That indirection is what makes this confirmation cheap, and it is worth stating
+plainly rather than treating as an accident.
+
+| PLAN row | What it leans on | REQ v1.7 reading | Holds? |
+|---|---|---|---|
+| **T-04** — `computeFeatureStats` reds, "byte ratio (AT-15 incl. the removal probe, AT-16, **AT-17's four directories**)" (`PLAN:96`) | FSPEC AT-17, whose fourth leg is the directory "holding `CODE_REVIEW` files intact plus, as its only `CROSS-REVIEW-` basenames, the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form BR-16 names," expecting `harvested` (`FSPEC:749-757`) | REQ-STATS-06 v1.7 now states the same outcome for the same shape in its own words — "reports **harvested**, not a measured ratio" | **Yes.** The leg PLAN owns was the contested one; it is now the decided one. No expected value changes. |
+| **T-04** — the `unmeasurable`/`harvested` mutant's dedicated fixture (`PLAN:96`) | TSPEC §6.6 mutant set; branch order harvested-before-zero-denominator | REQ-STATS-06 is silent on precedence ("How much of the numerator harvest removes is not asserted here"); BR-16 owns it, unchanged | **Yes.** Untouched by the erratum. |
+| **T-18** — AT-09 over `docs/completed/pdlc-advisory-wave-gate/`: "TSPEC row `6`, four `…-REVIEW-v{1,2}.md` basenames malformed" (`PLAN:110`) | REQ-STATS-03's malformed classification, not the ratio | REQ v1.7 *strengthens* the tie — it now cites "the same one REQ-STATS-03 reports malformed (C-5)" as the basis for the harvested reading | **Yes**, and the erratum removes the tension that previously made one basename malformed under REQ-STATS-03 and a survivor under REQ-STATS-06. BR-16 still classes this directory itself as a measured ratio because it also carries grammar-matching cross-reviews ("only the shape is borrowed, not the verdict", `FSPEC:373-374`); PLAN never claimed otherwise. |
+| **T-18** — AT-10 (`pdlc-headless-engine`, "five rows `harvested`") (`PLAN:110`) | Per-document-type harvested split, BR-08 | Unchanged by the erratum | **Yes.** |
+| **T-26** — mutation evidence, "swap BR-16's harvested test with BR-15's zero-denominator test" (`PLAN:118`) | BR-16 precedence | Unchanged | **Yes.** |
+| **T-08** — doc-type set-equality over `REVIEW_DOC_TYPE_ROWS` (`PLAN:100`) | C-4's grammars as the driver catalogue | REQ v1.7 leans harder on the catalogue being *the* discriminator, which is exactly what this oracle pins | **Yes**, and marginally better motivated than before. |
+
+**No PLAN task acquires, loses or changes an acceptance criterion.** The AC coverage table
+(`PLAN:300-327`) assigns AT-17 to T-04 and AT-15 to T-04 plus T-18; both assignments are unchanged and
+both remain correct against the FSPEC at HEAD. No task was written to the withdrawn survivor clause,
+so nothing needs restoring; no task now over-covers, so nothing is scope creep.
 
 ## Dependencies
 
