@@ -100,7 +100,44 @@ clause that v1.7 deleted — the withdrawn sentence was never quoted or leaned o
 
 ## Edge Cases and Error Scenarios
 
+No edge case is added, removed or re-valued by the delta. EC-12 (zero spec bytes → `n/a`) and EC-13
+(harvested wins over `n/a`) stand at approved bytes, and their §8 trace rows are untouched.
+
+EC-13 deserves one sentence because it is the edge case nearest the absorbed contradiction. Its
+precedence claim — harvested evaluated before the zero-denominator test — is orthogonal to what
+upstream decided. REQ v1.7 settled *which files count as remaining*; EC-13 settles *which test runs
+first*. A directory that is harvested and has zero spec bytes still reports `harvested`, and that is
+still the single configuration on which the two orders disagree. The withdrawal does not collapse
+that configuration or make it unreachable, so EC-13 keeps a falsifying fixture and does not become
+vacuous. This is the failure mode I was looking for and it is absent.
+
 ## Acceptance Tests
+
+AT-17 is the acceptance test the absorbed item lives in, and it is correct at HEAD without an edit.
+Its fourth leg (FSPEC:758–766) already specifies a directory "holding `CODE_REVIEW` files intact
+plus, as its only `CROSS-REVIEW-` basenames, the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md`
+form BR-16 names", expecting `harvested` — "the fourth not a measured ratio, because files whose
+bytes BR-14 refuses are equally files BR-16 does not count as remaining". That is precisely the
+outcome REQ v1.7 now mandates. Under the withdrawn clause this leg would have been *wrong*; the
+withdrawal makes it right. Nothing to change, and the previously-approved expected value survives.
+
+I verified the erratum's forward citation rather than accepting it, since a nonexistent-authority
+citation has shipped on this pipeline before. PROP-RATIO-08 (`PROPERTIES-pdlc-stats.md:173`) does
+carry four AT-17 legs, and its fourth is "`CODE_REVIEW` files **intact** alongside only
+out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` basenames", noted as "the one that proves the
+condition is a disjunction rather than a DoD-side test". The fixture backing it, `F-HARVEST-FOUR`
+(PROPERTIES:331), enumerates the same four directories. The erratum's claim that "PROP-RATIO-08's
+fourth leg asserts that same outcome" is accurate as written.
+
+Two further checks against my own review checklist. The oracle is not absence-shaped: PROP-RATIO-08
+asserts three positive conjuncts — exact `state` string, the `ratio: null`, and the retained
+`processBytes`/`specBytes` — and PROPERTIES:272 records that `state !== "measured"` is never the
+assertion. And the precedence chain has a defeating fixture (PROP-RATIO-09, PROPERTIES:278), so the
+harvested-before-zero-denominator branch cannot false-green on a fixture that reaches only the
+earlier branch. Both properties are unaffected by the delta and remain falsifiable.
+
+The §8 traceability matrix needs no re-derivation: BR-16 → AT-15, AT-17 and BR-14 → AT-15 are the
+rows v1.7 already fixed, and the erratum edits no matrix row.
 
 ## Open Questions
 
