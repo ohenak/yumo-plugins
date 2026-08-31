@@ -39,7 +39,7 @@ const DEFAULTS = Object.freeze({ enabled: false, maxEntries: 70, maxBytes: 12500
 
 // ─── T-13 conjunct 1: exported symbols exist, declared shape (TSPEC §4.1) ────────────────
 
-describe.skip("T-13: DECISION_LEDGER_DEFAULTS / parseDecisionLedgerConfig exports", () => {
+describe("T-13: DECISION_LEDGER_DEFAULTS / parseDecisionLedgerConfig exports", () => {
   test("DECISION_LEDGER_DEFAULTS is exported frozen with C-3's three keys, C-5's values", () => {
     expect(devModule.DECISION_LEDGER_DEFAULTS).toEqual(DEFAULTS);
     expect(Object.isFrozen(devModule.DECISION_LEDGER_DEFAULTS)).toBe(true);
@@ -50,13 +50,26 @@ describe.skip("T-13: DECISION_LEDGER_DEFAULTS / parseDecisionLedgerConfig export
   });
 });
 
+// ─── T-13 conjunct 8: DECISION_LEDGER_NOTICES set-equality (TSPEC §4.4) ──────────────────
+// The frozen notice-id catalogue this config layer can emit — set-equal to the two ids the
+// TSPEC table names, nothing more and nothing fewer.
+
+describe("T-13: DECISION_LEDGER_NOTICES set-equality", () => {
+  test("DECISION_LEDGER_NOTICES is frozen with exactly NTC-DECLEDGER-MALFORMED and NTC-DECLEDGER-KEYTYPE", () => {
+    expect(Object.isFrozen(devModule.DECISION_LEDGER_NOTICES)).toBe(true);
+    expect(new Set(Object.keys(devModule.DECISION_LEDGER_NOTICES))).toEqual(
+      new Set(["NTC-DECLEDGER-MALFORMED", "NTC-DECLEDGER-KEYTYPE"])
+    );
+  });
+});
+
 // ─── T-13 conjunct 2: baseline degraded cases — F-1, F-2, F-3 / PROP-CFG-01 ──────────────
 // `text === null` (file absent/unreadable), non-JSON text, and an absent `decisionLedger` block
 // all resolve to the three C-5 defaults with `sectionMalformed: false` and `invalidKeys: []` —
 // and, per F-1…F-3, none of these three is notice-worthy (the parser's own return shape carries
 // no notices field; notice emission is wired downstream of this pure function).
 
-describe.skip("T-13: parseDecisionLedgerConfig baseline degraded cases (F-1, F-2, F-3 / PROP-CFG-01)", () => {
+describe("T-13: parseDecisionLedgerConfig baseline degraded cases (F-1, F-2, F-3 / PROP-CFG-01)", () => {
   test("text === null returns defaults, sectionMalformed false, invalidKeys empty (F-1)", () => {
     const result = devModule.parseDecisionLedgerConfig(null);
     expect(result).toEqual({ config: DEFAULTS, sectionMalformed: false, invalidKeys: [] });
@@ -83,7 +96,7 @@ describe.skip("T-13: parseDecisionLedgerConfig baseline degraded cases (F-1, F-2
 // `sectionMalformed: true`, all three defaults, `invalidKeys: []` (no per-key validation runs
 // against a non-object section).
 
-describe.skip("T-13: parseDecisionLedgerConfig block-level malformation (F-4 / PROP-CFG-03)", () => {
+describe("T-13: parseDecisionLedgerConfig block-level malformation (F-4 / PROP-CFG-03)", () => {
   test.each([
     ["array", [1, 2, 3]],
     ["string", "not-an-object"],
@@ -128,7 +141,7 @@ const MATRIX_CASES = KEYS.flatMap((key) =>
   ["valid", "wrong-typed", "absent"].map((condition) => [key, condition])
 );
 
-describe.skip("T-13: parseDecisionLedgerConfig per-key matrix (AT-11 / PROP-CFG-02, F-5)", () => {
+describe("T-13: parseDecisionLedgerConfig per-key matrix (AT-11 / PROP-CFG-02, F-5)", () => {
   test.each(MATRIX_CASES)("key=%s condition=%s — other two keys stay at operator values", (key, condition) => {
     const section = sectionFor(key, condition);
     const result = devModule.parseDecisionLedgerConfig(decisionLedgerText(section));
@@ -155,7 +168,7 @@ describe.skip("T-13: parseDecisionLedgerConfig per-key matrix (AT-11 / PROP-CFG-
 // resolved divergence from `positiveInt`: REQ v1.8 retyped C-5's thresholds non-negative so FSPEC
 // E-7 and REQ C-5 now agree (DEC-DECLEDGER-15, "fired closed").
 
-describe.skip("T-13: parseDecisionLedgerConfig nonNegativeInt zero acceptance (E-7 / DEC-DECLEDGER-15 / PROP-CFG-04)", () => {
+describe("T-13: parseDecisionLedgerConfig nonNegativeInt zero acceptance (E-7 / DEC-DECLEDGER-15 / PROP-CFG-04)", () => {
   test("maxEntries: 0 is accepted as valid, not listed in invalidKeys", () => {
     const result = devModule.parseDecisionLedgerConfig(decisionLedgerText({ maxEntries: 0 }));
     expect(result.config).toEqual({ enabled: false, maxEntries: 0, maxBytes: 12500 });
@@ -202,7 +215,7 @@ describe.skip("T-13: parseDecisionLedgerConfig nonNegativeInt zero acceptance (E
 // `decisionLedger`. Each parser reads only its own top-level key (or two-level path); a
 // malformed sibling's `sectionMalformed` never leaks across blocks.
 
-describe.skip("T-13: parseDecisionLedgerConfig block independence (config-block isolation)", () => {
+describe("T-13: parseDecisionLedgerConfig block independence (config-block isolation)", () => {
   test("malformed `decisionLedger` leaves `learningsInjection` fully resolved", () => {
     const text = JSON.stringify({
       decisionLedger: "totally malformed, not even an object",
@@ -280,7 +293,7 @@ describe.skip("T-13: parseDecisionLedgerConfig block independence (config-block 
 // `degraded(true)`, for these inputs — `degraded(true)` is reserved for a PRESENT non-object
 // block, PROP-CFG-03's case, not these).
 
-describe.skip("T-13: parseDecisionLedgerConfig PROP-CFG-06 totality (fast-check)", () => {
+describe("T-13: parseDecisionLedgerConfig PROP-CFG-06 totality (fast-check)", () => {
   const arbitraryText = fc.oneof(
     fc.constant(""),
     fc.string(),
