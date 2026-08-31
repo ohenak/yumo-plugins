@@ -827,14 +827,14 @@ wrong (EC-16, BR-06).
 | BR-10 | AT-11 |
 | BR-11 | AT-12 |
 | BR-12 | AT-13 |
-| BR-13 | AT-14 |
+| BR-13 | AT-14, AT-14b |
 | BR-14 | AT-15 |
 | BR-15 | AT-16, AT-06 |
 | BR-16 | AT-17 |
 | BR-17 | AT-01 |
 | BR-18 | AT-18, AT-20, AT-06, AT-19 |
 | BR-19 | AT-06, AT-10, AT-16, AT-25 |
-| BR-20 | AT-04, AT-24 |
+| BR-20 | AT-04, AT-24, AT-27 |
 | BR-21 | AT-05 |
 | BR-22 | AT-05, AT-25 |
 | BR-23 | AT-19, AT-20 |
@@ -844,7 +844,7 @@ wrong (EC-16, BR-06).
 | BR-27 | AT-20, AT-26, AT-27 |
 | BR-28 | AT-21, AT-22 |
 | BR-29 | AT-22, AT-24 |
-| BR-30 | AT-23 |
+| BR-30 | AT-23, AT-27 |
 
 Every edge case in §5 is likewise traced. The table below is the one whose absence let §3.2's B5 and
 EC-03 contradict each other through authoring: a rule-only matrix cannot show that an edge case has
@@ -854,14 +854,14 @@ no oracle.
 |---|---|---|---|
 | EC-01 | AT-23 | EC-12 | AT-16 |
 | EC-02 | AT-02 | EC-13 | AT-17 |
-| EC-03 | AT-26 | EC-14 | AT-14, AT-13 |
+| EC-03 | AT-26 | EC-14 | AT-14 |
 | EC-04 | AT-03 | EC-15 | AT-13 (foreign-feature basename in fixture) |
 | EC-05 | AT-09 | EC-16 | AT-28 |
 | EC-06 | AT-25 | EC-17 | AT-18 (`docs/pdlc-halt-hardening/`) |
 | EC-07 | AT-10, AT-12 | EC-18 | AT-18 (case leg) |
 | EC-08 | AT-24 | EC-19 | AT-15 (symbolic-link member) |
 | EC-09 | AT-27 (root leg) | EC-20 | AT-18 (empty-root leg) |
-| EC-10 | AT-19 | EC-21 | AT-27 |
+| EC-10 | AT-19 | EC-21 | AT-20 |
 | EC-11 | AT-27 | | |
 
 ## 7. Open Questions
