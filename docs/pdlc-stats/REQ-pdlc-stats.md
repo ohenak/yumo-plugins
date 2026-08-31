@@ -185,9 +185,9 @@ decided in one place. Absence alone never decides the count, because harvest is 
 post-mortems as well as reviews: `docs/completed/pdlc-advisory-tier/` retains its LEARNINGS and no
 post-mortem, yet that LEARNINGS' `Harvested from` row names two it deleted. So where
 `LEARNINGS-{feature}.md` is present **and** no `POSTMORTEM-{phase}-{feature}.md` file remains, halts
-report **harvested**, never `0`; a plain `0` is reserved for absence that really does mean never
-halted — no post-mortem **and** no LEARNINGS. Neither is an error, and any surviving post-mortem
-yields measured per-phase entries as above.
+report **harvested**, never `0`; a plain `0` is reserved for absence that truly means never halted —
+no post-mortem **and** no LEARNINGS. Neither is an error, and any surviving post-mortem yields
+measured entries as above.
 
 ### REQ-STATS-06 Process-to-spec byte ratio (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** any subset of the spec document types
@@ -264,8 +264,8 @@ REQ-STATS-03/04/05/06's harvested state, reported distinctly from a measured val
 ## 7. Obligations / Open Questions
 
 **O-1** The exact JSON field spellings, the human-readable table column layout, and the ratio's
-rendering precision and the not-available / harvested tokens of every metric that has one are
-FSPEC/TSPEC material, not specified
+rendering precision and every metric's not-available / harvested tokens are FSPEC/TSPEC material,
+not specified
 here. The directory exclusion set is **not** among them: REQ-STATS-07 fixes it.
 
 **O-2** Whether `pdlc stats` reuses parsing logic already in `pdlc/workflows/` or implements its own
