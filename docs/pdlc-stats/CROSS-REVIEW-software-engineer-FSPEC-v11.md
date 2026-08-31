@@ -119,6 +119,30 @@ needs an edit.
 
 ## Edge Cases and Error Scenarios
 
+Three rows touch the moved clause; all three survive it.
+
+**EC-05** (`CROSS-REVIEW-`-prefixed basename failing the grammar, explicitly "or a document type
+outside BR-09's six … including the pipeline's own `CROSS-REVIEW-{role}-REVIEW-v{N}.md`") disposes of
+those files as *excluded from the round count, reported malformed, exit 0*. That disposition is
+REQ-STATS-03's, which the erratum did not touch, and it is the disposition v1.7 leans on when it
+calls the same file "the same one REQ-STATS-03 reports malformed (C-5)". Consistent.
+
+**EC-07** (interrupted or partial harvest — some cross-reviews deleted, others surviving) keeps the
+DoD metric and the ratio "evaluated on their own evidence, independently (BR-11, BR-16)". The erratum
+narrows *which* files count as surviving but leaves the independence claim and the per-document-type
+split intact. Consistent.
+
+**EC-13** (`LEARNINGS` present **and** spec bytes zero → `harvested`, not `n/a`) turns on BR-16's
+precedence, not on its file classification. Untouched.
+
+**EC-12** (`n/a` on a zero denominator with both totals still reported) is unaffected: the erratum
+never widens the `n/a` case. §7.3's paragraph beginning *"Grammatical-but-out-of-catalogue basenames
+are included in 'fails the grammar'"* — which names the four files in
+`docs/completed/pdlc-advisory-wave-gate/` and reports them "as malformed, by name, and contributing to
+no row" — reads as a direct restatement of the new REQ sentence and needs no correction.
+
+No edge-case row is now under- or over-specified relative to the current REQ.
+
 ## Acceptance Tests
 
 ## Open Questions
