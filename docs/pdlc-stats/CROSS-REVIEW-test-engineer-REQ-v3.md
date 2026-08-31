@@ -40,3 +40,27 @@ else is unchanged and was approved in earlier rounds; not re-litigated.
 - **REQ-STATS-04's demotion of the DoD malformed state is code-accurate, not merely convenient.** `deriveDodRoundIndex` matches `^CODE_REVIEW-{feature}-v(\d+)\.md$` and does `if (!match) continue` (`pdlc/workflows/orchestrate-dev.js:12387-12392`) — there is no reject bucket and no reason code on that path, so a non-matching `CODE_REVIEW-` basename genuinely is indistinguishable from an unrelated file to the driver. The asymmetry against REQ-STATS-03's malformed state is therefore fidelity to C-5 rather than an inconsistency, and the REQ now says so in the AC that carries it.
 - **C-5's two narrowings both survive a read of the source.** "Case-insensitive *value* matching" is exact: `parseResolvedMarker` matches the literal `RESOLVED:` token case-sensitively (`:7604`) and lowercases only the captured value (`:7611`) — the v2 text's unqualified "case-insensitivity" would have licensed a `resolved:` fixture the driver rejects. And "fidelity binds the driver's per-file rejection reason, not its coarser aggregate reject list" lands on the real seam: `parseReviewFilename` returns `not_cross_review` / `bad_role` / `bad_round` / `trailing_junk` per file (`:10136`, `:10156-10162`), while `deriveRoundWindow` flattens all four into one `skipped` array (`:10151-10154`). REQ-STATS-03's three-way operator-facing split is now anchored to the former, which is the only one that distinguishes "not a cross-review" from "malformed".
 - **REQ-STATS-02's new parenthetical is what makes the `--json` set-equality test writable.** "malformed, unmeasurable and harvested states ride in their own metric's value, never as extra top-level keys" resolves the standing tension with REQ-STATS-03's "reported separately as malformed": separate *within* the review-rounds metric, not a sibling top-level key. The set-equality assertion over the top-level key set can now be written against a fixture containing a malformed basename without a second reading being defensible.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No open High finding, old or new. The single v2 High is resolved: REQ-STATS-03's harvested state
+is now a per-document-type test, so the repo's own partially harvested archive
+(`docs/completed/pdlc-headless-engine/`) yields one unambiguous row set rather than three
+defensible expectations, and REQ-STATS-04 and REQ-STATS-06 no longer inherit a predicate that
+would discard measurable evidence. Every existing-behaviour claim the delta added checks out
+against source — the DoD side's absent malformed distinction (`orchestrate-dev.js:12387-12392`),
+the `RESOLVED:` value-only case folding (`:7611`), and the per-file rejection reasons the
+aggregate `skipped` array flattens (`:10136`, `:10151-10154`).
+
+The four remaining findings are all wording precision in the sentences this round rewrote: one
+Medium negation-scope ambiguity in REQ-STATS-06 whose intent is recoverable from the adjacent
+rationale (F-01), and three Low editing residues in REQ-STATS-02, REQ-STATS-04 and REQ-STATS-08
+(F-02, F-03, F-04). None of them blocks writing the acceptance tests, and all four are single-clause
+edits that can land alongside the FSPEC rather than gating another REQ round.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
