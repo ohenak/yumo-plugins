@@ -391,7 +391,8 @@ interface DocTypeRounds {
 
 interface ReviewRounds {
   byDocType: Record<string, DocTypeRounds>;  // always all six, in BR-09 order
-  malformed: string[];                       // basenames, listing order, deduped
+  malformed: string[];                       // basenames, in listing order (no dedup step:
+                                             // a directory listing cannot repeat a name)
 }
 
 interface DodRounds  { state: "measured" | "harvested"; rounds: number | null; }
@@ -545,16 +546,37 @@ else if (harvested) -> { state: "harvested", rounds: null }
 else                -> { state: "measured",  rounds: 0 }
 ```
 
-`n > 0` is exactly BR-11's "no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar
-remains": the driver's matcher escapes the feature name before matching, so a foreign-feature
+`n > 0` implements **REQ-STATS-04**'s harvested clause — "no `CODE_REVIEW-{feature}-v{N}.md` file
+matching the version grammar remains". FSPEC BR-11's wording is looser ("no `CODE_REVIEW-*` file
+remains in the directory"), and the two readings disagree on a directory left holding a
+`CODE_REVIEW-{feature}-draft.md` or a foreign-feature `CODE_REVIEW-` file after harvest: the
+grammar-matching reading calls that `harvested`, the literal-`*` reading calls it `measured` with
+`0`. The REQ-faithful reading is taken, and it is the same one REQ-STATS-04's own "does not
+contribute, exactly as an unrelated file" sentence requires; the FSPEC's looser wording is routed as
+an erratum (§8.3) rather than silently reinterpreted here. The driver's matcher escapes the feature
+name before matching, so a foreign-feature
 `CODE_REVIEW-` file contributes nothing, and `CODE_REVIEW-{feature}-draft.md` does not match at all
 — EC-16/AT-28's "silent, not malformed", inherited rather than coded.
 
-**Halts (BR-12, BR-13).** Match `^POSTMORTEM-(.+?)-{escapedFeature}\.md$` against each basename,
+**Halts (BR-12, BR-13).** Match `^POSTMORTEM-([^-]+)-{escapedFeature}\.md$` against each basename,
 with `{feature}` escaped by the same `replace(/[.*+?^${}()|[\]\\]/g, "\\$&")` idiom
 `deriveDodRoundIndex` uses, so a feature name is never misread as a pattern. The capture is the
 phase, taken verbatim — no catalogue, no validation (BR-12: `POSTMORTEM-I-pdlc-headless-engine.md`
-exists on disk although the driver's force-phase token list omits `I`). Resolution:
+exists on disk although the driver's force-phase token list omits `I`).
+
+The phase capture is `[^-]+`, **not** `.+?`, and the difference is a decision, not a detail. A lazy
+`.+?` leaves the basename's hyphen structure open, so a feature whose name is a hyphen-suffix of
+another feature's would absorb that other feature's post-mortems: under feature `stats`,
+`POSTMORTEM-D-pdlc-stats.md` matches with phase `D-pdlc`, and the report gains a halt the feature
+never had. `[^-]+` makes the matcher fully anchored on both sides, symmetric with the DoD matcher
+whose full anchoring §4.3 relies on above, and it is still BR-12's "verbatim, no validation" — it
+constrains the *shape* of the token, never its membership in a catalogue. Every post-mortem phase
+the driver writes is a single hyphen-free phase id — every construction site spells the path
+`docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md`, including the exported
+`checkPostmortem({ phase, feature })` in `orchestrate-dev.js` — and the archive at HEAD
+carries exactly `D`, `F`, `I`, `P`, `PR`, `R`, `T`. A negative test covers the case the change
+exists for: under feature `stats`, a directory containing `POSTMORTEM-D-pdlc-stats.md` yields **no**
+halt entry. Resolution:
 
 ```
 m = parsers.parseResolvedMarker(io.readFile(abs))
@@ -583,7 +605,23 @@ row types are the same six names — one constant, not two lists that can drift.
 cross-review membership is `parseReviewFilename(...).ok`, so a grammatically-failing basename
 contributes to **neither** side: `CROSS-REVIEW-{role}-REVIEW-v{N}.md` is listed as malformed and
 sized into nothing. That is BR-14's "matching the grammars" read literally, and it is stated here
-because it is the one consequence of BR-06 that lands in a different metric. Then, in this order:
+because it is the one consequence of BR-06 that lands in a different metric.
+
+**The harvested test reads "no `CROSS-REVIEW-*` remains" grammatically, and that is a choice.**
+`crossReviews` is grammatical membership (`parseReviewFilename(...).ok`), so the harvested condition
+below asks whether any *grammar-passing* cross-review remains, not whether any basename starting
+`CROSS-REVIEW-` remains. FSPEC BR-16 and REQ-STATS-06 both phrase the condition over
+`CROSS-REVIEW-*`, and the two readings genuinely disagree on a shape this archive produces: a
+harvested directory left holding only `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files — four of which
+exist in `docs/completed/pdlc-advisory-wave-gate/` — reports `harvested` under the grammatical
+reading and `measured` under the literal one. The grammatical reading is taken for one reason: REQ
+C-4 defines the process side as "every file matching the documented … grammars", so a basename that
+does not match contributes no bytes, and a condition asking whether the numerator's evidence is gone
+must be asked over the same membership that supplies the numerator. The alternative would make the
+ratio's state disagree with the bytes the ratio is computed from. A dedicated fixture pins the
+boundary: a directory with `LEARNINGS-*.md`, one `CROSS-REVIEW-{role}-REVIEW-v1.md`, and no
+grammar-passing cross-review, asserted `harvested`. The FSPEC's ambiguity is routed as an erratum
+(§8.3), not resolved by silence. Then, in this order:
 
 ```
 if (harvested && (crossReviews.length === 0 || dodReviews.length === 0))
