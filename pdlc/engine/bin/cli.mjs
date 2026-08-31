@@ -61,6 +61,7 @@ const USAGE = [
   "  pdlc dev <docs/{feature}/REQ-{feature}.md> [--force-phases <R,F,T,P,D,PR|all>] [--dry-run]",
   "  pdlc queue [--queue-path <path>] [--loop [--max-iterations <n>]] [--dry-run]",
   "  pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [--rationale <text>]",
+  "  pdlc stats [feature] [--json] [--cwd <path>]",
   "  pdlc doctor",
   "  pdlc hello | pdlc spike:sdk",
   "",
@@ -183,6 +184,10 @@ const FLAGS_BY_COMMAND = {
   ],
   doctor: ["plugin-root", "cwd", "allow-api-key-billing", "dev"],
   decide: ["entry", "outcome", "by", "rationale", "plugin-root", "cwd", "dev"],
+  // TSPEC §3.4: a closed, minimal surface — no `--dev`, no `--plugin-root`, no
+  // `--dry-run` (AT-24). `cwd` is already a shared VALUE_FLAGS member, so
+  // `--cwd` with no value token is a usage error via validateFlags alone.
+  stats: ["json", "cwd"],
 };
 
 /**
@@ -1246,6 +1251,88 @@ async function cmdDecide(argv) {
   process.exitCode = 0;
 }
 
+/**
+ * Dynamically loads `pdlc/workflows/lib/stats.mjs` from whichever workflow
+ * root `resolveWorkflowRoot` resolves (vendor tree when packaged, checkout
+ * tree in-repo — TSPEC §5.2), the same arrangement as `loopSessionModule`.
+ */
+async function statsWorkflowModule() {
+  const { rootPath } = resolveWorkflowRoot();
+  return import(pathToFileURL(path.join(rootPath, "lib", "stats.mjs")).href);
+}
+
+/**
+ * The single construction site for the four-classifier bundle `cmdStats`
+ * hands `runStats` (TSPEC §2.5/§3.4/§6.4) — mirrors `loopSessionModule()`'s
+ * arrangement. Sourced from the SAME dynamically-imported `orchestrate-dev.js`
+ * instance `devWorkflowModule()` already resolves, so `bundle.parseReviewFilename
+ * === (a static import of orchestrate-dev.js).parseReviewFilename` holds in a
+ * dev checkout (T-10's parser-identity oracle).
+ */
+export async function statsParsers() {
+  // Dot access, not destructuring: a second `{ parseReviewFilename, ... }`-shaped
+  // span here would double-count the construction-site oracle (T-10) even
+  // though only the returned object below is actually constructed.
+  const mod = await devWorkflowModule();
+  return {
+    parseReviewFilename: mod.parseReviewFilename,
+    deriveRoundWindow: mod.deriveRoundWindow,
+    deriveDodRoundIndex: mod.deriveDodRoundIndex,
+    parseResolvedMarker: mod.parseResolvedMarker,
+  };
+}
+
+/**
+ * The production `StatsIo` (TSPEC §2.3/§2.4/§6.4): exactly `listDir`,
+ * `fileSize`, `readFile`, `exists` — no write capability. `fileSize` calls
+ * `lstatSync`, never `statSync` — a symbolic link contributes its own size,
+ * never its target's (T-09's EC-19 symlink leg, T-10's seam-boundary oracle).
+ */
+function statsIo() {
+  return {
+    listDir(absDir) {
+      return nodeFs.readdirSync(absDir, { withFileTypes: true }).map((entry) => ({
+        name: entry.name,
+        isDirectory: entry.isDirectory(),
+        isFile: entry.isFile(),
+        isSymbolicLink: entry.isSymbolicLink(),
+      }));
+    },
+    fileSize(absPath) {
+      return nodeFs.lstatSync(absPath).size;
+    },
+    readFile(absPath) {
+      return nodeFs.readFileSync(absPath, "utf8");
+    },
+    exists(absPath) {
+      return nodeFs.existsSync(absPath);
+    },
+  };
+}
+
+/**
+ * `pdlc stats` (TSPEC §3.4) — a pure, read-only report over `docs/` (BR-01,
+ * TSPEC §6.5). Dispatches nothing: no adapter, no transport, no model.
+ * `runStats` never throws for a decided scenario; the outermost `try`/`catch`
+ * here exists only for a genuinely unexpected fault (e.g. the dynamic import
+ * above failing), never for anything `runStats` itself can produce.
+ */
+async function cmdStats(argv) {
+  try {
+    const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
+    const parsers = await statsParsers();
+    const io = statsIo();
+    const { runStats } = await statsWorkflowModule();
+    const { stdout, stderr, exitCode } = runStats({ argv, io, parsers, cwd });
+    if (stdout) process.stdout.write(stdout);
+    if (stderr) process.stderr.write(stderr);
+    process.exitCode = exitCode;
+  } catch (err) {
+    process.stderr.write(`pdlc stats: unexpected error: ${err && err.message ? err.message : String(err)}\n`);
+    process.exitCode = 1;
+  }
+}
+
 export async function main(argv = process.argv, deps = defaultDeps) {
   const [, , cmd, ...rest] = argv;
   switch (cmd) {
@@ -1270,6 +1357,9 @@ export async function main(argv = process.argv, deps = defaultDeps) {
       break;
     case "decide":
       if (checkFlags(rest, "decide")) await cmdDecide(rest);
+      break;
+    case "stats":
+      if (checkFlags(rest, "stats")) await cmdStats(rest);
       break;
     case "dev":
       if (checkFlags(rest, "dev")) await cmdDev(rest, deps);
