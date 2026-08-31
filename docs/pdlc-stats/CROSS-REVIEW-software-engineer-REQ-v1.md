@@ -37,4 +37,19 @@
 
 ## Recommendation
 
+**Needs revision**
+
+Four High findings. The scope, the read-only stance and the non-goals are in good shape — this is a well-bounded REQ and I would not renegotiate its size. The revision is narrow and mechanical:
+
+1. **F-01** — restate REQ-STATS-03's count as an observable ("the highest round index present for that document type"), not as equality with the driver's *round window*, which is the upcoming-budget pair `{startIndex, endIndex}`, not a count of completed rounds. Keep C-5 as the no-independent-parser rule.
+2. **F-02, F-03** — repair two citations that attribute decisions to `CLAUDE.md` which that file does not make. Either re-point them (`pdlc/OPERATIONS.md:146` for the archived location) or own them as this REQ's decisions. Nonexistent-authority citations are cheap to fix here and expensive downstream, where TSPEC will look them up and find nothing.
+3. **F-04** — add `docs/completed/` to REQ-STATS-07's exclusions. It is a container of features, and leaving it out produces a phantom feature named `completed` that looks legitimate because `docs/completed/REQ-completed.md` exists.
+
+F-05 through F-07 (Medium) are definitional gaps that FSPEC will otherwise have to invent answers for — cheapest to settle now, in one pass, while the ACs are still being edited. F-08 is a Low that can ride along.
+
+None of these require re-deciding what the feature is. I expect a v2 to converge quickly.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 3, "low": 1}
