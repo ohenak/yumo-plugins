@@ -1108,31 +1108,20 @@ time rather than transcribed across nine sites.
 
 Raised against the upstream document that owns each, per the erratum channel; none is repaired here.
 
+**One remains open.** Three others this section carried — FSPEC BR-16's `CROSS-REVIEW-*`-versus-
+grammars ambiguity, FSPEC BR-11's dropped "matching the version grammar" qualifier, and FSPEC BR-25's
+incomplete loose-file illustration — are **closed** at REQ v1.4 / FSPEC v1.4, and FSPEC §7.3 records
+them as closed. They are removed rather than left standing: an erratum bullet whose upstream answer
+has landed re-routes a settled question, which is `DEC-ERR-01`'s anti-pattern, and costs a round on
+something upstream has already decided. §4.3 now states each of the three as the specified behaviour
+it is.
+
 - **FSPEC BR-26/EC-10 name an "unclassified" outcome but state no positive feature-recognition
   predicate.** "In neither the exclusion set nor recognizable as a feature" is circular as written,
   and EC-03/AT-26 rule out artifact-presence as the predicate by making a readable-but-empty
   directory a normal measured row. AT-19's *Given* inherits the circularity. §4.4 adopts a
   leading-underscore discriminant as the only one the repository's convention supplies and flags the
   bare-named residue; the FSPEC should state the predicate it intends.
-- **FSPEC BR-16 phrases the harvested condition over `CROSS-REVIEW-*` while BR-14 defines the
-  numerator over the *grammars*, and the two readings disagree on a shape this archive contains.**
-  A post-harvest directory holding only `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files plus
-  `LEARNINGS-*.md` — the shape of `docs/completed/pdlc-advisory-wave-gate/`'s four out-of-catalogue
-  files — is `harvested` under the grammatical reading and `measured` under the literal one. §4.3
-  takes the grammatical reading, grounded on REQ C-4's "every file matching the documented …
-  grammars", and states it; the FSPEC should say which it means, since an operator reading the
-  ratio's state would act on the difference. (REQ-STATS-06 carries the same `CROSS-REVIEW-*`
-  phrasing, so the REQ may owe the same clarification.)
-- **FSPEC BR-11 states the DoD harvested condition as "no `CODE_REVIEW-*` file remains in the
-  directory", dropping REQ-STATS-04's "matching the version grammar" qualifier.** The readings
-  disagree on a directory left holding `CODE_REVIEW-{feature}-draft.md` or a foreign-feature
-  `CODE_REVIEW-` file. §4.3 implements the REQ's narrower reading — which is also what BR-11's own
-  neighbouring "does not contribute, exactly as an unrelated file" sentence implies — and cites
-  REQ-STATS-04 rather than BR-11 for it; the FSPEC's wording should be narrowed to match.
-- **FSPEC BR-25 names `docs/completed/REQ-completed.md` as the loose file its directories-only rule
-  excludes, but `docs/completed/QUEUE-HISTORY-rows-0-1.md` is also present at that root.** No
-  behavior changes — the `isDirectory` filter drops both — but the illustration is incomplete, and
-  a reader checking the claim against the tree finds a second file the rule does not mention.
 
 ### 8.4 Questions for DECISIONS
 
