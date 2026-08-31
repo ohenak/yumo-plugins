@@ -409,13 +409,16 @@ describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 
     // pdlc-loop-economics adds new suites under its reserved `loopEconomics*.test.js`
     // namespace, already covered by the `loop` exclusion below (its PLAN's §4
     // file-ownership manifest owns their census).
+    // pdlc-stats adds suites under its reserved `stats*.test.js` namespace
+    // (its PLAN §2 owns their census), so they are excluded below.
     const count = readdirSync(testDir).filter(
       (name) =>
         name.endsWith(".test.js") &&
         !name.startsWith("learnings") &&
         !name.startsWith("waveResume") &&
         !name.startsWith("loop") &&
-        !name.startsWith("escalationView")
+        !name.startsWith("escalationView") &&
+        !name.startsWith("stats")
     ).length;
     expect(count).toBe(102);
   });

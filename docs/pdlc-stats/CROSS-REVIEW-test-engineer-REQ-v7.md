@@ -79,3 +79,61 @@ malformed." REQ-STATS-03 names the same family explicitly (`CROSS-REVIEW-{role}-
 is never parsed to reconstruct a deleted count". That closes the parsing-surface question I raised
 as an open choice, and it closes it the way I recommended. It also bounds the metric's own test
 surface: no test may assert a recovered count.
+
+## 3. New finding: `harvested` cannot distinguish deleted from never-produced
+
+This is the mirror of the v6 High, and it is introduced by this round's edit, so I am filing it as
+delta. It is **Medium, not High**, and I want to be explicit about why before stating it: the new
+rule errs toward *not-available*, never toward a wrong number. There is no false green, the oracle
+is positive and falsifiable, and a test author can derive an unambiguous expected value from the AC.
+It does not block.
+
+The defect is that REQ-STATS-05's harvested predicate — LEARNINGS present **and** post-mortem family
+absent — is satisfied both by "harvest deleted them" and by "none was ever written". Two real
+archives sit in the second case and will now be reported as harvested when the truth is a measured
+zero, and each says so in its own words:
+
+- `docs/completed/pdlc-merge-phase/` — zero post-mortems, LEARNINGS present. Its metadata row states
+  `| POSTMORTEMs | none — no review loop reached MAX_REVIEW_ROUNDS |`
+  (`LEARNINGS-pdlc-merge-phase.md:12`), and §1 repeats it: "No loop exhausted its round budget and no
+  POSTMORTEM was written" (`:16`). Its `Harvested from` row (`:10`) enumerates 32 deleted files and
+  names no `POSTMORTEM-*` among them.
+- `docs/completed/pdlc-loop-economics/` — zero post-mortems, LEARNINGS present.
+  `LEARNINGS-pdlc-loop-economics.md:16`: "No review loop exhausted its round budget and no
+  `POSTMORTEM-*` file exists for this feature".
+
+Both are genuine zeros. Both now report `harvested`. The reason the plain-`0` branch does not rescue
+them is that it is keyed on *no LEARNINGS*, and a harvested archive always has one — so over
+`docs/completed/` the plain-`0` branch is unreachable by construction. It is not dead overall: I
+checked the active side, where twelve feature directories under `docs/` (including `pdlc-stats`
+itself) have no LEARNINGS and no post-mortems and will correctly report `0`. So the branch is
+reachable and testable, just never from the archive.
+
+Why this matters to the testing lens rather than only to prose accuracy:
+
+1. **It costs R-6 its evidence.** R-6 (`:260-262`) exists to protect baselines taken over
+   `docs/completed/`. Under v1.5 the halts metric is not-measured for four of the thirteen archives,
+   and for two of those the true value is known to be zero. A baseline consumer cannot tell the
+   "we lost this" cases (advisory-tier, consolidation-agent — nine real halt episodes) from the
+   "there was nothing to lose" cases (merge-phase, loop-economics). The metric is safe but less
+   informative than the corpus permits.
+2. **The same shape exists in REQ-STATS-03 and REQ-STATS-06, inherited.** `pdlc-loop-economics` has
+   zero `CROSS-REVIEW-*` files, and its LEARNINGS states positively that none ever existed — the
+   feature used direct authoring and "`HANDOFF-PROMPT.md` … explicitly scoped out cross-review round
+   files" (`LEARNINGS-pdlc-loop-economics.md:71`). So every document-type row reports `harvested`
+   under REQ-STATS-03, and the ratio reports `harvested` under REQ-STATS-06, for a feature that
+   produced no such files in the first place. Those two ACs are unchanged bytes I approved in v5, so
+   per the delta protocol I am not re-opening them; I note the shape here only so the author sees
+   that one clause fixes the family, not just REQ-STATS-05.
+3. **It shapes the fixture set.** A test author needs to know that "harvested" is deliberately the
+   union of two real-world causes, so the suite pins it as such rather than someone later
+   "fixing" the merge-phase fixture to `0` and breaking the AC.
+
+**The cheapest resolution is one sentence, and it is not a new mechanism.** I am explicitly *not*
+asking for LEARNINGS prose to be parsed — NG-6 now forbids exactly that, correctly, and I agree with
+it. What is missing is that the REQ does not acknowledge the conflation it is accepting. One clause
+in REQ-STATS-05 saying that `harvested` means *evidence not on disk with a LEARNINGS present* and
+deliberately does not distinguish deletion from never-written — cross-referenced from R-6 so the
+baseline consumer is warned — makes the trade-off explicit and pins the two archives as intended
+behavior rather than as an unnoticed edge. FSPEC can then choose the token under O-1 knowing the
+state is a union.
