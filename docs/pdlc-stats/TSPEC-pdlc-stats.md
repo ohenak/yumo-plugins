@@ -778,7 +778,7 @@ of the process side as "every file matching the documented … grammars".
 
 **The `docs/completed/pdlc-advisory-wave-gate/` citation is a basename *shape*, not a verdict.** An
 earlier revision of this section read BR-16 as naming that directory a harvested one. It is not, and
-BR-16 at v1.7 says so explicitly: the directory carries four out-of-catalogue
+BR-16 at v1.8 (unchanged since v1.7) says so explicitly: the directory carries four out-of-catalogue
 `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files **alongside** grammar-matching cross-reviews and so
 reports a **measured** ratio itself; only the malformed shape is borrowed. Measured at HEAD, the
 directory holds 62 `CROSS-REVIEW-*` files, of which 4 are the out-of-catalogue form and 58 match
@@ -787,24 +787,26 @@ AT-09 row and §6.1's measured baselines already record the same four-file count
 directory; nothing in §6 or §7 changes. A real-path test written against this directory must expect
 a measured ratio, not `harvested`.
 
-**What the shape itself yields is contested upstream and is not decided here.** REQ-STATS-06 at
-**v1.6** now states that "the predicate is set-membership over C-4's grammars, so a grammatical
-basename outside the driver's document-type catalogue is **a survivor** even where REQ-STATS-03
-reports it malformed" — which classes `CROSS-REVIEW-{role}-REVIEW-v{N}.md` as a surviving
-cross-review and a directory holding only those as **measured**. FSPEC BR-16 at v1.7 classes the
-same file as no file remaining and the same directory as `harvested`. Both cannot hold. The
-disagreement is REQ-versus-FSPEC, not a choice this layer may make: the sketch below is written
-against BR-16, the immediate upstream, and §8.3 routes the reconciliation to the owning phase. When
-it settles, exactly three things here re-stamp — this paragraph, BR-16's version pin above, and
-AT-17's fourth-leg expectation named next. No type, signature, exit code or other oracle depends on
-the outcome.
+**What the shape itself yields is settled upstream, in BR-16's favour.** REQ-STATS-06 at **v1.7**
+states that "the predicate is evaluated over exactly the file set whose bytes the process side sums,
+so a basename the driver's document-type catalogue does not recognise — the same one REQ-STATS-03
+reports malformed (C-5) — contributes no process bytes and counts as no file of its family
+remaining: a feature whose only `CROSS-REVIEW-` basenames are of that shape reports **harvested**".
+That is BR-16's rule, so REQ and FSPEC now read one file set and the sketch below — written against
+BR-16 all along — needs no change. *Record of a withdrawn reading, so it is not re-raised:* REQ
+v1.6 briefly called such a basename "a survivor", which would have made the same directory
+**measured**; REQ v1.7 withdrew that clause as contradicting its own preceding rationale and C-5's
+fidelity rule. FSPEC v1.8 absorbed the same decision with no rule changed. The three sites this
+paragraph pre-declared as re-stamping — itself, BR-16's version pin above, and AT-17's fourth-leg
+expectation named next — re-stamp here; no type, signature, exit code, oracle or expected value
+moves, because the value they carried was already the settled one.
 
 **FSPEC AT-17's fourth leg** is the boundary fixture, and it is FSPEC-owned rather than invented
 here: `LEARNINGS-{feature}.md`, `CODE_REVIEW` files **intact**, and as its only `CROSS-REVIEW-`
-basenames the out-of-catalogue form — expected `harvested` on BR-16's reading, and `measured` on
-REQ-STATS-06 v1.6's. This leg's expected value is the single place the contested scoping above
-becomes an assertion; it is carried here as BR-16 states it and is the row to re-stamp if the
-reconciliation lands the other way. FSPEC §8 also maps BR-16 to **AT-15**, whose neither-list pins
+basenames the out-of-catalogue form — expected **`harvested`**, the value BR-16 and REQ-STATS-06
+v1.7 both now state. This leg's expected value is the single place the scoping above becomes an
+assertion; it is pinned, not provisional — the reconciliation landed on this side, so no
+alternative expectation stands behind it. FSPEC §8 also maps BR-16 to **AT-15**, whose neither-list pins
 the byte half of the same agreement (a `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file reaching neither
 side); that half is unaffected by the dispute, since neither reading gives the file spec-side bytes.
 The "`CODE_REVIEW` files intact"
