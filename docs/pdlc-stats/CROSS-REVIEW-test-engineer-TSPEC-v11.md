@@ -100,3 +100,44 @@ discipline this document was missing three rounds ago.
 code sketch, §5's types, §6's levels, §7's tables or §2.1's co-change derivation. I confirmed this
 from the diff rather than the changelog's assurance: the three hunks in §4.3/§8.3 and one in §0 are
 the entire change set.
+
+## Interfaces
+
+**Did the delta move a seam? No — and for the first time I can prove it against production code
+rather than against the document's own prose.** The implementation of this feature landed between
+v10 and v11 (`ca8031311`…`1846a8a96`), so §4.3's sketch now has a shipped counterpart.
+
+| TSPEC §4.3 claim | Production code at HEAD | Agrees? |
+|---|---|---|
+| Cross-review membership is `parseReviewFilename(...).ok`, not a `CROSS-REVIEW-` glob | `const crossReviews = basenames.filter((b) => parsers.parseReviewFilename(b).ok);` (`lib/stats.mjs:281`) | ✅ |
+| Harvest is a **disjunction** over the two families, guarded by LEARNINGS presence | `if (harvested && (crossReviews.length === 0 \|\| dodReviews.length === 0))` (`lib/stats.mjs:293`) | ✅ |
+| The `harvested` arm returns a null ratio with byte totals retained | `return { state: "harvested", ratio: null, processBytes, specBytes };` (`lib/stats.mjs:294`) | ✅ |
+| Harvested is tested **before** the zero-denominator branch (BR-16 precedence) | the `harvested` guard at `:293` precedes the zero-`specBytes` branch below it | ✅ |
+| `harvested` is derived from LEARNINGS presence once and threaded to each metric | `const harvested = basenames.includes(\`LEARNINGS-${feature}.md\`);` (`lib/stats.mjs:316`), passed to `computeReviewRounds`/`computeDodRounds`/`computeByteRatio` (`:318-321`) | ✅ |
+
+The settled rule therefore reaches production by the exact path §4.3 describes: an out-of-catalogue
+basename fails `parseReviewFilename`, so it is absent from `crossReviews`, so `crossReviews.length
+=== 0` fires, so the directory reports `harvested`. That is REQ v1.7's sentence, executed.
+
+**The metric-state catalogue is unmoved.** `MetricState = "measured" | "harvested" | "unmeasurable"
+| "unavailable"` (`TSPEC:543`) — I re-checked that the delta neither adds nor orphans an arm, since
+a withdrawn upstream clause is exactly the edit that leaves a dead discriminator behind. The shipped
+JSDoc types agree (`lib/stats.mjs:72`, and the per-metric narrowings at `:76`, `:89`, `:101`), and
+`"harvested"` is reachable on all three (`:230`, `:251`, `:294`). No arm is dead.
+
+**Signatures, injected IO and the fake seam are untouched.** `parseReviewFilename` is still the
+injected parser property (`lib/stats.mjs:64`), the `fakeStatsIo` seam §6.2 nominates is what AT-17's
+legs run over, and no function signature in §4.2 or §5 mentions "survivor" or any name the withdrawn
+clause would have introduced. I looked specifically, because the failure mode worth catching is a
+vocabulary that outlives the rule that motivated it. There is none.
+
+**The one narration F-03 named is fixed.** `TSPEC:820-826` previously described AT-17 leg 4 as
+"expected `harvested` on BR-16's reading, and `measured` on REQ-STATS-06 v1.6's" and called it "the
+row to re-stamp if the reconciliation lands the other way". It now reads "expected **`harvested`**,
+the value BR-16 and REQ-STATS-06 v1.7 both now state … it is pinned, not provisional — the
+reconciliation landed on this side, so no alternative expectation stands behind it." That is the
+change that matters most for test authoring: the sentence a fixture author reads when deciding how
+hard to pin the expectation no longer offers them an alternative. I checked §6.1 and §7.2 for any
+surviving provisional framing of the same leg — `TSPEC:971-977` describes AT-17's fourth leg as a
+constructed fixture deliberately excluded from the real-path baseline table, with no hedging about
+its value. Clean.
