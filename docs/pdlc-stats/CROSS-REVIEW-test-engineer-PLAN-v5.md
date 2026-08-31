@@ -78,6 +78,26 @@ halves of the new sentence land on tasks that exist. No coverage gap opens.
 
 ## Dependencies
 
+**Batch-DAG unchanged.** The erratum adds no task, removes none, and changes no task's inputs, so every
+dependency edge and every `Batch` column keeps the value my v4 re-derived and accepted. T-04 stays at
+batch 2 behind `T-01, T-02`; T-18 at batch 9 behind `T-17`; T-26 at batch 11 behind `T-18, T-19, T-21`.
+No re-derivation is owed, because `batch == max(dep batch) + 1` is a function of edges the delta does
+not reach.
+
+**File-ownership guard unchanged.** The delta authors no test file and moves no assertion between
+suites, so the same-batch same-new-file check is unaffected: `statsMetrics.test.js` stays solely T-04's,
+`statsRealPaths.test.js` stays solely T-18's, and T-26 still declares that it authors no test file and
+only *runs* those two suites.
+
+**TSPEC did not move — correcting my own v4 pin.** My v4 stamped
+`UPSTREAM-STATE: TSPEC sha256:f2261510…`, but the TSPEC I actually reviewed against at
+`REVIEWED-COMMIT: 9c56d0c5` hashes `sha256:a06a6032…`, and it still hashes `a06a6032…` at HEAD. TSPEC
+has not changed at all since my PLAN approval; the v4 pin was mis-stamped. I record this because the
+pin *is* the oracle a cascade check reads to decide staleness, and a wrong one would send the next
+confirmation chasing a TSPEC delta that never happened. Filed below as F-02 (Low, inherited, nonlocal).
+Confirmed by `git diff --stat 9c56d0c..HEAD -- docs/pdlc-stats/`: among the six source documents, only
+`REQ-pdlc-stats.md` appears.
+
 ## Verification
 
 ## Delta-Confirmation Findings
