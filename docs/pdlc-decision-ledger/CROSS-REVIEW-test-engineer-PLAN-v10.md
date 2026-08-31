@@ -35,6 +35,31 @@ TSPEC v1.2 §7.3 and §7.2 at every site it now leans on, and breaks nothing I p
 
 ## Batches
 
+Site-by-site landing check of the routed item. Each row is verified against the PLAN bytes at HEAD,
+not against the commit messages.
+
+| # | Site | State at HEAD | Landed |
+|---|---|---|---|
+| 1 | `:19`–`:29` revision history | v0.9 entry added; **v0.7's entry explicitly marked superseded** ("the count and home this entry records were corrected downstream-to-TSPEC-§7.3; retained as history") and a standalone paragraph records that v0.7's "six ∪ nine = fifteen" reading, and its labelling of the fourteen-member form as "rejected", is history and **not contract** | yes |
+| 2 | T-11 (`:162`) | Operands re-pinned: `CENSUS_TOKENS` six data-carrying names, `CENSUS_EXEMPT` eight plumbing declarations, `OWNED_DECLS` fourteen; **"All three are declarations of this task's own test file"**, none production, none a member of the owned list | yes |
+| 3 | T-18 (`:168`) | The production-declaration instruction is gone and replaced by its negation: "This task writes **no census constant**: TSPEC §7.3 homes all three … in `decisionLedgerCensus.test.js`" | yes |
+| 4 | Manifest row, census test file (`:217`) | Re-worded to "the sole home of **all three** frozen census lists … never of `orchestrate-dev.js`" | yes |
+| 5 | Manifest row, T-18 / `orchestrate-dev.js` (`:229`) | "it declares **no** census constant — all three are test-file constants owned by T-11, TSPEC §7.3" | yes |
+| 6 | §Definition of Done (`:~505`) | Partition bullet re-pinned to six data-carrying ∪ eight plumbing = fourteen, all three constants test-file, `TSPEC v0.9 §7.3` version-pins dropped for bare `§7.3` | yes |
+
+A grep for the stale numerals confirms no residual assertion: every surviving `fifteen` / `nine` in
+the file is either inside a revision-history entry that names itself superseded, or unrelated (`:103`
+counts fifteen new *test/fixture paths*; `:352` is a different arithmetic). TSPEC §7.3's own
+*This paragraph is the authority for that count* explicitly permits the history form — "the revision
+history records the count as history of an edit, not as a claim about HEAD" — so those survivals are
+conformant, not leftovers.
+
+**Batch-timing conjunct.** The routed item required the re-pin to land *before batches 3–8 run*. It
+did: nothing in batches 1–2 has been executed against the old text, T-11 remains a batch-2
+committed-skipped red un-skipped by T-18 in batch 8, and the fourteen owned declarations it resolves
+against are still written by `[green]` tasks T-13…T-18 across batches 3–8. The red-before-green edge
+is untouched by this edit.
+
 ## Dependencies
 
 ## Verification
