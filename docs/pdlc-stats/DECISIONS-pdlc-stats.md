@@ -209,15 +209,28 @@ anywhere in `run.test.js` (27 top-level `test(` calls) and P-1 runs in the workf
 `run.test.js` reasoned that every option adding a vendored module pays it. Measured at HEAD, that is
 true of A only: `run.test.js` and `learningsPremises.test.js` both fence `MODULE_NAMES`, and B puts
 the module in `pdlc/engine/lib/`, which `MODULE_NAMES` does not enumerate — nothing copies it into the
-vendor tree, so both files stay green. What B does pay is `_tspec-packed-set.mjs`'s `15` term and the
-same literal inside `loop-distribution.test.js`'s `4 + 15 + 5 + 1`. The corrected comparison is nine
-sites (A) against three (B) — a wider gap than the previous record showed, and still not enough to
-move the verdict, because those three sites buy **no coverage gate**, which is the disqualifier.
+vendor tree, so both files stay green. What B does pay is `_tspec-packed-set.mjs`'s `15` term, its
+`tspecPackedCount` amendment, the same `15` literal inside `loop-distribution.test.js`'s
+`4 + 15 + 5 + 1`, **and `publish-preflight.mjs`'s second, production-side copy of the engine `lib/`
+class** — the last of which this document itself got wrong in v1.3, listing that file among the sites
+B does not pay. It is on both bills for different constants: A moves its `WORKFLOW_MEMBERS`, B moves
+its `LIB_MODULES_AT_HEAD` / `LIB_MODULES_FROM_THIS_FEATURE` pair, which `expectedPackedSet()` feeds to
+PF-4's both-directions equality against the packed tarball. A B that edited only `_tspec-packed-set.mjs`
+would ship a tarball holding a member `expectedPackedSet()` does not name, and PF-4 would red at
+publish time rather than in CI. The v1.3 miss is instructive rather than incidental: the sweep that
+produced the number was scoped to two `__tests__/` directories, so no run of it could have surfaced a
+production script — which is why the scope, not just the number, is corrected above.
+
+The corrected comparison is nine sites (A) against **four** (B) — still a wide gap, and still not
+enough to move the verdict, because those four sites buy **no coverage gate**, which is the
+disqualifier. The verdict was never carried by the site count.
 C pays none of them and puts the whole feature outside every gate; D is still a broken A.
 
 **The durable lesson, and where it goes (PM Q-01).** *An enumeration's co-change set includes every
-assertion that pins the enumeration's membership or size, wherever it lives; derive that set with a
-query, never by reading the files that hold the enumeration.* This is the second consecutive round in
+assertion that pins the enumeration's membership or size, wherever it lives — including production
+code that mirrors the enumeration deliberately. Derive that set with a query over tracked sources
+(`git grep -l`, not `grep -rln`), never by reading the files that hold the enumeration, and never
+scoped to a test directory.* This is the second consecutive round in
 which a per-file reading missed a fencing test, so the rule is promoted to
 `docs/_constraints/DOMAIN-CONSTRAINTS.md` **in this feature**, as part of K-9's owning task, rather
 than at harvest: a constraint that arrives at harvest does not protect this feature's own PLAN, which
