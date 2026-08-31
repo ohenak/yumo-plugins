@@ -200,3 +200,125 @@ export const NON_FEATURE_DIRS = Object.freeze([
   "discarded",
   "completed",
 ]);
+
+// --- TSPEC §4.3: computeFeatureStats ------------------------------------
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
+function joinChild(dir, name) {
+  return dir.endsWith("/") ? `${dir}${name}` : `${dir}/${name}`;
+}
+
+// --- Review rounds (BR-05...BR-09) --------------------------------------
+
+function computeReviewRounds(basenames, parsers, harvested) {
+  const byDocType = {};
+  for (const docType of REVIEW_DOC_TYPE_ROWS) {
+    const w = parsers.deriveRoundWindow(basenames, docType);
+    if (!w.ok) {
+      // BR-07: tested first — a round-1 collision is never masked by the harvested test.
+      byDocType[docType] = { state: "unmeasurable", rounds: null, collidingRole: w.role };
+    } else if (w.startIndex !== 1) {
+      byDocType[docType] = { state: "measured", rounds: w.startIndex - 1, collidingRole: null };
+    } else if (harvested) {
+      byDocType[docType] = { state: "harvested", rounds: null, collidingRole: null };
+    } else {
+      byDocType[docType] = { state: "measured", rounds: 0, collidingRole: null };
+    }
+  }
+
+  // A separate, direct `parseReviewFilename` pass over the listing (§4.3) — not
+  // `w.skipped`, which is per-doc-type and would double-report across the six rows.
+  const malformed = basenames.filter((basename) => {
+    const r = parsers.parseReviewFilename(basename);
+    return !r.ok && r.reason !== "not_cross_review";
+  });
+
+  return { byDocType, malformed };
+}
+
+// --- DoD rounds (BR-10, BR-11) -------------------------------------------
+
+function computeDodRounds(basenames, parsers, feature, harvested) {
+  const n = parsers.deriveDodRoundIndex(basenames, feature) - 1;
+  if (n > 0) return { state: "measured", rounds: n };
+  if (harvested) return { state: "harvested", rounds: null };
+  return { state: "measured", rounds: 0 };
+}
+
+// --- Halts (BR-12, BR-13) -------------------------------------------------
+
+function computeHalts(basenames, io, parsers, dir, escapedFeature) {
+  const pattern = new RegExp(`^POSTMORTEM-([^-]+)-${escapedFeature}\\.md$`);
+  const halts = [];
+  for (const basename of basenames) {
+    const match = pattern.exec(basename);
+    if (!match) continue;
+    const phase = match[1];
+    // Fail-closed, incl. read failure: `ok: false` from `parseResolvedMarker` reads as
+    // unresolved, covering EC-14's absent/duplicated/unparseable-marker conditions.
+    const marker = parsers.parseResolvedMarker(io.readFile(joinChild(dir, basename)));
+    const resolution = marker.ok && marker.resolved ? "resolved" : "open";
+    halts.push({ phase, resolution });
+  }
+  // BR-13: default `Array.prototype.sort()` code-unit collation on `phase`, ascending.
+  halts.sort((a, b) => (a.phase < b.phase ? -1 : a.phase > b.phase ? 1 : 0));
+  return halts;
+}
+
+// --- Byte ratio (BR-14...BR-16) -------------------------------------------
+
+function computeByteRatio(basenames, io, parsers, feature, escapedFeature, dir, harvested) {
+  const specNames = REVIEW_DOC_TYPE_ROWS.map((t) => `${t}-${feature}.md`).filter((name) =>
+    basenames.includes(name),
+  );
+  const crossReviews = basenames.filter((b) => parsers.parseReviewFilename(b).ok);
+  const postMortemPattern = new RegExp(`^POSTMORTEM-([^-]+)-${escapedFeature}\\.md$`);
+  const postMortems = basenames.filter((b) => postMortemPattern.test(b));
+  const dodPattern = new RegExp(`^CODE_REVIEW-${escapedFeature}-v(\\d+)\\.md$`);
+  const dodReviews = basenames.filter((b) => dodPattern.test(b));
+
+  const processNames = new Set([...crossReviews, ...postMortems, ...dodReviews]);
+  const sizeOf = (name) => io.fileSize(joinChild(dir, name));
+  const specBytes = specNames.reduce((sum, name) => sum + sizeOf(name), 0);
+  const processBytes = [...processNames].reduce((sum, name) => sum + sizeOf(name), 0);
+
+  // Harvested before zero-denominator (BR-16's stated precedence).
+  if (harvested && (crossReviews.length === 0 || dodReviews.length === 0)) {
+    return { state: "harvested", ratio: null, processBytes, specBytes };
+  }
+  if (specBytes === 0) {
+    return { state: "unavailable", ratio: null, processBytes, specBytes };
+  }
+  return { state: "measured", ratio: round2(processBytes / specBytes), processBytes, specBytes };
+}
+
+/**
+ * The four metrics for one feature directory (TSPEC §4.3). Pure given `io` + `parsers`.
+ * @param {StatsIo} io
+ * @param {StatsParsers} parsers
+ * @param {string} feature
+ * @param {string} dir
+ * @returns {FeatureStats}
+ */
+export function computeFeatureStats(io, parsers, feature, dir) {
+  // BR-03/EC-04: one `listDir` call, `!isDirectory` filter at the source — every
+  // metric below reuses this same file-only listing, never re-listing the directory.
+  const listing = io.listDir(dir).filter((entry) => !entry.isDirectory);
+  const basenames = listing.map((entry) => entry.name);
+  const escapedFeature = escapeRegex(feature);
+  const harvested = basenames.includes(`LEARNINGS-${feature}.md`);
+
+  const reviewRounds = computeReviewRounds(basenames, parsers, harvested);
+  const dodRounds = computeDodRounds(basenames, parsers, feature, harvested);
+  const halts = computeHalts(basenames, io, parsers, dir, escapedFeature);
+  const byteRatio = computeByteRatio(basenames, io, parsers, feature, escapedFeature, dir, harvested);
+
+  return { feature, dir, reviewRounds, dodRounds, halts, byteRatio };
+}
