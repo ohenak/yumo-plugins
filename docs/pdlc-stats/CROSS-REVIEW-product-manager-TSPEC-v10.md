@@ -41,6 +41,42 @@ HEAD, and re-read only the TSPEC regions those clauses bear on (§0 changelog, �
 
 ## Architecture
 
+**Does the design still trace to REQ as REQ now stands?** Yes — and on the settled question it now
+traces more cleanly than it did.
+
+TSPEC §4.3's harvested test is asked over BR-14's grammars: `crossReviews` is grammatical membership
+(`parseReviewFilename(...).ok`), so the disjunct asks whether any grammar-passing cross-review
+remains, not whether any basename starting `CROSS-REVIEW-` remains. Separately, §4.3 states that a
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` file "contributes **neither** side" of the byte ratio. Put those
+together and the design says: an out-of-catalogue basename adds no process bytes and leaves no file
+of its family remaining. That is REQ-STATS-06 v1.7's new sentence, clause for clause. The predicate
+REQ now mandates and the predicate §4.3 implements are the same predicate.
+
+So the erratum lands *no* new obligation on this layer. Nothing in §4 must be redesigned, no branch
+order changes (harvested still precedes the zero-denominator test, BR-16's stated precedence), and
+the `if (harvested && (crossReviews.length === 0 || dodReviews.length === 0))` sketch is untouched by
+the decision.
+
+**What the erratum does invalidate is TSPEC's account of its own upstream.** Three passages describe a
+live REQ-versus-FSPEC conflict:
+
+- §0's v1.6 changelog entry (b) — `TSPEC:51-55` — "**REQ-STATS-06 v1.6** now calls a grammatical
+  basename outside the driver's catalogue **a survivor**, which contradicts BR-16's 'reports
+  `harvested`' … §8.3 carries it as the second open erratum (routed, not repaired)."
+- §4.3's paragraph "**What the shape itself yields is contested upstream and is not decided here**" —
+  `TSPEC:790-799` — which quotes the withdrawn clause verbatim and concludes "Both cannot hold."
+- §8.3's second erratum bullet — `TSPEC:1308-1321` — "**REQ-STATS-06 (v1.6) and FSPEC BR-16 (v1.7)
+  now disagree** …", again quoting the withdrawn text.
+
+All three are, at HEAD, false statements about REQ. The quoted sentence does not exist in
+`REQ-pdlc-stats.md`; REQ v1.7 states the opposite. This is the finding.
+
+**§8.3's own rule decides how to handle it.** That section's preamble already removed three erratum
+bullets on exactly this ground: "an erratum bullet whose upstream answer has landed re-routes a
+settled question, which is `DEC-ERR-01`'s anti-pattern, and costs a round on something upstream has
+already decided." The second bullet is now such a bullet. TSPEC's own policy says to close it and
+restate §4.3's behaviour as the specified behaviour it is.
+
 ## Interfaces
 
 ## Data Model
