@@ -182,6 +182,33 @@ Product lens only: whether the requirements this delta touches are still provabl
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Is the erratum this document's v1.2 changelog raises against `PLAN` going to be dispatched? It should not be: `PLAN` v0.8 closed all six sites at HEAD (`0c3c71d7c`, `2a13b74a7`, `cc386ebae`, all ancestors of the changelog commit `3a17387d6`). If the channel has already routed it, the right action is to withdraw it rather than open a `PLAN` round that has nothing to change. This is F-01 below. |
+| Q-02 | `PLAN` v0.8's header pins TSPEC at **v1.1** `sha256:21c913b4…9c8e49`, and TSPEC is now v1.2. Nothing normative moved between them for `PLAN`'s purposes — §7.3's count, membership and correction direction are byte-identical, and §4.3's sentinel ruling does not change the fourteen — so this is a pin refresh, not a re-derivation. Worth confirming the pin-check path treats it that way rather than opening a full round. Noted for the orchestrator, not a finding against this document. |
+
+## Positive Observations
+
+- **Both of my document-local findings were answered above the bar I set.** F-02 asked for the
+  single-siting claim to be softened to what it holds; the author instead made it *decidable* by
+  adding "when this paragraph and an operand row disagree, this paragraph is right and the row is the
+  defect". F-03 asked for a sentence saying whether the sentinels are constants; the author answered
+  **normatively**, so the count cannot move under implementer discretion. Both fixes close the failure
+  mode, not just the finding.
+- **Scope discipline under a frozen decision set was complete.** Three regions, 70/10 lines, no AT
+  row, no traceability row, no corpus literal, no upstream pin. I verified each of those claims
+  independently and every one held.
+- **The changelog is explicit that F-01 was not addressed here and says why.** Declining to edit
+  another document's contract from this one is the correct call and the round made it plainly rather
+  than quietly. My finding is with the *tense* of that entry, not its disposition.
+- **The round-11 mechanism demonstrably worked.** `PLAN` v0.8's revision history quotes §7.3's
+  correction-direction sentence back and uses it as the reason `PLAN` is the stale side. That is the
+  single-siting rule producing the effect it was written to produce, one round later, in a document
+  this one does not own.
+- **TE's citation-collision finding was absorbed without moving anything.** "six functions ∪ eight
+  constants = fourteen" disambiguates the phrase against the numerically identical forbidden/exempt
+  partition, at zero cost to the count or its membership.
+
 ## Positive Observations
 
 ## Recommendation
