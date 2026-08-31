@@ -72,7 +72,38 @@ second leg is credited to a criterion that no longer describes it).
 
 ## Behavioral Flow
 
-_pending_
+Only the flow rows a changed REQ sentence reaches are re-read here.
+
+**§3.1 A2 / §3.2 B2 (read the `docs/` root).** Both route a root failure to EC-09 and Flow C, exit 1.
+REQ-STATS-09's amended *Given* now excludes this path from not-found explicitly, which is what A2's
+"exits before A3 can resolve a feature" ordering already implements. The flow is unchanged and now
+has an upstream sentence behind it rather than a decision row apologising for it.
+
+**§3.1 A6 (DoD count).** The decision column reads "Any `CODE_REVIEW-*` file present?". That is the
+bare-prefix test, and it is the flow-level expression of F-01: under REQ v1.3 the question the flow
+must ask is "any `CODE_REVIEW-{feature}-v{N}.md` file present?". A flow row phrased over the wrong
+predicate is where a TSPEC author reads their branch condition from, so this row moves with BR-11 or
+not at all.
+
+**§3.1 A7 (halts).** "Per post-mortem file: what does the driver's `RESOLVED:` rule classify it as?"
+— the row asks the driver only for the marker, and constructs the file set itself. That is precisely
+the split C-5 now writes. Nothing to change.
+
+**§3.1 A8 (ratio).** "Is either process family entirely absent alongside a `LEARNINGS-{feature}.md`?
+… Harvested is checked before the zero-denominator test (BR-16)." Matches the amended REQ-STATS-06
+including the precedence, which the REQ still leaves to the FSPEC and which EC-13 and AT-17 pin.
+
+**§3.2 B5 (per-feature computation in fleet mode).** "Could the directory not be **read**
+(permissions, or it is not a readable directory)? Yes → a gap row … No → a normal row, including for
+a directory that is readable and empty (EC-03: emptiness is a measurable state, not a gap)." This
+row is now a verbatim match for the amended REQ-STATS-07 — both halves, including the empty-directory
+disposition the REQ previously mis-described. It is the single clearest case of the erratum landing
+where the FSPEC already was.
+
+The consequence for F-02 is visible here: B5's question is binary on *readability*, and EC-21's
+catch-all is a third outcome that no flow row asks a question about. Before the erratum, EC-21 could
+be argued back to REQ-STATS-07's "fail to parse". After it, the flow and the criterion agree with
+each other and EC-21 sits outside both.
 
 ## Business Rules
 
