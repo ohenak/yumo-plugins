@@ -113,6 +113,42 @@ and the un-skip has a named owner. No finding.
 
 ## Dependencies
 
+**No dependency edge moved, so the batch DAG is not re-litigated.** The delta edits five task
+descriptions, one status cell and a table's column layout. It adds no task, removes none, and
+changes no `Deps` cell. I confirmed this directly from the diff: every `| T-nn |` row that changed
+kept its trailing `Batch` and `Deps` fields byte-identical. The arithmetic I checked mechanically at
+v1 (`batch == max(dep batch) + 1`, acyclic, unique ids, every dependency resolving) therefore still
+holds unchanged, and re-deriving it would be re-litigating an approved section.
+
+**One edge deserved a second look because T-09's scope grew.** T-09 sits in batch 2 with deps
+`T-01, T-02`, and the delta gives it a new obligation — a real-filesystem symlink under a temp
+`--cwd`. Does the enlarged task still fit its batch? Yes, and for a reason worth writing down: the
+new leg depends on nothing this PLAN builds. It drives `main()` and the production `statsIo`, both
+of which T-17 supplies in batch 8, so the leg is *red* in batch 2 exactly as the rest of T-09's row
+is red — that is the task's declared colour (🔴). It needs no fixture from T-02 and no constant from
+T-12. The edge set is unchanged because the dependency set genuinely is.
+
+**TDD order is preserved by the delta, not merely undisturbed by it.** The new evidence was added
+to a red-test task (T-09, batch 2), eight batches ahead of the implementation task that makes it
+pass (T-17, batch 8). The alternative — bolting the symlink check onto T-17 — would have shipped
+the oracle and the code it guards in the same batch, which is the failure mode `[Fake first]` and
+the red-before-green rule exist to prevent. The author put it in the right place.
+
+**The batch-10 narration line I flagged in v3 (F-01) is untouched.** PLAN's batch-10 gate note still
+says `assertAdditiveOnly` "goes red as soon as the first enumeration moves", while TSPEC §6.4 now
+scopes the trigger to the four enumerations that oracle actually *reads* (sites 1–4). T-24's
+`c8.include` edit is in batch 10 and is not one of them, so an implementer who lands T-24 first sees
+green where the sentence promised red. This is inherited, not delta — the round did not touch the
+sentence — and it stays Low for the reason v3 gave: the batch gate is measured at batch end, and
+T-21, T-22 and T-25 all do move sites 1–4 within the same batch. **F-04, Low, inherited,
+nonlocal.**
+
+**T-04's contested AT-17 leg (v3 F-02) is also untouched.** TSPEC §4.3 still carries the live
+REQ-STATS-06 v1.6 (`measured`) versus FSPEC BR-16 v1.7 (`harvested`) disagreement, §8.3 still routes
+it, and T-04's row still gives its implementer no signal to read §8.3 before writing that fourth
+conjunct. Inherited, unchanged by this delta, and non-gating for the same reason as before: the leg
+exists, is owned, and has a defined expectation today. **F-05, Low, inherited, nonlocal.**
+
 ## Verification
 
 ## Delta-Confirmation Findings
