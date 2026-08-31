@@ -14,7 +14,43 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.1 | 2026-08-29 |
+| Draft | se-author | 1.2 | 2026-08-30 |
+
+**v1.2 — round 12's two document-local findings.** Upstream is unmoved and was re-measured at HEAD
+before this edit (REQ **v1.9** `sha256:ce6b133f…3c7b7c`, FSPEC **v1.3** `sha256:2bd5c3ef…5aed39`,
+Baseline **v1.2**); neither changelog names a new `BR-`/`E-`/`AC-` or vocabulary row, so nothing is
+absorbed and no pin advances. The four corpus literals (6,305 / 10,859 / 12,059 / 441) are
+unchanged. Sections touched: §4.3, §7.3 and this changelog, nothing else. No approved decision is
+re-litigated. PM F-01 (High, `inherited`/`nonlocal`) is **not** addressed here and is not this
+document's to fix: `PLAN` v0.7 still carries the retired fifteen-member owned list and a production
+home for `DECISION_LEDGER_CENSUS_TOKENS`, and both reviewers agree the route is PLAN's phase; it is
+raised on the erratum channel from this dispatch rather than absorbed.
+
+**PM F-02 (Medium) — the single-siting claim was stronger than the mechanism.** §7.3's pin paragraph
+claimed the arithmetic was "stated here and nowhere else in this document" while the two operand
+rows and the revision history carry the numerals. The claim is now stated at the strength it
+actually holds: this paragraph is the **authority**; the operand rows are its **enumeration** (which
+is what makes the count checkable) and are subordinate to it, the changelog records counts as
+history of an edit rather than as claims about HEAD, and what remains forbidden is a third,
+independent restatement in any other section or downstream document. The disagreement rule is
+stated explicitly — paragraph right, row defective — so the mechanism now names its own resolution
+instead of asserting an absence that the file contradicts.
+
+**TE F-01 (Low) — the pinned phrase did not carry its own decomposition.** "six ∪ eight = fourteen"
+is numerically identical to §7.3's other partition (`CENSUS_TOKENS` six ∪ `CENSUS_EXEMPT` eight) but
+different in membership, and the paragraph exists so that other documents cite the phrase. It now
+reads **six functions ∪ eight constants = fourteen**, with the collision named inline, so a citation
+of the bare phrase cannot be wired to the wrong test operands.
+
+**PM F-03 (Medium, open since v11) — §4.3's "four constants" named only two.** Answered normatively
+rather than descriptively: `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT` are top-level
+constants (they appear as `{CONST}` placeholders in the rendered form); the header and trailer
+sentinel lines appear there as literal text and **ship as inline string literals inside
+`renderDecisionLedgerBlock`'s body**, not as top-level bindings. Hoisting either would introduce a
+feature-declared name absent from `DECISION_LEDGER_OWNED_DECLS` and fire §7.3's classify-or-redden
+guard, so the fourteen this document pins is unmoved and the 1,200-byte pin — which measures
+rendered framing output, not a constant count — is unaffected. The prose now says "four framing
+pieces" where it meant pieces rather than constants.
 
 **v1.1 — round 10's two confirmation findings, and the owned-list count given one home.** Upstream
 is unmoved and was re-measured at HEAD before this edit (REQ **v1.9**
