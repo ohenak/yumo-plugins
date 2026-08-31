@@ -100,7 +100,48 @@ whose severity I calibrate to what a reader would mis-*do*, which is nothing.
 
 ## Decision
 
-_pending_
+**Approved with minor changes.** Zero High. Two Low — one `delta`/`local`, one `inherited`/`nonlocal`
+— and neither is actionable inside this document while it is frozen.
+
+**DECISIONS still holds as approved against TSPEC v1.7.** The load-bearing claims, re-tested against
+upstream at its current version and against the shipped code:
+
+| Load-bearing claim in DECISIONS | Status at HEAD |
+|---|---|
+| `pdlc/workflows/package.json`'s `c8.include` holds **seven** entries | True — seven `**/`-anchored entries |
+| `REQUIRED_INCLUDES` holds **four**, so P9-02's literal `4 + 1 + 2` is seven | True — four entries, third and fourth are `build-runtime.mjs` and `scripts/check-wave-resume-delta-coverage.mjs` |
+| This feature moves the include set **seven → eight** | True — one added member; **and TSPEC §2.1 now states the same** |
+| The co-change set is **ten sites**, set-equal to TSPEC §2.1's ten | True — no row added or removed by the v1.7 edit |
+| K-7's two sibling-document edits sit **outside** the ten | True — TSPEC §1 and §2.1 both read "outside" since v1.5, unchanged |
+| `MODULE_NAMES` copied class moves 4 → 5, packed class 5 → 6, not synchronised | True — TSPEC's README row restates exactly this, unchanged |
+| P-1's title quote: "MODULE_NAMES contains exactly the four canonical workflow modules" | True — `learningsPremises.test.js` unchanged |
+| K-3's falsifier: P9-02 `toEqual`, array-equality, position-sensitive | True — shipped assertion unchanged |
+
+**The one carried divergence is now closed, and closed upstream where I routed it.** From v6 through
+v9 I carried a single inherited Low: TSPEC §2.1 said *six → seven*, DECISIONS said *seven → eight*,
+the measurement backed DECISIONS, and the repair was owed to TSPEC. TSPEC v1.7 makes that repair.
+**I am retiring that finding, not re-carrying it.** This is worth stating plainly because it is the
+outcome the erratum channel exists to produce: a downstream document held a correct number against
+four rounds of pressure to match a wrong one, and upstream came to it. The v1.6 decision *not* to
+match TSPEC's number into false agreement is vindicated by this round.
+
+**What replaces it is strictly smaller.** K-3's clause routing the erratum upstream is now stale in
+the harmless direction — it describes a debt already paid. That is F-01 below, `delta` because the
+TSPEC edit created the staleness, `local` because it sits in the DECISIONS section that mirrors the
+edited TSPEC row, Low because no number, obligation, falsifier or task boundary changes.
+
+**No new decision is opened here.** The freeze holds. Beyond F-01 and the carried changelog-tense
+observation, I record two deferred items rather than manufacturing questions:
+
+DEFERRED: when a routed erratum is discharged upstream, the downstream document that routed it holds
+a clause asserting the debt is open. Nothing in the pipeline retires that clause — it is discovered
+only by a cascade confirmation like this one. Worth a line in the erratum checklist rather than a
+constraint.
+
+DEFERRED: the dispatch's TSPEC pin (`f2261510…`) does not match the file's content hash (`a06a6032…`).
+The *version* it names is unambiguous, so this round was not impeded, but it is the third consecutive
+round whose TSPEC pin did not resolve to a blob on this branch. Pipeline observation, not a document
+defect; recorded, not raised as a finding against DECISIONS.
 
 ## Consequences
 
