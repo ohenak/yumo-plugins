@@ -114,6 +114,53 @@ REQ-STATS-05 after v1.6's withdrawal.
 
 ## Edge Cases and Error Scenarios
 
+Untouched by the delta; re-checked the two rows that depend on the clause upstream decided.
+
+- **EC-13** (`LEARNINGS-{feature}.md` present **and** spec bytes zero) still resolves to
+  `harvested`, not `n/a`, on the stated ground that BR-16's test is evaluated first. That is a
+  precedence claim, not a new rule, and it agrees with BR-15 and step A8. Consistent with
+  REQ-STATS-06, which subordinates its not-available branch to the harvested reading.
+- **EC-07** (cross-reviews deleted while some survive — an interrupted partial harvest) keeps the
+  per-document-type split and evaluates the ratio independently on its own evidence (BR-11, BR-16).
+  Unaffected: it turns on partial survival, which upstream did not touch.
+- **EC-15** (a `POSTMORTEM-` basename that does not match the form) still says halts have no
+  malformed bucket because REQ-STATS-05 defines none. True of REQ v1.7 as it now reads.
+- **EC-03** (empty feature directory) still reports halts as none and the ratio as `n/a`. Correct
+  after v1.6's restoration of measured `0`.
+
+No error scenario acquired a new external dependency or failure mode in this round, so the failure
+path I approved at v11 stands unchanged.
+
+## Acceptance Tests
+
+Untouched by the delta. The test that carries the decided clause is **AT-17**, and I re-read it
+because its fourth leg is the only place this FSPEC pins the out-of-catalogue case as an
+executable expectation.
+
+AT-17 asserts four directories all report `harvested`: cross-reviews intact with no `CODE_REVIEW`;
+`CODE_REVIEW` intact with no cross-review; neither present; and `CODE_REVIEW` files **intact**
+alongside only out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` basenames. The fourth leg is
+the one that would fail under the withdrawn survivor reading — under that reading the directory has
+a surviving cross-review family and would report a measured ratio. It now agrees with upstream.
+
+I verified the downstream test material rather than assuming it tracked: `PROPERTIES-pdlc-stats.md`
+carries **PROP-RATIO-08** with all four AT-17 legs enumerated, the fourth spelled out explicitly,
+and fixture `F-HARVEST-FOUR` builds exactly those four directories. So the decided clause is
+pinned by a property and a fixture, not only by prose.
+
+I also re-measured the shipped-corpus fact BR-16 cites, since a record correction is only as good
+as its measurement. `docs/completed/pdlc-advisory-wave-gate/` holds exactly **four**
+`CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` basenames, alongside 62
+`CROSS-REVIEW-` files in total — so grammar-matching cross-reviews survive there and the directory
+reports a **measured** ratio itself. BR-16 says precisely that ("only the shape is borrowed, not
+the verdict"), and the v1.7 record correction from "two" to "four" is confirmed correct at HEAD.
+
+## Open Questions
+
+None arising from this delta. O-1 (token spellings and precision) and O-3 (how byte totals are
+obtained) remain open to the TSPEC as they were at my v11 approval, and neither was narrowed or
+widened by this edit.
+
 ## Acceptance Tests
 
 ## Open Questions
