@@ -118,6 +118,54 @@ one way the oracle could be voided. Nothing in the obligations table is re-sized
 
 ## Consequences
 
+### Nothing owed upstream this round
+
+No `ERRATUM:` line is routed. The REQ delta is a clean withdrawal of a clause that dissented from its
+own section's rationale; nothing in DECISIONS cited that clause, so nothing in DECISIONS rotted when
+it went.
+
+### The four inherited items, restated with what this round changed
+
+All four were raised at v10 against bytes that have not moved since. None is gating. I restate them
+only so a later round need not re-derive them.
+
+1. **F-01 — K-3's discharged divergence clause.** Unchanged from v10. TSPEC did not move this round
+   (HEAD `a06a6032…` = v10's body measurement), so the clause is stale in exactly the way v10
+   described and no worse. Owed at the next DECISIONS touch, not this round.
+2. **F-02 — the v1.6 grounding attestation**, at `DECISIONS:54`: *"REQ v1.4 and FSPEC v1.5 were
+   re-read and carry no decision this document owes."* This round makes it **staler by one more REQ
+   version** — REQ is now v1.7, FSPEC v1.7. I performed the absorption check independently above and
+   found nothing owed, so no load-bearing claim is falsified; the risk remains that a later round
+   reads the attestation and concludes re-grounding is unnecessary when it is not.
+3. **F-03 — the site-table introductory sentence.** Low, unchanged.
+4. **F-04 — the phantom `UPSTREAM-STATE` pin, escalated Low → Medium.** I rated this Low twice. A
+   third consecutive non-resolving pin is new evidence about impact, not a re-litigation of the same
+   evidence, so the severity moves. The mechanism has now failed on every cascade round this document
+   has had, and each recovery depended on a reviewer noticing the trailer disagreed with the prior
+   round's body and choosing the body. That is a guard enforced by attention, not by a check — the
+   same "ninth-to-tenth step where a green suite stops being evidence" the document itself names as a
+   distinct kind of cost. A reviewer who trusts the trailer diffs from a base that never existed and
+   confirms against a version nobody reviewed, silently. Recommendation stands and is unchanged: emit
+   the trailer pin from the measurement the body reports, and treat a non-resolving pin as
+   **fail-closed** in the round that reads it. Tagged `Process` — this is a cascade-mechanism defect,
+   not a defect in this document's bytes.
+
+### Positive observations
+
+- **The scope carve-out earned its keep.** *What these decisions do not decide* pre-declared
+  edge-case outcomes as FSPEC material. That one paragraph is why a semantic reversal in an AC
+  produced a bounded re-read here instead of an open-ended re-litigation of what DECISIONS owes. A
+  document that states its own boundary degrades gracefully under upstream churn.
+- **A total guard is what makes an enlarged input set free.** DEC-STATS-03's identity oracle absorbed
+  a widened harvested predicate with no new case, no new fixture and no re-sizing. The option table's
+  rejected Option C would have owed a corpus case for exactly this delta. The cost argument made at
+  v1.2 is now paid off by an event that had not happened yet when it was made — the best available
+  evidence that the decision was right rather than merely defensible.
+- **The erratum decided rather than reconciled.** The commit withdrew the dissenting clause instead
+  of bending FSPEC BR-16 to meet it. One reading now survives across REQ, FSPEC, AT-17 leg 4 and
+  PROP-RATIO-08 leg 4, so the oracles downstream of it agree by construction rather than by
+  coincidence.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
