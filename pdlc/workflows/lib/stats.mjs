@@ -370,6 +370,104 @@ export function discoverFeatures(io, docsRoot) {
   return { features, unclassified };
 }
 
+// --- TSPEC §3.3/§5: runStats -----------------------------------------------
+
+// BR-02: prefer the live directory over the archived one. `exists` is total —
+// per TSPEC §3.1's `StatsIo` contract it never throws — so no try/catch here.
+function findFeatureDir(io, docsRoot, feature) {
+  const liveDir = joinChild(docsRoot, feature);
+  if (io.exists(liveDir)) return liveDir;
+  const archivedDir = joinChild(joinChild(docsRoot, "completed"), feature);
+  if (io.exists(archivedDir)) return archivedDir;
+  return null;
+}
+
+// Distinguishes "absent" (exists() false) from "unreadable" (exists() true but
+// listDir() throws) so the two root-failure legs never collapse into the same
+// message (AT-27's absent-vs-unreadable byte-inequality leg).
+function docsRootStatus(io, docsRoot) {
+  if (!io.exists(docsRoot)) {
+    return { readable: false, message: `docs root not found: ${docsRoot}` };
+  }
+  try {
+    io.listDir(docsRoot);
+    return { readable: true, message: null };
+  } catch (err) {
+    return { readable: false, message: `docs root unreadable: ${docsRoot} (${err.message})` };
+  }
+}
+
+// Builds the internal `StatsReport` (TSPEC §4.2). Never throws for a decided
+// scenario (TSPEC §5): every seam call that can fail on a decided path is
+// wrapped, and the three `kind: "error"` reasons are exhaustive (BR-30).
+function buildReport({ feature, io, parsers, docsRoot }) {
+  const rootStatus = docsRootStatus(io, docsRoot);
+  if (!rootStatus.readable) {
+    return { kind: "error", reason: "no_docs_root", feature, message: rootStatus.message };
+  }
+
+  if (feature !== null) {
+    const dir = findFeatureDir(io, docsRoot, feature);
+    if (dir === null) {
+      return {
+        kind: "error",
+        reason: "not_found",
+        feature,
+        message: `feature not found: ${feature}`,
+      };
+    }
+    try {
+      return { kind: "single", result: computeFeatureStats(io, parsers, feature, dir) };
+    } catch (err) {
+      return { kind: "error", reason: "unreadable_feature", feature, message: err.message };
+    }
+  }
+
+  // Fleet mode: sequential, one feature at a time (FSPEC §7.2 O-4) — a plain
+  // `for` loop, never `Promise.all`/concurrent scheduling. A per-feature
+  // `try`/`catch` (EC-21's catch-all, not a read-specific guard — BR-27) turns
+  // any failure computing one feature into a `{gap}` row without touching any
+  // other feature's state or the fleet's exit code.
+  const discovered = discoverFeatures(io, docsRoot);
+  const results = [];
+  for (const f of discovered.features) {
+    try {
+      results.push(computeFeatureStats(io, parsers, f.name, f.dir));
+    } catch (err) {
+      results.push({ feature: f.name, gap: err.message });
+    }
+  }
+  return { kind: "fleet", results, unclassified: discovered.unclassified };
+}
+
+/**
+ * Pure orchestration: argv → `StatsOutcome`. Only `cmdStats` calls this
+ * (TSPEC §3.3). Never throws for a decided scenario — the outermost catch in
+ * `cmdStats` exists only for genuinely unexpected faults (e.g. `statsParsers()`
+ * import failure), never for anything this function itself can produce.
+ * @param {{argv: string[], io: StatsIo, parsers: StatsParsers, cwd: string}} args
+ * @returns {StatsOutcome}
+ */
+export function runStats({ argv, io, parsers, cwd }) {
+  const parsed = parseStatsArgv(argv);
+  if (!parsed.ok) {
+    // BR-20's single exception: stdout stays "" on a usage error.
+    return { stdout: "", stderr: `${parsed.message}\n`, exitCode: 1 };
+  }
+
+  const docsRoot = joinChild(cwd, "docs");
+  const report = buildReport({ feature: parsed.feature, io, parsers, docsRoot });
+  const exitCode = report.kind === "error" ? 1 : 0;
+
+  if (parsed.json) {
+    return { stdout: `${JSON.stringify(renderJson(report))}\n`, stderr: "", exitCode };
+  }
+  if (report.kind === "error") {
+    return { stdout: "", stderr: `${renderHuman(report)}\n`, exitCode };
+  }
+  return { stdout: `${renderHuman(report)}\n`, stderr: "", exitCode };
+}
+
 // --- TSPEC §4.2.1: renderHuman / renderJson -------------------------------
 
 // BR-24: an integer, 1 at first release. A `renderJson` obligation, not a
