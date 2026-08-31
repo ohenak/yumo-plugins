@@ -1386,13 +1386,25 @@ never be a member of it, and the census never scans the file the three are decla
 
 **The size of the owned list, stated once.** `DECISION_LEDGER_OWNED_DECLS` has **fourteen** members
 — §4.1–§4.4's six functions plus the eight top-level constants enumerated in the *Scanned source*
-row below — and the partition is therefore **six ∪ eight = fourteen**. That arithmetic is stated
-here and nowhere else in this document: any other section, and any downstream document, cites it
-rather than restating it, because a count restated at several sites is a one-row edit that goes
-stale at all but one of them (the `pdlc-wave-resume` lesson). A downstream document that carries a
-*fifteen*-member owned list, or that assigns any of the three census constants a home in
-`orchestrate-dev.js`, is stale against this section and not a competing design: this paragraph and
-the row below are the pin, and the correction direction is downstream-to-here, never the reverse.
+row below — and the partition is therefore **six functions ∪ eight constants = fourteen**. The
+decomposition is named inside the phrase deliberately (TE v12 F-01): §7.3's *Forbidden token set*
+row states a second, numerically identical but membership-different partition
+(`DECISION_LEDGER_CENSUS_TOKENS`'s six data-carrying names ∪ `DECISION_LEDGER_CENSUS_EXEMPT`'s eight
+plumbing declarations), so a bare "six ∪ eight = fourteen" cited elsewhere could be wired to the
+wrong operands. Cite the phrase with its nouns, or cite this paragraph.
+
+**This paragraph is the authority for that count; it is not the only place the numerals appear.**
+The two operand rows below enumerate the members — that enumeration is what makes the count
+checkable, and it is subordinate to this paragraph rather than a competing statement of it — and the
+revision history records the count as history of an edit, not as a claim about HEAD. What is
+forbidden is a *third* kind of site: no other section of this document, and no downstream document,
+restates the arithmetic as its own assertion; it cites this paragraph instead, because a count
+restated at several independent sites is a one-row edit that goes stale at all but one of them (the
+`pdlc-wave-resume` lesson). When this paragraph and an operand row disagree, this paragraph is
+right and the row is the defect. A downstream document that carries a *fifteen*-member owned list,
+or that assigns any of the three census constants a home in `orchestrate-dev.js`, is stale against
+this section and not a competing design: the correction direction is downstream-to-here, never the
+reverse.
 
 | Operand | Definition | How it is kept honest |
 |---|---|---|
