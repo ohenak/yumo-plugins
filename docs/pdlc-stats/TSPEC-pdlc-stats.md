@@ -119,14 +119,24 @@ lines of pure logic to a 57 KB CLI; option B keeps the enumeration cost without 
 benefit and still has to load the vendored driver across the same seam.
 
 **The cost, stated once.** `pdlc/workflows/lib/` members are vendored into the published engine at
-pack time, and the member list is enumerated — or its size pinned — at **nine** in-repo sites, plus
-two document edits in a completed sibling feature. The number is *sweep-derived*, not hand-counted:
-the query is `git grep -l` over tracked sources for a member of the class (`lib/loop-session.mjs`),
-repo-scoped rather than `__tests__/`-scoped, because a `__tests__/`-scoped sweep misses
-`publish-preflight.mjs`'s production-side copy and `grep -rln` silently drops files containing NUL
-bytes. Five of the nine are the enumerations themselves — **six symbol edits across five files**,
-since `_tspec-packed-set.mjs` holds two — and four are test files that pin those enumerations'
-membership or size. Adding `lib/stats.mjs` is a single co-change set:
+pack time, and the member list is enumerated — or its size or membership pinned — at **ten** in-repo
+sites, plus two document edits in a completed sibling feature. The set is **sweep-derived plus one
+stated filter**, not hand-counted, and both halves are reproducible. The sweep is `git grep -l` over
+tracked files for a member of the class (`lib/loop-session.mjs`), repo-scoped rather than
+`__tests__/`-scoped — a `__tests__/`-scoped sweep misses `publish-preflight.mjs`'s production-side
+copy, and `grep -rln` silently drops files containing NUL bytes — restricted to sources, i.e.
+excluding the `docs/` artifacts (this feature's own and the archived siblings') that merely narrate
+the class. That yields **24** candidate files. The filter that takes 24 to ten keeps every site that
+**enumerates the class, or pins its size or membership**, and drops the **14** that merely *consume*
+a member: `pdlc/engine/bin/cli.mjs`, `orchestrate-dev.js`, `orchestrate-queue.js`, the generated
+`pdlc/workflows/dist/pdlc-cli.mjs`, and ten `loop*`/`loopSession*` test files that import one. A
+consumer needs no edit when a *new* member is added; an enumerator does. 24 − 14 = 10, so the count
+is falsifiable by re-running the sweep and re-applying the filter, not by trusting this paragraph —
+which is what RK-1's residue argument and `DEC-STATS-03`'s re-evaluation trigger both need it to be.
+Five of the ten are the enumerations themselves — **six symbol edits across five files**, since
+`_tspec-packed-set.mjs` holds two — four are test files that pin those enumerations, and the tenth
+is `pdlc/README.md`'s prose enumeration, which no oracle pins (RK-1's residue). Adding
+`lib/stats.mjs` is a single co-change set:
 
 | Site | Symbol | Edit |
 |---|---|---|
@@ -135,10 +145,11 @@ membership or size. Adding `lib/stats.mjs` is a single co-change set:
 | `pdlc/engine/scripts/fixture-machine.mjs` | `WORKFLOW_MODULE_NAMES` | add `lib/stats.mjs` |
 | `pdlc/engine/__tests__/_tspec-packed-set.mjs` | `WORKFLOW_MEMBERS`, `tspecPackedCount` | add the member; vendored class size `5` → `6` |
 | `pdlc/workflows/package.json` | `c8.include` | add `**/pdlc/workflows/lib/stats.mjs` |
-| `pdlc/engine/__tests__/loop-distribution.test.js` | `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`/`D2_D3_BASELINE`/`D5_BASELINE`, `assertAdditiveOnly`'s length equality and its vendored-class-size assertion | re-baseline: the three baselines absorb `pdlc-engineering-loop`'s two `lib/` members (that feature's post-state, i.e. HEAD) and the two `added` lists reduce to this feature's single member; `4 + 15 + 5 + 1` → `4 + 15 + 6 + 1` and the derived class-size assertion `5` → `6`. Seven assertion edits |
-| `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | P9-02's expected `c8.include` literal (and the real-c8-run driver that imports each `lib/` module) | add the same `**/`-anchored entry; the shipped assertion is `toEqual`, i.e. array-equality, so position matters |
+| `pdlc/engine/__tests__/loop-distribution.test.js` | `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`/`D2_D3_BASELINE`/`D5_BASELINE`, `assertAdditiveOnly`'s length equality and its vendored-class-size assertion | re-baseline: the three baselines absorb `pdlc-engineering-loop`'s two `lib/` members (that feature's post-state, i.e. HEAD) and the two `added` lists reduce to this feature's single member; `4 + 15 + 5 + 1` → `4 + 15 + 6 + 1` and the derived class-size assertion `5` → `6`; plus P7-02's `vendoredClassWord` ternary (`vendoredClassSize === 5 ? "five" : String(vendoredClassSize)`), which must gain the `6` → `"six"` arm, because that oracle matches the sibling FSPEC's count *word* and not its digit — left behind, it reds against an otherwise checklist-complete edit. Eight assertion edits |
+| `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | P9-02's expected `c8.include` literal, its test title ("the include set is exactly the **six** modules the feature owns" → seven) and the real-c8-run driver that imports each `lib/` module | add the same `**/`-anchored entry; the shipped assertion is `toEqual`, i.e. array-equality, so position matters. The title carries no assertion — it is corrected for the same reason the `learningsPremises.test.js` row's is |
 | `pdlc/engine/__tests__/run.test.js` | three `assert.deepEqual` manifest-membership literals and the process-entry `prepack` leg | add `lib/stats.mjs`; omission reds as an `ENOENT` or a set mismatch |
 | `pdlc/workflows/__tests__/learningsPremises.test.js` | P-1's parsed `MODULE_NAMES` array-equality (and its "exactly four workflow modules" title) | add `lib/stats.mjs` |
+| `pdlc/README.md` (the `pdlc` CLI section's vendoring sentence) | the prose enumeration "The four workflow modules it dispatches (`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`) are vendored" | add `lib/stats.mjs` to the parenthetical and move the count word `four` → `five`. This is `MODULE_NAMES`'s class of *copied* modules (4 → 5), not the packed class (5 → 6): the two counts are different numbers and must not be synchronised to each other. **Pinned by no oracle** — RK-1's residue, carried by the same task that edits `prepack.mjs` |
 | `docs/completed/pdlc-engine-distribution/TSPEC-….md` §5.4 | the `PK-*` table and its vendored-members note | add `PK-26` (`vendor/workflows/lib/stats.mjs`); note five → **six**; derived total moves |
 | `docs/completed/pdlc-engine-distribution/FSPEC-….md` §5.2 | the "Workflow members" per-class count | five → **six**, in the same versioned change, with its own changelog row |
 
