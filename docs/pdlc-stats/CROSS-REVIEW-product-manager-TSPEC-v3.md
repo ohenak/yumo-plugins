@@ -40,7 +40,23 @@ None of them narrows, broadens or reinterprets a product guarantee, so none is H
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | **§4.3's DoD paragraph misquotes FSPEC BR-11 as it now stands.** The TSPEC reads "FSPEC BR-11's wording is looser (\"no `CODE_REVIEW-*` file remains in the directory\"), and the two readings disagree". At HEAD, BR-11 reads "no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar remains (REQ-STATS-04)" and then names the very leftovers the TSPEC's sentence says the FSPEC would count — `-draft` suffix, another feature's name — as contributing nothing. The two readings no longer disagree; the FSPEC has adopted the TSPEC's. The implemented branch (`n > 0` before the harvested test) is unchanged and correct; what is stale is the justification and the "routed as an erratum (§8.3)" clause hanging off it. | §4.3, DoD rounds (BR-10, BR-11) |
+| F-02 | Medium | delta | nonlocal | **§4.3's ratio paragraph asserts an FSPEC ambiguity that FSPEC v1.4 removed.** The heading sentence "The harvested test reads \"no `CROSS-REVIEW-*` remains\" grammatically, and that is a choice" and the body's "FSPEC BR-16 and REQ-STATS-06 both phrase the condition over `CROSS-REVIEW-*`, and the two readings genuinely disagree" are both false against HEAD. BR-16 now phrases the condition over BR-14's `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar, states it is "evaluated over exactly the file set BR-14's numerator sums", and names the `docs/completed/pdlc-advisory-wave-gate/` shape as reporting `harvested` — the exact fixture and the exact answer §4.3 argues for. REQ-STATS-06 v1.4 carries the same scoping. The grammatical reading is no longer a TSPEC choice needing defence; it is the specified behaviour, and the closing "The FSPEC's ambiguity is routed as an erratum (§8.3), not resolved by silence" is now untrue. | §4.3, byte ratio (BR-14…BR-16) |
+| F-03 | Medium | delta | nonlocal | **§8.3 routes three errata that FSPEC §7.3 has closed, so the two documents now disagree about what is open upstream.** FSPEC §7.3 states "The three harvested-predicate errata this section carried are **closed** … nothing about them is routed upstream now", and BR-25 now names the second loose file. Against that, §8.3 still carries: the BR-16 `CROSS-REVIEW-*` bullet (closed — see F-02), the BR-11 "wording should be narrowed to match" bullet (closed — BR-11 *was* narrowed, see F-01), and the BR-25 bullet asking the FSPEC to name `docs/completed/QUEUE-HISTORY-rows-0-1.md` (closed — BR-25 names it; I confirmed both loose files are present at that root). Only the first bullet, FSPEC BR-26/EC-10's missing feature-recognition predicate, is still genuinely open. The erratum channel is machinery, not prose: leaving satisfied items in it costs a round on questions upstream has already answered. | §8.3, upstream errata |
+| F-04 | Low | delta | nonlocal | **§4.3's boundary fixture is now FSPEC-owned and should cite its owner.** §4.3 says "A dedicated fixture pins the boundary: a directory with `LEARNINGS-*.md`, one `CROSS-REVIEW-{role}-REVIEW-v1.md`, and no grammar-passing cross-review, asserted `harvested`" — invented locally because the FSPEC had no such leg. AT-17 now has one (its fourth directory, same shape, same expected `harvested`), and AT-12 gains a third directory pinning BR-11's leftover disposition. §6.1's baseline table lists AT-09/10/11/13/14b/18 and does not mention either. No coverage gap results — §6.2's seamed-unit level reaches both branches — but the TSPEC should cite AT-17's fourth leg and AT-12's third rather than present the fixture as its own, so that a later FSPEC edit to those legs is visibly a TSPEC concern. | §4.3 / §6.1 |
+
+FINDING: Medium | delta | nonlocal | §4.3 DoD paragraph misquotes FSPEC BR-11, whose divergence FSPEC v1.4 closed
+FINDING: Medium | delta | nonlocal | §4.3 ratio paragraph asserts an FSPEC BR-16 / REQ-STATS-06 ambiguity that v1.4 removed
+FINDING: Medium | delta | nonlocal | §8.3 routes three errata FSPEC §7.3 declares closed (BR-16, BR-11, BR-25)
+FINDING: Low | delta | nonlocal | §4.3's locally-invented harvested boundary fixture is now AT-17's fourth leg and should cite it
+
+All four are documentation-of-provenance defects in a document whose specified behaviour I re-checked
+line by line and found unchanged and upstream-faithful. Scope tags, for the harvest phase: F-01, F-02
+and F-04 are `Local`; **F-03 is `Process`** — an erratum bullet whose upstream answer has landed
+should be closed by the cascade confirmation that observes it landing, and no step in the phase graph
+currently owns that sweep. That is a pipeline lesson, not a pdlc-stats one.
 
 ## Open Questions
 
