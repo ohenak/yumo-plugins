@@ -87,6 +87,32 @@ that "E-7 itself is unmoved at FSPEC v1.4" is true, not asserted. No nonexistent
 
 ## Data Model
 
+No type, enum, numeric range or measured literal moved. I diffed the values this document pins
+against their upstream definitions at the **current** upstream version, not against the changelog's
+assurance:
+
+| Value | TSPEC | Upstream at HEAD | Match |
+|---|---|---|---|
+| `decisionLedger.maxEntries` default | `70`, non-negative integer | REQ C-5 (`REQ:193`) `70`, non-negative | yes |
+| `decisionLedger.maxBytes` default | `12500`, non-negative integer | REQ C-5 (`REQ:194`) `12500`, non-negative | yes |
+| Corpus literals | 6,305 / 10,859 / 12,059 / 441 | Baseline v1.2 `M-*`, cited by id | unmoved (Baseline pin unchanged) |
+| Owned-declaration count (§7.3) | six functions ∪ eight constants = **fourteen** | TSPEC-local pin, no upstream operand | unmoved |
+| Census partition (§7.3) | six data-carrying ∪ eight plumbing = fourteen | TSPEC-local pin | unmoved |
+| Wiring-region reserve | 1,200 bytes | TSPEC-local, derived from Baseline `M-7c` | unmoved |
+
+REQ v1.10's own changelog confirms the three edits it made are REQ-local (C-5's slack **rationale**
+reworded, the REQ's *Cross-Reviews* row corrected, a v1.9 note re-sited); FSPEC v1.4's changelog
+confirms it advanced only its own upstream pin. Neither introduces a new `BR-`, `E-` or `AC-` id and
+neither moves a measured value. So the TSPEC's "nothing is absorbed" claim is verified, not taken on
+trust, and this document remains a faithful compression of both upstreams at their current version.
+
+**Census pin vs. PLAN at HEAD.** PLAN is now at **v0.9**, not v0.7. Its v0.8 round already homed all
+three census constants in `decisionLedgerCensus.test.js` and restated the owned list as
+**fourteen** (`PLAN:25`, `PLAN:162`, `PLAN:168`, `PLAN:217`, `PLAN:503–514`), explicitly recording
+that `T-18` writes **no** census constant. The contradiction §7.3 was pinned against is therefore
+**resolved downstream**, in the direction §7.3 mandated. Nothing in this TSPEC needs to change for
+that — which is exactly why F-01 below is bookkeeping, not contract.
+
 ## Test Strategy
 
 ## Open Questions
