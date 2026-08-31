@@ -141,7 +141,38 @@ re-attribution; BR-28's three prohibitions match REQ-STATS-08's re-separated con
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+**EC-09 — the contradiction it announces has been retired upstream (F-04).**
+
+EC-09's outcome column ends: "That departs from REQ-STATS-09's *Given*, which sweeps this case in;
+the departure is decided at D-9 and raised as an erratum (§7.3), not left implicit."
+
+REQ-STATS-09 v1.3's *Given* no longer sweeps the case in. It reads "…in a repository whose `docs/`
+root is present and readable — a missing or unreadable `docs/` root is not this criterion's case
+but a root failure", which is EC-09's behaviour stated as the criterion. So the behaviour stands
+unchanged and correct, and the sentence justifying it now asserts a departure from a *Given* that
+does not exist. Same for **D-9**, whose whole rationale column is built on "REQ-STATS-09's *Given*
+sweeps this case in without meaning to".
+
+This matters more than ordinary staleness because EC-09 is a P1 error path and D-9 is the decision
+record TSPEC will read to learn *why* the root probe precedes feature resolution. A reader who
+follows the pointer to REQ-STATS-09 finds agreement and cannot reconstruct what was decided. The
+repair is small and improves both: EC-09 drops the departure clause and cites REQ-STATS-09's
+carve-out; D-9 keeps its decision and its `no_docs_root`-versus-not-found reasoning, restating the
+premise in the past tense ("REQ v1.2's *Given* swept this case in; v1.3 carves it out to match").
+
+**EC-01, EC-03, EC-11, EC-21 — unchanged and now better supported.** EC-03 (readable but empty
+directory → a measured row) and EC-11 / EC-21 (unreadable directory → gap row in fleet, exit 1 in
+single-feature) are exactly REQ-STATS-07 v1.3's two dispositions. The v1 empty-directory
+contradiction is closed on both sides.
+
+**EC-05 / EC-16 — the asymmetry survives the REQ edit intact.** REQ-STATS-03 v1.3 keeps malformed
+reporting on the cross-review side and REQ-STATS-04 v1.3 keeps "does not contribute, exactly as an
+unrelated file" on the DoD side. EC-16's "the asymmetry against EC-05 is deliberate" still holds —
+and, as noted under BR-11, EC-16 is the internal witness that BR-11's broad prefix is the outlier.
+
+**EC-15 — unaffected.** Halts still have no malformed bucket; C-5's new carve-out concerns
+*discovery* of post-mortem phases, not the disposition of a non-matching `POSTMORTEM-` basename,
+and REQ-STATS-05 is unchanged.
 
 ## Acceptance Tests
 
