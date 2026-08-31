@@ -176,8 +176,15 @@ has been impeded, but four rounds is a pattern. Pipeline observation, not a docu
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | K-3's obligation cell still routes the include-count divergence upstream — *"Upstream divergence, owed in TSPEC, not resolved here (TE F-05)"* — but TSPEC v1.7 resolved it and now states the same *seven → eight* the document carries. The clause describes a debt already paid. TSPEC did not move this round, so this is unchanged from v10, not created by the REQ erratum. No number, obligation, falsifier or task boundary changes. Fix when the freeze lifts: re-word to record the divergence as resolved in TSPEC v1.7. | K-3 row, *Obligations the decisions create* |
+| F-02 | Low | inherited | nonlocal | The v1.6 changelog's upstream-grounding line asserts *"REQ HEAD (v1.4) matches its pin"* in the present tense. REQ is now v1.7, so the line reads as a live claim about a superseded pin — this round widens a gap that already existed at v10 (REQ was v1.6 then), rather than creating it. Non-gating: the grounding is a changelog attestation, not a load-bearing decision input. Future changelog attestations should use version-scoped past tense. | v1.6 changelog, upstream-grounding line |
+
+FINDING: Low | inherited | nonlocal | K-3 row, Obligations the decisions create | K-3 still routes the include-count divergence upstream as "owed in TSPEC, not resolved here", but TSPEC v1.7 resolved it and now states the same seven-to-eight the document carries; the clause describes a paid debt. TSPEC did not move this round so the staleness is unchanged from v10. No number, obligation, falsifier or task boundary changes; re-word to "resolved in TSPEC v1.7" when the freeze lifts.
+FINDING: Low | inherited | nonlocal | v1.6 changelog, upstream-grounding line | The grounding attestation says "REQ HEAD (v1.4) matches its pin" in the present tense; REQ is now v1.7, so it reads as a live claim about a superseded pin. Pre-existing at v10 and widened, not created, by this erratum; version-scoped past tense in changelog attestations would stop a later reader treating a superseded pin as current.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
