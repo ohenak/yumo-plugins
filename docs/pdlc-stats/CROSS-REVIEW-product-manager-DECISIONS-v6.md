@@ -41,7 +41,43 @@ upstream, not a lag.
 
 ## Options Considered
 
-_pending_
+Three readings of "does DECISIONS still hold" were available, and the choice between them decides the
+verdict, so it is stated rather than assumed.
+
+**Reading 1 — the items landed, so the confirmation passes.** Rejected. The dispatch is explicit that
+the item list is necessary, not sufficient (DEC-ERR-03), and nothing in the erratum items was routed
+*to* DECISIONS at all: DECISIONS' bytes never moved. If the confirmation only asked "did the routed
+edits land in TSPEC", it would pass trivially and let a document whose central number now disagrees
+with its upstream stand as approved.
+
+**Reading 2 — the divergences are cosmetic, since the decision does not change.** Rejected, though it
+is the tempting one and it is half true. DEC-STATS-01 still chooses option A, DEC-STATS-02 and
+DEC-STATS-03 are untouched, and no divergence below flips a verdict. But DECISIONS is not consumed as
+a verdict; it is consumed as the **implementation contract** — its K-rows are the task list a PLAN
+author partitions and an implementer executes. Two of the divergences below would put wrong
+instructions into that contract: a nine-row co-change checklist against a ten-site upstream, and a
+purity assertion TSPEC now states reds against a *correct* implementation. A finding an implementer
+would act on wrongly is not cosmetic.
+
+**Reading 3 (taken) — measure DECISIONS' citations against TSPEC at HEAD, clause by clause, and
+report every place upstream no longer says what DECISIONS says it says.** This is what DEC-ERR-03
+asks for. I walked every DECISIONS claim that names a TSPEC section, number, oracle or site, re-read
+the corresponding TSPEC text at v1.3, and checked the underlying fact against the tree where the
+claim is mechanical.
+
+**Scope discipline.** I did not re-open DEC-STATS-01's chosen option, DEC-STATS-02, DEC-STATS-03's
+substance, K-2, K-5, K-6, K-7, the *What these decisions do not decide* section, or the project-level
+decisions — all were approved at v5 and none is touched by the TSPEC delta. Findings F-01…F-05 below
+are all consequences of the TSPEC edit; F-06 is my own v5 Medium, restated as inherited so it is
+visibly still open and visibly non-gating.
+
+**One divergence runs the other way**, and I resolved it toward DECISIONS. TSPEC's new
+`coverageInstrumentation.test.js` row says P9-02's title moves "six → seven". At HEAD the title says
+`six` while `pkg.c8.include` already holds **seven** entries — the title is stale by one before this
+feature starts, so the feature takes it to **eight**. DECISIONS' v1.4 changelog has this right
+(`REQUIRED_INCLUDES` … "seven not six today, eight after the feature"), which I verified at v5 and
+re-verified here. The repair is owed **upstream**, and DECISIONS must not be "corrected" into
+agreement with it (F-05).
 
 ## Decision
 
