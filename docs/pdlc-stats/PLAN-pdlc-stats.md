@@ -108,6 +108,32 @@ assertions target, and carry `—` where they target nothing yet on disk.
 | T-26 | 🟢 Mutation evidence: run TSPEC §6.6's four mutants — drop `- 1` from each of the two driver-index conversions, swap `unmeasurable`/`harvested`, swap BR-16's harvested test against BR-15's zero-denominator test — and record the **named** killing test for each. A surviving mutant is blocking work, not a note. | `pdlc/workflows/__tests__/statsMetrics.test.js`, `…/statsRealPaths.test.js` | `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | 11 | T-18, T-19, T-21 | ⬚ |
 | T-27 | 🟢 Operator documentation: `pdlc/OPERATIONS.md` gains `pdlc stats`'s full flag semantics, its exit codes (`0` / `1` only, never the halt `2`), and its read-only stance — the file `pdlc/README.md` defers to for flag detail. | — | `pdlc/OPERATIONS.md` (exists) | 11 | T-21 | ⬚ |
 
+### Batch gates
+
+Two gate wordings are used. A **green gate** means the full suite is green after the batch. A
+**split gate** names the tests permitted to be red and why, because "full suite green after every
+batch" is unsatisfiable when a batch legitimately ends red.
+
+| Batch | Tasks | Gate |
+|---|---|---|
+| 1 | T-01, T-02 | **Green gate.** T-01 passes at HEAD (it asserts only baseline-symbol existence); T-02 adds no assertions. Full suite green, both packages. |
+| 2 | T-03 … T-11 | **Split gate.** The nine new test files fail for the specified reason — `pdlc/workflows/lib/stats.mjs` does not exist, and `bin/cli.mjs` has no `stats` case, `cmdStats`, `statsIo` or `statsParsers`. **Every pre-existing test in both suites stays green.** A new file failing for any other reason (import error in a helper, a typo'd fixture path) is a batch failure, not a red. |
+| 3 | T-12 | **Split gate.** `statsArgv.test.js` and `statsAntiDrift.test.js` go green; the seven other new files stay red for the specified reason; all pre-existing tests green. |
+| 4 | T-13 | **Split gate.** `statsMetrics.test.js` goes green; five new files stay red; all pre-existing tests green. |
+| 5 | T-14 | **Split gate.** `statsDiscovery.test.js` goes green; four new files stay red; all pre-existing tests green. |
+| 6 | T-15 | **Split gate.** `statsRender.test.js` goes green; three new files stay red; all pre-existing tests green. |
+| 7 | T-16 | **Split gate.** `statsOutcome.test.js` goes green; the three engine-side files (T-09, T-10, T-11) stay red for the specified reason — `bin/cli.mjs` is untouched; all pre-existing tests green. |
+| 8 | T-17 | **Green gate.** Both suites fully green, `Unit tests` and `Engine tests` alike. This is the first batch at which `pdlc stats` runs end to end. |
+| 9 | T-18, T-19, T-20 | **Split gate.** `stats-vendoring.test.js` (T-20) is the **only** permitted red, and only for its specified reason: no enumeration names `lib/stats.mjs` yet. T-18 and T-19 land green. Everything else green. |
+| 10 | T-21 … T-25 | **Green gate**, and the batch's whole point. Five tasks, five disjoint file clusters, landing in one change. On entry to this batch `loop-distribution.test.js`'s `assertAdditiveOnly` goes red as soon as the first enumeration moves — that is `K-1`'s "reds first" signal and is expected mid-batch; the gate is measured at batch end. `lib/stats.mjs` enters the per-file c8 branch floor of 85 here (T-24): a short module fails this gate, and the remedy is tests in the batch, never a lowered floor. |
+| 11 | T-26, T-27 | **Green gate**, plus T-26's own bar: each of the four mutants turns a **named** test red. |
+
+**Wave-gate note.** `.claude/pdlc.config.example.json`'s `postWaveCommand`
+(`node pdlc/workflows/build-runtime.mjs`, staging `pdlc/workflows/dist/`) runs after every wave and
+is unchanged by this feature. `lib/stats.mjs` is not a member of the generated `pdlc-cli.mjs`
+bundle — the stats surface is reached through the engine CLI, not through the workflow runtime — so
+no task edits `pdlc/workflows/dist/` and no batch expects it to move.
+
 ## File Ownership Manifest
 
 *(pending)*
