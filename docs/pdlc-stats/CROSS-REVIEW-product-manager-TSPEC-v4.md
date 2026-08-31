@@ -176,7 +176,54 @@ removing them is correct — and the round is right that leaving them would re-r
 
 ## Test Strategy
 
-_pending_
+Item 1 (the classifier-purity conjunct) landed here, along with the vendoring-row and reds-first
+corrections. §6.4's oracle count moves five → seven.
+
+**The purity conjunct does what it was routed to do.** `DEC-STATS-03`'s re-evaluation trigger is
+"driver exports gain state" — previously detectable only by reading `orchestrate-dev.js`, i.e.
+review-only, which is not a trigger a pipeline can act on. The new oracle calls each of the four
+driver classifiers **twice on the same input inside one freshly-imported module instance** and
+asserts the results are `deepEqual` **and non-aliased**. All three conjuncts are load-bearing and the
+document says why each is, which is the part I care about:
+
+- *Twice-called* is what makes a memo observable at all.
+- *Non-aliased* is the conjunct that actually bites: a memoised classifier returns the **same object
+  reference** on call *n* as on call *n − 1*, so `deepEqual` alone passes and only the reference
+  check goes red. Asserting equality without non-aliasing would have been a false-green oracle.
+- *Fresh module instance* matters because a module-level cache populated by an earlier test is
+  invisible to a within-instance comparison.
+
+The document also names the failure mode it is guarding against honestly: §6.1's recording double
+wraps the real parsers, so a shared cache would be *inherited* by the double rather than exposed by
+it. That is a real false-green path, and closing it converts a review-only trigger into a mechanical
+one. This is a genuine improvement in the feature's verifiability, not paperwork.
+
+**The construction-site count oracle closes `K-4`.** Asserting the four-classifier object literal
+occurs **exactly once** in `bin/cli.mjs`'s source, as set-equality over occurrences rather than an
+"at least one" containment probe, is the right shape — a containment probe cannot detect a second
+construction site, which is the thing `K-4` exists to prevent.
+
+**The vendoring-oracle row is now accurate about its own reach, and that is the best edit in the
+round.** The old row implied the oracle covered the co-change set. It now states that it covers four
+of the nine sites directly, a fifth (`c8.include`) only by way of `coverageInstrumentation.test.js`,
+and — critically — that it is **not the first thing that reds**. An oracle that overstates its
+coverage is worse than a missing one, because the team stops looking.
+
+**The reds-first ordering is correct, and I verified the claim RK-1 leans on.** §6.4 now states that
+`loop-distribution.test.js` reds first because it exists at HEAD *already* and its `assertAdditiveOnly`
+length equality fires the moment the first four enumerations are edited — before this feature's own
+new oracle exists. I confirmed `assertAdditiveOnly` does assert length equality, and that P7-02's
+document-oracle leg ("`docs/completed/pdlc-engine-distribution/` TSPEC §5.4, FSPEC §5.2 and AT-3.8b
+agree with `tspecPackedCount`'s vendored class size", `loop-distribution.test.js:182`) exists as
+claimed. That leg is what makes RK-1's residue statement precise rather than hand-waving: the *count*
+half of the sibling-document edit really is mechanically falsified; only `PK-26`'s *existence* row is
+not. Stating exactly which half of a risk is guarded, and which is not, is the standard I want other
+risk rows held to.
+
+The observation that sites 8–9 (`run.test.js`, `learningsPremises.test.js`) sit in *different*
+required CI checks — `Engine tests (ubuntu-latest)` and `Unit tests (ubuntu-latest, node 20)` — so a
+partial edit reds a check on either side of the package boundary is a real and useful property, and
+consistent with the four-check gate this repo's CI table documents.
 
 ## Open Questions
 
