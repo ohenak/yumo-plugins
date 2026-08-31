@@ -325,3 +325,29 @@ round.
 - **The settled rule reached production correctly.** The single-parser seam §4.3 argued for is what
   shipped, and its guarded branch has a mutation-sensitive test. The chain from REQ sentence to
   green assertion is complete and I walked all of it.
+
+## Delta-Confirmation Findings
+
+**Prior-round findings — all resolved.**
+
+| Prior ID | Severity | Site | Status at v1.8 |
+|----|----------|---------|----------------|
+| F-01 (v10) | Medium | §4.3 contested paragraph | **Resolved** — states the settled rule, quotes REQ v1.7 verbatim, records the withdrawn reading in place |
+| F-02 (v10) | Medium | §8.3 second bullet | **Resolved** — closed as discharged, count word two → one, BR-26/EC-10 bullet intact |
+| F-03 (v10) | Low | AT-17 fourth-leg narration | **Resolved** — withdrawn `measured` alternative dropped, expectation pinned hard |
+| F-04 (v10) | Low | v1.7 changelog grounding pin | **Resolved** — re-pinned to REQ `f75c348f…` and FSPEC `a493133f…`, both verified by `sha256sum` |
+
+**This round's findings.**
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The v1.7 changelog's neutralisation edit joined the "(c) §5's types survive REQ v1.6's halt withdrawal" sentence onto the preceding line, producing a 161-character line against the document's ~100-column wrap convention. Renders fine; purely a diff-readability nit for the next edit that opens §0. | TSPEC §0, v1.7 changelog row (line 72) |
+| F-02 | Low | inherited | nonlocal | §8.3's closure prose says "§4.3 now states each of the four as the specified behaviour it is", but BR-25's loose-file illustration is stated in §4.4 (Discovery), not §4.3. The count of four is correct and the attribution predates this round — the delta only carried it from "three" to "four". Read "§4.3/§4.4" when sweeping. | TSPEC §8.3, closure paragraph |
+
+FINDING: Low | delta | local | TSPEC §0 v1.7 changelog row, line 72 | The neutralisation edit joined a sentence onto the preceding line, leaving a 161-character line against the document's ~100-column wrap convention; rendering is unaffected, it is a diff-readability nit only.
+FINDING: Low | inherited | nonlocal | TSPEC §8.3 closure paragraph | "§4.3 now states each of the four as the specified behaviour it is" misattributes BR-25's loose-file illustration, which is stated in §4.4 (Discovery); the count of four is correct and the imprecision predates this round.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
