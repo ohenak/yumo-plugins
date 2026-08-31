@@ -186,3 +186,71 @@ The **oracle is correct** — it is a `toEqual` set-equality over the full enume
 entry reds exactly as §2.1 requires, and this is a printed-word staleness only. §2.1 predicted this
 precise hazard ("the title and comment are already stale at HEAD"). It belongs to IMPLEMENTATION
 review; TSPEC is frozen and says the right thing.
+
+## Test Strategy
+
+**Does any test this document specifies now assert a wrong value? No — and this round I could stop
+reasoning about it and run it.**
+
+**The assertion-bearing site, executed.** The dispute had exactly one: AT-17's fourth leg. It is
+implemented at `__tests__/statsMetrics.test.js:389-399`:
+
+```js
+it("AT-17 (directory 4 of 4): LEARNINGS plus CODE_REVIEW intact, only an out-of-catalogue
+    CROSS-REVIEW basename, reads harvested", async () => {
+  const io = ioFor({ [`LEARNINGS-${FEATURE}.md`]: "x",
+                     [`CODE_REVIEW-${FEATURE}-v1.md`]: "y",
+                     "CROSS-REVIEW-product-manager-REVIEW-v1.md": "z" });
+  const result = await compute(io, realParsers());
+  expect(result.byteRatio.state).toBe("harvested");
+  expect(result.byteRatio.ratio).toBeNull();
+});
+```
+
+`NODE_OPTIONS=--experimental-vm-modules npx jest statsMetrics` → **21/21 pass**, all four AT-17 legs
+among them. Four properties of this test are worth naming because they are the ones my prior rounds
+asked for and they are all present:
+
+1. **Positive oracle, not absence-shaped.** `toBe("harvested")` — the exact state token — paired
+   with `ratio` being `null`. Not `!== "measured"`. This is what PROP-RATIO-08's "three positive
+   conjuncts" rule requires (`PROPERTIES:272`).
+2. **The discriminating conjunct is present.** `CODE_REVIEW-{feature}-v1.md` is **intact**, so the
+   `dodReviews.length === 0` disjunct cannot fire and mask the result. The leg can only pass through
+   `crossReviews.length === 0`, which is the branch REQ-STATS-06 v1.7 decides. Without that conjunct
+   the test would be an accidental pass; with it, it is a real oracle for the settled rule.
+3. **Real parser, not a stub.** `realParsers()` — so the leg traverses the actual
+   `parseReviewFilename` grammar rather than a fake that could be made to agree with either reading.
+   This is the seam RK-2 warns about, honoured.
+4. **No implementation echo.** `"harvested"` is a literal transcription of the spec token, not
+   derived from the module under test.
+
+**Mutation check, now concrete.** The mutation the withdrawn REQ clause effectively argued for is
+relaxing `lib/stats.mjs:281` from `parseReviewFilename(b).ok` to a bare
+`b.startsWith("CROSS-REVIEW-")`. Under that mutation the leg-4 fixture would put
+`CROSS-REVIEW-product-manager-REVIEW-v1.md` into `crossReviews`, the harvested disjunct would go
+dark, and the test would report a measured ratio — **RED**, as required. The guarded behaviour is
+genuinely guarded, and PROPERTIES records it (PROP-RATIO-08's "the fourth leg is the one that proves
+the condition is a disjunction rather than a DoD-side test", `PROPERTIES:173`). Given that this
+repository has now argued both sides of this rule across two REQ versions, that mutation coverage is
+the thing that will stop a future editor re-introducing the loosening in good faith.
+
+**Set-equality where enumerations are asserted.** PROP-RATIO-08 requires *all four* AT-17 legs, and
+all four exist as separate `it` blocks (`statsMetrics.test.js:349, 361, 373, 389`) — a deleted leg
+fails the enumeration rather than silently shrinking coverage. The parallel enumeration oracle for
+the c8 include set is a `toEqual` array-equality (`coverageInstrumentation.test.js:264-272`), so a
+dropped entry reds too. Both are set-equality, not containment.
+
+**Real-path versus constructed fixtures still prove different things.** `pdlc-advisory-wave-gate/`
+remains **measured** (58 grammatical survivors alongside the 4 out-of-catalogue files) and is pinned
+by a real-path test (`statsRealPaths.test.js:45-59`); leg 4's harvested verdict is a constructed
+`fakeStatsIo` fixture. §7.2's exclusion of leg 4 from the real-path baseline table is still correct,
+and the delta does not blur the two.
+
+**Nothing in the delta softens an oracle.** That was the specific risk I filed as Medium at v10 —
+that a test author reading §4.3's "contested … may re-stamp" hedge would weaken the assertion to
+`one of harvested|measured`, or skip the leg. The hedge is gone from both §4.3 and §8.3, and the
+test that was subsequently written pins the token hard. The Medium did its job.
+
+**No new property is owed.** REQ v1.7 changed only what a *rejection* means downstream, not the
+grammar; `parseReviewFilename`'s round-trip and rejection properties are unaffected, and the
+property suite (`statsProperties.test.js`) needs no addition on account of this delta.
