@@ -65,7 +65,13 @@ K-9's promoted constraint carries the query, its scope, its NUL caveat, its prob
 Q-01) and `publish-preflight.mjs` as the worked example. K-3 gains K-8's message-string clause,
 covering P9-02's stale title count and its stale *"three entries"* comment (PM F-03). K-9's falsifier
 cell answers TE Q-02 on why K-3's single-check pair stays a separate task. Option A's nine sites, the
-site table, K-1's partition and DEC-STATS-01/02/03 are unchanged.
+site table, K-1's partition and DEC-STATS-01/02/03 are unchanged. *(Superseded in part by v1.5, which
+makes `pdlc/README.md` the tenth site-table row carrying "pinned by no oracle" in place of a
+falsifier. This entry is left as written: a changelog records the state of the document at its own
+version, and its `file:line` forms are historical record — mentions of what a past round measured,
+not live pointers a reader is expected to follow. `DEC-DOC-01` governs citations in the document
+body, which v1.5 converted; it does not ask past changelog entries to be rewritten, and rewriting
+them is the bookkeeping churn that decision exists to prevent. PM F-03 / TE F-02, round 7.)*
 
 **v1.3 (cross-review round 3).** Replaces the per-file reading of the co-change set with a **mechanical
 sweep**, cited so the next reader can tell completeness was established by a command rather than by
