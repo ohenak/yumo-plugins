@@ -146,3 +146,9 @@ its own — fold them into whichever versioned edit comes next, along with F-04 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 3}
+
+APPROVAL-HASH: sha256:512a9fcfd425725363024ec856597da6918d6d376247be2271b2d4af0c0af81f
+APPROVAL-HASH-NORMALIZED: sha256:d8d1e9ddcb8a8c5756dd8f4ae4725d8d16b7e1247717a41ad83e3e5db8309ee3
+REVIEWED-COMMIT: c61ed537ce39bbfc3bd3c72a789e6a9d20be3262
+UPSTREAM-STATE: REQ sha256:60a516fb2ede925b2428dca1bc8e4e61587c52827ea55b9e4965ea57b9a8f1c9
+UPSTREAM-STATE: FSPEC sha256:25af3c47c218d8987d258c6bda917cb5fecd21014ec794864c4e7b9a1cafd7f8
