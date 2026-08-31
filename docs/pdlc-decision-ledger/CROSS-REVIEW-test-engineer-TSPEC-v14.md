@@ -36,6 +36,31 @@ No High. No approved contract is disturbed.
 
 ## Architecture
 
+Nothing architectural moved. The delta is 33 insertions / 5 deletions, and every deleted line is a
+pointer numeral, not a claim:
+
+| Site | Before | After | Verdict |
+|---|---|---|---|
+| Header *Upstream* row | `REQ v1.9`, `FSPEC v1.3` | `REQ v1.10`, `FSPEC v1.4` | correct at HEAD |
+| §4.1 admits-nothing sentence | `FSPEC v1.3's E-7` | `FSPEC **E-7**` | id-cited, DEC-DOC-01 conformant |
+| §6.1 `F-13` row | `(FSPEC v1.3's E-7)` | `(FSPEC **E-7**)` | same |
+| §7.6 `AT-14` row | `FSPEC v1.3's cases` | `FSPEC **E-7**'s cases` | same, and stronger — it now names the clause, not the document |
+| Changelog | — | new v1.3 entry | see F-01 |
+
+**Design surfaces untouched.** §3 (corpus gathering), §4 (parser / selector / renderer), §5 (module
+surfaces), §7.3 (the census contract) are byte-identical outside the two one-line citation edits.
+The fourteen-member pin at §7.3 (*The size of the owned list, stated once* — six functions ∪ eight
+constants) stands unmoved, as does the 1,200-byte pin and the sentinel-bounded slice contract. No
+seam, no injection point, no oracle placement changed, so nothing I approved on the testability axis
+can have regressed.
+
+**Version-numeral sweep.** I grepped the whole document for residual `FSPEC v1.` / `REQ v1.`
+pointers. The remaining hits are all inside **historical changelog entries** (v0.5, v0.6, v1.2,
+§9.2's ERR-1/ERR-2 resolution notes) where the numeral is the subject of the sentence — "FSPEC v1.3
+widened E-7", "Resolved in REQ v1.8". Those are history, not live pointers, and a future upstream
+bump cannot invalidate them. No live body citation names upstream by numeral any more. The routed
+churn class is closed.
+
 ## Interfaces
 
 ## Data Model
