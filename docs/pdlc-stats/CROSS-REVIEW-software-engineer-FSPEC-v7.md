@@ -165,11 +165,50 @@ invitation to "fix" agreement back into divergence.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | nonlocal | The routed erratum item did not land, and correctly so: it is addressed to the wrong document. This FSPEC has no co-change table (`§2.1` is acceptance-criteria coverage; zero grep hits for "co-change"/"sites"). The five→nine site table lives at `DECISIONS-pdlc-stats.md:129` and is already at nine; `K-7` (`:464`) already owns both sibling-feature document edits the item names. The item's "FSPEC §5.2" is the *sibling* `docs/completed/pdlc-engine-distribution/FSPEC-…md:583`, not this document — the probable source of the mis-route. No FSPEC edit is warranted; adding a vendoring site table here would be an altitude violation. Process finding against routing, not a document defect. | §2.1 |
+| F-02 | Medium | inherited | nonlocal | §7.3 still lists five errata as open against the REQ; all five are settled at REQ v1.4. The section reports zero real disagreements as five, and TSPEC reads it for intent. | §7.3 |
+| F-03 | Medium | inherited | nonlocal | BR-27 attributes G-3's wording to REQ-STATS-07 and frames its narrowing as a live erratum; REQ-STATS-07 at HEAD already states BR-27's own rule. Mis-attribution, not a dead quote. | §4.5 BR-27 |
+| F-04 | Medium | inherited | nonlocal | EC-09 and D-9 assert a deliberate departure from REQ-STATS-09's *Given*; REQ v1.4 added the no-`docs/`-root carve-out that removes the departure. Behaviour correct, framing false. | §5 EC-09; §7.1 D-9 |
+| F-05 | Low | inherited | nonlocal | BR-06 calls the `-REVIEW-` malformed disposition "a wording defect of the upstream criterion"; REQ-STATS-03 now decides that case explicitly, in D-8's direction. | §4.2 BR-06; §7.1 D-8 |
+
+FINDING: Low | delta | nonlocal | §2.1 | Routed item is mis-addressed: this FSPEC has no co-change table; the site table and K-7 live in DECISIONS and already discharge it. No FSPEC edit warranted.
+FINDING: Medium | inherited | nonlocal | §7.3 | Five errata listed as open against the REQ are all settled at REQ v1.4; the section reports zero disagreements as five.
+FINDING: Medium | inherited | nonlocal | §4.5 BR-27 | BR-27 attributes G-3's wording to REQ-STATS-07 and frames a settled narrowing as a live erratum.
+FINDING: Medium | inherited | nonlocal | §5 EC-09 | EC-09 and D-9 assert a departure from REQ-STATS-09 that REQ v1.4's carve-out has removed.
+FINDING: Low | inherited | nonlocal | §4.2 BR-06 | BR-06 calls a decided case an upstream wording defect after REQ-STATS-03 settled it in D-8's direction.
+
+All four `inherited` findings are re-raised verbatim from my v6 confirmation. They are not new: this
+round edited nothing, so they could not have been resolved. They are tagged `inherited` deliberately
+so they stay non-gating and route back to the FSPEC's ordinary revision loop rather than halting the
+phase — and so they are not lost to a round that had no delta to attach them to.
+
+The single `delta` finding is tagged `delta` because the round left a routed item unlanded, which is
+the protocol's definition. It is Low, not High, because the correct disposition of that item is *"no
+change required here"*: the obligation is real, is owned, and is discharged in DECISIONS `K-7`. The
+defect is in the routing, not in any document.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Should the orchestrator's erratum router disambiguate bare document-type tokens (`FSPEC`, `TSPEC`) that refer to *sibling completed features*? `K-7`'s text necessarily names another feature's `FSPEC §5.2`, and that appears to be what sent this item here. If other cross-feature obligations are routed the same way, this will recur. |
 
 ## Positive Observations
 
-_pending_
+- **DEC-STATS-01's site table is now sweep-derived, and it shows.** Nine sites found by one
+  `git grep -l` with documented exclusions, replacing three rounds of per-file reading that found
+  five, then six. The DECISIONS text even records *why* the two surviving grep hits fail the
+  predicate. That is the blast-radius enumeration discipline done properly, and it is the reason
+  this routed item could be adjudicated in minutes rather than argued.
+- **K-7 states its own residual.** It names `P7-02` as the oracle and then admits `P7-02` does not
+  cover `PK-26`'s existence as a row. An obligation that documents the edge of its own coverage is
+  worth more than one that claims completeness.
+- **The FSPEC's behavioural spine has now survived two independent re-groundings against REQ v1.4**
+  with no divergence found. The document is in good shape; every finding I have left against it is
+  about stale *framing* of settled disputes, not about behaviour.
+- **The v6 round's edits held.** BR-11, BR-16 and BR-25 are still correct against REQ HEAD.
 
 ## Recommendation
 
