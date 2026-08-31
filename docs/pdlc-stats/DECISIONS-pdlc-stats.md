@@ -13,10 +13,42 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.6 | 2026-08-31 |
+| Draft | se-author | 1.7 | 2026-08-31 |
+
+**v1.7 (erratum round 8).** Targeted versioned edit; no restructuring, no re-litigation.
+**Upstream re-grounded first, and upstream moved:** TSPEC HEAD is **v1.8** (`sha256:f32d9cb5…`) where
+v1.6 grounded on v1.4; FSPEC HEAD is **v1.8** (`sha256:a493133f…`) where v1.6 grounded on v1.5; REQ
+HEAD is **v1.7** (`sha256:f75c348f…`) where v1.6 grounded on v1.4. What was decided upstream, read
+from the changelogs rather than inferred: (a) **TSPEC v1.7** corrected §2.1's
+`coverageInstrumentation.test.js` row from *six → seven* to **seven → eight**, adopting the
+measurement this document has carried since v1.3; (b) **REQ v1.7 / FSPEC v1.8 / TSPEC v1.8** withdrew
+REQ-STATS-06's *"a grammatical basename outside the driver's catalogue is a survivor"* clause and
+pinned BR-16's `harvested` reading — a driver-classification rule this document neither states nor
+depends on, so nothing is owed here. No new `BR-`, `E-` or `AC-` row and no vocabulary rename lands in
+any of those rounds. Every count, option, obligation and falsifier below re-measured true at HEAD:
+TSPEC §2.1 still derives **ten** co-change sites, matching this document's table and K-1's partition.
+
+Two record corrections, both bookkeeping; no engineering claim moves. (1) **K-3's *Upstream
+divergence* clause is retired.** It routed the *six → seven* disagreement to TSPEC as an erratum owed
+upstream; TSPEC v1.7 discharged it, so the clause now records the resolution instead of asserting a
+debt already paid. This closes PM F-01 (carried from v6–v9) and TE F-01. (2) **The site-table preamble
+in `DEC-STATS-01` said *"four hold the enumerations; five pin them"***, transposing the split the rest
+of the document uses — the sweep's own narration, the v1.6 changelog's *"five enumerations and four
+test files"*, and TSPEC §7.3 all read **5 + 4 + 1**. The table itself was always right; only the
+preamble's two words were, and the total stayed ten throughout. This closes TE F-03.
+
+Two findings are answered without a document edit. The **v1.6 grounding attestation** (TE F-02, PM
+F-02) is now marked as version-scoped rather than live: a changelog entry records the document at its
+own version, so the pins there are not rewritten, and the fresh re-grounding above is this round's
+live statement. The **non-resolving TSPEC pin in the v8/v9 `UPSTREAM-STATE` trailers** (TE F-04) is a
+workflow-side defect — the trailer should be emitted from the body's measurement and a pin that
+resolves to no revision treated as fail-closed — and no edit to this document would fix it; every
+round it affected re-grounded against HEAD per `DEC-ERR-03`, so no conclusion here rests on it. It is
+recorded for harvest, not routed as an erratum, because no upstream *document* is wrong.
 
 **v1.6 (erratum round 7).** Targeted versioned edit; no restructuring, no re-litigation.
-**Upstream re-grounded first and did not move:** TSPEC HEAD is v1.4 (`sha256:cb351bb3…`) and FSPEC
+*(Version-scoped: the pins in this entry state upstream as it stood at v1.6, not at HEAD; see the
+v1.7 entry for HEAD.)* **Upstream re-grounded first and, at v1.6, had not moved:** TSPEC HEAD was v1.4 (`sha256:cb351bb3…`) and FSPEC
 HEAD is v1.5 (`sha256:25af3c47…`) — the same revisions v1.5 absorbed. The dispatch's cited TSPEC
 `sha256:512a9fcf…` again matches no revision of TSPEC on this branch, so re-grounding was done
 against HEAD per `DEC-ERR-03`; this is the second round it has resolved to nothing, and it is a
@@ -39,7 +71,8 @@ all ten, agreeing with the site table, K-1's partition, K-9's ownership and *Sta
 forms stay — a changelog records the document at its own version, and `DEC-DOC-01` governs body
 citations, which v1.5 already converted, not past entries.
 
-One item is **carried unresolved by design**: TSPEC §2.1's `coverageInstrumentation.test.js` row
+*(Discharged at v1.7 — TSPEC v1.7 corrected the row; the paragraph is left as the record of v1.6.)*
+One item was **carried unresolved by design** at v1.6: TSPEC §2.1's `coverageInstrumentation.test.js` row
 still describes P9-02's title as moving *six → seven*, where HEAD measures the include set at seven
 already (`REQUIRED_INCLUDES` is four, so the literal is `4 + 1 + 2`) and this feature makes it eight.
 Both reviewers agree the arithmetic here is correct and the repair belongs upstream in TSPEC. It is
@@ -73,7 +106,8 @@ candidate totals are reconciled as probe-variant routes to the same ten transcri
 re-evaluation trigger moves to **sixteen lists across ten files** and retracts v1.4's *"cannot
 disagree again"* claim, which a shared sweep does not buy across two documents. K-3 re-measures
 `c8.include` at HEAD (`REQUIRED_INCLUDES` is **four**, so the literal is seven and this feature makes
-it eight) and records TSPEC §2.1's *"six → seven"* as an **erratum owed upstream**, keeping the
+it eight) and records TSPEC §2.1's *"six → seven"* as an **erratum owed upstream** *(discharged by
+TSPEC v1.7; superseded record, not a live route)*, keeping the
 correct arithmetic here rather than matching a number known to be wrong.
 
 Per `DEC-DOC-01`, `coverageInstrumentation.test.js:264` / `:261` and `pdlc/README.md:231` are replaced
