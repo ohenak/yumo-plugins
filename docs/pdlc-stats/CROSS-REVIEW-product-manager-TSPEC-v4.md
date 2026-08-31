@@ -138,7 +138,41 @@ verbatim-restatement defect generator §2.1 explicitly avoids.
 
 ## Data Model
 
-_pending_
+Nothing in the specified surface moved, which is the primary thing a delta confirmation has to
+establish before it can approve.
+
+**Traceability is intact.** §7.1's BR → component table still carries a row for every business rule
+BR-01…BR-30, and none of the rows the erratum's sections touch (BR-11, BR-16, BR-25, BR-26) changed
+its mapping. The erratum edited *prose about* BR-11 and BR-16 in §4.3; it did not edit the components
+those rules bind to (`n > 0` before the harvested test for BR-11; harvested-before-zero-denominator
+for BR-16). No P0 or P1 requirement lost a mapping, and no acceptance criterion was narrowed,
+broadened or re-triggered by this round.
+
+**No types, keys or enumerations changed.** `StatsReport`, `FeatureStats`, the `state`-carrying
+metric types, `SCHEMA_VERSION`, `renderJson`'s five-key `SingleDocument` projection and three-key
+`FleetDocument`, and `NON_FEATURE_DIRS`' eight names are all byte-identical to the version I
+approved. The two counts this round *did* move — the vendored workflow-member class `5 → 6` and the
+sibling packed-set note — are not product-facing data model; they are packaging enumerations, and
+they move because the feature adds a module, which the REQ already contemplates.
+
+**No scope crept in.** I checked both directions, since a round that adds 124 lines is exactly where
+scope arrives unannounced:
+
+- *Added but not required?* The only genuinely new obligations are the two sibling-document edits and
+  two new §6.4 oracles. The sibling edits are not new scope — they are previously-unstated cost of
+  scope the REQ already accepted (shipping `lib/stats.mjs` through the vendoring channel), now
+  written down. The oracles are verification, not behaviour.
+- *Required but dropped?* Nothing. The erratum deletes only §8.3 bullets whose upstream answers have
+  landed, and stale count words.
+
+**One deletion I checked before accepting it.** §8.3 lost three bullets (BR-16, BR-11, BR-25).
+Deleting an open question is the kind of edit that can quietly discard a real gap, so I verified each
+independently rather than trusting §8.3's own claim: FSPEC §7.3 confirms the BR-11 and BR-16 errata
+closed, and FSPEC BR-25 at HEAD now names **both** archive-root loose files
+(`docs/completed/REQ-completed.md` *and* `docs/completed/QUEUE-HISTORY-rows-0-1.md`), which is
+exactly the incompleteness the third bullet reported. All three are genuinely settled upstream, so
+removing them is correct — and the round is right that leaving them would re-route a decided question
+(`DEC-ERR-01`'s anti-pattern) and cost a round.
 
 ## Test Strategy
 
