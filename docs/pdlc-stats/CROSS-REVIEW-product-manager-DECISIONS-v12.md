@@ -105,3 +105,37 @@ true at HEAD"* claims a verification that was not available at the time it was w
 **Not re-opened:** `DEC-STATS-01`'s chosen option, `DEC-STATS-02`, `DEC-STATS-03`'s option table and
 identity oracle, K-1 through K-9 on their merits, the standing-costs bullets, or the
 *Relationship to project-level decisions* section. None moved; all approved across v5–v11.
+
+## Decision
+
+**Approved with minor changes.** Zero High, one Medium, two Low. The two findings I carried from v6
+onward are **both closed by this round's edit**, which is the outcome the erratum channel exists for.
+
+Both prior findings, re-verified rather than assumed closed:
+
+| Prior finding (v11) | Status at v1.7 | Evidence |
+|---|---|---|
+| **F-01 (Low, carried v6–v11)** — K-3 still routed the include-count divergence upstream as *"owed in TSPEC, not resolved here"* after TSPEC v1.7 resolved it | **Closed** | K-3 now reads *"Upstream divergence resolved in TSPEC v1.7 — no longer owed"*; TSPEC §2.1 independently states the same *seven → eight*. Arithmetic in the row unchanged |
+| **F-02 (Low)** — the v1.6 changelog's *"REQ HEAD (v1.4) matches its pin"* read as a live claim about a superseded pin | **Closed** | The v1.6 entry is now prefixed *"(Version-scoped: the pins in this entry state upstream as it stood at v1.6, not at HEAD; see the v1.7 entry for HEAD)"* and its tense moved to past. The v1.5 entry's carried-unresolved paragraph gets a matching *"(Discharged at v1.7 …)"* marker |
+
+Every claim the delta makes about something outside itself, checked at the source:
+
+| Claim introduced or changed at v1.7 | Status |
+|---|---|
+| TSPEC HEAD is v1.8, `sha256:f32d9cb5…` | **True** — matches the branch blob |
+| FSPEC HEAD is v1.8, `sha256:a493133f…` | **True** |
+| REQ HEAD is v1.7, `sha256:f75c348f…` | **True** |
+| TSPEC v1.7 corrected §2.1's `coverageInstrumentation.test.js` row from *six → seven* to *seven → eight* | **True** — verified in TSPEC §2.1 and its v1.7 changelog row |
+| REQ v1.7 / FSPEC v1.8 / TSPEC v1.8 withdrew REQ-STATS-06's out-of-catalogue *survivor* clause and pinned BR-16's `harvested` reading | **True** — FSPEC v1.8's entry states it in the same terms (*"absorbed, not open"*); TSPEC §4.3/§8.3 re-stamp it |
+| That rule *"this document neither states nor depends on, so nothing is owed here"* | **True** — `grep` finds no `REQ-STATS-06`, `survivor`, `catalogue` or `harvested` in DECISIONS, and my v11 round tested the one seam that could have made it load-bearing (the driver's catalogue is internal to `parseReviewFilename`, surfaced as `reason: "bad_doc_type"`, so no fifth classifier escapes DEC-STATS-03's bundle) |
+| No new `BR-`, `E-` or `AC-` row and no vocabulary rename in those rounds | **True** — the FSPEC delta is +10/−3, a pin correction and a changelog entry; *"No other change"* |
+| TSPEC §2.1 still derives **ten** co-change sites, matching this table and K-1's partition | **True** — TSPEC §6.4 and §7.3 both still read ten |
+| Site-table preamble: **five** hold, **four** pin, from two other packages | **True** — counted off the table; corroborated by the sweep narration, *Reversibility: hard*, and TSPEC §7.3 |
+| *"Every count … re-measured true at HEAD"* | **Overstated** — see F-01 (Medium). Options, obligations and falsifiers re-measure true; the baseline counts do not, because the feature's own implementation landed on this branch before the attestation was written |
+
+**The bar applied is the one set at v9 and held at v10 and v11.** Only two things block: a defect this
+revision introduced, or a factual contradiction with upstream/HEAD on a load-bearing claim. The
+revision introduced no defect in any decision — it retired a paid debt, fixed a transposition, and
+scoped two changelog entries to their own versions, and all three land correctly. The one factual
+gap it did introduce sits on a bookkeeping attestation with no downstream consumer, so it is
+recorded at Medium and does not gate. **DECISIONS v1.7 holds as approved.**
