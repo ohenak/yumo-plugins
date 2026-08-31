@@ -193,6 +193,162 @@ re-implementation that happens to agree on today's corpus still fails. §6.4 spe
 
 ## 3. Interfaces
 
+Every service boundary is a named contract. TypeScript-interface syntax is used for precision; the
+implementation is ESM JavaScript with JSDoc, matching `pdlc/workflows/lib/loop-session.mjs` and
+`lib/escalation-view.mjs`.
+
+### 3.1 The injected seams
+
+```ts
+interface DirEntry {
+  name: string;
+  isDirectory: boolean;
+  isFile: boolean;
+  isSymbolicLink: boolean;
+}
+
+/** Read-only by construction: no member writes, creates, deletes or spawns. */
+interface StatsIo {
+  listDir(absDir: string): DirEntry[];   // throws on unreadable — caller catches
+  fileSize(absPath: string): number;     // lstat().size — never follows a link (§2.4)
+  readFile(absPath: string): string;     // utf8; POSTMORTEM bodies only
+  exists(absPath: string): boolean;      // total: never throws
+}
+```
+
+### 3.2 The driver-parser bundle (REQ C-5's seam)
+
+```ts
+type ReviewParse =
+  | { ok: true; role: string; docType: string; round: number; suffixed: boolean }
+  | { ok: false; reason: "not_cross_review" | "bad_role" | "bad_doc_type"
+                       | "bad_round" | "trailing_junk" };
+
+type RoundWindow =
+  | { ok: true; startIndex: number; endIndex: number;
+      present: Map<string, number[]>; skipped: Array<{ basename: string; reason: string }> }
+  | { ok: false; reason: "malformed_round_one_duplicate"; role: string };
+
+type ResolvedMarker = { ok: true; resolved: boolean } | { ok: false; reason: string };
+
+/** Exactly the four `orchestrate-dev.js` exports, by reference (§2.5). */
+interface StatsParsers {
+  parseReviewFilename(basename: string): ReviewParse;
+  deriveRoundWindow(basenames: string[], docType: string): RoundWindow;
+  deriveDodRoundIndex(basenames: unknown, feature: string): number;
+  parseResolvedMarker(fileText: string): ResolvedMarker;
+}
+```
+
+These four shapes are transcribed from the exports as they stand in
+`pdlc/workflows/orchestrate-dev.js`, not invented here. Two details of those shapes are load-bearing
+and are called out so an implementer does not have to rediscover them:
+
+1. **`deriveRoundWindow` returns early on a collision, before it has finished the listing.** Its
+   `ok: false` branch carries no `skipped` array. So the malformed list (BR-06) **must not** be
+   taken from `deriveRoundWindow`'s `skipped`: a feature whose TSPEC row is `unmeasurable` would
+   silently lose its malformed basenames. `computeReviewRounds` therefore derives the malformed list
+   from a **separate, direct pass** of `parseReviewFilename` over the listing (§4.3). That is still
+   the driver's classification of each basename — no new grammar — just a call site that survives
+   the collision branch.
+2. **`parseReviewFilename`'s `not_cross_review` reason is BR-06's "not a cross-review at all"
+   bucket.** Malformed means `reason !== "not_cross_review"`. A `LEARNINGS-*.md`, a
+   `HANDOFF-PROMPT.md` or the feature's own `REQ-*.md` returns `not_cross_review` and is filtered
+   out before the malformed list is built — which is exactly what BR-06 requires and what AT-09
+   asserts.
+
+### 3.3 The stats module's public surface
+
+`pdlc/workflows/lib/stats.mjs` exports six functions and two frozen constants. All six are pure:
+same inputs, same outputs, no ambient reads.
+
+```ts
+/** BR-01's closed surface. Total; never throws. */
+export function parseStatsArgv(argv: string[]):
+  | { ok: true; feature: string | null; json: boolean; cwd: string | null }
+  | { ok: false; message: string };
+
+/** BR-25/BR-26. Returns discovered features (BR-02 preference already applied) and unclassified names. */
+export function discoverFeatures(io: StatsIo, docsRoot: string):
+  { features: Array<{ name: string; dir: string }>; unclassified: string[] };
+
+/** The four metrics for one feature directory. Pure given `io` + `parsers`. */
+export function computeFeatureStats(
+  io: StatsIo, parsers: StatsParsers, feature: string, dir: string
+): FeatureStats;
+
+/** Pure orchestration: argv → outcome. The only function `cmdStats` calls. */
+export function runStats(
+  args: { argv: string[]; io: StatsIo; parsers: StatsParsers; cwd: string }
+): StatsOutcome;
+
+export function renderHuman(outcome: StatsOutcome): string;
+export function renderJson(outcome: StatsOutcome): object;   // caller JSON.stringify's
+
+export const REVIEW_DOC_TYPE_ROWS: readonly string[];  // BR-09's six, in order
+export const NON_FEATURE_DIRS: readonly string[];      // BR-25's eight, fixed
+```
+
+`REVIEW_DOC_TYPE_ROWS` is `["REQ","FSPEC","TSPEC","PLAN","PROPERTIES","DECISIONS"]`. It is a
+**local** constant, not an import of the driver's `REVIEW_DOC_TYPES` — that one is module-private in
+`orchestrate-dev.js` (declared `const`, not `export const`) and FSPEC §7.4 A-3 and D-4 make the row
+set and its ordering an **observable** of this command, fixed by FSPEC rather than inherited. §6.4
+specifies a drift oracle that fails if the driver's catalogue and this row set stop agreeing, so
+"local constant" does not mean "free to diverge silently".
+
+### 3.4 The CLI surface
+
+Three edits to `pdlc/engine/bin/cli.mjs`, all additive:
+
+| Site | Edit |
+|---|---|
+| `FLAGS_BY_COMMAND` | add row `stats: ["json", "cwd"]` |
+| `main()`'s `switch (cmd)` | add `case "stats": if (checkFlags(rest, "stats")) await cmdStats(rest); break;` |
+| `USAGE` | add the `pdlc stats [feature] [--json] [--cwd <path>]` line |
+
+Four existing mechanisms are **reused unchanged**, and BR-01's "the closed-flag *mechanism* existing
+commands use, not their flag *lists*" is satisfied by exactly this reuse:
+
+- `validateFlags(argv, command)` rejects any flag outside the row and any value flag missing its
+  value. Because the row is `["json","cwd"]` and nothing else, `--dev`, `--plugin-root`,
+  `--allow-api-key-billing` and `--dry-run` are all refused here even where a neighbouring command
+  accepts them — AT-24's exact assertion, and the reason it names `--dev` and `--plugin-root`
+  specifically.
+- `checkFlags` writes `USAGE` and the error to **stderr** and sets `process.exitCode = 1`, writing
+  nothing to stdout. That is BR-20's single exception and EC-08, inherited rather than re-coded.
+- `cwd` is already a member of `VALUE_FLAGS`, so `--cwd` consumes its value token and `--cwd` with
+  no value is already a usage error. `json` is deliberately **not** added to `VALUE_FLAGS`: it is a
+  boolean flag.
+- `launch()` opens with `if (cmd !== "dev" && cmd !== "queue") return runMain(argv)`, so `stats`
+  passes straight through the version-resolution ladder with no store read and no re-exec — the same
+  passthrough `doctor`, `decide` and `--version` take. A reporting command must not be able to
+  refuse for a reason about the version store.
+
+`cmdStats` is ~25 lines and contains no metric logic:
+
+```js
+async function cmdStats(argv) {
+  const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
+  const outcome = runStats({ argv, io: statsIo(), parsers: await statsParsers(), cwd });
+  if (outcome.stdout) process.stdout.write(outcome.stdout);
+  if (outcome.stderr) process.stderr.write(outcome.stderr);
+  process.exitCode = outcome.exitCode;
+}
+```
+
+`statsParsers()` mirrors the existing `loopSessionModule()` / `escalationViewModule()` /
+`devWorkflowModule()` helpers: `resolveWorkflowRoot()` for the root, then a dynamic
+`import(pathToFileURL(...).href)`. It pulls the four exports from `orchestrate-dev.js` **by
+reference** and returns them frozen (§2.5's identity oracle depends on nothing wrapping them).
+
+### 3.5 Exit codes
+
+`outcome.exitCode` is `0` or `1` and never anything else. Exit `2` is reserved by this CLI for a
+recorded pipeline halt (`bin/cli.mjs`'s exit-code header: "2 the pipeline HALTED (a normal, recorded
+pdlc outcome)"), and a reporting command has no halt to signal — BR-29, discharged by the return
+type rather than by discipline. Nothing in the `stats` path calls `emitReport`, which is the only
+function in the file that produces a `2`.
+
 ## 4. Data Model
 
 ## 5. Error Handling
