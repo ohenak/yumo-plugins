@@ -370,7 +370,90 @@ importing `bin/cli.mjs` is inert under its `import.meta.url` entry guard.
 
 ## Coverage Matrix
 
-*(pending)*
+Every upstream clause maps to at least one property, and every property maps to at least one clause.
+Gaps are named in §Gaps and Open Items rather than left for a reader to discover.
+
+### REQ acceptance criteria, constraints, risks
+
+| REQ clause | Properties |
+|---|---|
+| REQ-STATS-01 (human report) | PROP-RENDER-01…06, PROP-RR-12, PROP-DOD-02, PROP-HALT-07, PROP-RATIO-01 |
+| REQ-STATS-02 (`--json`) | PROP-JSON-01…10, PROP-CLI-01 |
+| REQ-STATS-03 (review rounds) | PROP-RR-01…13, PROP-NEG-02, PROP-NEG-04 |
+| REQ-STATS-04 (DoD rounds) | PROP-DOD-01…04, PROP-NEG-04 |
+| REQ-STATS-05 (halts) | PROP-HALT-01…08 |
+| REQ-STATS-06 (byte ratio) | PROP-RATIO-01…10, PROP-NEG-04 |
+| REQ-STATS-07 (fleet, explicit gaps) | PROP-DISC-04…09, PROP-ERR-05, PROP-ERR-06, PROP-ERR-07, PROP-RENDER-06, PROP-NEG-06 |
+| REQ-STATS-08 (read-only, both conjuncts) | PROP-RO-01…06, PROP-NEG-01 |
+| REQ-STATS-09 (unknown feature) | PROP-ERR-01, PROP-ERR-02, PROP-ERR-03, PROP-NEG-05 |
+| C-1 read-only surface | PROP-RO-05, PROP-RO-06, PROP-NEG-01 |
+| C-2 directory preference | PROP-DISC-01, PROP-DISC-02, PROP-NEG-03 |
+| C-3 spec-document set | PROP-RATIO-01, PROP-RATIO-02 |
+| C-4 process-artifact set | PROP-RATIO-01, PROP-RATIO-02, PROP-RATIO-06 |
+| C-5 parsing fidelity | PROP-DRIFT-01…04, PROP-RR-13, PROP-NEG-07 |
+| R-1 permissive parser | PROP-RR-04, PROP-NEG-02 |
+| R-2 double counting | PROP-DISC-01, PROP-NEG-03 |
+| R-3 `git` reach | PROP-RO-06, PROP-RO-05 |
+| R-4 zero denominator | PROP-RATIO-07 |
+| R-5 JSON field drift | PROP-JSON-03, PROP-JSON-09 |
+| R-6 harvested reads as zero | PROP-RR-09, PROP-RR-10, PROP-DOD-03, PROP-RATIO-08, PROP-NEG-04 |
+| A-1 literal basename | PROP-DISC-08 |
+| A-2 computed fresh, no cache, no persisted stats file | PROP-NEG-01, PROP-RO-05 (no write seam exists, so no stats file can be persisted) |
+| O-3 subcommand of the `pdlc` entry point | PROP-CLI-04, PROP-CLI-05, PROP-CLI-06 |
+
+### FSPEC business rules
+
+| BR | Properties | BR | Properties |
+|---|---|---|---|
+| BR-01 | PROP-CLI-01…05 | BR-16 | PROP-RATIO-08, PROP-RATIO-09 |
+| BR-02 | PROP-DISC-01, PROP-DISC-02, PROP-NEG-03 | BR-17 | PROP-RENDER-01…03 |
+| BR-03 | PROP-DISC-03 | BR-18 | PROP-DISC-09, PROP-RENDER-05, PROP-RENDER-06, PROP-PBT-03 |
+| BR-04 | PROP-DISC-08 | BR-19 | PROP-RENDER-04, PROP-RR-07, PROP-RATIO-07 |
+| BR-05 | PROP-RR-01, PROP-RR-02, PROP-RR-03 | BR-20 | PROP-JSON-01, PROP-JSON-02, PROP-CLI-08 |
+| BR-06 | PROP-RR-04, PROP-RR-05, PROP-RR-06, PROP-RATIO-06, PROP-NEG-02, PROP-PBT-01 | BR-21 | PROP-JSON-03, PROP-JSON-06 |
+| BR-07 | PROP-RR-07, PROP-RR-08, PROP-RR-11 | BR-22 | PROP-JSON-04, PROP-JSON-05, PROP-PBT-02 |
+| BR-08 | PROP-RR-09, PROP-RR-10, PROP-RR-11 | BR-23 | PROP-JSON-07, PROP-JSON-08, PROP-DISC-07 |
+| BR-09 | PROP-RR-12, PROP-RR-13, PROP-PBT-03 | BR-24 | PROP-JSON-09 |
+| BR-10 | PROP-DOD-01, PROP-DOD-02 | BR-25 | PROP-DISC-04, PROP-DISC-05, PROP-DISC-06 |
+| BR-11 | PROP-DOD-03, PROP-DOD-04 | BR-26 | PROP-DISC-05, PROP-DISC-07 |
+| BR-12 | PROP-HALT-01…06 | BR-27 | PROP-ERR-05, PROP-ERR-06, PROP-ERR-07, PROP-NEG-06 |
+| BR-13 | PROP-HALT-07, PROP-HALT-08 | BR-28 | PROP-RO-01…06, PROP-NEG-01 |
+| BR-14 | PROP-RATIO-01, PROP-RATIO-02, PROP-RATIO-03, PROP-RATIO-06 | BR-29 | PROP-CLI-06, PROP-NEG-08 |
+| BR-15 | PROP-RATIO-07, PROP-RATIO-10 | BR-30 | PROP-ERR-01…05, PROP-NEG-05 |
+
+### FSPEC acceptance tests and edge cases
+
+| AT | Properties | EC | Properties |
+|---|---|---|---|
+| AT-01 | PROP-RENDER-01, PROP-RR-12 | EC-01 | PROP-ERR-01 |
+| AT-02 | PROP-DISC-01 | EC-02 | PROP-DISC-01 |
+| AT-03 | PROP-DISC-03 | EC-03 | PROP-ERR-07 |
+| AT-04 | PROP-JSON-01 | EC-04 | PROP-DISC-03 |
+| AT-05 | PROP-JSON-03, PROP-JSON-04, PROP-JSON-09 | EC-05 | PROP-RR-04, PROP-RR-05 |
+| AT-06 | PROP-JSON-10, PROP-RENDER-05, PROP-RATIO-10 | EC-06 | PROP-RR-07, PROP-RR-08 |
+| AT-07 | PROP-RR-01 | EC-07 | PROP-RR-10, PROP-DOD-03 |
+| AT-08 | PROP-RR-02 | EC-08 | PROP-CLI-02, PROP-CLI-03, PROP-JSON-02 |
+| AT-09 | PROP-RR-03, PROP-RR-04, PROP-RR-05 | EC-09 | PROP-ERR-03, PROP-ERR-04 |
+| AT-10 | PROP-RR-03, PROP-RR-10 | EC-10 | PROP-DISC-07 |
+| AT-11 | PROP-DOD-01 | EC-11 | PROP-ERR-05 |
+| AT-12 | PROP-DOD-03, PROP-DOD-04 | EC-12 | PROP-RATIO-07 |
+| AT-13 | PROP-HALT-01, PROP-HALT-02, PROP-HALT-04 | EC-13 | PROP-RATIO-09 |
+| AT-14 | PROP-HALT-03, PROP-HALT-07 | EC-14 | PROP-HALT-03 |
+| AT-14b | PROP-HALT-06, PROP-HALT-08 | EC-15 | PROP-HALT-04, PROP-HALT-05 |
+| AT-15 | PROP-RATIO-01…04 | EC-16 | PROP-DOD-04 |
+| AT-16 | PROP-RATIO-07 | EC-17 | PROP-DISC-04 |
+| AT-17 | PROP-RATIO-08, PROP-RATIO-09 | EC-18 | PROP-DISC-08 |
+| AT-18 | PROP-DISC-04, PROP-DISC-06, PROP-DISC-08 | EC-19 | PROP-RATIO-04, PROP-RATIO-05 |
+| AT-19 | PROP-DISC-05, PROP-DISC-07, PROP-JSON-07 | EC-20 | PROP-DISC-04 |
+| AT-20 | PROP-ERR-05, PROP-ERR-06, PROP-JSON-08 | EC-21 | PROP-ERR-06 |
+| AT-21 / AT-22 | PROP-RO-01…04, PROP-RO-06, PROP-NEG-01 | | |
+| AT-23 | PROP-ERR-01, PROP-ERR-02 | | |
+| AT-24 | PROP-CLI-01…04, PROP-JSON-02 | | |
+| AT-25 | PROP-RR-07, PROP-RR-08 | | |
+| AT-26 | PROP-ERR-07 | | |
+| AT-27 | PROP-ERR-03, PROP-ERR-04, PROP-ERR-05 | | |
+| AT-28 | PROP-DOD-04 | | |
+
 
 ## Gaps and Open Items
 
