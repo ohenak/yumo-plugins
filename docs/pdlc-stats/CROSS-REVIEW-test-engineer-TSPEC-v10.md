@@ -89,7 +89,38 @@ is a Medium and not a re-opened review.
 
 ## Interfaces
 
-_pending_
+**Did the upstream move break anything previously approved?** No. I re-read every TSPEC seam that
+cites REQ-STATS-06 or the harvest predicate and checked each against REQ v1.7's bytes.
+
+| Seam | Cites | Status under REQ v1.7 |
+|---|---|---|
+| `computeProcessSpecRatio` branch order (`TSPEC:817-822`) | BR-16 precedence, BR-15 zero-denominator | Unchanged. Harvested-before-zero is BR-16's precedence and REQ says nothing about ordering. |
+| `crossReviews = basenames.filter(b => parsers.parseReviewFilename(b).ok)` (`TSPEC:756`) | REQ C-4, C-5 | Now *more* strongly supported: REQ v1.7's "the same one REQ-STATS-03 reports malformed (C-5)" ties the two ACs to one parser, which is exactly the no-independent-parsing-rule seam TSPEC chose. |
+| `dodReviews` regex, `processFiles` union (`TSPEC:757-759`) | REQ-STATS-04, C-4 | Untouched by the edit. |
+| `specFiles` via `REVIEW_DOC_TYPE_ROWS` (`TSPEC:755`) | REQ C-3 / BR-09's six rows | Untouched; the "one constant, not two lists that can drift" argument survives. |
+| `fakeStatsIo` seam used for AT-12 leg 3 and AT-17 leg 4 (`TSPEC:952-957`) | FSPEC-owned fixtures | Untouched. These are the two constructed fixtures deliberately kept out of the real-path baseline table; the REQ edit does not turn either into an archive measurement. |
+
+**The seam that matters most, re-checked positively.** The harvest disposition is reachable in
+production only through `computeProcessSpecRatio`'s disjunction, and the disjunct that the
+out-of-catalogue case must fire is `crossReviews.length === 0`. TSPEC's AT-17 leg-4 fixture keeps
+`CODE_REVIEW` files **intact** precisely so the *other* disjunct cannot mask it (`TSPEC:807-813`).
+That construction is what makes the leg a falsifiable oracle for REQ-STATS-06's new sentence rather
+than an accidental pass through the DoD disjunct — and it was designed before the REQ edit landed.
+It still discriminates correctly, and it is now the direct production-path proof of REQ v1.7's
+"reports **harvested**, not a measured ratio that would silently undercount".
+
+**The one interface-adjacent narration that is now wrong.** `TSPEC:802-806` describes AT-17 leg 4 as
+"expected `harvested` on BR-16's reading, and `measured` on REQ-STATS-06 v1.6's" and calls it "the
+row to re-stamp if the reconciliation lands the other way". There is no other way left to land. The
+asserted value is right, so no test is at risk; but a reader of §7 who is deciding how firmly to
+pin that expectation is told it is provisional when it is now settled. Low, because the assertion
+itself is correct and unambiguous — the surrounding sentence is the defect, not the oracle.
+
+No interface, protocol, injected IO surface or function signature in §4.2 or §5 depends on the
+withdrawn clause. I re-checked `lib/stats.mjs`'s exported surface for any name or return shape that
+encoded "survivor": there is none — the metric states are `measured | harvested | unmeasurable |
+unavailable` (`TSPEC:543`) and the withdrawn reading would have changed which state a fixture
+*reaches*, never the state catalogue itself.
 
 ## Data Model
 
