@@ -550,7 +550,135 @@ also verified present.
 
 ## 5. Error Handling
 
+Every failure scenario, the code path that catches it, and the FSPEC-decided observable. No row's
+behavior is "implementation's choice" — FSPEC §5 already decided all of them; this table names where
+each is produced.
+
+| Scenario | Caught at | Produced value | Observable | Exit |
+|---|---|---|---|---|
+| Unknown flag, or a value flag with no value | `checkFlags` in `main()`, before `cmdStats` runs | — | `USAGE` + message on **stderr**, stdout empty in both modes (EC-08, BR-01, BR-20's one exception) | 1 |
+| Two or more positionals | `parseStatsArgv` → `{ok: false}` | — | same shape as above: message on stderr, stdout empty (BR-01) | 1 |
+| `docs/` root absent or unreadable | `runStats`: `io.exists(docs)` false, or `io.listDir(docs)` throws | `{kind: "error", reason: "no_docs_root", feature}` | human: stderr message naming the root and *which* condition; JSON: BR-30's three-key object on stdout. `feature` is the supplied name in single-feature mode, `null` in fleet mode (D-9) | 1 |
+| Feature names no directory under either root | `runStats`, after both `io.exists` probes fail | `{kind: "error", reason: "not_found", feature}` | reported by name; JSON `error.reason` is `not_found` (EC-01) | 1 |
+| Single-feature directory exists but `io.listDir` throws | `try`/`catch` around the single-feature `computeFeatureStats` | `{kind: "error", reason: "unreadable_feature", feature}` | stderr message; JSON error object with the third `reason` (EC-11, D-10) — **not** empty stdout | 1 |
+| Fleet: one feature's `io.listDir` throws | per-feature `try`/`catch` inside the discovery loop | `{feature, gap: reason}` | one gap row / one `{gap}` entry; every other feature still reported (BR-27) | 0 |
+| Fleet: anything else throws while computing one feature | the **same** per-feature `try`/`catch` (catch-all, not a read-specific guard) | `{feature, gap: reason}` | EC-21. AT-20's second leg exists because a guard placed around the `listDir` call alone would pass the first leg and fail this one | 0 |
+| `io.readFile` throws on a POSTMORTEM | `try`/`catch` at the halt call site | `resolution: "open"` | fail-closed, identical to an absent marker (BR-12, EC-14) | 0 |
+| `io.fileSize` throws on one file (deleted between `listDir` and `lstat`) | `try`/`catch` at the sizing call site | contributes `0` bytes | the ratio is still produced; a race on a transient file never crashes a report | 0 |
+| Zero spec bytes | no throw — a branch, not an error | `byteRatio.state = "unavailable"` | `n/a` / `state: "unavailable"`, both byte totals still printed (BR-15, EC-12) | 0 |
+| Round-1 collision for one doc type | no throw — `deriveRoundWindow`'s `ok: false` branch | `state: "unmeasurable"` + `collidingRole` | that row only; the other five rows and the other three metrics are unaffected (BR-07, EC-06, AT-25) | 0 |
+| Unexpected throw anywhere in single-feature mode | outermost `try`/`catch` in `cmdStats` | — | message on stderr, exit 1; never a stack trace on stdout in `--json` mode | 1 |
+
+Two structural properties this table depends on:
+
+**No error path writes anything.** Every row above is produced by returning a value, never by a
+side effect, and the seam bundle (§2.3) carries no write capability, so BR-28's "on every path,
+including error paths" is not a discipline the implementer must maintain — there is no API through
+which a write could be attempted. AT-21/AT-22's snapshot pairs assert it empirically anyway,
+including on the two failure paths.
+
+**The read-only conjunct is paired with a liveness conjunct.** REQ-STATS-08 and FSPEC §3.4 both
+insist that leaving the tree untouched never suffices alone: the same invocation must also have done
+its job. Because `runStats` returns `{stdout, stderr, exitCode}` as one value, a run that produced no
+output is a distinguishable outcome (`stdout === "" && stderr === ""`) rather than an
+indistinguishable silence, and §6.5's oracle asserts both halves against one invocation.
+
 ## 6. Test Strategy
+
+TDD, red-before-green, in `pdlc/workflows/__tests__/` under the existing jest + c8 arrangement
+(`cd pdlc/workflows && npm test`; `npm run test:coverage` for the gated run). The new module joins
+the c8 `include` list (§2.1), so its per-file branch floor is 85 %.
+
+### 6.1 Test doubles
+
+Two doubles, both hand-written, both in a shared `__tests__/helpers/` module owned by a single
+batch-1 task:
+
+| Double | Substitutes | Design |
+|---|---|---|
+| `fakeStatsIo(tree)` | `StatsIo` | `tree` is a plain object mapping absolute paths to `{dirs, files}` or to file contents. Every member is total except where a test asks for a throw: `fakeStatsIo(tree, {throwOn: {listDir: [path]}})` makes exactly one call site throw, which is how the unreadable-directory and per-feature-gap rows are driven without needing real permission bits. **The double has no write member**, so a production write attempt is a `TypeError`, not a silent success. |
+| `recordingParsers(real)` | `StatsParsers` | wraps the **real** driver exports and records call arguments. Tests that need a specific classifier branch pass a narrow stub instead, but the default is the real thing — a stub is opt-in per assertion, never the ambient default. |
+
+Real-path tests (AT-09, AT-10, AT-11, AT-13, AT-14b, AT-18) use the **real** `node:fs` `StatsIo`
+against this repository's own `docs/completed/` archive, with literal expectations. Their literals
+are measurements of the archive as it stands and are re-measured if the archive changes; a test that
+replaced a literal with a derivation would agree with a wrong implementation (FSPEC §6's rule).
+These paths are verified present at HEAD: `docs/completed/pdlc-advisory-wave-gate/` carries exactly
+four `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` files;
+`docs/completed/pdlc-headless-engine/` carries `CROSS-REVIEW-software-engineer-TSPEC-v13.md`,
+`LEARNINGS-pdlc-headless-engine.md` and `POSTMORTEM-{D,F,I,T}-pdlc-headless-engine.md`;
+`docs/completed/pdlc-loop-economics/` carries `CODE_REVIEW-pdlc-loop-economics-v{1,2}.md`;
+`docs/completed/pdlc-wave-resume/` carries `POSTMORTEM-PR-pdlc-wave-resume.md`.
+
+### 6.2 Test levels
+
+| Level | Subject | What it proves |
+|---|---|---|
+| Unit — pure | `parseStatsArgv`, `round2`, the halt matcher, `discoverFeatures` | grammar and predicate behavior with no fs at all |
+| Unit — seamed | `computeFeatureStats` with `fakeStatsIo` + real parsers | every metric's branch table (§4.3), each state reachable |
+| Unit — render | `renderHuman` / `renderJson` over hand-built `StatsReport` values | token spellings, row order, key sets, without recomputing metrics |
+| Integration — in-process | `runStats` end-to-end with `fakeStatsIo` | flows A/B/C, exit codes, the error shapes |
+| Integration — real fs | `runStats` with the real `StatsIo` over `docs/completed/` | the real-path ATs, and that the seams and the archive agree |
+| Process | `main(["node","pdlc","stats",...])` in-process, stdout/stderr captured | flag closure, stdout emptiness on usage error, exit codes at the real edge |
+
+Importing `bin/cli.mjs` is inert — the file states and its entry guard enforces that self-invocation
+only happens when `import.meta.url` matches `process.argv[1]` — so the process level runs `main()`
+directly with a process-argv-shaped array, exactly as `cli.test.js` already does, with no spawn.
+
+### 6.3 The cross-mode oracle (AT-06)
+
+One test parameterised over a corpus of `StatsReport` values that between them reach **every**
+state of every metric. For each: build `renderHuman(report)` and `renderJson(report)`, extract the
+metric set from each, and assert correspondence. In fleet mode the permitted differences are exactly
+the two D-7 reductions (malformed list → count; per-phase halt entries → `{n} ({r} resolved)`) and
+the test enumerates them as an allow-list, so a third reduction fails. This is the oracle that makes
+REQ-STATS-02's set-equality and REQ R-5's stability guarantee checkable rather than asserted.
+
+### 6.4 Anti-drift oracles
+
+Four, each closing a way this design could silently stop being what it says it is:
+
+| Oracle | Asserts | Fails when |
+|---|---|---|
+| **Parser identity** (§2.5) | `statsParsers()`'s four members are `===` the corresponding `orchestrate-dev.js` exports | someone re-implements a grammar locally, even one that agrees on today's corpus |
+| **Doc-type catalogue agreement** (§3.3) | for every name in `REVIEW_DOC_TYPE_ROWS`, `parseReviewFilename("CROSS-REVIEW-se-review-{T}-v1.md")`-shaped input parses `ok`, **and** no seventh type the driver accepts is missing from the row set — probed by asserting a known-rejected type (`REVIEW`) stays rejected and the six stay accepted | the driver's private `REVIEW_DOC_TYPES` grows or shrinks without FSPEC §7.4 A-3's required FSPEC edit |
+| **Vendoring co-change** (§2.1) | `lib/stats.mjs` appears in `prepack.mjs`'s `MODULE_NAMES`, `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES` and `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`, and that `tspecPackedCount`'s vendored class size equals that list's length | one of the five sites is edited and another is not — the exact failure `pdlc-engineering-loop`'s LEARNINGS names as "a co-change set enumerated in prose with no oracle is unsound by construction" |
+| **No-write capability** (§2.3) | the `StatsIo` object literal `statsIo()` returns has exactly the four keys `listDir`, `fileSize`, `readFile`, `exists` | a fifth seam is added, which is how a write would first become possible |
+
+The vendoring oracle **derives** the expected member from `MODULE_NAMES` rather than transcribing a
+literal, so it cannot disagree with the list it checks — the `EXPECTED_TEST_COMMAND` lesson from
+`pdlc-loop-economics`'s LEARNINGS F-4 applied before it recurs.
+
+### 6.5 The read-only oracle (AT-21, AT-22)
+
+Snapshot every path under the repository root except `.git/`, recording path and mtime; run the
+command; snapshot again; assert **set-equality between the two snapshots of the same tree** — never
+against a fixed literal. Comparing two snapshots taken around one invocation is what keeps an
+untracked tool cache or editor backup from flaking the test, which is exactly the failure mode
+`coveredViolations` in `pdlc/workflows/lib/document-oracles.mjs` produces when it walks the whole
+tree. Untracked paths are deliberately **inside** the snapshot: BR-28 permits no write anywhere, so
+an untracked path changing is a real violation.
+
+Each leg asserts both conjuncts against one invocation — snapshot unchanged **and** the run did its
+job (metric set on stdout with exit 0, or the refusal report with exit 1). The `git`/network half is
+asserted structurally: the seam bundle has no `git` or network member, and §6.4's no-write-capability
+oracle pins that it never grows one.
+
+### 6.6 Property-based tests
+
+`fast-check` is already a dev dependency of `pdlc/workflows`. Three properties, chosen because each
+is a claim about *all* inputs rather than a worked example:
+
+| Property | Statement |
+|---|---|
+| PROP-1 (partition) | For any generated basename list, every basename lands in exactly one of: counted for one doc type, malformed, or neither — never two. Falsifies a `not_cross_review` filter that leaks into the malformed list. |
+| PROP-2 (state totality) | For any generated directory listing, every `DocTypeRounds`, `DodRounds` and `ByteRatio` produced carries a `state` from its declared union, `rounds`/`ratio` is `null` in exactly the non-`measured` states, and `collidingRole` is non-`null` in exactly `unmeasurable`. Falsifies a key-absent shape (BR-22's fixed-shape guarantee). |
+| PROP-3 (determinism) | Two `runStats` calls over the same `fakeStatsIo` tree produce byte-identical `stdout`. Falsifies any set- or object-key iteration reaching the output (BR-09, BR-13, BR-18 ordering claims). |
+
+Mutation testing targets the branch orders §4.3 fixes: swapping `unmeasurable` before/after
+`harvested`, swapping BR-16's harvested test before/after BR-15's zero-denominator test, and
+dropping the `- 1` from either of the two driver-index conversions. Each mutation must turn a test
+red; a mutation that survives means the branch order is untested, not that it is safe.
 
 ## 7. Traceability
 
