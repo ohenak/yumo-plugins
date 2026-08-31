@@ -6,14 +6,20 @@ feature: pdlc-stats
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-stats/REQ-pdlc-stats.md` (v1.2) |
+| Upstream | `docs/pdlc-stats/REQ-pdlc-stats.md` (v1.4) |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{role}-FSPEC[-v{N}].md` |
 | LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.3 | 2026-08-31 |
+| Draft | pm-author | 1.4 | 2026-08-31 |
+
+Erratum round (v1.4): re-grounded on REQ v1.4. BR-11 and BR-16 now state their harvested
+conditions over the documented basename grammars REQ-STATS-04 and REQ-STATS-06 name, rather than
+bare `CODE_REVIEW-*` / `CROSS-REVIEW-*` globs, so BR-16 and BR-14 read one file set; BR-25 names the
+second loose file at the `docs/completed/` root; §7.3's two harvested-predicate errata are absorbed,
+the REQ having decided them. No other change.
 
 **ID:** `FSPEC-STATS-01`
 
