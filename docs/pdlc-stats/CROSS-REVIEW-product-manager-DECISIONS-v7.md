@@ -49,7 +49,46 @@ unchanged in substance.
 
 ## Options Considered
 
-<!-- pending -->
+Three readings of "does this delta confirm" were open, and the choice decides the verdict, so I state
+it rather than assume it.
+
+**Reading 1 — the two DEC-DOC-01 items landed, so confirm.** Rejected. The dispatch is explicit that
+the item list is necessary, not sufficient, and my own v6 raised two **High** findings that this same
+erratum round had to clear. Confirming on the citation items alone would approve a document whose
+central number I had said was in positive contradiction with its upstream. I checked both v6 Highs.
+
+**Reading 2 — any residual inaccuracy anywhere re-opens the High.** Rejected as over-calibrated. My
+v6 F-01 was High for a stated reason, and the reason was mechanical, not aesthetic: *"PLAN reads both
+documents, and a co-change set that is nine in one and ten in the other partitions into K-rows that
+do not cover it."* The gate is whether the **contract PLAN partitions** — the site table and the
+K-rows — covers all ten sites. It now does: the site table carries ten rows, `pdlc/README.md`
+included with *"pinned by no oracle"* in place of a falsifier; K-1's partition covers site 10; K-9
+owns the edit; *Standing costs accepted* records the un-falsified site as a distinct kind of cost.
+The obligation is owned and PLAN cannot drop it. A prose restatement whose sub-counts do not add up
+is a real defect, but it is not that defect.
+
+**Reading 3 — confirm the routed items and the v6 Highs against upstream at HEAD, then sweep the
+changed sections for what the edit introduced or left behind.** Adopted. This is what DEC-ERR-03
+asks for, and it is what separates F-01 below (which the edit introduced) from the two Lows (which
+it did not touch).
+
+**Scope discipline.** I did not re-open `DEC-STATS-01`'s chosen option, `DEC-STATS-02`,
+`DEC-STATS-03`'s substance, K-2, K-4, K-5, K-6, K-7, the *What these decisions do not decide*
+section, or the project-level decisions — none of those were touched by this round and I approved
+their reasoning at v5. I read the changed sections (the v1.5 changelog, the option table, the site
+table, the sweep paragraphs, K-1, K-3, K-8, K-9, *Reversibility*, *Standing costs accepted*,
+`DEC-STATS-03`'s detector paragraphs) against TSPEC at HEAD, claim by claim.
+
+**Disposition of my v6 findings**, each re-checked against the current bytes:
+
+| v6 | Severity then | Status now |
+|---|---|---|
+| F-01 — nine sites, README argued out of the table | High | **Resolved.** Ten throughout; README is site 10 with a stated membership rule; the falsifiers-only rule is retired and the retirement is reasoned, not deferred |
+| F-02 — purity detector stated in withdrawn terms | High | **Resolved.** Split on return type, A-B-A for `deriveDodRoundIndex`, *"what A-B-A does and does not falsify"* stated rather than overclaimed; *"Until it lands"* replaced with *"has landed"* |
+| F-03 — K-8 headline "seven" vs TSPEC's eight | Medium | **Resolved.** Eight, with the `vendoredClassWord` ternary folded inside the total and the reason for folding it stated |
+| F-04 — K-9's promoted rule carried a superseded query | Medium | **Resolved.** The rule now travels with its pathspec, and the 25-vs-24 divergence is reconciled as probe-variant routes to the same ten |
+| F-05 — do not adopt TSPEC's *"six → seven"*; route back | Low | **Held correctly, still owed upstream.** See F-02 below |
+| F-06 — option B priced at four sites | Medium (inherited) | **Resolved.** The option table prices B at four |
 
 ## Decision
 
