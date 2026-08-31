@@ -40,6 +40,19 @@ changes its severity.
 
 ## Options Considered
 
+The document is frozen, so the only options open to me are dispositions of this round.
+
+| Option | Shape | Why not / why |
+|---|---|---|
+| Approve on the item list ("the erratum landed as routed") | Treat the routed item's landing as sufficient | **Rejected.** DEC-ERR-03 is explicit that items landing is necessary, not sufficient. The question is whether the document is still a faithful compression of REQ **v1.7**, which is answered by re-reading the upstream text the document leans on, not by checking the erratum's own diff off a list. |
+| Raise a High on the semantic flip | Treat "an upstream AC reversed its disposition after I approved" as gating on its face | **Rejected.** The gating test is whether a decision, oracle, falsifier, type or task sizing in *this document* is falsified. I traced all three of DECISIONS' upstream anchors — C-5, REQ-STATS-02, R-5 — and the flip reaches none of them. Severity must reflect real impact; a High here would be inflation. |
+| Route the delta back as a DECISIONS obligation | Demand a new K-row or a new oracle for the enlarged harvested case | **Rejected**, and the document itself says why. *What these decisions do not decide* carves out "token spellings, key sets, exit codes, row order and **edge-case outcomes**" as FSPEC §4/§5 material. REQ-STATS-06's out-of-catalogue disposition is precisely an edge-case outcome. The carve-out is not a dodge — it is the pre-declared scope boundary that makes this delta orthogonal, and it was approved as such. |
+| Confirm faithfulness; carry the four inherited items non-gating | Approve, leave the owed one-line repairs to the next DECISIONS touch | **Chosen** |
+
+One thing I deliberately did **not** do: treat "the delta is orthogonal" as a reason to skip the
+re-read. Orthogonality is a *conclusion* I had to earn against the current bytes of C-5,
+REQ-STATS-02 and R-5, not a premise. The section below records what I actually checked.
+
 ## Decision
 
 ## Consequences
