@@ -746,6 +746,26 @@ four `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` files;
 `docs/completed/pdlc-loop-economics/` carries `CODE_REVIEW-pdlc-loop-economics-v{1,2}.md`;
 `docs/completed/pdlc-wave-resume/` carries `POSTMORTEM-PR-pdlc-wave-resume.md`.
 
+An inventory is not a baseline. RK-4's "re-measure when the archive changes" needs the *asserted
+values* recorded, so a future reader can tell a stale literal from a broken implementation without
+re-deriving it from the tree. The measured expectations, at the HEAD this revision was authored
+against:
+
+| AT | Fixture | Asserted value |
+|---|---|---|
+| AT-09 | `docs/completed/pdlc-advisory-wave-gate/` | `TSPEC` row = `6` (highest present is `CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v6.md`); the four `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` basenames are listed in `malformed` (`reason: "bad_doc_type"`) and contribute to no round count |
+| AT-10 | `docs/completed/pdlc-headless-engine/` | `TSPEC` row = `13` (the sole surviving cross-review is `CROSS-REVIEW-software-engineer-TSPEC-v13.md`); the other five rows read `harvested` |
+| AT-11 | `docs/completed/pdlc-loop-economics/` | DoD rounds = `2` — the highest version of `CODE_REVIEW-pdlc-loop-economics-v{1,2}.md`, not `3` and not a count |
+| AT-13 | `docs/completed/pdlc-wave-resume/`, **copied into a temp root** with `POSTMORTEM-P-some-other-feature.md` added to the copy (FSPEC AT-13's *Given*) | exactly one halt entry: phase `PR`, resolution `resolved` — the marker at line 3 of `POSTMORTEM-PR-pdlc-wave-resume.md` reads `RESOLVED: yes`; the added foreign-feature file contributes nothing |
+| AT-14b | `docs/completed/pdlc-headless-engine/` | exactly four halt entries, phase sequence the literal `D`, `F`, `I`, `T` |
+| AT-18 | this repository's `docs/` fleet | invariants, not counts: every feature directory under `docs/` and `docs/completed/` appears exactly once, `docs/pdlc-halt-hardening/` among them; no row is named `completed`; `docs/PLAN-pdlc-integration-boundary-gates.md` yields no row |
+
+Each literal carries, in the test's own comment, the date it was measured and the command that
+re-measures it, so a red test names its own remedy rather than leaving a reader to guess whether the
+implementation or the archive moved. AT-18 is deliberately stated as invariants rather than a
+feature count: a literal that every routine archival falsifies buys nothing this feature needs,
+while "exactly once" and "never `completed`" are the properties BR-02 and BR-25 actually own.
+
 ### 6.2 Test levels
 
 | Level | Subject | What it proves |
@@ -767,8 +787,23 @@ One test parameterised over a corpus of `StatsReport` values that between them r
 state of every metric. For each: build `renderHuman(report)` and `renderJson(report)`, extract the
 metric set from each, and assert correspondence. In fleet mode the permitted differences are exactly
 the two D-7 reductions (malformed list → count; per-phase halt entries → `{n} ({r} resolved)`) and
-the test enumerates them as an allow-list, so a third reduction fails. This is the oracle that makes
-REQ-STATS-02's set-equality and REQ R-5's stability guarantee checkable rather than asserted.
+the test enumerates them as an allow-list, so a third reduction fails.
+
+That correspondence check is necessary and not sufficient: it compares two renderings of one report,
+so it cannot notice a key the *projection* (§4.2.1) leaks or drops — `FeatureStats.dir` reaches the
+human header legitimately, so a JSON document that also carried `dir` would still "correspond". A
+second, independent conjunct closes it:
+
+| Conjunct | Assertion |
+|---|---|
+| **Exact key sets** | `Object.keys(renderJson(report))` is **set-equal** to a literal, hand-transcribed constant per shape — `["schemaVersion","reviewRounds","dodRounds","halts","byteRatio"]` (BR-21), `["schemaVersion","features","unclassified"]` (BR-23), `["schemaVersion","error","feature"]` (BR-30) — with a comment naming the FSPEC clause each was transcribed from. Set-equality, never containment, and never `Object.keys` of the type under test: an expectation derived from the implementation agrees with a wrong implementation (FSPEC §6's rule). |
+| **No projection leakage** | `"feature"` and `"dir"` are asserted **absent** from the single-feature document and from every fleet `features` entry, by name. These are the two keys `FeatureStats` carries that BR-21/BR-23 exclude, so they are the two the projection could plausibly leak. |
+| **`schemaVersion` value** | present in all three shapes and `=== 1` (BR-24), asserted against the literal `1`, not against the module's `SCHEMA_VERSION` — pinning it to the constant would let a bump pass unnoticed, and BR-24's increment rule is exactly what a released consumer depends on. |
+| **Entry discriminant** | a fleet `features` entry is either the four metric keys or the single key `gap`, asserted by set-equality per entry (BR-23's "key presence is the discriminant"). |
+
+These conjuncts are what map AT-05, AT-19 and AT-27's JSON legs onto a test. Together with the
+correspondence check they make REQ-STATS-02's set-equality and REQ R-5's stability guarantee
+checkable rather than asserted.
 
 ### 6.4 Anti-drift oracles
 
