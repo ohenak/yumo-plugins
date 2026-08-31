@@ -103,12 +103,49 @@ coverage matrix reaches BR-01…BR-30, AT-01…AT-28 plus AT-14b, and EC-01…EC
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+One High finding, so the rule applies mechanically — but the shape of this revision is small, and
+worth saying plainly: this is a strong first draft. Its 102 properties cover every P0 and P1
+acceptance criterion, every one of FSPEC's thirty business rules, all twenty-nine acceptance tests
+and all twenty-one edge cases, and its verified-premises table stood up to independent re-checking
+in every row. The revision is not a rebuild.
+
+Exactly what must change for approval:
+
+1. **F-01 (High)** — add the missing constructed fixture and property for AT-18's excluded-directories-only
+   root (EC-20): the header renders, the feature list is empty, JSON `features` is `{}` and
+   `unclassified` is `[]`, exit code `0`. Repoint the `EC-20` and `AT-18` matrix rows at it. If the
+   author instead judges the leg out of scope, it must be named in §Gaps with an owner — the one
+   outcome that cannot stand is the current matrix claiming coverage that no property can falsify.
+
+Recommended in the same pass, non-gating:
+
+2. **F-02 (Medium)** — correct "twenty" → twenty-one and "twelve" → thirteen in §Fixtures and §Oracles.
+3. **F-03 (Medium)** — pin the `USAGE` line with a structural conjunct on PROP-CLI-05, or name it in §Gaps.
+4. **F-04 (Medium)** — add a set-equality conjunct over BR-30's three `error.reason` values.
+5. **F-05 (Low)** — make the REQ coverage table's scope explicit, or add `A-3`/`O-1`/`O-2`/`O-4`.
+6. **F-06 (Low)** — repoint EC-17's matrix row at a property whose text carries it.
+
+No upstream erratum is raised by this review. G-1's FSPEC recognition-predicate defect is real, but
+TSPEC §8.3 already carries it as an open erratum and re-raising a routed item is the anti-pattern
+`DEC-ERR-01` names.
 
 ## Delta-Confirmation Findings
 
-_pending_
+Not applicable — this is an ordinary iteration-1 review, not a delta confirmation. The findings
+above carry the ordinary-round `Scope` legend (`Local` / `Cross-Feature` / `Process`). The tagged
+lines below are reproduced for the workflow's gate; provenance is `delta` for all six because this
+is the document's first version, so every finding is introduced by these bytes.
+
+FINDING: High | delta | local | §Coverage Matrix — FSPEC acceptance tests and edge cases (EC-20, AT-18) | AT-18's first constructed root — a `docs/` root holding only excluded directories, whose EC-20 outcome is "a header and no feature rows, exit 0" — has no property and no fixture, yet the matrix maps EC-20 and AT-18 to PROP-DISC-04/-06/-08, which are the real-repository `integration-fs` and case-folding legs and cannot falsify it; the gap is not named in §Gaps either
+FINDING: Medium | delta | local | §Fixtures — Real-path fixtures / §Oracles — Exclusion-set equality | the `docs/`-root measurement reads "twenty directories … twelve feature directories" and "twelve live feature directories satisfy the witness"; at HEAD there are twenty-one directories and thirteen feature directories, the omitted one being this feature's own `docs/pdlc-stats/`
+FINDING: Medium | delta | local | §Overview — Subject under test / §Properties — CLI surface and exit codes | TSPEC §3.4's `USAGE` line is named as subject under test and delivered by PLAN T-17 but pinned by no property; PROP-CLI-02/-03 assert only that a usage message reaches stderr, which the existing `USAGE` constant already satisfies, so `pdlc stats` can ship absent from `pdlc --help` with the suite green
+FINDING: Medium | delta | local | §Properties — Refusals and error shapes (PROP-ERR-01/-04/-05) | BR-30's closed `reason` catalogue (`not_found`, `no_docs_root`, `unreadable_feature`) is asserted only case-by-case, never by set-equality, so a fourth reason arrives silently — REQ R-5's own drift risk, and the only enumeration in the document escaping the set-equality discipline applied to PROP-JSON-03/-07, PROP-CLI-05, PROP-DISC-05, PROP-RR-13 and PROP-RENDER-05
+FINDING: Low | delta | local | §Coverage Matrix — REQ acceptance criteria, constraints, risks | the REQ table lists `A-1`, `A-2`, `O-3` but omits `A-3`, `O-1`, `O-2`, `O-4` with no statement of scope, and `O-2` is cited in PROP-NEG-07's own Traces column, so the matrix's two directions disagree
+FINDING: Low | delta | local | §Coverage Matrix — FSPEC acceptance tests and edge cases (EC-17) | EC-17 (a feature directory with artifacts but no REQ is a normal row) is mapped to PROP-DISC-04, whose stated text covers only directories-only discovery and loose files; the actual coverage lives in §Fixtures' `docs/pdlc-halt-hardening/` invariant
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 2}
