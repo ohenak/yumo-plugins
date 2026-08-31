@@ -120,7 +120,67 @@ sets straddle different required checks is a genuine falsifiability argument, no
 
 ## Verification
 
-_(AT coverage set-equality, oracle coverage, coverage floor, mutation evidence)_
+**AT coverage — set-equal, not merely contained.** The FSPEC's AT ids extracted mechanically are
+AT-01…AT-28 plus AT-14b = 29 distinct ids. The PLAN's coverage table names exactly those 29, each
+with ≥1 owning task, no id named twice under different tasks without justification, and no id in the
+table that the FSPEC does not define. Set-equality holds in both directions.
+
+**Anti-drift oracle coverage — all seven of TSPEC §6.4 assigned.** Parser identity, classifier
+purity, construction-site count and no-write capability → T-10; doc-type catalogue set-equality and
+exclusion-set equality → T-08; vendoring co-change → T-20. Plus §6.5's read-only snapshot pair →
+T-11 and the `c8.include` mutual falsifier → T-24. Two shortfalls:
+
+- TSPEC §2.5/§6.4's parser-identity oracle has **two** conjuncts: the `===` identity of
+  `statsParsers()`'s four members, *and* that "the object `cmdStats` passes to `runStats` is that
+  same bundle, so the recording double of §6.1 can never become the production path". T-10 names
+  only the first. The dropped conjunct is precisely the production-path-vs-unit-path proof: a
+  `cmdStats` that constructs its own bundle, or is handed a test double, still passes the identity
+  half. T-09's end-to-end conjunct does not compensate, because §6.1's `recordingParsers` wraps the
+  *real* exports and would return the same values. F-04.
+- **AT-15's symbolic-link leg has no falsifying test at all.** TSPEC §2.4 makes the choice
+  load-bearing in its own words (`fileSize` uses `lstatSync`; "a symbolic link contributes the size
+  of the link itself, not the size of its target … EC-19's decided behavior and AT-15's
+  symbolic-link leg"), and §3.1 pins the seam as `lstat().size — never follows a link`. The PLAN
+  assigns AT-15 to **T-04 only**, over `fakeStatsIo` — a fake whose `fileSize` returns whatever the
+  fixture declares, and which therefore cannot distinguish `lstatSync` from `statSync`. T-18's
+  real-path list is AT-09/10/11/13/14b/18 and does not include AT-15; T-10's no-write oracle counts
+  `StatsIo`'s four keys and never reads which `fs` call `fileSize` makes. An implementation that
+  ships `statSync` turns every listed test green. F-01, High.
+
+**Coverage floor — declared correctly.** T-24 carries the per-file obligation and batch 10's gate
+states the remedy is tests, never a lowered floor. Verified against the gate command, not against
+source-list membership: `pdlc/workflows/package.json` `test:coverage` runs
+`c8 report --check-coverage --per-file --branches 85 …`, so membership in `c8.include` really is
+what enrols `lib/stats.mjs` in the 85% branch floor. Two co-change details T-24 under-specifies:
+
+- `coverageInstrumentation.test.js` carries **two** P9-02 tests. The first is the `toEqual` literal
+  T-24 names. The second — "the shipped c8 config resolves the two new `lib/` modules too (F4)" —
+  writes a driver that `import()`s `loop-session.mjs` and `escalation-view.mjs` by name and asserts
+  the c8 `json-summary` measured them. T-24 says "confirm the real c8 run's `json-summary` names the
+  module" without saying that this second test's driver, title and comment are the artifact to edit.
+  F-07.
+
+**Mutation evidence — one unowned killing test.** T-26 runs TSPEC §6.6's four mutants. Three have
+killing tests owned by an earlier task (AT-11's `2`, AT-09's `6` / AT-10's `13`, AT-17's fixture).
+The `unmeasurable`/`harvested` swap does not: TSPEC §6.6 states its killer is "a dedicated unit
+fixture — AT-25's round-1 collision **plus** `LEARNINGS-{feature}.md` in the directory … AT-25's own
+*Given* does not name `LEARNINGS`, so this conjunct is added at the unit level rather than claimed
+from the AT". T-04 lists AT-25 but not that added fixture, relying on the catch-all "branch-order
+conjuncts of TSPEC §4.3 asserted explicitly"; and the File Ownership Manifest gives
+`statsMetrics.test.js` a single owner (T-04) while T-26's `Test File` column also names it. Either
+T-04 authors the fixture explicitly, or T-26 must appear in the manifest as a second writer. F-03.
+
+**Verification commands.** The four required checks are correctly enumerated and correctly declared
+unchanged in membership — no task edits a workflow file or `ci-arrangement.test.js`. The
+`fixture-machine.mjs` install leg is the right place to catch a missed vendoring entry, since it
+exercises the packed tarball rather than the checkout.
+
+**One task instruction that cannot pass as written.** T-09's end-to-end conjunct is stated as
+"`pdlc stats pdlc-loop-economics --json` reads DoD rounds `2`", with no `--cwd`. The `Engine tests`
+check runs `cd pdlc/engine && npm test`, and `pdlc/engine/` contains only `__tests__/`, `bin/`,
+`lib/`, `scripts/` and manifests — no `docs/`. Taken literally the conjunct produces a
+root-not-found refusal at exit 1, not `2`. This matters more than a typo because T-09's conjunct is
+the *only* place the production `statsIo` is exercised behaviourally. F-08.
 
 ## Findings
 
