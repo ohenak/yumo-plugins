@@ -72,6 +72,125 @@ of them as rules of its own — it names the function that produces each and the
 
 ## 2. Architecture
 
+### 2.1 Module placement, and the enumeration co-change it costs
+
+Three placements were available. The choice is `pdlc/workflows/lib/stats.mjs` + a thin `cmdStats`
+in `pdlc/engine/bin/cli.mjs`.
+
+| Option | Where the pure logic lives | Enumeration co-change | Coverage gate | Verdict |
+|---|---|---|---|---|
+| A (**chosen**) | `pdlc/workflows/lib/stats.mjs` | vendored class grows 5 → 6 | `pdlc/workflows` c8 block, per-file branches ≥ 85 | chosen |
+| B | `pdlc/engine/lib/stats.mjs` | `lib/` class grows 15 → 16 | engine suite (`node __tests__/_run-suite.mjs`), no per-file branch floor | rejected |
+| C | inline in `pdlc/engine/bin/cli.mjs` | none | none — `bin/cli.mjs` is in no c8 include set | rejected |
+
+**Why A.** The metric logic's correctness is entirely a question of whether it agrees with four
+driver classifiers that live in `pdlc/workflows/orchestrate-dev.js`. Putting the consumer in the
+same tree as the producer means the two are vendored, versioned and tested as one unit, and it puts
+the new module inside the c8 block in `pdlc/workflows/package.json`, whose `test:coverage` script
+runs a second `--per-file --branches 85` pass precisely so a small module cannot hide under
+`orchestrate-dev.js`'s aggregate. Option C has no coverage gate at all and would add several hundred
+lines of pure logic to a 57 KB CLI; option B keeps the enumeration cost without the coverage
+benefit and still has to load the vendored driver across the same seam.
+
+**The cost, stated once.** `pdlc/workflows/lib/` members are vendored into the published engine at
+pack time, and the member list is enumerated at four sites plus a fifth that counts it. Adding
+`lib/stats.mjs` is a single co-change set:
+
+| Site | Symbol | Edit |
+|---|---|---|
+| `pdlc/engine/scripts/prepack.mjs` | `MODULE_NAMES` | add `lib/stats.mjs` |
+| `pdlc/engine/scripts/publish-preflight.mjs` | `WORKFLOW_MEMBERS` | add `vendor/workflows/lib/stats.mjs` |
+| `pdlc/engine/scripts/fixture-machine.mjs` | `WORKFLOW_MODULE_NAMES` | add `lib/stats.mjs` |
+| `pdlc/engine/__tests__/_tspec-packed-set.mjs` | `WORKFLOW_MEMBERS`, `tspecPackedCount` | add the member; vendored class size `5` → `6` |
+| `pdlc/workflows/package.json` | `c8.include` | add `**/pdlc/workflows/lib/stats.mjs` |
+
+`_tspec-packed-set.mjs` states its own co-change obligation in its header: a member is "a SPEC change
+first", co-changed with `docs/completed/pdlc-engine-distribution/`'s TSPEC §5.4 `PK-*` table and
+FSPEC §5.2's per-class counts, "never this file alone". That sibling feature is completed and its
+enumerations are approved and frozen; this feature therefore needs an explicit carve-out amending
+them, exactly the coupling `pdlc-engineering-loop`'s LEARNINGS records as a repo-wide pattern. The
+growth path is precedented: that same class already grew from three members to five when
+`lib/loop-session.mjs` and `lib/escalation-view.mjs` were added (`PK-24`/`PK-25` in the packed-set
+helper's own comments). **The carve-out is stated once, here, and cited by reference everywhere
+else** — no downstream document restates its text (`pdlc-engineering-loop` LEARNINGS: verbatim
+restatement across sites is a defect generator).
+
+`resolveWorkflowRoot()` needs no change: it probes for `orchestrate-dev.js` and
+`orchestrate-queue.js` to decide which root resolves, and returns the root path; `lib/stats.mjs` is
+loaded from that root the same way `loopSessionModule()` loads `lib/loop-session.mjs`.
+
+### 2.2 Layering
+
+```
+pdlc/engine/bin/cli.mjs
+  cmdStats(argv)                     ── impure edge: argv, cwd, process.stdout/stderr, exitCode
+    ├─ parseStatsArgv(argv)          ── pure (in stats.mjs)
+    ├─ statsIo({cwd})                ── the four fs seams, built here, real node:fs
+    ├─ statsParsers()                ── awaits the vendored orchestrate-dev.js, bundles its 4 exports
+    └─ runStats({argv, io, parsers}) ── pure orchestration (in stats.mjs), returns a StatsOutcome
+         ├─ discoverFeatures(...)    ── fleet only
+         ├─ computeFeatureStats(...) ── the four metrics, one feature
+         ├─ renderHuman(outcome)     ── pure string
+         └─ renderJson(outcome)      ── pure object → JSON.stringify
+```
+
+Everything below `cmdStats` is a pure function of its inputs plus four injected seams. `cmdStats`
+itself does exactly three impure things: it builds the seams, it writes the returned `stdout` and
+`stderr` strings to the real streams, and it sets `process.exitCode`. That split is what makes
+FSPEC's read-only invariant (§3.4, BR-28) checkable: `runStats` is handed a seam bundle with **no
+write operation in it at all**, so there is no capability to write, not merely a convention not to.
+
+### 2.3 The seam bundle
+
+`StatsIo` has exactly four members, all read-only, and no fifth is admitted:
+
+| Seam | Signature | Node implementation | Why this one |
+|---|---|---|---|
+| `listDir` | `(absDir) => Array<{name, isDirectory, isFile, isSymbolicLink}>` | `fs.readdirSync(dir, {withFileTypes: true})` mapped to plain records | BR-03 (directory itself, not subtree) and BR-25 (directories only) both need the entry **kind**, and asking for it in the listing avoids a second syscall per entry |
+| `fileSize` | `(absPath) => number` | `fs.lstatSync(path).size` | see §2.4 |
+| `readFile` | `(absPath) => string` | `fs.readFileSync(path, "utf8")` | only ever called on `POSTMORTEM-*` files, for `parseResolvedMarker` |
+| `exists` | `(absPath) => boolean` | `fs.existsSync(path)` | BR-02's live-before-archive preference, and the `docs/` root probe (EC-09) |
+
+Each seam is **total in the caller's eyes**: `runStats` wraps every call in a `try`/`catch` and maps
+a throw onto the FSPEC-decided outcome for that call site (§5). The seams themselves are the plain
+synchronous `node:fs` calls, deliberately — the whole command is one directory listing and a few
+dozen `lstat`s, and a promise-based seam would buy nothing while making every test double async.
+
+Synchronous also settles **FSPEC §7.2 O-4**: fleet-mode per-feature computation is **sequential**.
+BR-18's lexicographic ordering and §3.4's read-only invariant hold either way, so there is no
+correctness argument for concurrency; a sequential loop over a few dozen directories on local disk
+has no measurable cost, and it keeps every failure attributable to the feature being computed
+(EC-21's per-feature catch-all degrades one row without touching another's state, because there is
+no shared state to touch).
+
+### 2.4 `lstat`, not `stat` — and why the choice is load-bearing
+
+`fileSize` uses `lstatSync`, so a symbolic link contributes **the size of the link itself**, not the
+size of its target. That is EC-19's decided behavior and AT-15's symbolic-link leg. It is also the
+safer default for the read-only stance: `stat` on a link pointing outside the repository would make
+a byte total depend on a file the command was never asked to read, and a link pointing at a
+directory or at a missing target would turn a byte sum into an exception. `lstat` never follows, so
+neither happens.
+
+The same call answers **FSPEC §7.2 O-3** ("how are byte totals obtained"): file sizes come from the
+directory entry's `lstat`, from the working tree as it stands. No `git show`, no `git cat-file`, no
+history read of any kind — REQ R-3's exact risk, closed by the seam bundle carrying no `git`
+capability at all.
+
+### 2.5 The parser bundle, and the oracle that keeps it honest
+
+`computeFeatureStats` takes its four classifiers as an injected `StatsParsers` bundle rather than
+importing `orchestrate-dev.js` itself. Two reasons: the driver module is ~816 KB and a read-only
+report should not pay to load it in a unit test, and injection lets a test drive a classifier's
+`ok: false` branch directly instead of having to construct a filename that provokes it.
+
+Injection creates one risk, and it is the risk REQ C-5 exists to prevent: a test suite that passes
+hand-written parsers would stay green while production diverged. The mitigation is a **wiring
+oracle**, not a convention. `statsParsers()` in `bin/cli.mjs` is the only production construction
+site, and one test asserts that the bundle it returns carries function references that are
+`===`-identical to `orchestrate-dev.js`'s own exports — identity, not behavioral equivalence, so a
+re-implementation that happens to agree on today's corpus still fails. §6.4 specifies it.
+
 ## 3. Interfaces
 
 ## 4. Data Model
