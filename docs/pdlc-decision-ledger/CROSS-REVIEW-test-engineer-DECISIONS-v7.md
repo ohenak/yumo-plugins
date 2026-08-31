@@ -114,6 +114,50 @@ still accurate) and the dispatch/anchor mismatch described in `## Context`.
 
 ## Consequences
 
+- **No erratum is owed upstream, and none is owed here.** TSPEC v1.3 is conformant at every site this
+  document depends on, and this document asserts nothing about TSPEC that is false at HEAD. The one
+  open upstream item TSPEC's v1.3 changelog carries — PM F-01, the retired fifteen-member owned list
+  and the production home for `DECISION_LEDGER_CENSUS_TOKENS` — is routed to PLAN and has no locus
+  here: this document makes no owned-list-size claim to contradict. That routing is unchanged from
+  what I recorded at iteration 6.
+
+- **For te-author (PROPERTIES): nothing changes.** The two rows that bind PROPERTIES —
+  DEC-DECLEDGER-09's feature-owned wiring falsifier and DEC-DECLEDGER-16's substitution rule with its
+  admitted/refused comparison forms — cite TSPEC §7.x by anchor and mechanism, and §7.3 is untouched
+  at v1.3. `10,859 ≤ maxBytes − 1200` remains admitted, `10,859 + 1,200 = 12,059` remains refused,
+  and each half of `12,059 ≤ 12,500` remains pinned where it is separately measurable (`TSPEC:1335`,
+  `:1379`, `:1830`). A PROPERTIES author who read this document at v1.5 and returns to it at v1.6
+  finds the same obligations.
+
+- **The approval anchors need re-stamping, and that is the only mechanical action this round leaves.**
+  My v6 anchors read `REVIEWED-COMMIT: 420edb564` (v1.5) with `UPSTREAM-STATE: TSPEC
+  sha256:fc57bc56…c27504`. On disk the document is v1.6 and TSPEC hashes `sha256:2c84d525…3c911be49b`.
+  Both pins are stale as recorded; this file supersedes them. This is bookkeeping, not a decision —
+  but left unstamped it will read as an un-cascaded approval to the next round's staleness check.
+
+- **Worth promoting when the freeze lifts.** Two rounds running, the finding that cost this document
+  real reviewer time was a *version numeral in prose*, and both times the durable fix was to delete
+  the numeral rather than refresh it — DECISIONS v1.6 de-versioned its recitals, TSPEC v1.3
+  de-versioned its FSPEC pointers. That is `DEC-DOC-01` earning its keep twice in one erratum round,
+  and it is the concrete argument for carrying the substitution/id-citation discipline into
+  `docs/_constraints/DOMAIN-CONSTRAINTS.md` alongside DEC-DECLEDGER-16, as my v6 Q-02 proposed.
+
+### Deferred observations (freeze in force — recorded, not decided)
+
+- DEFERRED: the v1.5 changelog's "three prose sites" count (F-01 below) is a one-word correction to
+  make on the next occasion this document is edited for a substantive reason; it is not worth an
+  edit of its own.
+- DEFERRED: carried from v6 — a worked admitted/refused counter-example table for
+  DEC-DECLEDGER-16's substitution test, if and when the rule promotes to `DOMAIN-CONSTRAINTS.md`.
+  The three examples in the narrative carry over verbatim.
+
+### Open question (carried, TSPEC-side, not blocking)
+
+- Q-01 *(carried from v6, still unanswered and still not a DECISIONS defect)*: is §7.3's 41-id /
+  6,305-byte project-level pin re-derived from the source §7.3's per-file digest guard uses, or
+  hand-transcribed? Unchanged in force across the v1.0–v1.3 errata. It bears on whether that pin can
+  drift silently, which is a PROPERTIES-phase concern rather than a decision-ledger one.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
