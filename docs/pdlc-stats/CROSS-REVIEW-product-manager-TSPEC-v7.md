@@ -192,11 +192,20 @@ v1.7 and to name what was absorbed from it.
 
 ## Open Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | FSPEC §8 now maps `BR-16` to `AT-15, AT-17`. §4.3 names only `AT-17`'s fourth leg as "the boundary fixture". Should §4.3 acknowledge `AT-15`'s out-of-catalogue neither-list entry as the leg pinning the *byte* half of `BR-16`/`BR-14` agreement, so the two halves of the claim each have a named oracle? Not raised as a finding — TSPEC never asserts exclusivity — but the round that fixes `F-01` is touching this passage anyway. |
+| Q-02 | The erratum protocol's re-grounding step was discharged this round by an attestation that upstream had not moved, when it had. Is there a cheap mechanical check — comparing the upstream version header or hash recorded at the previous grounding against HEAD — that would make this class of miss impossible rather than diligence-dependent? Flagged `Process` in `F-02`; the answer belongs in harvest, not here. |
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | inherited | nonlocal | §4.3 attributes to FSPEC `BR-16` a claim `BR-16` at HEAD explicitly denies. TSPEC says FSPEC names `docs/completed/pdlc-advisory-wave-gate/` as "a harvested directory whose only `CROSS-REVIEW-` basenames are the out-of-catalogue … form … as reporting `harvested`". FSPEC v1.7 says that directory "carries four of them **alongside** grammar-matching cross-reviews and so reports a measured ratio itself; only the shape is borrowed, not the verdict". Ground truth agrees with FSPEC: 62 `CROSS-REVIEW-*` files, 58 grammar-matching, so `crossReviews.length` is 58 and the harvested disjunct cannot fire. The citation is also pinned to "FSPEC `BR-16` at v1.4" while `BR-16`'s text changed at v1.6 and v1.7. TSPEC's own §7.2 `AT-09` row contradicts §4.3 on the same path. The rule and code sketch are correct; the worked example and its verdict are not | §4.3 (byte ratio, `BR-14…BR-16`) — the "harvested test is asked over `BR-14`'s grammars" paragraph |
+| F-02 | Medium | delta | local | The v1.5 changelog attests that REQ and FSPEC "neither moved since v1.4's grounding". The hashes it pins are correct, but TSPEC v1.4 grounded on **FSPEC v1.5** and FSPEC is at **v1.7**, having revised `BR-16` twice in between. The false attestation discharged the re-grounding control without exercising it, which is how `F-01` survived this round. Correct the sentence to record the v1.5 → v1.7 move and what it absorbs | §0 changelog, "v1.5 — erratum round 5" block |
+
+FINDING: High | inherited | nonlocal | §4.3 BR-16 harvested paragraph — advisory-wave-gate cited as reporting `harvested`; FSPEC v1.7 says it reports a measured ratio, only the basename shape is borrowed
+FINDING: Medium | delta | local | §0 v1.5 changelog — "neither moved since v1.4's grounding" is false for FSPEC (v1.5 → v1.7, BR-16 revised twice)
 
 ## Positive Observations
 
