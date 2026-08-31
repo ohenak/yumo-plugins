@@ -74,7 +74,7 @@ needs, §Oracles says why.
 
 ## Properties
 
-61 properties in twelve domains. Categories are the skill's table (Functional, Contract, Error
+102 properties in thirteen domains. Categories are the skill's table (Functional, Contract, Error
 Handling, Data Integrity, Integration, Security, Idempotency, Observability); levels are
 TSPEC §6.2's six (`unit-pure`, `unit-seamed`, `unit-render`, `integration-fake`, `integration-fs`,
 `process`).
@@ -499,15 +499,37 @@ assumed-existing; the five files this feature *amends* were confirmed **present*
 | unit-seamed | PROP-RR-01…-02, -04, -06…-09, -11; PROP-DOD-02…-04; PROP-HALT-03, -05, -07; PROP-RATIO-01…-03, -06…-09; PROP-ERR-08; PROP-PBT-01, -02, -04; PROP-NEG-02, -04 | 27 |
 | unit-render | PROP-RR-12; PROP-RENDER-01…-06; PROP-JSON-03…-10; PROP-RATIO-10 | 16 |
 | integration-fake | PROP-DISC-01…-03, -07…-09; PROP-ERR-01…-07, -09; PROP-CLI-07; PROP-PBT-03; PROP-NEG-03, -05, -06 | 19 |
-| integration-fs | PROP-DISC-04…-06; PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04 | 14 |
-| process | PROP-CLI-02…-04, -06, -08; PROP-JSON-01, -02; PROP-RO-01…-06; PROP-RATIO-05; PROP-DRIFT-01…-03, -05, -06; PROP-NEG-01, -07, -08 | 21 |
+| integration-fs | PROP-DISC-04…-06; PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04 | 13 |
+| process | PROP-CLI-02…-04, -06, -08; PROP-JSON-01, -02; PROP-RO-01…-06; PROP-RATIO-05; PROP-DRIFT-01…-03, -05, -06; PROP-NEG-01, -07, -08 | 22 |
 | E2E (spawned) | none | 0 |
 
-The shape is the intended pyramid: 48 properties falsifiable without a filesystem or a process, 14
-needing the real archive because `lstat` semantics and real basenames are the claim, 21 at the CLI
+The shape is the intended pyramid: 67 properties falsifiable without a filesystem or a process, 13
+needing the real archive because `lstat` semantics and real basenames are the claim, 22 at the CLI
 edge because flag closure, stdout emptiness, exit codes, wiring identity and the read-only stance
 are not observable below it, and no spawned end-to-end test at all.
 
 ## Gaps and Open Items
 
-*(pending)*
+Named rather than papered over. None is a blocker for implementation; each says who owns it.
+
+| ID | Gap | Disposition |
+|---|---|---|
+| G-1 | **`discoverFeatures`' positive recognition predicate is provisional.** TSPEC §4.4 states plainly that FSPEC BR-26/EC-10 name the "unclassified" outcome for a directory "in neither exclusion set nor recognizable feature" but state **no positive recognition predicate**, and that EC-03/AT-26 rule out the obvious candidate (artifact presence), since a readable-but-empty directory is a normal measured row. The leading-underscore predicate ships as the observable, and PROP-DISC-07 tests the *reporting* half only. A bare-named future non-feature directory would be reported as a feature with zero-state metrics. Blast radius is one function and its unit tests (TSPEC §4.4's own table). | Owned by the FSPEC erratum TSPEC §8.3 already raises. No property here asserts the predicate itself, deliberately: asserting a provisional rule would have to be rewritten when the erratum lands. PROP-DISC-05's oracle is the safety net — it goes red the moment a ninth directory appears. |
+| G-2 | **`REVIEW_DOC_TYPE_ROWS` drift beyond the probe's candidate set.** PROP-RR-13 recovers the driver's accepted doc types behaviourally over a candidate set of all-caps tokens. A seventh accepted type *outside* that set is not detected. | Residual and bounded by FSPEC §7.4 A-3, which already makes a new driver doc type an FSPEC edit. Exporting `REVIEW_DOC_TYPES` from `orchestrate-dev.js` would close it directly and is the better long-term shape; it is not taken here because widening a completed sibling's frozen module surface carries the co-change cost TSPEC §2.1 prices. |
+| G-3 | **Fleet-mode performance has no property.** Nothing here bounds runtime over a `docs/` tree of arbitrary size; TSPEC §2.3 argues sequential computation "has no measurable cost on local disk" but no oracle checks it. | Deliberate. The REQ states no performance criterion, and a wall-clock assertion in a jest suite is a flake generator, not a measurement. Recorded so a future REQ that *does* care knows it starts from zero coverage. |
+| G-4 | **PLAN T-27 (operator documentation) has no oracle.** `pdlc/OPERATIONS.md` gains `pdlc stats`'s flag semantics, exit codes and read-only stance, and `pdlc/README.md` defers detail — neither is asserted by any test in this feature. | Flagged, not fixed here: the shape of a documentation oracle (a deferring doc must name a doc that actually carries the content) is the `pdlc-engineering-loop` remediation pattern, and adding one is a PLAN/TSPEC decision, not a property this document can invent. `dod-verify`'s adjacent-surface sweep is the standing catch. |
+| G-5 | **PROP-DRIFT-05 covers four of TSPEC §2.1's ten co-change sites directly**, plus a fifth (`c8.include`) through PROP-DRIFT-06. The remaining sites — `run.test.js`'s manifest `deepEqual`s, `learningsPremises.test.js`'s P-1 count, `pdlc/README.md`'s prose enumeration, and the two sibling `docs/completed/pdlc-engine-distribution/` documents — are asserted by pre-existing tests or by nothing. | The prose enumeration in `pdlc/README.md` and the two sibling documents have no mechanical guard; PLAN T-21 promotes a repo-scoped grep sweep to `docs/_constraints/DOMAIN-CONSTRAINTS.md` in its place. Recorded here because a promoted constraint is a review instrument, not an oracle (DC-18's residue). |
+| G-6 | **Real-path literals are archive measurements and will go stale.** PROP-RR-03, PROP-RR-05, PROP-RR-10, PROP-DOD-01, PROP-HALT-01/02/04/06/08 all pin values measured at HEAD on 2026-08-31 and re-verified by executing the driver's own classifiers over the archive (`deriveRoundWindow` returns `startIndex` 7 and 14 for the two TSPEC corpora; `deriveDodRoundIndex` returns 3 for `pdlc-loop-economics`; `parseResolvedMarker` returns `{ok:true,resolved:true}` for `POSTMORTEM-PR-pdlc-wave-resume.md`; `parseReviewFilename` returns `bad_doc_type` for a `…-REVIEW-v1.md` basename and `not_cross_review` for `LEARNINGS-x.md`). | Mitigated, not removed: each literal carries its measurement date and re-measurement command in the test's own comment, so a red test names its own remedy. Replacing a literal with a derivation is forbidden (DC-14). |
+| G-7 | **`docs/completed/` children are not filtered by any exclusion set.** BR-25 fixes the exclusion set at the `docs/` root only; a non-feature directory appearing under `docs/completed/` would be reported as a feature. None exists at HEAD. | Faithful to the upstream, which scopes the exclusion set to the `docs/` root. Recorded so the omission is a decision on the record rather than an oversight, and so a future `docs/completed/_archive-notes/` is a known case rather than a surprise. |
+
+### Quality checklist
+
+- [x] Every REQ acceptance criterion, constraint and risk has at least one property (§Coverage Matrix)
+- [x] Every property traces to a REQ clause, an FSPEC rule/AT/EC and a TSPEC section
+- [x] Every property carries a category and the cheapest falsifying test level
+- [x] Negative properties included; every blocked/degraded invariant asserts an exact state value, a named reason and a retained explanatory field — never `state != "measured"`
+- [x] Coverage-mode gates and routing branches carry workflow-level properties: the four branch orders (§Oracles' kill map) are each falsified by a fixture that defeats the earlier branch, and the fleet/single-feature routing split is asserted at `integration-fake` and `process`, not by a guard-only unit test
+- [x] Fixture strings are the normative spellings verbatim, and role slugs are the driver's `REVIEWER_ROLE_SLUGS` values rather than skill ids
+- [x] Every oracle passes the falsifiability checklist (§Oracles' first table)
+- [x] Every PLAN task row is traced, and every named test file confirmed present or planned-new at HEAD
+- [x] Coverage matrix shows no unexplained gaps — the seven that exist are G-1…G-7 with owners
