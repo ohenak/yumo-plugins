@@ -92,8 +92,43 @@ signature, algorithm, token spelling or field name crept in; O-1 still owns the 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | (F-01, for FSPEC not for this round.) Should the halts value carry an accepted-residual marker in `--json`, or is R-6's prose warning the whole mitigation? Either answer is fine by me; I only want it decided once, in FSPEC, rather than rediscovered by the first consumer. |
+| Q-02 | (Carried, non-blocking, answered in the affirmative by this edit.) `LEARNINGS-{feature}.md` presence remains the discriminator for the two review families only — is there any future metric that would want a third discriminator? Nothing in the current metric set does. |
+
 ## Positive Observations
+
+- **F-01 closed exactly as scoped, with no collateral.** The withdrawal touched five hunks and every
+  one of them was necessary: the two enumeration sites, the AC, NG-6 and R-6. `grep` finds no
+  orphaned reference to a harvested halt state. This is the cheapest correct version of the fix.
+- **The document chose the honest option over the tidy one.** A harvested halt state would have made
+  all four metrics symmetric; the corpus does not support it, and v1.6 accepts the asymmetry and
+  names the residual instead of manufacturing a state to hide it. R-6's "**accepted, not
+  mitigated**" is the right register — it tells a downstream reader the gap is known, bounded and
+  deliberate.
+- **NG-6 is now a verifiable sentence.** "The two families `harvest-learnings` removes — cross-reviews
+  and DoD reviews" checks out against `harvest-learnings/SKILL.md:28,59,129` and
+  `hooks/scripts/guard-harvest-before-delete.sh:3,43`. Round 6 and round 7 each shipped an
+  unverifiable universal about harvest; round 7's edit ships one that a grep settles in seconds.
+- **Byte discipline held again:** +429 B, no unrelated churn in the diff, round note accurately
+  describes the change.
 
 ## Recommendation
 
+**Approved with minor changes** — my one open High (F-01 of v7) is closed, and the edit that closed
+it broke nothing. The two findings above are Low and non-gating: F-01 is an FSPEC-shaped question
+about how the accepted residual surfaces in output, and F-02 is a process note against an upstream
+SKILL prompt the REQ has deliberately stopped depending on. Neither needs a REQ revision, and I do
+not want another round spent on them here.
+
+Worth recording for harvest: two consecutive rounds shipped a universal claim about harvest
+behaviour inferred from a single directory, and both were falsified by a survey that took under a
+minute. The durable rule is the one this round finally applied — before asserting what a pipeline
+mechanism does, read the mechanism's own SKILL and count the corpus; do not generalise from one
+artifact's metadata row.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
