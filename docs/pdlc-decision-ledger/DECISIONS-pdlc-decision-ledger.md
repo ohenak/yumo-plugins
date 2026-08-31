@@ -299,14 +299,35 @@ instance per review round.
 The rule, extending DEC-DECLEDGER-12/-13: every byte literal in TSPEC carries one of three
 provenance classes — an **upstream decision** (C-5's 12,500), a **measurement** at a named Baseline
 version (`M-xx`, hand-transcribable from the frozen fixture), or a **budget ceiling** over
-constants that do not yet exist (DEC-DECLEDGER-12's 1,200) — and a budget ceiling may appear
-**only on the larger side of an inequality, never as a term in an asserted equality**. Derived
-figures inherit the weakest class of their operands: `12500 − 1200 = 11,300` is sound as an upper
-allowance, because `measured ≤ decision − ceiling` understates the margin and cannot go green
-falsely; `10,859 + 1,200 = 12,059` is not assertable at all, because the equality holds only when
-an implementation spends the ceiling to the last byte, so it reddens conforming implementations
-drafted under budget. Candidate for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at
-consolidation — the pattern is not specific to this feature.
+constants that do not yet exist (DEC-DECLEDGER-12's 1,200).
+
+The constraint on ceilings is **directional, not positional**: a ceiling may enter a claim only
+where substituting the true — necessarily smaller — drafted value **preserves** that claim, which
+is to say only where charging the ceiling in full overstates usage or understates margin. A ceiling
+may therefore never be a term in an equality, because there substitution breaks the claim outright.
+The rule's **scope** is assertions and pinned expected values, plus prose that states a figure as a
+standing fact; prose that recounts a retired figure, or that names a worst case as an explicitly
+labelled upper bound, is outside it. Those two clauses together are what make the rule runnable as
+an authoring check: every site has one answer, and the answer does not depend on which way the
+comparison happens to be written.
+
+Derived figures inherit the weakest class of their operands. Under the directional test
+`measured ≤ decision − ceiling` and `measured + ceiling ≤ decision` are the *same* admitted claim —
+`10,859 ≤ 12,500 − 1,200` ⟺ `10,859 + 1,200 ≤ 12,500` — and both err safe, since charging the full
+ceiling can only understate the margin; a positional "larger side only" rule would have admitted the
+first and rejected the second for no reason a substitution can name. `12500 − 1200 = 11,300` is
+likewise sound as an upper allowance and cannot go green falsely. What the rule refutes is
+`10,859 + 1,200 = 12,059` **asserted**: the equality holds only when an implementation spends the
+ceiling to the last byte, so it reddens conforming implementations drafted under budget. TSPEC HEAD
+is conformant on both counts — it pins the subtraction form (`10,859 ≤ maxBytes − 1200`, §7.3's
+conjunct pair and §3.6), asserts no addition form anywhere, and carries `10,859 + 1,200 = 12,059`
+only as prose recounting `M-6b`'s worst standing case (§3.6, and the revision history's recital),
+with §7.3 stating in terms that the block total is deliberately *not* an equality and pinning the
+two halves of `12,059 ≤ 12,500` separately where each is measurable.
+
+Candidate for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at consolidation — the pattern
+is not specific to this feature, and the directional form is the one to promote: a positional form
+would bind every future feature to reject sound arithmetic.
 
 ## Decision
 
