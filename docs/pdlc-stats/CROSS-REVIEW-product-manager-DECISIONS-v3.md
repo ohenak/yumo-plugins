@@ -61,6 +61,74 @@ inherits rather than makes — see F-01.
 
 ## Positive Observations
 
+- **Both gating findings closed by going back to the tree, and one closed better than I asked.** On
+  v2 F-02 I asked for the third residual's inverted premise to be corrected. The revision did that and
+  then did the harder thing: it re-measured what P7-02 actually greps, found that the oracle covers the
+  *count* half but not the `PK-26` *row*, and wrote the residual at that narrower boundary — including
+  an explicit note that the first draft *"would have sent a DoD reviewer past the one guard that
+  exists"*. A residual that names its own previous error is more useful to the next reader than one
+  that quietly reads correctly.
+- **K-8's re-baselining is the right shape, and the reason it gives is the right reason.** Widening
+  the delta to three members would have made `NEW_LIB_MEMBERS_*` a running accumulation that every
+  future feature appends to and nobody prunes. Re-baselining keeps the constant meaning "this
+  feature's delta" and keeps `assertAdditiveOnly`'s length equality strict. The justification — the
+  four enumerations are at the sibling's post-state at HEAD — is verifiable in one command and is
+  correct (`prepack.mjs:20-25`). F-02 above asks K-8 to carry one more consequence of that shape; it
+  does not ask for a different shape.
+- **The word-map coupling is a genuinely good catch, and it is the kind that only comes from
+  reading the file.** Spotting that `vendoredClassSize === 5 ? "five" : String(…)` greps the *digit*
+  at 6 while K-7 writes the *word*, and that K-7 landed exactly as specified would therefore leave the
+  oracle red, is a defect that would otherwise have surfaced as a mystery CI failure two tasks later.
+  Naming the coupling in both K-7 and K-8 — *"one change or the check is red"* — is exactly how a
+  decision record should hand an ordering constraint to a PLAN author.
+- **The trigger's count correction moved in the direction that costs the author something.** Six →
+  eleven makes DEC-STATS-01's own chosen option look more expensive, and the revision made it anyway,
+  with the arithmetic shown and the dedup caveat stated. The added sentence — that understating the
+  lists *"understates the payoff that decides whether anyone acts on this trigger"* — is the right
+  product framing for why a re-evaluation trigger's numbers have to be honest.
+- **K-3's set-equality → array-equality correction is a real strengthening, not a wording change.**
+  `expect(include).toEqual([…])` is position-sensitive, so "append at the same index in both files"
+  is an instruction an implementer needs and would not have derived from "set-equal". Catching that
+  the shipped assertion is *stronger* than the document claimed — and saying so — is the harder
+  direction to catch.
+- **The PM Q-02 answer stayed in its lane.** It resolves the question by reading FSPEC BR-30 rather
+  than by deciding anything new, and says so outright (*"Nothing in this decision changes on the
+  answer"*). Verified verbatim against `FSPEC-pdlc-stats.md:517-528`. That is the correct disposition
+  for a question whose answer already lives upstream.
+
 ## Recommendation
 
+**Needs revision**
+
+One High finding gates. The three decisions themselves remain right calls — F-01 raises option A's
+measured cost from six sites to seven, but options B and C pay the same seventh site (`run.test.js`
+fences `MODULE_NAMES` itself, which every vendoring option moves), so the comparison and the verdict
+are unchanged. What is wrong is the *record* of the cost and the *completeness* of the obligations,
+for the second consecutive round on the same axis.
+
+Exactly what to change:
+
+1. **F-01 (High, gating).** Add `pdlc/engine/__tests__/run.test.js` as a seventh site with its three
+   transcribed lists named (`run.test.js:117-122`, `:247-252`, `:270-277`); move option A's cell to
+   seven and add the site to B's and C's cells; correct the re-evaluation trigger to fourteen lists
+   across eight files; extend K-8 (or add K-9) so one owning task covers both test files. Cite the
+   sweep that produced the number, so the next reader can tell completeness was established
+   mechanically rather than by another file turning up.
+2. **F-02 (Medium, non-gating).** Have K-8 keep conjunct (a)'s importability loop over the full
+   post-state member set, so `loop-session.mjs` and `escalation-view.mjs` do not silently lose their
+   `import()` proof.
+3. **F-03 (Medium, non-gating).** K-8's edit count is seven, not six; note that `D1_BASELINE` and
+   `D5_BASELINE` are two edits with identical content.
+4. **F-04 (Medium, non-gating).** Restate DEC-STATS-02's trigger threshold in *fields*, not *hoists*,
+   so it does not read as already fired against the reversibility line above it.
+5. **F-05 (Low, non-gating).** Have K-8 cover the constants' provenance comment and the two stale
+   assertion messages.
+
+Unchanged and not re-reviewed: DEC-STATS-01's chosen option and its Context section, DEC-STATS-03 in
+full, K-2, K-4, K-5, K-6, the *What these decisions do not decide* section, and the relationship to
+project-level decisions.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 1}
