@@ -40,3 +40,68 @@ routed to harvest. That is the right disposition and I record it as closed from 
 **No decision is opened, re-opened or re-litigated.** Every chosen option, the ten-site table's rows,
 K-1…K-9's substance, the falsifier column and the standing-costs bullets are byte-identical. The
 freeze held.
+
+## Options Considered
+
+Under the freeze the only readings available are about whether the delta landed and whether it
+contradicts the repository. I tested each against source, not against the document's own narration.
+
+**Reading 1 — K-3's retirement is a claim about TSPEC, so verify it in TSPEC. It holds.** The row now
+asserts that TSPEC v1.7 *"repaired that row onto the measurement this document already carried — the
+set is seven at HEAD, so the feature moves the title seven → eight."* TSPEC §2.1's
+`coverageInstrumentation.test.js` row now reads *"`4 + 1 + 2` = **seven** members measured today …
+Adding `lib/stats.mjs` makes the set **eight**, so the title moves **seven → eight** (printed `six` →
+`eight`)"*, and TSPEC's v1.7 changelog neutralises the superseded narration in its own v1.3 row
+(*"wrong on HEAD's measurement and is corrected to seven → eight at v1.7; this row is left as the
+record"*). The two documents now state the same move. **PM F-01 is genuinely closed**, not
+re-labelled: the arithmetic in the row is unchanged, only the disagreement bookkeeping is gone.
+
+**Reading 2 — the 5/4 preamble correction could itself be the transposition. It is not; the new
+reading is the one three independent places already used.** I counted the table rather than trusting
+either version. Rows 1–5 *hold* member lists: `prepack.mjs` (`MODULE_NAMES`),
+`publish-preflight.mjs` (`WORKFLOW_MEMBERS`), `fixture-machine.mjs` (`WORKFLOW_MODULE_NAMES`),
+`_tspec-packed-set.mjs` (`WORKFLOW_MEMBERS` + `tspecPackedCount`), and `pdlc/workflows/package.json`
+(`c8.include`) — **five**. Rows 6–9 *pin* them from test files: `loop-distribution.test.js` and
+`run.test.js` (`pdlc/engine/__tests__/`), `coverageInstrumentation.test.js` and
+`learningsPremises.test.js` (`pdlc/workflows/__tests__/`) — **four**, across exactly the *"two other
+packages"* the preamble names. Row 10 is `pdlc/README.md`'s prose, pinned by nothing. **5 + 4 + 1 =
+10.** Three other places in the corpus already read it that way — this document's own sweep
+narration (*"the five enumeration holders … the four test files that pin their membership or size …
+and `pdlc/README.md`'s prose member list"*), its *Reversibility: hard* clause (*"the five
+enumerations, the four test files"*), and TSPEC §7.3 (*"five enumerations, holding six symbols across
+five files, plus four test files … and `pdlc/README.md`'s prose enumeration"*). The v1.6 preamble was
+the lone outlier; it is now the only one that changed, and it changed *toward* the majority. The
+follow-on clause is correspondingly repaired — *"a per-file scan of the holders reaches none of the
+four"* — and matches the sweep's own account that round 1 scanned holders and found five.
+
+**Reading 3 — accept the round's re-measurement attestation on its face. Rejected: I re-measured,
+and one sentence overstates what is true at HEAD.** The v1.7 entry asserts *"Every count, option,
+obligation and falsifier below re-measured true at HEAD."* The options, obligations and falsifiers
+survive that test; the **counts do not**, because **this feature's implementation has already landed
+on this branch**. At HEAD `pdlc/engine/scripts/prepack.mjs`'s `MODULE_NAMES` holds **five** entries,
+the fifth being `lib/stats.mjs`; `pdlc/workflows/package.json`'s `c8.include` holds **eight**, the
+eighth being `**/pdlc/workflows/lib/stats.mjs`; and `pdlc/workflows/lib/stats.mjs` is a tracked file
+(22 KB), added by `c3acd694d` (T-16) at 15:32 with T-17…T-20 following by 15:51 — all of them
+ancestors of the v1.7 changelog commit `f3ab46e72` (16:43). So the site table's *Members at HEAD*
+column and K-3's *"`c8.include` is seven at HEAD to match; this feature makes it eight"* describe the
+**pre-implementation baseline**, not HEAD as it stood when the attestation was written. This is the
+one genuinely new observation of the round, and it is why F-01 below is `delta`.
+
+**Reading 4 — treat that as a High and halt. Rejected, and I want to be explicit about why.** The
+freeze bar admits two blocking limbs: a defect the revision introduced, or a factual contradiction
+with repository HEAD on a **load-bearing** claim. The stale counts touch the second limb, but not on
+a load-bearing claim, for three reasons. (a) The *decision content* is unaffected: the co-change set
+is still ten sites, the partition across K-1/K-3/K-8/K-9 is unchanged, and every option's cost
+ordering is unchanged — the numbers that moved are the deltas the feature was *supposed* to make, and
+the implementer made exactly them (`4 → 5`, `7 → 8`), which is the design being confirmed, not
+contradicted. (b) The claim has no live consumer: PLAN's task boundaries and PROPERTIES' oracles read
+the site enumeration and the falsifier column, not the baseline digits, and the implementation those
+digits were sizing is already committed. (c) A design document's *"at HEAD"* column is conventionally
+the pre-feature baseline; reading it as a live assertion about the post-implementation tree would
+make every DECISIONS document in the repo self-falsifying the moment its own feature merges. What is
+genuinely wrong is narrower and is a **Medium**: the changelog's blanket *"every count … re-measured
+true at HEAD"* claims a verification that was not available at the time it was written.
+
+**Not re-opened:** `DEC-STATS-01`'s chosen option, `DEC-STATS-02`, `DEC-STATS-03`'s option table and
+identity oracle, K-1 through K-9 on their merits, the standing-costs bullets, or the
+*Relationship to project-level decisions* section. None moved; all approved across v5–v11.
