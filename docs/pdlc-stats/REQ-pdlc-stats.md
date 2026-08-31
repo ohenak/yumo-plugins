@@ -15,7 +15,7 @@ depends-on:
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.2 | 2026-08-31 |
+| Draft | pm-author | 1.3 | 2026-08-31 |
 
 ## 1. Problem / Context
 
@@ -111,8 +111,11 @@ post-mortem lifecycle). This REQ defines no new, separate parsing rule for any o
 below restates one: where an AC needs a classification, it names the observable outcome and defers
 the rule itself to this constraint. Notably, this makes the `RESOLVED:` marker's case-insensitive
 *value* matching, its single-marker requirement, and its outside-a-fenced-block requirement binding
-on this command without this REQ restating them. Fidelity binds the driver's per-file rejection
-reason, not its coarser aggregate reject list: a basename it rejects as not a cross-review is not
+on this command without this REQ restating them. Discovering *which* phases have a post-mortem is carved out: the driver builds
+that path from a phase it already holds and classifies no `POSTMORTEM-*` basename, so there is
+nothing to defer to. That listing is this REQ's own (REQ-STATS-05); fidelity binds the `RESOLVED:`
+marker, not the discovery. Fidelity binds the driver's
+per-file rejection reason, not its coarser aggregate reject list: a basename it rejects as not a cross-review is not
 malformed here (REQ-STATS-03).
 
 ## 5. Acceptance Criteria
@@ -130,8 +133,8 @@ under REQ-STATS-08's read-only stance.
 `consolidate-learnings`). **Given:** REQ-STATS-01's feature argument plus a `--json` flag.
 **When:** `pdlc stats {feature} --json` runs. **Then:** stdout is exactly one well-formed JSON
 document whose top-level key set is set-equal to REQ-STATS-01's printed metric set plus one
-schema-version field — REQ-STATS-03/04/06's malformed, unmeasurable and harvested states ride
-in their own metric's value, never as extra top-level keys — so a metric added to human
+schema-version field — REQ-STATS-03's malformed and unmeasurable states and
+REQ-STATS-03/04/06's harvested state ride in their own metric's value, never as extra top-level keys — so a metric added to human
 mode without a JSON field fails; nothing else is
 mixed into stdout in this mode.
 
@@ -142,8 +145,11 @@ round count. **Then:** the reported count is **the highest
 round index present on disk for that document type, taken across all roles** — one number per
 document type, not per role, and not a range: a document type whose test-engineer review reached
 round 5 and whose product-manager review reached round 3 reports `5`. A basename that begins
-`CROSS-REVIEW-` but fails the grammar (per C-5) is excluded and reported separately as malformed; a
-file not claiming that prefix — the feature's own REQ, LEARNINGS or POSTMORTEM — is neither counted
+`CROSS-REVIEW-` but fails the grammar (per C-5) is excluded and reported separately as malformed. Malformed names exclusion
+from the count under the driver's grammar, not damage to a file, and so covers the
+grammatical-but-out-of-catalogue names the pipeline writes
+(`CROSS-REVIEW-{role}-REVIEW-v{N}.md`); one label stands: a third bucket would be an independent
+rule C-5 forbids. A file not claiming that prefix — the feature's own REQ, LEARNINGS or POSTMORTEM — is neither counted
 nor called malformed. Where the convention refuses a round for a document type at all (one role
 carrying two files both claiming round one), that document type is reported **unmeasurable**, naming
 the colliding role. A document type with no cross-review file on disk reports `0`, or **harvested**
@@ -160,8 +166,8 @@ index, deliberately not a file count, because harvest deletes DoD reviews (NG-6)
 understate a partially harvested feature — or `0` when none is present. A basename beginning
 `CODE_REVIEW-` that does not match the version grammar simply does not contribute, exactly as an
 unrelated file: the driver draws no malformed distinction on the DoD side, so neither does this (C-5). The harvested state applies only when this metric's own evidence is absent:
-`LEARNINGS-{feature}.md` present **and** no `CODE_REVIEW-*` file reports **harvested** rather than
-`0`; where any survives, the measured highest version wins.
+where `LEARNINGS-{feature}.md` is present **and** no `CODE_REVIEW-{feature}-v{N}.md` file matching
+the version grammar remains, this metric reports **harvested** rather than `0`; where any survives, the measured highest version wins.
 
 ### REQ-STATS-05 Halts by phase and resolution state (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** the feature directory contains zero or
@@ -176,8 +182,9 @@ decided in one place; no post-mortem file is zero halts, never an error.
 (C-3) and of the process artifact types (C-4) is present. **When:** the command computes the
 ratio. **Then:** it reports process bytes (C-4 set, present files only) divided
 by spec bytes (C-3 set, present files only); when spec bytes total zero, it reports the ratio as
-not-available rather than dividing by zero or crashing. Where `LEARNINGS-{feature}.md` is present and no
-`CROSS-REVIEW-*` or no `CODE_REVIEW-*` file remains, the ratio is **harvested**, not measured: harvest
+not-available rather than dividing by zero or crashing. Where `LEARNINGS-{feature}.md` is present and at least one of the two
+process families is entirely absent (no `CROSS-REVIEW-*` remains, or no `CODE_REVIEW-*` does, or
+neither), the ratio is **harvested**, not measured: harvest
 deletes cross-reviews and DoD reviews while post-mortems survive, so the numerator is only
 *partially* deleted and a computed value would silently undercount rather than be absent. The rendering precision
 and the exact not-available / harvested tokens per mode are FSPEC material (O-1).
@@ -186,8 +193,9 @@ and the exact not-available / harvested tokens per mode are FSPEC material (O-1)
 **Source:** US-03. **Who:** pipeline operator. **Given:** `pdlc stats` invoked with no feature
 argument. **When:** the command runs. **Then:** it discovers every feature directory under
 `docs/{feature}/` and `docs/completed/{feature}/`, computes REQ-STATS-01's metric set for each, and
-for any feature whose artifacts are missing or fail to parse, reports it by name as
-missing/malformed rather than omitting it. Discovery considers **directories only** — a loose file
+for any feature whose directory cannot be read, reports it by name with the reason rather than
+omitting it; a readable but empty directory is not a gap but a normal row whose metrics report
+their zero states. Discovery considers **directories only** — a loose file
 at the `docs/` root is never a feature — and skips this fixed, this-REQ-owned exclusion set,
 asserted set-equal so a directory added later fails rather than silently joining the report:
 `docs/_queue/`, `docs/_constraints/`, `docs/_decisions/`, `docs/design/`, `docs/requirements/`,
@@ -203,14 +211,15 @@ invocation of `pdlc stats`, in either mode, on success or on failure. **When:** 
 completion or exits with an error. **Then:** on the **same** invocation the command both
 (a) does its job — exits zero having emitted REQ-STATS-01's metric set, or, on REQ-STATS-09's path,
 exits non-zero having emitted the not-found report — and (b) leaves the working tree set-equal
-before and after by path and modification time issues no network request and runs no `git` write
+before and after by path and modification time, issues no network request, and runs no `git` write
 command (`commit`, `push`, `add`, `checkout`, or similar); read-only `git` inspection is permitted.
 Conjunct (b) never suffices alone: a binary that prints nothing, or crashes, fails this criterion.
 
 ### REQ-STATS-09 Unknown feature reported, not silently empty (P1)
 **Source:** US-01. **Who:** pipeline operator. **Given:** a feature argument naming a directory
 absent under both `docs/{feature}/` and `docs/completed/{feature}/` (including a repository with no
-`docs/completed/` at all). **When:** `pdlc stats {feature}` runs. **Then:** it exits non-zero and
+`docs/completed/` at all), in a repository whose `docs/` root is present and readable — a missing or
+unreadable `docs/` root is not this criterion's case but a root failure. **When:** `pdlc stats {feature}` runs. **Then:** it exits non-zero and
 reports the feature as not found in both modes; `--json` emits an error object, never a truncated or
 partial success document.
 
