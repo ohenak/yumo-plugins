@@ -244,6 +244,51 @@ Q-01.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves what it set out to resolve and breaks nothing I previously approved. The routed
+item is PLAN's to land and correctly has no locus here; its non-landing in this document is not a
+fault of these bytes. Upstream is re-measured at HEAD, the pin is true, and E-7 — the clause the
+whole edit turns on — is unmoved and faithfully compressed on both axes. No acceptance criterion was
+narrowed, broadened or re-triggered, no decision re-opened, no measured value moved.
+
+Four findings, none High, none blocking:
+
+1. **F-01 (Medium, delta)** — the v1.3 changelog asserts PLAN v0.7 state that is false at PLAN HEAD
+   (v0.9, all six sites corrected). Fix: one sentence — record that PLAN v0.8/v0.9 closed the item,
+   and withdraw the erratum rather than re-raising it. Keep the disposition; correct the tense.
+2. **F-02 (Low, delta)** — §7.6's AT-14 row attributes all three cases to `FSPEC E-7`; the
+   zero-decision-set case is E-6's. Fix: cite `FSPEC AT-14`, or `E-6, E-7`.
+3. **F-03 (Medium, inherited)** — §4.3's enforcement rationale still over-claims the guard. Carried
+   from v13 F-02, unaddressed because this delta did not touch §4.3.
+4. **F-04 (Low, inherited)** — §7.3's *Forbidden token set* row carries the same over-claim. Carried
+   from v13 F-03.
+
+None of these needs a further review round. F-01 and F-02 are one sentence and one citation, in
+sections this round already touched. F-03 and F-04 are the same clause fixed in two places and can
+land whenever this document is next opened.
+
+DEFERRED (unchanged from v13, recorded so it is not lost): the census's set equality detects a
+deleted or renamed owned member but not an added, inert module declaration. Closing that
+mechanically would mean instrumenting a set equality between `DECISION_LEDGER_OWNED_DECLS` and the
+module's feature-introduced top-level declarations at HEAD. That is a design decision, not a defect,
+and it is not this round's to take.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | The v1.3 changelog entry states, present tense, that "`PLAN` v0.7 carries the retired fifteen-member owned list and a production home for `DECISION_LEDGER_CENSUS_TOKENS`", "on the same reasoning v1.2 recorded". False at HEAD: `PLAN` is **v0.9** (`PLAN`:17) and all six routed sites are corrected — revision history (:19, :23, with v0.7 demoted to history at :29), T-11 (:162, all three census lists are test-file declarations, none a member of the owned list, six ∪ eight = fourteen cited from §7.3), T-18 (:168, "writes **no census constant**… this reverses the v0.7 instruction"), the file-ownership manifest (:217, census test file the sole home of all three), and §Definition of Done (:503–514); `grep -n CENSUS_TOKENS` finds no production home. The **disposition is right** — this is PLAN's phase to own and must not be fixed from here — but the stale premise is what fed this dispatch's routed item, so it re-mints a closed High every round it stands. Medium, not High: confined to revision history; no normative section, count, contract or acceptance criterion of this TSPEC is affected. Same defect as v13 F-01, which was raised against PLAN v0.8 and has not been closed. Fix: one sentence recording that PLAN v0.8/v0.9 closed it, and withdraw the erratum. | Revision history, v1.3 entry, :38–45 |
+| F-02 | Low | delta | local | §7.6's AT-14 row now reads "all **three** of FSPEC **E-7**'s cases — zero-decision set, `maxEntries` `0`, `maxBytes` `0`". E-7 has **two** cases (FSPEC:342, "**Either** bound resolves to `0`"); the zero-decision-set case is **E-6**'s (FSPEC:341), and FSPEC's own AT-14 cites `E-6, E-7` (FSPEC:484–491). The pre-round text `FSPEC v1.3's cases` referred at document scope and committed to no id, so the numeral-decoupling edit did not merely drop a stale version here — it asserted an id set that is short by one. The behavioural assertion is unchanged and still faithful (all three cases, byte-identical to AT-04's baseline), so no coverage is lost and no requirement is narrowed; only the pointer is wrong. Fix: cite `FSPEC AT-14`, or `E-6, E-7`. | §7.6, AT-14 row, :1702 |
+| F-03 | Medium | inherited | nonlocal | §4.3's framing paragraph still states that "hoisting either sentinel to a top-level `const` would introduce a feature-declared name absent from `DECISION_LEDGER_OWNED_DECLS`, which §7.3's classify-or-redden guard fires on" (:936–938). §7.3's set equality ranges over *members of* the frozen list, so a non-member is never compared; the only indirect red path is an unsliced remainder containing one of the six forbidden tokens, which an inert sentinel string constant does not. The normative rule ("ship as inline string literals") is correct and unaffected — the stated enforcement is not, and it is the sentence a future editor would rely on to conclude the pin is self-enforcing. Pre-round bytes; this delta touched §4.1, §6.1, §7.6, the header and the changelog only, so §4.3 is untouched. Carried from v13 F-02. Fix: one clause attributing the pin to the section's normative statement plus review against §7.3's fourteen, rather than to a red test. | §4.3 framing paragraph, :936–938 |
+| F-04 | Low | inherited | nonlocal | §7.3's *Forbidden token set* row asserts "a symbol added later must be classified into one list or the other or the test reddens" (:1475) — the same over-claim as F-03, from the same source: an added declaration reddens only if its body carries a forbidden token, and the three compared lists are frozen test-file literals. Pre-round bytes, untouched by this delta. Carried from v13 F-03; recorded so the two are fixed in one edit. | §7.3, *Forbidden token set* row, :1475 |
+
+FINDING: Medium | delta | local | Revision history, v1.3 entry, :38-45 | The v1.3 changelog asserts in the present tense that "PLAN v0.7 carries the retired fifteen-member owned list and a production home for DECISION_LEDGER_CENSUS_TOKENS"; PLAN is v0.9 at HEAD with all six routed sites corrected (:19, :23, :29, :162, :168, :217, :503-514) and no production home for the constant. The disposition (route to PLAN's phase, do not fix here) is correct and should stand; the tense and version are stale, and this stale sentence is what fed this dispatch's routed item, re-minting a closed High. Confined to revision history — no normative section, count, contract or acceptance criterion affected, hence Medium not High. Same defect as v13 F-01, raised then against PLAN v0.8.
+FINDING: Low | delta | local | §7.6, AT-14 row, :1702 | The row attributes all three cases to "FSPEC E-7", but E-7 covers only the two zero-bound cases; the zero-decision-set case is E-6's, and FSPEC's own AT-14 cites E-6 and E-7. The version-numeral decoupling replaced a document-scope reference ("FSPEC v1.3's cases") with an id set that is short by one. Behavioural assertion unchanged and still faithful; pointer only. Fix: cite FSPEC AT-14, or E-6, E-7.
+FINDING: Medium | inherited | nonlocal | §4.3 framing paragraph, :936-938 | The claim that hoisting a sentinel to a top-level const is caught by §7.3's classify-or-redden guard does not hold: the set equality ranges over members of the frozen owned list, and an inert sentinel string constant carries none of the six forbidden tokens, so nothing reddens. The normative "ship inline" rule stands; its stated enforcement does not. Pre-round bytes, untouched by this delta. Carried from v13 F-02.
+FINDING: Low | inherited | nonlocal | §7.3 Forbidden token set row, :1475 | The row's "a symbol added later must be classified into one list or the other or the test reddens" carries the same over-claim as §4.3's sentence and from the same source; an added declaration reddens only if its body carries a forbidden token. Pre-round bytes, untouched by this delta. Carried from v13 F-03.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
