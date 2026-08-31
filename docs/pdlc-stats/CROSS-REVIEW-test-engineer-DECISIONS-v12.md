@@ -49,6 +49,48 @@ re-grounded. Every hash and version word in the new entry was measured against t
 
 ## Decision
 
+**All four v11 findings are resolved and the delta introduces no defect. Approved with minor changes.**
+
+### F-01 — K-3's divergence clause (resolved)
+
+TSPEC HEAD now states the same move this document has carried since v1.3:
+`TSPEC-pdlc-stats.md:131` — *"wrong on HEAD's measurement and is corrected to seven → eight at
+v1.7"* — and `:272`'s row reads *"the title moves **seven → eight** (printed `six` → `eight`)"*.
+`TSPEC:33` independently re-states *"derives **ten** co-change sites and the seven → eight
+`REQUIRED_INCLUDES` move stands"*. K-3's replacement clause claims exactly this and routes nothing
+upstream. `grep -n "owed upstream" DECISIONS` returns two hits, both inside historical changelog
+entries (`:81`, `:109`) and both now carrying an explicit discharge marker (`:74`, `:109`), so no
+live erratum route survives.
+
+### F-02 — grounding attestation (resolved)
+
+`DECISIONS:74` scopes the v1.6 paragraph to its own version, and the v1.7 entry re-grounds against
+measured HEAD. The failure mode I named in v11 — a later round reading a stale attestation and
+concluding re-grounding is unnecessary — is closed by construction: the version-scoped marker makes
+the pin non-live and the v1.7 entry is the live statement.
+
+### F-03 — site-table preamble (resolved, and now internally checkable)
+
+`DECISIONS:243` now reads *"**Five** hold enumerations; **four** pin"*. Re-derived against the
+table and *What the sweep found*: five holders — `pdlc/engine/scripts/prepack.mjs` (`MODULE_NAMES`),
+`publish-preflight.mjs` (`WORKFLOW_MEMBERS`), `fixture-machine.mjs` (`WORKFLOW_MODULE_NAMES`),
+`__tests__/_tspec-packed-set.mjs`, `pdlc/workflows/package.json` (`c8.include`) — four pinners —
+`loop-distribution.test.js`, `coverageInstrumentation.test.js`, `run.test.js`,
+`learningsPremises.test.js` — plus `pdlc/README.md` as the tenth, pinned by nothing. 5 + 4 + 1 = 10,
+matching K-1's partition. All nine files exist at HEAD.
+
+The sweep command is reproducible and still true:
+`git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'` returns **25 files**, the number
+`DECISIONS:261` states — on both `main` and branch HEAD.
+
+### F-04 — non-resolving upstream pins (dispositioned as far as this document can)
+
+I enumerated every TSPEC revision on the branch: none hashes to `512a9fcf…`, `235fd3dd…` or
+`f2261510…`, so the observation stands for a fourth round (v11's own appended trailer repeated
+`f2261510…`). But this is a workflow-side defect, not a defect in these bytes, and v1.7 records it
+that way — routed to harvest, with the explicit statement that no conclusion here rests on it. That
+is the correct disposition; I carry it below as Low rather than re-escalating.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
