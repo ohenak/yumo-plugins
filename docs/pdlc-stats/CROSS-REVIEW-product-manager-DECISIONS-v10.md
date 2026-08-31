@@ -193,8 +193,16 @@ which is evidence the lesson has already taken hold.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | K-3's obligation cell routes the include-count divergence upstream — *"Upstream divergence, owed to TSPEC and not resolved here (TE F-05)"*, describing TSPEC §2.1 as still saying *six → seven*. TSPEC v1.7 resolved it: §2.1 now states the feature moves the set **seven → eight**, matching this document. The clause therefore asserts an open debt that is paid. Nothing an implementer or PLAN author does changes — the number, the obligation, the falsifier and the task boundary are all unchanged and now corroborated upstream — so this is a bookkeeping staleness in a routing note, not a misdirection. Retires my carried F-01 from v6/v7/v8/v9. Fix when the freeze lifts: re-word to record the divergence as *resolved in TSPEC v1.7*. | K-3 row, *Obligations these decisions create* |
+| F-02 | Low | inherited | nonlocal | The v1.6 changelog's upstream-grounding line is written in the present tense — *"TSPEC HEAD **is** v1.4 … FSPEC HEAD **is** v1.5 … REQ HEAD (v1.4) matches its pin"*. It was true at the commit it was written at (`7adc9666`), and a changelog properly records the document at its own version, so this is not a defect in decided content and is not gating. But all three upstreams have now moved further (REQ v1.6, FSPEC v1.7, TSPEC v1.7), and present tense invites a later reader to take a superseded pin as live. Carried from v9 F-02, unchanged by this round's edit. Future rounds should prefer version-scoped past tense in changelog attestations. | v1.6 changelog, upstream grounding line |
+
+FINDING: Low | delta | local | K-3 row, Obligations these decisions create | K-3 still routes the include-count divergence upstream as "owed to TSPEC and not resolved here", describing TSPEC section 2.1 as saying six to seven; TSPEC v1.7 resolved it and now states seven to eight, matching this document, so the clause asserts a debt already paid. No number, obligation, falsifier or task boundary changes, so it is bookkeeping staleness in a routing note. Retires the carried F-01 from v6, v7, v8 and v9; re-word as "resolved in TSPEC v1.7" when the freeze lifts.
+FINDING: Low | inherited | nonlocal | v1.6 changelog, upstream grounding line | The grounding attestation is written in present tense and was true at the commit it was written at, but REQ, FSPEC and TSPEC have all moved further since; version-scoped past tense would stop a later reader reading a superseded pin as live. Carried from v9 F-02, untouched by this round's edit.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
+
