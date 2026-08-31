@@ -47,3 +47,68 @@ Claims introduced or moved this round, checked at HEAD:
 | Q-01 | (Carried from v1/v2, still open and now cheaper to answer.) BR-13 names lexicographic collation and AT-14b pins `P, PR` as the case that depends on it. Is the comparison byte-wise, or locale-sensitive? AT-14b's literal is stable either way for these inputs, so the test will not catch the difference — but a locale-sensitive comparison is a run-to-run stability risk that BR-13's own stability claim is about. One clause in BR-13 ("byte-wise, locale-independent") retires it. |
 | Q-02 | BR-30 declares the error object "a released shape under REQ R-5" governed by BR-24's increment rule. Does that mean the success document and the error object share one `schemaVersion` counter, so adding a `reason` value bumps the version a consumer of the success document also reads? If they share, the enum is effectively frozen; if they do not, `schemaVersion` means two things. TSPEC material, but the answer shapes BR-24's wording. |
 | Q-03 | AT-14b and AT-13 measure real archived directories; AT-14b's `D, F, I, T` literal holds only while `docs/completed/pdlc-headless-engine/` carries exactly those four. §6's preamble permits re-measurement when the archive moves. Is there an intended signal to the next author that these four literals are measured-from-HEAD rather than invented — a comment convention in the test, or a line in the fixture list? |
+
+## Positive Observations
+
+- **BR-20's rewrite fixed the rule's *shape*, not just the missing case.** I asked for a sentence
+  covering the `docs/`-root path. The document instead restated the rule as always-but-one and said
+  why: "the enumeration is what rots: a failure path added later with no stdout decision silently
+  breaks the guarantee this rule exists to give". That is the durable form — the next failure path
+  inherits a decision instead of creating a hole — and it is the second time this round the author
+  chose the invariant over the patch.
+- **BR-30 grew a shape, and the shape carries the distinction the rule was written for.** Three keys
+  set-equal, `error` with exactly `reason` and `message`, a two-value enum, `schemaVersion` hoisted
+  as BR-21 hoists it. A caller can now separate "no such feature", "no `docs/` root here" and "this
+  feature has no artifacts" without touching a message string, and AT-23 asserts exactly that by
+  comparing key sets against AT-26's empty directory rather than by reading prose.
+- **AT-14b is the test I did not think to ask for.** BR-13's collation had a stated rationale (`PR`
+  is the two-character id whose position depends on the choice) and no oracle that could fail. AT-14b
+  asserts a literal *sequence*, states in the test text why a set-shaped oracle is worthless here
+  ("an implementation ordering by directory-listing or insertion order passes any set-shaped
+  oracle"), and adds the `P, PR` leg so the rule's stated reason for naming a collation is itself
+  under test. The four-phase fixture is real: I confirmed `POSTMORTEM-{D,F,I,T}-…` in
+  `docs/completed/pdlc-headless-engine/`.
+- **AT-13's fixture moved into a temp root without being asked.** The v2 text added two files
+  alongside a real archived directory; the new text copies the directory and adds them to the copy,
+  with the reason stated — the `resolved` literal stays carried from real bytes while the real
+  directory stays exactly as AT-09, AT-10 and AT-18 measure it. That is a test-isolation defect
+  caught by the author, in a document under review for something else.
+- **AT-25's "the other five rows read exactly `3`, `2`, `5`, `1`, `4`" is the right instinct
+  generalised.** The v2 text said "unchanged", which is a tautology no implementation can fail. The
+  new text transcribes literals and names the risk it makes falsifiable — one role's collision
+  poisoning rows it does not own. Nobody asked for this; it came from applying §6's literal-oracle
+  rule to a conjunct that had escaped it.
+- **AT-24 explains its own token choice.** Naming `--dev` and `--plugin-root` was the ask; writing
+  down *why* they are the tokens (the copied-`FLAGS_BY_COMMAND`-row failure mode, cited to
+  `cli.mjs:184`) is what stops a future author from "simplifying" the list back to `--dry-run` and
+  quietly deleting the test's only teeth.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The one v2 High is closed at four levels — rule, edge case, flow step and test — and closed by
+restating BR-20 as an invariant rather than by patching the one missing path. All three Mediums and
+both Lows are closed too, several of them more thoroughly than the finding asked: D-9 records the
+REQ-STATS-09 departure with its reasoning and §7.3 raises it, BR-27 reconciles its narrowing in
+place, AT-24 names the tokens BR-01 singles out and the implementation slip they catch, EC-21 moves
+to the test that actually exercises it, and AT-15's enumeration probe is now explicitly
+non-skippable. Nothing in the round regressed a section I had approved.
+
+What remains is two Mediums about test coverage of shapes this round introduced, not about the
+shapes themselves — no behavioural decision is open. F-01: AT-27's root leg says "four runs" while
+naming three axes that multiply to eight, so which cells are covered is an implementer's guess.
+F-02: the one combination BR-30 is subtlest about — single-feature mode, `no_docs_root`, non-null
+`feature` — has no oracle, and it is the combination the natural implementation gets wrong. Both are
+one conjunct each in AT-27's root leg. The three Lows are records and wording: §7.3's "two" over
+three bullets, EC-14 marked covered while two of its three conditions lost their oracle, and BR-29's
+exit catalogue naming only the unreadable half of the root failure.
+
+Every claim this round introduced was checked at HEAD and holds: the four `pdlc-headless-engine`
+post-mortems, the single `pdlc-wave-resume` post-mortem, `doctor`'s flag row, and BR-13's collation
+over both literal sequences.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 3}
