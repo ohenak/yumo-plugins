@@ -49,6 +49,40 @@ from v13 and untouched here.
 
 ## Architecture
 
+**The citation-decoupling edit is the right shape, and I want to say so before the finding.** The
+defect the round set out to fix is that a downstream citation naming an upstream *version numeral*
+goes stale the moment upstream advances, even when the cited clause never moved. That is exactly
+what happened: E-7's content is byte-unmoved between FSPEC v1.3 and v1.4, but three sentences in
+this document said `FSPEC v1.3's E-7`, so a reader at HEAD could not tell whether the citation was
+stale-and-wrong or stale-and-harmless without re-deriving it. Citing by spec id — `FSPEC E-7` —
+makes the pointer version-independent, and leaves the header's pin row as the single place a version
+is asserted. This is the same discipline PLAN adopted in its own v0.8 round ("in-body citations now
+read `TSPEC §7.3` without a version label; the version pin lives in the header row alone"), so the
+two documents now converge on one citation convention rather than two. Nothing about the change
+touches a requirement.
+
+**Scope of the edit is genuinely as declared.** The v1.3 entry says the sections touched are "the
+header, §4.1, §6.1's F-13 row, §7.6's AT-14 row and this changelog, nothing else". I diffed against
+that claim rather than trusting it: `757922341` touches exactly three lines, at §4.1, §6.1 F-13 and
+§7.6 AT-14; `df2b10154` moves the header pin and adds the changelog entry. No AT row was added or
+removed, no traceability row moved, no BR/E/AC mapping changed. The claim holds.
+
+**But the id-decoupling narrowed one citation while widening the other two, and that is not
+uniform.** §4.1 and §6.1's F-13 row both discuss the proposition "either bound resolves to `0`",
+which is precisely and only E-7's antecedent — for those two sites, `FSPEC v1.3's E-7` → `FSPEC E-7`
+drops a stale numeral and keeps the id set exactly right. §7.6's AT-14 row is different: it discusses
+**three** cases, and the old text `FSPEC v1.3's cases` referred to them at document scope, without
+committing to an id. Rewriting that to `FSPEC E-7's cases` did not just drop the numeral — it
+asserted an id set, and asserted one that is too small. FSPEC's own AT-14 (FSPEC:484–491) enumerates
+the three cases and cites `E-6, E-7`; the zero-decision-set case is E-6's, not E-7's. That is F-02
+below: Low, because the behavioural assertion the row makes is unchanged and still faithful, and no
+count, contract or acceptance criterion moves — only the pointer is short by one id.
+
+**Nothing in the delta re-opens a decision or re-litigates scope.** The DECISION FREEZE I noted at
+v13 remains respected: no rejected alternative is revived, no new product decision appears in the
+engineering artifact, and the v1.3 entry correctly declines to fix another document's contract from
+here. Declining is the right call; only its stated reason has gone stale.
+
 ## Interfaces
 
 ## Data Model
