@@ -103,3 +103,21 @@ skill's behaviour, and picking wrong ships a metric that lies about halts on exa
 Because F-01's bytes predate this round and this round edited nothing, it is `inherited` — it routes
 back through the REQ's ordinary revision loop rather than halting the phase, which remains the right
 disposition.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | inherited | nonlocal | REQ-STATS-06's rationale asserts as shipped fact that "harvest deletes cross-reviews and DoD reviews while post-mortems survive" (`REQ-pdlc-stats.md:193-195`). Unresolved at HEAD, and the contradiction is now intra-document: `harvest-learnings/SKILL.md:10,28,59,129` scopes deletion to `CROSS-REVIEW-*` / `CODE_REVIEW-*`, while `harvest-learnings/SKILL.md:77` — the LEARNINGS metadata template that same SKILL fills — and `pdlc/OPERATIONS.md:296` both record `POSTMORTEM-*` among the files "now deleted". No `docs/_decisions/` entry settles it. The premise is load-bearing twice: it justifies REQ-STATS-06's per-family predicate, and its converse justifies REQ-STATS-05 (`:182-183`) having no harvested state. If the deleted side is correct, REQ-STATS-05 reports `0 halts` for a feature that halted — the undercount NG-6 (`:74`) and R-6 (`:251-253`) exist to prevent. Fix: settle it in `docs/_decisions/` (it binds `harvest-learnings`, not just this feature), then cite the settled source in REQ-STATS-06 and give REQ-STATS-05 a harvested state if the answer is "deleted". | REQ-STATS-06 §5 (`:193-195`); knock-on REQ-STATS-05 (`:182-183`) |
+| F-02 | Low | inherited | nonlocal | Carried unchanged from v5. The v1.4 changelog note (`:20-23`) justifies the edit as stopping "a foreign-feature file" from suppressing the harvested state. That holds for `CODE_REVIEW-{feature}-v{N}.md`, which carries a feature token, but not for `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, which carries none — cross-review basenames are scoped by their feature *directory*, never by the grammar. The AC text is correct; only the note's rationale overclaims. Fix: describe the win as "a non-conforming basename can no longer read as a survivor". | Metadata block, "Erratum round 3 (v1.4)" note (`:20-23`) |
+
+FINDING: High | inherited | nonlocal | REQ-STATS-06, §5 (:193-195) — "post-mortems survive" harvest clause | Load-bearing shipped-behaviour claim still unsettled at HEAD, and self-contradictory within one upstream file: harvest-learnings/SKILL.md:10,28,59,129 delete only CROSS-REVIEW-*/CODE_REVIEW-*, but SKILL.md:77 and pdlc/OPERATIONS.md:296 record POSTMORTEM-* as deleted; no docs/_decisions/ entry resolves it. REQ-STATS-05's absence of a harvested state depends on the survive side being true.
+FINDING: Low | inherited | nonlocal | Metadata block, v1.4 erratum note (:20-23) | The note's "foreign-feature file" rationale does not hold for the cross-review family, whose grammar carries no feature token; the scoping win is over non-conforming basenames, not foreign features.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | (Carried, still open.) Which side is authoritative on post-mortem deletion at harvest? Note that `harvest-learnings/SKILL.md` now answers both ways internally — `:28`/`:59`/`:129` say survive, `:77` says deleted — so this cannot be closed by picking a document; it wants a decision plus an edit to whichever lines lose. |
+| Q-02 | (Carried, still open.) If post-mortems do survive, is REQ-STATS-05's "no post-mortem file is zero halts" right for a *harvested* feature — is a surviving post-mortem set complete evidence, or does harvest fold non-convergences into LEARNINGS §1 and drop originals? |
+| Q-03 | (New.) Should this REQ's harvested-state ACs depend on `harvest-learnings`' deletion scope at all, or should they key off `LEARNINGS-{feature}.md` presence plus per-family absence *without* asserting why the families are absent? The second shape is robust to Q-01 resolving either way and would let the REQ approve before the upstream decision lands. |
