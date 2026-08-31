@@ -216,15 +216,15 @@ class or oracle. This feature takes the same route one member further: `PK-26`
 count from five to six. **What this paragraph is the single site of is the carve-out's
 justification, not its execution** — the two sibling-document edits are a `PLAN`-visible obligation
 with an owning task, recorded as K-7 in the Consequences table, and the same table's K-1/K-2 own the
-five in-repo enumeration sites. Downstream documents — PLAN, PROPERTIES, the implementation's tests — **cite `DEC-STATS-01` and do
+five in-repo enumeration sites and K-8 the sixth site that pins four of their sizes. Downstream documents — PLAN, PROPERTIES, the implementation's tests — **cite `DEC-STATS-01` and do
 not restate this text**: `pdlc-engineering-loop`'s LEARNINGS records verbatim restatement of one
 clause across three documents as a defect generator, and a carve-out is exactly the clause shape
 that attracts it. The growth path is precedented rather than novel: the same class already went from
 three members to five when `lib/loop-session.mjs` and `lib/escalation-view.mjs` were added, recorded
 as `PK-24`/`PK-25` in that helper's own comments.
 
-**Reversibility: hard.** Undoing it means amending the five enumerations and the sibling feature's
-frozen table a second time. Not a one-way door — no data or published contract is committed — but
+**Reversibility: hard.** Undoing it means amending the five enumerations, the test file that pins
+four of their sizes, and the sibling feature's frozen table a second time. Not a one-way door — no data or published contract is committed — but
 each reversal costs what the original cost.
 
 **Re-evaluation triggers.**
