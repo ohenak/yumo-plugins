@@ -139,4 +139,25 @@ non-gating; both are inherited and nonlocal, so neither is damage this round's e
 
 ## Delta-Confirmation Findings
 
+The delta resolves the routed item (my v4 F-05) and breaks nothing that was approved. No High finding is
+open, delta or inherited. Two Low findings, both inherited and nonlocal — neither is caused by this
+round's edit, and neither gates the PLAN.
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | TSPEC §4.3's "contested upstream and is not decided here" paragraph and §8.3's second erratum entry are stale as of REQ v1.7: both quote the withdrawn v1.6 survivor clause in the present tense and describe a REQ-versus-FSPEC disagreement that the erratum has closed in BR-16's favour. PLAN T-04 leans on §4.3 for its branch-order conjuncts, but no coverage is lost — §4.3 already implements the winning reading, so an implementer building to it is correct. TSPEC names its own three re-stamp sites; the AT-17 fourth-leg site already holds the winning value. Routes to TSPEC's owning phase. | TSPEC §4.3 / §8.3, as leaned on by PLAN §Batches, T-04 |
+| F-02 | Low | inherited | nonlocal | My v4 stamped `UPSTREAM-STATE: TSPEC sha256:f2261510…`, but TSPEC hashes `sha256:a06a6032…` both at v4's `REVIEWED-COMMIT: 9c56d0c5` and at HEAD — the pin never matched the document reviewed, and TSPEC has not moved since the PLAN approval. Recorded because the pin is the oracle a cascade check reads for staleness; left uncorrected it would send the next confirmation after a phantom TSPEC delta. Fix: re-stamp the TSPEC pin to `a06a6032…`. | PLAN cross-review v4, `UPSTREAM-STATE` anchors |
+
+FINDING: Low | inherited | nonlocal | TSPEC §4.3 / §8.3, leaned on by PLAN T-04 | TSPEC §4.3's contested-upstream paragraph and §8.3's second erratum entry still present the out-of-catalogue basename question as live and quote REQ v1.6's withdrawn survivor clause as current; REQ v1.7 settled it in BR-16's favour. No PLAN coverage consequence — §4.3 already implements the winning reading. Fix: re-stamp TSPEC's three named sites at the owning phase.
+
+FINDING: Low | inherited | nonlocal | PLAN cross-review v4, UPSTREAM-STATE anchors | The v4 TSPEC pin `f2261510…` never matched the reviewed TSPEC (`a06a6032…` at REVIEWED-COMMIT 9c56d0c5 and unchanged at HEAD). Fix: re-stamp the TSPEC UPSTREAM-STATE pin to `a06a6032…` so the next cascade check does not chase a TSPEC delta that never occurred.
+
 ## Verdict
+
+The PLAN remains a faithful compression of REQ as it now stands. Its own bytes are unchanged, it cites
+no text the erratum altered, and the one leg whose expected value the delta decides is the one leg PLAN
+deliberately leaves to TSPEC. The settlement lands on the side PLAN's tasks were already built toward,
+so approval carries forward.
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 2}
