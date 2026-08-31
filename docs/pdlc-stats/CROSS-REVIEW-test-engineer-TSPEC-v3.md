@@ -83,11 +83,58 @@ contract and the exact-key-set conjuncts I approved in v2 are untouched upstream
 
 ## Verification
 
-_pending_
+Two upstream acceptance tests grew a leg this round, and this is where the confirmation earns its
+keep.
+
+**AT-12 gained a third directory** — `LEARNINGS` plus only `CODE_REVIEW-{feature}-draft.md` and
+another feature's `CODE_REVIEW-{other}-v2.md`, asserted `harvested`. TSPEC coverage holds: §6.2's
+"Unit — seamed" level pins "every metric's branch table (§4.3), each state reachable", and §4.3's
+DoD paragraph already states both leftovers' behaviour with the mechanism that produces it (feature
+name escaped before matching; `-draft` does not match at all). The new leg adds a fixture, not a
+branch, and it is drivable with `fakeStatsIo` exactly as specified. Nothing to file.
+
+**AT-17 gained a fourth directory**, and here the TSPEC's own fixture is weaker than the AT. The
+upstream leg is: `CODE_REVIEW` files **intact**, plus — as its only `CROSS-REVIEW-` basenames — the
+out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form; asserted `harvested`, not a measured
+ratio. §4.3's corresponding sentence describes "a directory with `LEARNINGS-*.md`, one
+`CROSS-REVIEW-{role}-REVIEW-v1.md`, and no grammar-passing cross-review, asserted `harvested`" —
+and says nothing about DoD files. Run that fixture against the TSPEC's own predicate:
+
+```
+if (harvested && (crossReviews.length === 0 || dodReviews.length === 0)) -> harvested
+```
+
+With no `CODE_REVIEW-{feature}-v{N}.md` in the fixture, `dodReviews.length === 0` is true, so the
+fixture returns `harvested` **whatever the left disjunct does** — including under the literal
+`CROSS-REVIEW-`-prefix reading it is written to exclude. As specified it is a test that cannot fail
+for the property it claims to pin: a green tells you nothing about grammatical membership. The
+upstream AT supplies the missing conjunct in four words ("`CODE_REVIEW` files intact"), which forces
+the left disjunct to be the only thing that can produce `harvested`. This is an inherited weakness —
+the sentence is unchanged pre-round bytes — but the delta is what makes it repairable and what makes
+the divergence visible, so it should be closed in the same edit as F-01.
+
+**Everything else in §6 survives the delta.** §6.1's real-path baselines are unaffected: the archive
+did not move, and I re-checked the two literals the delta could plausibly touch — AT-09's
+`docs/completed/pdlc-advisory-wave-gate/` still carries exactly the four
+`CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` basenames the new FSPEC BR-16 text
+now names by example, and AT-11's `CODE_REVIEW-pdlc-loop-economics-v{1,2}.md` pair still gives `2`.
+§6.6's mutation row "swap BR-16's harvested test before/after BR-15's zero-denominator test" still
+names AT-17's **third** fixture, and that is still correct — the third fixture (harvested with zero
+spec bytes) remains the discriminating one; the fourth leg does not disturb it. §6.3's cross-mode
+oracle, §6.4's four anti-drift oracles, §6.5's read-only oracle and §6.6's PROP-3 read on no changed
+upstream text.
 
 ## Risks
 
-_pending_
+- The three Mediums I raised in v2 (F-01 parser-identity conjunct, F-02 vendoring oracle over
+  `WORKFLOW_MEMBERS.length`, F-03 the `[^-]+` erratum line) are untouched by this delta and remain
+  open as recorded; they are not re-raised here and they do not gate.
+- §8.3's fourth bullet — FSPEC BR-26/EC-10's missing positive feature-recognition predicate — is
+  **still genuinely open**; the erratum round did not touch BR-26. It must survive the pruning F-02
+  asks for, or a real open item is lost with the closed ones.
+- The FSPEC's own §7.3 now says "Two errata remain" and lists REQ-STATS-05's post-mortem
+  classification and D-8's wording. Those are FSPEC→REQ errata and sit outside this document's
+  channel; no TSPEC statement depends on them.
 
 ## Recommendation
 
