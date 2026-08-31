@@ -141,3 +141,48 @@ hard to pin the expectation no longer offers them an alternative. I checked §6.
 surviving provisional framing of the same leg — `TSPEC:971-977` describes AT-17's fourth leg as a
 constructed fixture deliberately excluded from the real-path baseline table, with no hedging about
 its value. Clean.
+
+## Data Model
+
+No type, constant, literal, JSON key or baseline number moves in this delta. I re-verified each
+class of value that a withdrawn upstream clause could plausibly have disturbed:
+
+- **State catalogue** — unchanged, all four arms live (see §Interfaces above).
+- **`ProcessSpecRatio`'s `{ state, ratio, processBytes, specBytes }`** — unchanged, and the shipped
+  `harvested` return keeps both byte totals populated (`lib/stats.mjs:294`). This matters for the
+  oracle: it is what lets PROP-RATIO-08 assert three positive conjuncts rather than an absence.
+- **`REVIEW_DOC_TYPE_ROWS` / the six C-3 spec document types** — REQ v1.7 adds, removes and renames
+  no document type, so the single-constant argument and §2.1's drift oracle stand with the same
+  expected membership.
+- **§6.1's measured baselines for `docs/completed/pdlc-advisory-wave-gate/`** — 62 `CROSS-REVIEW-*`,
+  4 out-of-catalogue, 58 grammatical, ratio **measured**. §4.3's re-stamped paragraph preserves this
+  reading ("only the malformed shape is borrowed", `TSPEC:794-805`), FSPEC BR-16 at HEAD says the
+  same in its own words (`FSPEC:382-384`), and the landed real-path test transcribes the same four
+  basenames (`__tests__/statsRealPaths.test.js:45-59`). Three sources, one measurement.
+- **AT-17 leg 4's expected token** — `harvested` before the erratum, `harvested` after it, and
+  `harvested` in the shipped assertion. Nothing to re-measure.
+
+**One observation about the count claims §0 re-asserts.** The v1.8 changelog closes with "§2.1 still
+derives **ten** co-change sites and the seven → eight `REQUIRED_INCLUDES` move stands". Both are
+re-assertions of inherited numbers, so I checked them rather than waving them through:
+
+- `REQUIRED_INCLUDES` at HEAD holds **four** entries
+  (`__tests__/coverageInstrumentation.test.js:37-46`), exactly as §2.1 (`TSPEC:272`) records, and
+  the `c8.include` set in `pdlc/workflows/package.json` now holds **eight** — the seventh and eighth
+  being this feature's own `lib/stats.mjs` addition. So the "seven → eight move" did not merely
+  stand; it **landed**, because the implementation shipped between rounds. §2.1's "seven at HEAD" is
+  therefore a pre-implementation reading of HEAD that the feature's own T-19/T-20 commits have since
+  overtaken. This is normal for a spec mid-implementation and is not a defect in the document — but
+  it is worth knowing that §2.1's HEAD-relative counts are now historical rather than live, and I
+  record it as a deferred item rather than a finding.
+- The **ten** co-change sites: §2.1 still derives ten and the packed-set table still sits outside
+  them (`TSPEC:205-208`, `TSPEC:245-262`). Untouched by this delta.
+
+**A drift I noticed in the landed test, recorded for the implementation phase, not against TSPEC.**
+`coverageInstrumentation.test.js:263` is titled "the include set is exactly the **seven** modules the
+feature owns" while asserting an eight-element array, and its adjacent comment describes "the
+seven-member literal … REQUIRED_INCLUDES' **three** entries" where `REQUIRED_INCLUDES` holds four.
+The **oracle is correct** — it is a `toEqual` set-equality over the full enumeration, so a deleted
+entry reds exactly as §2.1 requires, and this is a printed-word staleness only. §2.1 predicted this
+precise hazard ("the title and comment are already stale at HEAD"). It belongs to IMPLEMENTATION
+review; TSPEC is frozen and says the right thing.
