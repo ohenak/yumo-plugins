@@ -210,7 +210,37 @@ Q-01.
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The routed item this dispatch carries is false at HEAD (PLAN v0.9 closed all six sites; see §Interfaces). Should the erratum channel withdraw it rather than open a PLAN round that would change nothing? This is the second consecutive round in which a stale changelog sentence has re-minted a closed High as a routed item — v13 F-01 raised it against PLAN v0.8, and PLAN has since advanced to v0.9 while the sentence has not. I flag it for the orchestrator: the disposition is PLAN's phase to own, but the *re-raising* is a cost this pipeline pays every round the sentence stands. |
+| Q-02 | Would a standing convention — a cross-document *state* claim must cite the version pin it was measured against, or be stated as of a named commit, exactly as this round made citations cite spec ids instead of version numerals — be worth promoting beyond this feature? F-01 and its v13 predecessor are the same failure twice, and the round's own fix is the template for it. Not a finding against this document; raised for harvest. |
+| Q-03 | §7.6's AT-14 row and FSPEC's AT-14 now differ in which ids they name for the same three cases (`E-7` here, `E-6, E-7` upstream). Is the intended convention for an AT row to cite the upstream **AT id** it mirrors, rather than the E-ids beneath it? Citing `FSPEC AT-14` would be shorter, exactly right, and immune to a future re-partitioning of the E-ids underneath it. |
+
 ## Positive Observations
+
+- **The fix is aimed at the failure mode, not just the symptom.** The round could have refreshed
+  `v1.3` to `v1.4` in three places and been done. Instead it removed the version numeral from the
+  citation entirely, so the same sentences cannot go stale again the next time FSPEC advances without
+  touching E-7. That is the durable repair, and it is the one I would have asked for.
+- **The scope discipline is exact and independently verified.** Three insertions, three deletions in
+  the erratum commit; the declared touched-section list matches the diff line for line; no AT row, no
+  traceability row, no corpus literal, no baseline pin moved. I checked rather than trusted, and it
+  held in every case.
+- **The re-grounding was done properly and reported honestly.** v1.3 re-measured both upstream
+  documents at HEAD, found REQ v1.9 → v1.10 and FSPEC v1.3 → v1.4, and stated what followed and what
+  did not — that neither changelog names a new `BR-`/`E-`/`AC-` id or vocabulary row, and neither
+  moves a measured value. The digests it records match what `shasum -a 256` returns at HEAD. That is
+  DEC-ERR-03 executed as intended rather than as a formality.
+- **E-7's widening survives intact on both axes.** The `maxBytes` arm that FSPEC v1.3 added is still
+  carried in all three places — §4.1, §6.1's F-13 and §7.6's AT-14 — with the E-8 ⇒ E-6 route named.
+  A citation rewrite is exactly where a quantifier quietly reverts to the narrower reading, and it
+  did not.
+- **The census contract published in §7.3 did its job.** It stated the correction direction as
+  downstream-to-here, and PLAN v0.8/v0.9 followed it across all six sites without a further TSPEC
+  edit. The remaining problem is bookkeeping about that success, not the mechanism.
+- **Declining to fix another document's contract from here remains the right call**, and the changelog
+  still says so plainly rather than quietly. My finding is against the entry's tense, never its
+  disposition.
 
 ## Recommendation
 
