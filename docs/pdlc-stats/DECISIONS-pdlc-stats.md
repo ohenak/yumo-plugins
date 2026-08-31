@@ -81,12 +81,14 @@ Every cost below was measured against the tree at HEAD, not estimated.
 
 | Option | Location | Enumeration co-change (verified) | Coverage gate (verified) |
 |---|---|---|---|
-| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | five edit sites; vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass — **contingent on K-3's two conjuncts**: c8 opens only what `include` matches (`all` is not set), so an unincluded module produces no per-file entry and the second stage has nothing to check |
-| B | `pdlc/engine/lib/stats.mjs` | engine `lib/*.mjs` class 15 → 16 (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3), plus the same `tspecPackedCount` amendment | **none** — `pdlc/engine/package.json`'s only test script is `node __tests__/_run-suite.mjs`; the package declares no `c8` block and no coverage dependency at all |
+| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | **six** edit sites; vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass — **contingent on K-3's two conjuncts**: c8 opens only what `include` matches (`all` is not set), so an unincluded module produces no per-file entry and the second stage has nothing to check |
+| B | `pdlc/engine/lib/stats.mjs` | engine `lib/*.mjs` class 15 → 16 (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3), plus the same `tspecPackedCount` amendment **and the same sixth site**: `loop-distribution.test.js`'s `4 + 15 + 5 + 1` arithmetic pins the engine `lib/` class as `15` in the same expression, so B moves that literal too | **none** — `pdlc/engine/package.json`'s only test script is `node __tests__/_run-suite.mjs`; the package declares no `c8` block and no coverage dependency at all |
 | C | inline in `pdlc/engine/bin/cli.mjs` | none | **none**, same reason as B |
 | D | `pdlc/workflows/lib/stats.mjs`, **not vendored** | none | same as A |
 
-**Option A's five sites**, each confirmed to contain the member list it is claimed to contain:
+**Option A's six sites**, each confirmed to contain the member list it is claimed to contain. The
+sixth is a *test* file in a different package from the four enumerations it fences, which is why a
+per-file scan of the first five never reaches it:
 
 | Site | Symbol | Members at HEAD |
 |---|---|---|
@@ -95,6 +97,31 @@ Every cost below was measured against the tree at HEAD, not estimated.
 | `pdlc/engine/scripts/fixture-machine.mjs` | `WORKFLOW_MODULE_NAMES` | the same four |
 | `pdlc/engine/__tests__/_tspec-packed-set.mjs` | `WORKFLOW_MEMBERS` and `tspecPackedCount` | the five; `tspecPackedCount` returns `4 + 15 + 5 + 1 + (licence ? 1 : 0)` |
 | `pdlc/workflows/package.json` | `c8.include` | seven `**/`-anchored entries, including both existing `lib/*.mjs` members |
+| `pdlc/engine/__tests__/loop-distribution.test.js` | `D1_BASELINE`, `D2_D3_BASELINE`, `D5_BASELINE`, `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, and two count assertions | five transcribed member lists plus the vendored-class count; **six assertions** pin the four enumerations above with strict-length equality and pin the count K-2 moves |
+
+**The sixth site, and why it was missed on the first measurement.**
+`pdlc/engine/__tests__/loop-distribution.test.js` is `pdlc-engineering-loop`'s enforcement of exactly
+this co-change class, and it is live (four un-`skip`ped tests) at HEAD. Its `assertAdditiveOnly`
+helper is not containment-only — its own comment calls it *"both-directions-lite"* and its last
+assertion is `actual.length === baseline.length + added.length`, a set-size equality — and its
+`P7-02: D-1, D-2, D-3 and D-5 are additive-only …` test applies it to `prepack.mjs`'s
+`MODULE_NAMES`, `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `_tspec-packed-set.mjs`'s
+`WORKFLOW_MEMBERS` and `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`. Adding `lib/stats.mjs` to
+any of them makes the actual length exceed `baseline.length + added.length` and reds that conjunct.
+The same test hard-pins the count K-2 moves (`tspecPackedCount({ licence: false })` equal to
+`4 + 15 + 5 + 1`, *"vendored class size must be 5"*), and the `P7-02: docs/completed/… agree with
+tspecPackedCount's vendored class size` test pins it a second time, derived
+(`assert.equal(vendoredClassSize, 5, …)`). Six assertions in one file, in `pdlc/engine/__tests__/`,
+so `npm test` in `pdlc/engine` runs them and the required `Engine tests (ubuntu-latest)` check
+carries them. The measurement that produced the five-site table scanned the files that *hold* the
+enumerations; the assertions that pin their *size* live in a different package, so a per-file scan of
+the five never reached them. The durable form of that lesson — *an enumeration's co-change set
+includes the tests that pin the enumeration's size* — belongs in
+`docs/_constraints/DOMAIN-CONSTRAINTS.md`, not only in this feature's LEARNINGS.
+
+This raises option A's measured cost from five sites to six. It does not move the verdict: B pays
+the same sixth site (the `15` in that arithmetic is B's own class term) and still buys **no coverage
+gate**, C is unchanged, and D is still a broken A.
 
 **B rejected.** It pays a co-change of the same order — `_tspec-packed-set.mjs`'s count conjunct has
 to move either way, since `tspecPackedCount` sums the `lib` class and the vendored class in one
