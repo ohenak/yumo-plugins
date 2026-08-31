@@ -29,6 +29,23 @@ one landed a rule *and* the oracle that can fail on it.
 
 ## Claims Verified
 
+Every repository claim introduced or changed by this round's edit was checked against HEAD, not
+against the document.
+
+| New/changed claim | Verdict | Evidence |
+|---|---|---|
+| AT-09: `docs/completed/pdlc-advisory-wave-gate/` holds four `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files written by Phase CR | **Holds** | `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md`, exactly four; produced by `reviewFileType = roundDocType \|\| "REVIEW"` (`pdlc/workflows/orchestrate-dev.js:9245`) through `crossReviewPath` (`:9364`) |
+| AT-09: that directory's TSPEC row "still reads `6`" | **Holds** | Highest grammatical TSPEC index there is `v6` (`CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md`); BR-05's across-role maximum makes `6` the literal |
+| BR-06/EC-05: a `REVIEW` doc type is rejected by the driver's own parse, not by a rule this document invents | **Holds** | `REVIEW_DOC_TYPES` is exactly the six (`pdlc/workflows/orchestrate-dev.js:10105-10112`); `parseReviewFilename("CROSS-REVIEW-test-engineer-REVIEW-v2.md")` → `{ok:false, reason:"bad_doc_type"}` |
+| AT-10: `docs/completed/pdlc-headless-engine/` TSPEC row reads exactly `13`, other five `harvested` | **Holds** | Directory carries `CROSS-REVIEW-software-engineer-TSPEC-v13.md` as its only cross-review, plus `LEARNINGS-pdlc-headless-engine.md` |
+| AT-13: the fixture's line-leading marker reads `RESOLVED: yes`, so the literal is `resolved` | **Holds** | `docs/completed/pdlc-wave-resume/POSTMORTEM-PR-pdlc-wave-resume.md:3`; `parseResolvedMarker` lowercases and maps `yes` → `{ok:true, resolved:true}` (`pdlc/workflows/orchestrate-dev.js:7611-7615`). The second occurrence (`:185`) is mid-line and correctly outside the rule |
+| BR-12: `POSTMORTEM-I-pdlc-headless-engine.md` exists on disk though the driver's force-phase token list omits `I` | **Holds** | That file is present; the FSPEC uses it correctly to justify holding no phase-id catalogue |
+| EC-17/AT-18: `docs/pdlc-halt-hardening/` carries only a PLAN | **Holds** | Single file `PLAN-pdlc-halt-hardening.md` |
+| AT-15: `SIZING-*.md` is a real on-neither-list basename | **Holds** | `docs/completed/pdlc-advisory-wave-gate/SIZING-pdlc-advisory-wave-gate.md` |
+| BR-01: `stats` deliberately does not join the `--plugin-root` / `--allow-api-key-billing` common set | **Holds as a decision** | The common set is real (`pdlc/engine/bin/cli.mjs:169-185`); the FSPEC now states the divergence rather than implying inheritance |
+| BR-22/AT-25: `collidingRole` is a defined key, not one AT-25 invents | **Holds** | §4.4's document renders `"collidingRole"` on every `reviewRounds` entry and BR-22 states it is `null` outside `unmeasurable`, so AT-25's expectation is transcribable |
+| §6.11: the BR and EC tables are complete enumerations | **Holds** | BR-01…BR-30 and EC-01…EC-21 each appear exactly once; a deleted rule row would be visible against §4/§5 |
+
 ## Findings
 
 ## Questions
