@@ -186,11 +186,37 @@ citation of the authority paragraph, which is the stronger of the two fixes I of
 
 ## Questions
 
-_pending_
+Neither question is gating, and neither needs an answer before batches 3–8 run.
+
+| ID | Question |
+|----|---------|
+| Q-01 | The symmetric-difference clause pins that `decisionLedger` appears in exactly one of the two arms' `report` key sets; the *direction* (present on flag-on, absent on flag-off) is pinned separately — by the bullet's headline "Flag off ⇒ the report object carries **no** `decisionLedger` field", by T-10a being the home file for T-18's `report.decisionLedger` assertion, and by T-18's "set `report.decisionLedger` **only when the injector is non-null**". Three sites, so the implementer will not get it wrong. Worth one clause in the test file's header comment so a future reader of the assertion alone does not have to reconstruct the direction from the PLAN. Not a change I would hold the phase for. |
+| Q-02 | My v9 Q-01 asked whether TSPEC §7.2's "which is the form PLAN T-10a already states" needed an `ERRATUM: TSPEC` note, since it was not true of the PLAN's bytes at the time. It is true now, so the answer is no and the question closes itself — recorded here only so the erratum channel does not carry it forward. |
 
 ## Positive Observations
 
-_pending_
+- **The half-fix was avoided.** The obvious way to close my v9 F-01 was to edit T-10a and stop. This
+  round found the same two retired referents in the §Definition of Done flag-off bullet and fixed
+  both in one pass. The checklist is the artefact an implementer actually signs off against; leaving
+  it contradicting its own plan is how a green wave ships a wrong contract.
+- **The replacement referents are falsifiable, and that was the whole point of the finding.** The
+  retired pair could not fail — a key set compared to itself, and a notices array that does not
+  exist in the cited artefact. The new pair can fail, in both directions, on either arm. That is a
+  real strengthening of a P0's no-residue guard, not a rewording of it.
+- **The §7.4 citation was re-scoped rather than deleted.** The easy fix was to drop the citation;
+  the correct one was to keep it for the prompt clause, where it is right, and say explicitly why it
+  does not extend to the other two. The row now does that in one sentence.
+- **DEC-ERR-03 was executed properly for the third round running.** TSPEC moved v1.1 → v1.2 *during*
+  the round, both reviewers had written against v1.1, and the author re-derived before touching
+  anything and re-measured the pin mechanically. This feature has now been bitten by a moving
+  upstream pin twice; the discipline that stops it is visibly habitual here rather than reactive.
+- **Naming the operands inline is the right reading of §7.3's own instruction.** §7.3 v1.2 warns
+  that a bare "six ∪ eight = fourteen" can be wired to the wrong partition. Citing the authority
+  paragraph *and* naming which partition this document carries satisfies both halves of that
+  instruction, where either alone would not.
+- **The v0.7 history entry is still marked superseded rather than rewritten.** A future reader can
+  see that fifteen was once believed and why it was abandoned. Reversed decisions are the ones worth
+  keeping an audit trail for, and the temptation to quietly delete them is strongest exactly here.
 
 ## Recommendation
 
