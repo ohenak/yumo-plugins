@@ -185,11 +185,40 @@ was rewritten in place, that is a pipeline concern worth a look before the next 
 
 ## Positive Observations
 
-<!-- pending -->
+- **The citation fix chose the durable form over the compliant one.** The routed item asked for the
+  anchors to go. The edit replaced them with verbatim test titles and comment text — citations a
+  reader resolves by grep, which stay valid after this feature rewrites those exact lines — and wrote
+  down *why* line anchors fail here. I verified all three quotes character-for-character against
+  `coverageInstrumentation.test.js` and `pdlc/README.md`; they are exact. A compliance-shaped fix
+  would have swapped in a section number and moved on.
+- **F-01's repair went past what I asked for, in the right direction.** I asked for the number to be
+  reconciled to ten. The edit reconciled it *and* replaced the membership rule that had produced the
+  divergence, stating that a table of falsifiers drops precisely the obligations most likely to be
+  forgotten. It also declined to frame the change as deference — *"the reason is not deference: PLAN
+  reads both documents"* — which keeps the record honest about why upstream won.
+- **The K-3 divergence is handled the way a spec should handle being right.** Re-measuring
+  `REQUIRED_INCLUDES` at HEAD, carrying the correct arithmetic, and booking the difference as an
+  erratum owed upstream is harder than matching TSPEC's number and produces the better artifact.
+  The stated reason — *"matching a number known to be wrong is how a mis-sized task reaches PLAN with
+  two documents agreeing"* — is the product argument, not the engineering one, and it is correct.
+- **A-B-A's limits are stated rather than overclaimed.** *"A memo table is invisible to it"* is a
+  sentence most authors would omit, because it weakens the detector they just adopted. Keeping it,
+  and narrowing the *Residuals* row rather than closing it, is what lets a later reader trust the
+  rest of the row.
+- **`Standing costs accepted` shows the enumeration done right.** *"Five enumerations, the four test
+  files …, and `pdlc/README.md`'s prose member list"* names ten and names the tenth, and the second
+  bullet separates the un-falsified site as a different *kind* of cost. F-01 is the two places that
+  did not get this treatment, which makes it a copy-edit rather than a rethink.
+- **The document caught its own stale upstream pin.** It hashed TSPEC, found the dispatch's hash
+  matched nothing, said so, and re-grounded on HEAD under DEC-ERR-03 rather than either failing or
+  silently proceeding. That is the behaviour the rule was written to produce.
 
 ## Questions
 
-<!-- pending -->
+| ID | Question |
+|----|---------|
+| Q-01 | The dispatch pins TSPEC at `sha256:512a9fcf…`, which matches no revision of the file on this branch (HEAD is `cb351bb3…`; I checked all twenty revisions in its history). The document handled it correctly. But where is that hash coming from? If a recorded approval anchor can name a version that no longer exists — rather than an older version that does — then the staleness check is not just lagging, it is unresolvable, and the next cascade cannot distinguish "upstream moved" from "pin is corrupt". Process question, not a defect in these bytes. |
+| Q-02 | K-9 now owns three sites, two with falsifiers and one without. Should its PLAN task carry an explicit review checkpoint for the `pdlc/README.md` edit, given that its other two files red on their own? A green `run.test.js` and `learningsPremises.test.js` is the signal most likely to be read as "K-9 done", and that is exactly the partial-co-change shape RK-1 exists to prevent. The document says the site is corrected "by review rather than by a red" — my question is whether that review is anchored anywhere PLAN will surface it. |
 
 ## Delta-Confirmation Findings
 
