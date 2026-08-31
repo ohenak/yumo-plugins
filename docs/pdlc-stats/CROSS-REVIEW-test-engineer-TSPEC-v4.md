@@ -116,3 +116,56 @@ The only data-structure-relevant change is the one F-01 turns on: `deriveDodRoun
 return type was already in §3.2 at approval and is unchanged, so the purity conjunct's overreach is
 a delta-side error, not an upstream drift. §3.2 is the document that already holds the fact the new
 §6.4 text contradicts, which is why the repair is local to §6.4 and needs no type edit.
+
+## Verification
+
+I re-derived the sweep the section now calls authoritative rather than trusting the count.
+`git grep -l 'lib/loop-session.mjs'` over the tracked tree returns 42 paths. Filtering to sites that
+*enumerate the class or pin its size* — dropping this feature's own docs, sibling-feature history,
+`loop-cli.test.js` (two comment references, no enumeration), `pdlc/workflows/dist/pdlc-cli.mjs` (two
+comment references in generated output), and the ten `pdlc/workflows/__tests__/loop*.test.js` files
+that merely import the module — leaves the nine §2.1 lists **plus one**: `pdlc/README.md:231`.
+
+That line reads "The **four** workflow modules it dispatches (`orchestrate-dev.js`,
+`orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`) are vendored into the
+package at pack time". It enumerates the class by name *and* states its size, which is exactly the
+membership criterion §2.1 declares ("enumerated — or its size pinned"). Adding `lib/stats.mjs`
+makes both halves false. I checked for a falsifier: `documentOracles.test.js` reads
+`pdlc/README.md` three times but only for `workflows/dist/` mentions, seam-count prose absence and
+the deletion class; `learningsDisclosure.test.js`'s LI-DOC-05 checks feature-surfacing, not member
+counts. Nothing pins this sentence, so it goes stale in silence — the failure mode RK-1 exists for,
+one site further out than RK-1 currently reaches. This is F-02.
+
+I then re-derived the `loop-distribution.test.js` row edit-by-edit against the file. Five constants
+(`NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`, `D2_D3_BASELINE`,
+`D5_BASELINE`), the `4 + 15 + 5 + 1` literal in the additive-only test, and the D-4 document
+oracle's `assert.equal(vendoredClassSize, 5, …)` — that is the row's seven. The eighth is two lines
+above that assertion: `const vendoredClassWord = vendoredClassSize === 5 ? "five" : String(…)`.
+Once the sibling FSPEC §5.2 moves to "**six** vendored workflow members" and `tspecPackedCount`
+derives 6, the unedited ternary yields the string `"6"`, and the oracle's
+`` new RegExp(`\\*\\*${vendoredClassWord} vendored workflow members\\*\\*`) `` fails to match the
+word "six". The D-4 oracle reds — loudly, and for a reason that names itself, so this is not silent
+— but an implementer working the §2.1 checklist to completion still lands red. This is F-03.
+
+`assertAdditiveOnly`'s length equality is listed as an edit and is in fact derived
+(`baseline.length + added.length`), so it needs no change; only its failure message ("must be
+exactly the two new members") goes stale. Listing it is harmless over-inclusion and I raise nothing
+on it — the row's error is under-counting, not over-counting.
+
+Two smaller verifications, both clean. The `coverageInstrumentation.test.js` row's "the shipped
+assertion is `toEqual`, i.e. array-equality, so position matters" is confirmed at
+`coverageInstrumentation.test.js:264-272`. The `run.test.js` row's "omission reds as an `ENOENT` or
+a set mismatch" is consistent with the manifest `deepEqual`s and the `prepack` process-entry leg.
+And the cross-check the round's ordering claim rests on holds: `run.test.js` sits in `Engine tests
+(ubuntu-latest)` and `learningsPremises.test.js` in `Unit tests (ubuntu-latest, node 20)`, so a
+partial edit really does red on either side of the package boundary.
+
+Upstream fidelity, checked directly rather than inferred. FSPEC BR-11 at HEAD states the version-
+grammar condition and names both leftover shapes; §4.3's paragraph is a faithful compression with no
+residue of the deleted divergence. FSPEC BR-16 states the condition over BR-14's grammar, adds
+"evaluated over exactly the file set BR-14's numerator sums", and names the
+`docs/completed/pdlc-advisory-wave-gate/` shape — all three are what §4.3 now says it says. AT-12's
+third directory and AT-17's fourth leg exist in FSPEC §6.4/§6.6 with the wording §4.3 and §6.1 quote,
+including AT-17's "`CODE_REVIEW` files intact", which is the conjunct v3's F-03 asked for. FSPEC §7.3
+opens "The three harvested-predicate errata this section carried are **closed**", which grounds
+§8.3's deletion. Nothing the TSPEC cites has moved or now says something different.
