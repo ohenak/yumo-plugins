@@ -144,6 +144,94 @@ as closed is the one gap they will not look for.
 
 ## Consequences
 
+### F-03 (Medium) — the erratum re-introduces a title count DECISIONS had already corrected
+
+TSPEC §2.1's `coverageInstrumentation.test.js` row now names *"its test title ('the include set is
+exactly the **six** modules the feature owns' → seven)"*. DECISIONS K-3 says the opposite, and
+DECISIONS is right. I re-measured all three numbers at HEAD:
+
+- `pdlc/workflows/package.json` → `c8.include` holds **seven** entries.
+- `REQUIRED_INCLUDES` (`coverageInstrumentation.test.js:37-46`) holds **four**, not the three its
+  neighbouring comment at `:261` claims.
+- P9-02's title at `:264` says **six** — already wrong by one at HEAD.
+
+Adding `lib/stats.mjs` makes the include set **eight**. K-3 states this exactly: *"`REQUIRED_INCLUDES`
+holds **four** entries, so the literal is seven, not six. This feature makes it eight."* TSPEC's
+"six → seven" reproduces the off-by-one instead of repairing it, and it does so in the row an
+implementer will read while editing the file. K-3's own warning names the failure mode precisely:
+*"An implementer who follows this row literally lands a passing test whose title misstates its own
+assertion by two."* Following TSPEC's row lands one that misstates by one.
+
+Medium rather than High for one reason, on which both documents already agree: the title carries no
+assertion, so nothing reds either way. The cost is a misleading test title, not a broken oracle.
+**The repair belongs in TSPEC, not here** — DECISIONS carries the correct arithmetic and should not
+be edited to match an upstream that is wrong.
+
+### F-04 (Medium) — the sweep's scope diverges from the rule K-9 promotes repo-wide
+
+Both sweeps reproduce; they are not the same sweep. I ran both:
+
+- DECISIONS: `git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'` → **25**.
+- TSPEC: probe `lib/loop-session.mjs`, `docs/` excluded, `dist/` **included** → **24**.
+
+The probe change is legitimate and anticipated — K-9's promoted rule already says to *"re-pick the
+probe when the class changes"*. The scope change is not. DECISIONS excludes `*/dist/*` in the query
+it ships; TSPEC's derivation counts `pdlc/workflows/dist/pdlc-cli.mjs` as a candidate and drops it
+in the filter, naming it among the fourteen consumers. Same answer, different route — and with
+`dist/` excluded as DECISIONS' query does, the arithmetic TSPEC prints (`24 − 14 = 10`) does not
+reproduce.
+
+This matters more than an internal inconsistency because K-9 promotes that query *with its scope*
+to `docs/_constraints/DOMAIN-CONSTRAINTS.md` as a repo-wide rule. A future feature applying the
+promoted rule to check TSPEC §2.1's stated derivation gets a different candidate count than §2.1
+prints, and TSPEC's whole point in restating the sweep this round was to make the number
+"re-runnable rather than asserted". Pick one scope, state it in both places, and let the promoted
+rule and the derivation that cites it agree. Tagged `Cross-Feature`: the artifact affected is a
+standing constraint, not this feature's document.
+
+### F-05 (Medium) — K-8's assertion-edit total no longer matches upstream
+
+DECISIONS K-8 says *"**Seven** assertion edits in all"* and itemises them `(3 + 2 + 1 + 1)`, then
+adds the `vendoredClassWord` ternary separately as *"**Plus** the word map K-7 depends on"*. TSPEC's
+`loop-distribution.test.js` row now folds that ternary in and says *"**Eight** assertion edits"*.
+
+The edit *sets* are identical — this is a partition disagreement, not a missing edit, and no work is
+lost under either reading. But "in all" is now false against upstream, and K-8's own subject matter
+is the hazard of stale restatements travelling with values; the row is the document's argument for
+K-6. Either fold the ternary into the count and say eight, or keep the split and say "seven
+assertion edits plus the word-map edit" so "in all" is not claimed. Medium, not Low, because K-8's
+falsifier is the required `Engine tests (ubuntu-latest)` check and an implementer working the row to
+a checklist count will stop one edit early — the ternary being, by TSPEC's own account, the edit
+that *"left behind, reds against an otherwise checklist-complete edit"*.
+
+### F-06 (Low) — the re-evaluation trigger's list count
+
+DEC-STATS-01's re-evaluation trigger enumerates *"**fifteen** hand-written lists across **nine**
+files"* and closes with *"This count and the site table are now derived from the same sweep, so they
+cannot disagree again."* With upstream at ten sites, the site table and this count disagree again —
+`pdlc/README.md:231` is a hand-written member list in a tenth file, whether or not it earns a table
+row. Low: the trigger's actual detector is `MODULE_NAMES.length` exceeding five, which no reading of
+this changes, so nothing mechanical depends on the sentence. It is flagged because the sentence
+makes an explicit durability claim about itself that the cascade has falsified.
+
+### Positive observations
+
+- **The erratum found a real unsoundness and repaired it precisely.** Splitting the purity conjunct
+  by return type is the right fix and the reasoning is right: non-aliasing over a primitive is
+  vacuous-or-wrong, and deleting the conjunct would have removed DEC-STATS-03's only mechanical
+  detector. TSPEC then does the thing that makes it trustworthy — it states what A-B-A *does not*
+  falsify (a correct memo) instead of implying full coverage. That is the discipline this review
+  asks for, applied without being asked. F-02 exists only because DECISIONS has not caught up to it.
+- **§7.3 and RK-1 moved with §2.1.** Where a count changed, every downstream restatement inside
+  TSPEC changed with it — §2.1, §6.4's vendoring row, §7.3, RK-1, §8.4. The intra-document
+  discipline is complete; what is missing is only the cross-document half.
+- **RK-1's residue is now itemised and task-owned.** Two un-oracled items, each named with its
+  owning task and each labelled as accepted residue rather than implied coverage. That is the
+  correct shape for a co-change obligation no test can pin, and it is precisely the shape F-01 asks
+  the site table's membership rule to acknowledge explicitly.
+- **§8.3's closed errata were removed, not left standing.** BR-11, BR-16 and BR-25 are dropped and
+  §4.3 restates each as specified behaviour. I confirmed the blast radius is nil for this document.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
