@@ -42,3 +42,28 @@ not re-litigated.
 - REQ-STATS-03's "per document type, not per feature" clause is a real improvement over the v2 text, not just an answer to Q-01. The v2 wording made harvested an all-or-nothing feature-level state, which would have printed `harvested` across every row for a tree the harvest step had only half-processed — precisely the interrupted-commit case the skill's two-commit ordering (`harvest-learnings/SKILL.md:28`, `:59`) makes reachable. The row-level rule reports what is actually on disk.
 - REQ-STATS-02 answering Q-02 inside the AC rather than deferring it to FSPEC is the right call: "states ride in their own metric's value, never as extra top-level keys" turns the set-equality requirement into a five-name enumeration a test can assert without inventing the list, and it forecloses the failure mode where a state becomes a sibling key and quietly widens the schema.
 - The diff stayed inside the sections it needed to touch. No previously approved material moved, no citation was added that I had to re-verify beyond the three I had already checked, and the document is still well inside the REQ size budget (18.4 KB).
+
+## Recommendation
+
+**Approved with minor changes** — the v2 High is resolved and nothing in the delta introduces a new one.
+
+REQ-STATS-04 no longer asserts a malformed distinction the pipeline's DoD parser does not make, and
+C-5 now states the general rule behind that in a form the remaining ACs can lean on; I re-read both
+`deriveDodRoundIndex` and `parseReviewFilename` at HEAD and the document matches them. The v2 Medium
+and Low are resolved against the harvest skill and `parseResolvedMarker` respectively, and the two
+questions the author chose to settle in-document (harvested granularity, JSON key set) were settled
+the way that costs downstream tests the least.
+
+The three findings left are all one-sentence edits and none of them blocks TSPEC. F-01 is the one
+worth taking before FSPEC starts: REQ-STATS-06's harvested trigger is a two-way-parseable "no A or
+no B" and, on the intended reading, still suppresses a measurable ratio for a feature that simply
+never ran DoD — the one spot where this round's own per-metric discipline did not carry over. F-02
+restores a comma this round's edit dropped from REQ-STATS-08's conjunct (b), which a property will
+transcribe verbatim. F-03 scopes REQ-STATS-04's harvested test to the grammar C-5 already binds it
+to. Q-02 is not a REQ defect but is worth a half-sentence downstream, since the obvious reuse of
+`deriveDodRoundIndex` reports one round too many.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
