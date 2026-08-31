@@ -114,3 +114,44 @@ The counts and claims those pointers carry are correct and are recorded in the r
 navigation only, which is why it is Low. It is delta-introduced: neither phrase appears in the
 pre-round bytes at `7747eb78f`. I seeded "§7.2's AT-09" in my own v7 file; the correction is mine to
 name, not the author's to have caught.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §4.3 declares `AT-15`'s neither-list "unaffected by the dispute, since neither reading gives the file spec-side bytes", and §8.3 declares no oracle depends on the outcome with exactly three re-stamp sites. The contested side is the **process** side: FSPEC `AT-15` asserts the out-of-catalogue cross-review's bytes reach *neither* side, and under REQ-STATS-06 v1.6's survivor reading it is a C-4 grammar member and takes process bytes. §4.3's own membership paragraph (`crossReviews` = `parseReviewFilename(...).ok`) would also re-stamp. Fix: state the byte half as contested on the process side, add that paragraph to the re-stamp list, and widen §8.3's routed item so the owning phase settles both halves. | §4.3, "FSPEC §8 also maps BR-16 to AT-15…" sentence; §8.3's REQ-STATS-06/BR-16 bullet | Scope: Local |
+| F-02 | Low | delta | local | Wrong internal section pointers in the new bytes: "§7.2's AT-09 row" (§0 changelog and §4.3) — `AT-09`'s row is in §6.1's real-path table, and §7.2 is the FSPEC-open-item table with no `AT-09`; and "§5's types" (§0) — the metric types and `halts: HaltEntry[]` are in §4.1, §5 is Error Handling. Claims and counts are right; only the pointers are wrong. | §0 v1.6 changelog, clauses (a) and (c); §4.3 "§7.2's AT-09 row and §6.1's measured baselines" | Scope: Local |
+
+FINDING: Medium | delta | local | §4.3 AT-15 "unaffected by the dispute" sentence and §8.3's three re-stamp sites | the contested side is the process side, not the spec side: under REQ-STATS-06 v1.6's survivor reading the out-of-catalogue file takes process bytes, so AT-15's neither-list leg and §4.3's own membership paragraph are in the blast radius and the routed item understates the decision
+FINDING: Low | delta | local | §0 changelog and §4.3 internal pointers | "§7.2's AT-09 row" (AT-09 is in §6.1; §7.2 has no AT-09) and "§5's types" (types are §4.1; §5 is Error Handling)
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | If the reconciliation lands REQ's way, does `REQ-STATS-03`'s "malformed" label survive alongside survivor status for the same file? REQ v1.6 says it does ("a survivor even where REQ-STATS-03 reports it malformed"), which leaves `AT-09`'s expectation intact but makes one basename simultaneously malformed for the round count and a counted member of the byte numerator. Not a TSPEC finding — the coherence question belongs to the owning phase — but §8.3's routed item is the place to surface it so the decision is taken with that consequence visible. |
+| Q-02 | `RK-4` accepts coupling to the live `docs/completed/` archive, and §4.3 now records a HEAD measurement (62 / 4 / 58) that the archive will drift away from as features complete. §6.1 already says literals are re-measured when the archive changes. Should §4.3's inline measurement carry the same re-measure note, so a future reader does not treat 58 as a spec constant? Low-value now, so not raised as a finding. |
+
+## Positive Observations
+
+- **The round fixed the finding rather than the wording of the finding.** `F-01` at v7 could have
+  been closed by softening one sentence. Instead §4.3 states the reading it got wrong, states the
+  correct one, records the measurement that settles it, and adds the sentence that stops a test
+  author writing the wrong real-path expectation. The repair is durable against the next reader, not
+  just against this reviewer.
+- **The changelog names the mechanism, not just the mistake.** "Citing a current hash is not the
+  same check as diffing it against the previously grounded one, and reading the two as agreeing is
+  what let the round skip re-grounding" is the sentence that stops the class recurring. That is the
+  `Process` answer `Q-02` at v7 asked for, and it was written without being asked to.
+- **The REQ-versus-FSPEC conflict was surfaced, not absorbed.** The path of least resistance was to
+  implement `BR-16` silently and say nothing — every artefact would have looked consistent. Naming a
+  live upstream contradiction that a downstream author has no authority to settle, and pointing at
+  the exact sites that re-stamp when it lands, is what `DEC-ERR-01` asks for and it costs the author
+  a round to do. `F-01` narrows that item's scope; it does not diminish the judgement to raise it.
+- **`E-1` is explicitly distinguished from the live question.** §8.3 pre-empts the obvious
+  mis-reading — that this is the settled bare-glob-versus-grammar item returning — and states the
+  narrower live question. That is precisely the re-routing of a settled question `DEC-ERR-01` names
+  as an anti-pattern, avoided deliberately.
+- **REQ v1.6's halt withdrawal was checked, not assumed.** Clause (c) reasons from the type
+  (`halts: HaltEntry[]` has no state discriminator, empty array *is* the measured `0`) to the
+  conclusion that nothing changes. I verified it against REQ-STATS-05 and R-6 at HEAD; it holds.
