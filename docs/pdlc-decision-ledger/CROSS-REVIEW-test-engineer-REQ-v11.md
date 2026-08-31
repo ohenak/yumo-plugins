@@ -104,6 +104,38 @@ approved. No AC, no threshold, no `M-*` id, no `Verified at` commit changed.
 
 ## What I found by re-reading upstream at HEAD
 
+Per DEC-ERR-03 I re-read the upstream this REQ leans on at its current bytes, not at the bytes it
+was approved against. The REQ's measured upstream is `docs/_constraints/pdlc-decision-corpus-baseline.md`,
+pinned **v1.2**.
+
+**Every `M-*` value the REQ transcribes still says what the REQ says it says.** `M-7b` = 9,296
+substance bytes over 63 records, mean 148, max 238; `M-7c` = a 12,500 cap clears M-7b by 3,204 and
+8,000 sits below M-7b outright; `M-6b` = 63 with `M-6c` recording 70 clearing it by 7; `M-7e` =
+measured at the same `Verified at` commit as the rest, `8c673a09f`. C-5's row, R-5, O-1, O-6 and
+A-1 are faithful compressions of those at v1.2's current bytes. Nothing the REQ leans on has been
+re-measured out from under it.
+
+**One thing about the pin's own integrity is worth recording.** The Baseline declares "Consumers
+cite this file **at its `Version`**; a content change that is not accompanied by a version bump is
+itself a defect" (`baseline:26-27`). Its bytes have changed twice since `efbf3dad9` minted v1.2 —
+`4f03479e1` and `5af3ebe82`, both editing the *Cited by* row, the second at my own v10 request —
+with `Version` held at 1.2 throughout. Two clauses in the same header disagree about whether that
+is allowed: the change-control sentence says "a content change", unqualified, while the *Cited by*
+row's own sentence licenses the edit ("a new citation is added here in the same edit that mints
+it"). I am recording this as **Low**, not Medium, and deliberately not as a regression:
+
+- the change-control paragraph scopes ownership to "§1–§8 entire ... **owned normative prose**",
+  and the header table is above §1, so the row is plausibly outside what the rule governs;
+- no measured value, no `M-*` id and no `Verified at` commit moved, so nothing a test transcribes
+  is ambiguous at v1.2;
+- the Baseline states outright that "no table here is transcribed row-for-row into a downstream
+  document, so **no downstream oracle ranges over this file's markup**" (`baseline:24-25`), which
+  is what keeps this a documentation-provenance point rather than a fixture-identity one.
+
+The durable form of the point is a wording one, so I have tagged it `Cross-Feature`-adjacent in
+substance but `inherited`/`nonlocal` in this round's axes: whichever clause is meant to govern,
+the two should not be able to be read against each other by the next consumer who edits that row.
+
 ## Positive Observations
 
 ## Recommendation
