@@ -156,8 +156,59 @@ it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does the `loop-distribution.test.js` edit (F-01) belong to this feature at all, or is the honest reading that `assertAdditiveOnly`'s baseline/added split is a **completed feature's** frozen record — `D1_BASELINE` is `pdlc-engineering-loop`'s pre-state, `NEW_LIB_MEMBERS_*` its delta — so widening `added` with `stats.mjs` rewrites that feature's measurement rather than extending it? If so the co-change is not "add one string in four places" but "re-baseline: fold `NEW_LIB_MEMBERS_*` into the baselines and make `added` this feature's single member", which is a different and slightly larger edit, and one DEC-STATS-01's cost table should show as such. I do not think this changes the choice of A; I think it changes the number and the shape of the owning task. |
+| Q-02 | The third residual, once corrected, has a genuine remainder: P7-02 greps the two member-count *sentences*, not TSPEC §5.4's `PK-*` rows, so K-7's `PK-26` row has no falsifier even though the count move does. Is that remainder worth carrying as the residual, or does K-7's single owning task plus the packed-set tests cover it well enough that the row should just be deleted? |
+
 ## Positive Observations
+
+- **Every one of the six v1 findings was addressed by strengthening a falsifier rather than by
+  softening a claim.** K-4 is the clearest case: the disposition moved from *"a review-blocking
+  finding, not a test failure"* to a counted structural oracle, and the justification given —
+  *"a load-bearing claim on REQ C-5 with no detector has no expiry date"* — is the right general
+  rule, not a concession to this review. The precedent it leans on was checked and is exactly the
+  shape claimed (`bin-guard-structure.test.js` pins zero/three/zero).
+- **The Residuals table is the structurally right addition, independent of F-01.** Naming the
+  claims that nothing currently makes red, with a disposition per row and an explicit
+  *"closed by erratum"* vs *"accepted"* split, is how a decision document stays honest between
+  approval and implementation. Two of the three rows are correct as written; the third is
+  recoverable by correction, not by deletion.
+- **The revision fixed a claim in the direction of more cost to itself.** The Option D paragraph
+  now says the measured state is *"stronger than the first draft of this paragraph claimed"* and
+  the option table's A row now carries *"contingent on K-3's two conjuncts"* — a chosen option
+  annotated with the condition under which its own advantage evaporates. That is unusual and it is
+  what made F-01 findable: the document's arithmetic is exposed rather than asserted.
+- **Every re-measured figure still holds at HEAD after the edits.** `MODULE_NAMES` is four entries
+  with exactly two `lib/` members; `c8.include` is seven `**/`-anchored entries; `tspecPackedCount`
+  returns `4 + 15 + 5 + 1 (+ licence)`; `document-oracles.mjs` is in no include set; the
+  `pdlc-engine-distribution` changelog's 0.15 row records the `PK-24`/`PK-25` amendment in the
+  terms K-7 cites, and `PK-25` is the highest allocated id, so `PK-26` is the correct next one.
+- **The new detector for DEC-STATS-03 is at the right altitude.** A purity conjunct over four
+  exports is cheap, total, and falsifies the precondition rather than the conclusion — it goes red
+  when a cache appears, which is the moment the trigger fires, not months later when someone
+  notices the reference identity meant nothing.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01), and the revision it asks for is bounded and documentary — no decision
+changes. `pdlc/engine/__tests__/loop-distribution.test.js` joins DEC-STATS-01's co-change table as
+the sixth site with its six assertions named; option A's "five edit sites" becomes six; an owning
+row (widened K-1 or a new K-8) takes it, carrying the word-map obligation so K-7's `five → six`
+prose and P7-02's expected token cannot disagree; and the third residual is replaced with the
+narrower thing that is actually unguarded. Option A survives all of it — B and C are still
+disqualified by *"Coverage gate (verified): none"*, and D is still a broken A.
+
+F-02 is one sentence (four more transcribed lists in the trigger's enumeration). F-03 is one clause
+("array-equal, so position must match"). Both can ride along with the F-01 edit.
+
+The v1 findings are all genuinely resolved, and K-3 and K-4 in particular are now anchored to
+assertions that exist and would fail — which is what let this round measure the enumeration set
+against HEAD instead of against the document.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
