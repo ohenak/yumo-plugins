@@ -65,7 +65,57 @@ only in rendering.
 
 ## 2. Linked Requirements
 
-*(pending)*
+This FSPEC links exactly one requirements document: `docs/pdlc-stats/REQ-pdlc-stats.md`.
+
+### 2.1 Acceptance criteria coverage
+
+Every REQ acceptance criterion is discharged by at least one business rule and at least one
+acceptance test. No row is empty; a criterion with no behavioral surface here would mean the FSPEC
+under-specifies the command.
+
+| REQ criterion | Behavioral surface | Business rules | Acceptance tests |
+|---|---|---|---|
+| REQ-STATS-01 single-feature human-readable stats | §3.1 Flow A; §4.3 human rendering | BR-01, BR-02, BR-03, BR-16, BR-17 | AT-01, AT-02, AT-03 |
+| REQ-STATS-02 machine-readable `--json` | §3.3 Flow C; §4.4 JSON document | BR-18, BR-19, BR-20, BR-21 | AT-04, AT-05, AT-06 |
+| REQ-STATS-03 review rounds by document type | §3.1 step 5; §4.2 | BR-05, BR-06, BR-07, BR-08, BR-09 | AT-07, AT-08, AT-09, AT-10 |
+| REQ-STATS-04 DoD-round count | §3.1 step 6; §4.2 | BR-10, BR-11 | AT-11, AT-12 |
+| REQ-STATS-05 halts by phase and resolution | §3.1 step 7; §4.2 | BR-12, BR-13 | AT-13, AT-14 |
+| REQ-STATS-06 process-to-spec byte ratio | §3.1 step 8; §4.2 | BR-14, BR-15, BR-16 | AT-15, AT-16, AT-17 |
+| REQ-STATS-07 fleet mode, gaps explicit | §3.2 Flow B | BR-22, BR-23, BR-24, BR-25 | AT-18, AT-19, AT-20 |
+| REQ-STATS-08 read-only, no network, no git writes | §3.4; §4.5 | BR-26, BR-27 | AT-21, AT-22 |
+| REQ-STATS-09 unknown feature reported | §3.1 step 3; §5 EC-01 | BR-04, BR-28 | AT-23, AT-24 |
+
+### 2.2 Constraint coverage
+
+| REQ constraint | Where honored |
+|---|---|
+| C-1 read-only surface | BR-26, BR-27; AT-21, AT-22 |
+| C-2 feature-directory discovery, never summed | BR-02; AT-02, EC-02 |
+| C-3 spec-document set, fixed | BR-14 (spec side enumeration) |
+| C-4 process-artifact set, fixed | BR-14 (process side enumeration) |
+| C-5 parsing fidelity, no independent rules | BR-05, BR-06, BR-10, BR-12; §1 fidelity anchor |
+
+### 2.3 Goal coverage
+
+| REQ goal | Where honored |
+|---|---|
+| G-1 single-feature stats | §3.1, BR-01 |
+| G-2 machine-readable mode | §3.3, BR-18 |
+| G-3 fleet mode with explicit gaps | §3.2, BR-22, BR-25 |
+| G-4 read-only, always | §3.4, BR-26 |
+
+### 2.4 Non-goals restated as behavioral silence
+
+The following produce **no** output field, **no** table column and **no** JSON key. They are listed
+because a reviewer should be able to check the JSON key set against them: any key outside §4.4's
+enumeration would be one of these leaking in.
+
+- Per-dispatch payload size (REQ NG-3) — no `payloadBytes` field.
+- Dispatch count (REQ NG-8) — no `dispatches` field; erratum events surface only where they
+  produced a post-mortem, and then only as a halt entry.
+- Cross-repo aggregation (REQ NG-2) — fleet mode's scope is the repository the command runs in.
+- Any write-side integration with `harvest-learnings` / `consolidate-learnings` (REQ NG-1),
+  the decision ledger or convergence config (REQ NG-4), or the `RESOLVED:` lifecycle (REQ NG-5).
 
 ## 3. Behavioral Flow
 
