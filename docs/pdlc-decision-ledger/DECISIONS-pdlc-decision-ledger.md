@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.4
+Version: 1.5
 Feature: pdlc-decision-ledger
 ---
 
@@ -14,6 +14,23 @@ Feature: pdlc-decision-ledger
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 # DECISIONS — pdlc-decision-ledger
+
+**v1.5 — DEC-DECLEDGER-16's predicate, and nothing else.** Round 4's single Medium, filed
+independently by `pm-review` and `te-review`: the provenance rule was stated **positionally** ("only
+on the larger side of an inequality") over a scope that included all TSPEC prose, and in that form it
+was not the mechanical authoring check it was recorded to be — it rejects `measured + ceiling ≤ bound`
+while admitting the equivalent `measured ≤ bound − ceiling`, and its verdict on a prose sum depended
+on which of two readings the reader took. The rule is restated **directionally** (a ceiling may enter
+only where substituting the true, smaller drafted value preserves the claim) with an explicit scope
+predicate (assertions and pinned expected values, plus prose stating a figure as a standing fact), in
+the three sites that carry it: DEC-DECLEDGER-16's narrative, its `## Decision` row, and the PROPERTIES
+`## Consequences` row. The re-evaluation trigger additionally closes the reading that re-classing the
+ceiling would re-admit `12,059` (pm Q-01) and names the directional form as the one that promotes
+(te Q-02). The decision itself is unchanged in substance and TSPEC HEAD was re-verified conformant
+under the corrected predicate: the asserted form on disk is the subtraction one
+(`10,859 ≤ maxBytes − 1200`), no addition form is asserted anywhere, and the three prose sites
+carrying `10,859 + 1,200 = 12,059` recount `M-6b`'s worst case as a labelled upper bound. No standing
+decision is re-litigated and no other section moves.
 
 **v1.4 re-grounding — TSPEC's propagation has landed, and nothing else.** The upstream this
 document is derived from moved: `TSPEC-pdlc-decision-ledger.md` is now **v0.7** and pinned at REQ
