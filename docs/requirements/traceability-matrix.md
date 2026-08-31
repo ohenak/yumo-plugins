@@ -201,3 +201,81 @@ M4, §3/§4(c) R3-2). FSPEC not yet authored.
 | US-01 | REQ-DECLEDGER-01, REQ-DECLEDGER-03, REQ-DECLEDGER-06 | — (pending) |
 | US-02 | REQ-DECLEDGER-04, REQ-DECLEDGER-07 | — (pending) |
 | US-03 | REQ-DECLEDGER-02, REQ-DECLEDGER-05 | — (pending) |
+
+## pdlc-stats (2026-08-30)
+
+Upstream: `docs/pdlc-stats/REQ-pdlc-stats.md` (design source:
+`docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §4, §5.2; proposal source:
+`docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §5). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-STATS-01, REQ-STATS-03, REQ-STATS-04, REQ-STATS-05, REQ-STATS-06, REQ-STATS-09 | — (pending) |
+| US-02 | REQ-STATS-02 | — (pending) |
+| US-03 | REQ-STATS-07, REQ-STATS-08 | — (pending) |
+
+## pdlc-review-tightenings (2026-08-30)
+
+Upstream: `docs/pdlc-review-tightenings/REQ-pdlc-review-tightenings.md` (design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §3; proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` R1-5, R1-6, R2-5, R2-6, R2-7). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-REVTIGHT-01, REQ-REVTIGHT-02 | — (pending) |
+| US-02 | REQ-REVTIGHT-03 | — (pending) |
+| US-03 | REQ-REVTIGHT-04 | — (pending) |
+| US-04 | REQ-REVTIGHT-05 | — (pending) |
+| US-05 | REQ-REVTIGHT-06 | — (pending) |
+
+## pdlc-queue-autoresolve (2026-08-30)
+
+Upstream: `docs/pdlc-queue-autoresolve/REQ-pdlc-queue-autoresolve.md` (design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §6). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-AUTORESOLVE-02, REQ-AUTORESOLVE-03, REQ-AUTORESOLVE-04, REQ-AUTORESOLVE-05 | — (pending) |
+| US-02 | REQ-AUTORESOLVE-06 | — (pending) |
+| US-03 | REQ-AUTORESOLVE-01, REQ-AUTORESOLVE-07 | — (pending) |
+| US-04 | REQ-AUTORESOLVE-08 | — (pending) |
+
+## pdlc-phase-g (2026-08-30)
+
+Upstream: `docs/pdlc-phase-g/REQ-pdlc-phase-g.md` (design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §3; proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §3 R3-1 §4(a)/(b)/(e)). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-GRILL-01, REQ-GRILL-02, REQ-GRILL-06, REQ-GRILL-08 | — (pending) |
+| US-02 | REQ-GRILL-03, REQ-GRILL-04, REQ-GRILL-05 | — (pending) |
+| US-03 | REQ-GRILL-06, REQ-GRILL-07 | — (pending) |
+| US-04 | REQ-GRILL-09, REQ-GRILL-10, REQ-GRILL-11, REQ-GRILL-12 | — (pending) |
+
+## pdlc-size-tiers (2026-08-30)
+
+Upstream: `docs/pdlc-size-tiers/REQ-pdlc-size-tiers.md` (design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §3; proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M6, §3 R3-3). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-SIZETIER-02, REQ-SIZETIER-04, REQ-SIZETIER-05, REQ-SIZETIER-06 | — (pending) |
+| US-02 | REQ-SIZETIER-03, REQ-SIZETIER-07, REQ-SIZETIER-08 | — (pending) |
+| US-03 | REQ-SIZETIER-01, REQ-SIZETIER-03, REQ-SIZETIER-11 | — (pending) |
+| US-04 | REQ-SIZETIER-09, REQ-SIZETIER-10, REQ-SIZETIER-12 | — (pending) |
+
+## pdlc-two-axis-dod (2026-08-30)
+
+Upstream: `docs/pdlc-two-axis-dod/REQ-pdlc-two-axis-dod.md` (design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §3 footnote 2, §8 item 7; proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 R3-4). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-TWOAXIS-01, REQ-TWOAXIS-02 | — (pending) |
+| US-02 | REQ-TWOAXIS-03, REQ-TWOAXIS-05 | — (pending) |
+| US-03 | REQ-TWOAXIS-04 | — (pending) |
+
+## pdlc-init (2026-08-30)
+
+Upstream: `docs/pdlc-init/REQ-pdlc-init.md` (design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §2, §4). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-INIT-01, REQ-INIT-05, REQ-INIT-06 | — (pending) |
+| US-02 | REQ-INIT-02 | — (pending) |
+| US-03 | REQ-INIT-03 | — (pending) |
+| US-04 | REQ-INIT-04 | — (pending) |
