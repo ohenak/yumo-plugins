@@ -322,3 +322,50 @@ export function computeFeatureStats(io, parsers, feature, dir) {
 
   return { feature, dir, reviewRounds, dodRounds, halts, byteRatio };
 }
+
+// --- TSPEC §4.4: discoverFeatures (BR-25, BR-26) --------------------------
+
+function byName(a, b) {
+  return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+}
+
+/**
+ * BR-25/BR-26. Returns discovered features (BR-02 preference already applied)
+ * and unclassified names.
+ * @param {StatsIo} io
+ * @param {string} docsRoot
+ * @returns {{ features: Array<{ name: string, dir: string }>, unclassified: string[] }}
+ */
+export function discoverFeatures(io, docsRoot) {
+  const completedDir = joinChild(docsRoot, "completed");
+
+  const liveDirs = io.listDir(docsRoot).filter((entry) => entry.isDirectory);
+  const archivedDirs = io.exists(completedDir)
+    ? io.listDir(completedDir).filter((entry) => entry.isDirectory)
+    : [];
+
+  // BR-26 (provisional, TSPEC §4.4/RK-5): a leading-underscore live directory
+  // not in NON_FEATURE_DIRS is unclassified, not a feature.
+  const unclassifiedDirs = liveDirs.filter(
+    (d) => d.name.startsWith("_") && !NON_FEATURE_DIRS.includes(d.name),
+  );
+  const liveFeatureDirs = liveDirs.filter(
+    (d) => !NON_FEATURE_DIRS.includes(d.name) && !unclassifiedDirs.includes(d),
+  );
+
+  const liveFeatures = liveFeatureDirs.map((d) => ({
+    name: d.name,
+    dir: joinChild(docsRoot, d.name),
+  }));
+  const liveNames = new Set(liveFeatures.map((f) => f.name));
+
+  // BR-02: live preferred over archived — an archived name already live is dropped.
+  const archivedFeatures = archivedDirs
+    .filter((d) => !liveNames.has(d.name))
+    .map((d) => ({ name: d.name, dir: joinChild(completedDir, d.name) }));
+
+  const features = [...liveFeatures, ...archivedFeatures].sort(byName);
+  const unclassified = unclassifiedDirs.map((d) => d.name).sort();
+
+  return { features, unclassified };
+}
