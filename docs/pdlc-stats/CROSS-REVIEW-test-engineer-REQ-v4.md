@@ -112,8 +112,15 @@ chosen deliberately against the one adjacent grammar that already exists, rather
 
 ## Delta-Confirmation Findings
 
-_(filled below)_
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | Medium | inherited | nonlocal | §2 Goals, G-3 (vs REQ-STATS-07) | G-3 still says "any feature whose artifacts are **missing or fail to parse** is reported as missing/malformed" — the exact framing this round corrected in REQ-STATS-07, which now says a readable-but-empty directory "is not a gap but a normal row whose metrics report their zero states" and reserves the by-name gap report for a directory that **cannot be read**. Read from G-3 alone, a test author expects a feature-level "missing/malformed" report for a feature whose artifacts are simply absent; read from REQ-STATS-07 (and FSPEC BR-27/EC-03) they expect a normal zero/harvested row. Malformed is likewise a within-metric state (REQ-STATS-03), never a feature-level label. Two conflicting expected outputs for one fixture. The AC governs, so this does not block test authoring — hence Medium — but the goal that summarises it should not contradict it. Fix: G-3 to read "…any feature whose directory cannot be read is reported by name with the reason — never silently dropped". |
+| F-02 | Low | delta | local | §4 C-5, post-mortem discovery carve-out | The carve-out's premise — the driver "classifies no `POSTMORTEM-*` basename, so there is nothing to defer to" — is true of the driver, but one adjacent pipeline component does classify these basenames: `consolidate-learnings.js:1684`, `/^POSTMORTEM-([A-Za-z]+)-.+\.md$/` (phase segment alphabetic only). Today there is no divergence to observe — every phase id in `PHASE_DISPATCH` and every `POSTMORTEM-*` on disk (`D`, `F`, `I`, `P`, `PR`, `R`, `T`) is alphabetic — so this is a precision note, not a defect: the carve-out's conclusion stands. Worth one clause so the FSPEC picks its listing rule against that grammar deliberately rather than inventing a third spelling that would diverge the first time a phase id carries a digit. Suggested: after "That listing is this REQ's own (REQ-STATS-05)", add "— chosen consistent with the `POSTMORTEM-{phase}-{feature}.md` grammar already used elsewhere in the pipeline". |
+
+FINDING: Medium | inherited | nonlocal | §2 Goals, G-3 | G-3's "artifacts missing or fail to parse are reported as missing/malformed" contradicts the REQ-STATS-07 text this round corrected, where a readable-but-empty directory is a normal zero row and only an unreadable directory is a by-name gap; malformed is a within-metric state, not a feature-level label.
+FINDING: Low | delta | local | §4 C-5, post-mortem discovery carve-out | The carve-out's "nothing to defer to" premise is driver-scoped; `consolidate-learnings.js:1684` already classifies `POSTMORTEM-*` basenames with an alphabetic-only phase segment, so the FSPEC's listing rule should be chosen against that grammar deliberately (no divergence observable at HEAD).
 
 ## Verdict
 
-_(filled below)_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
