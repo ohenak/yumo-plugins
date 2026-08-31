@@ -171,7 +171,7 @@ A feature that appears under both `docs/` and `docs/completed/` is reported **on
 |---|---|---|---|
 | C1 | Choose a mode. | Was `--json` supplied? | Yes → C3. No → C2. |
 | C2 | Human mode: render §4.3's table(s) to stdout. | Single feature or fleet? | One feature block, or one row per feature plus the gap rows. |
-| C3 | JSON mode: serialize §4.4's document to stdout. | Single feature or fleet? | The 5-key single-feature document, or the 3-key fleet document. |
+| C3 | JSON mode: serialize §4.4's document to stdout. | Single feature, fleet, or a refusal? | The 5-key single-feature document, the 3-key fleet document, or — on the not-found and `docs/`-root paths — BR-30's 3-key error object. A refusal reaches this step: BR-20 leaves stdout empty on the usage-error path alone. |
 | C4 | Emit. | Is there any diagnostic to say? | Diagnostics go to stderr in **both** modes; in JSON mode stdout carries the JSON document and nothing else (BR-20). |
 
 The two renderings consume the same computed metric set. That is what makes REQ-STATS-02's
@@ -516,7 +516,7 @@ non-numeric states exist precisely so that none of these has to be a crash.
 
 | ID | Situation | Behavior | Exit |
 |---|---|---|---|
-| EC-01 | Feature argument matches no directory under `docs/{feature}/` or `docs/completed/{feature}/`, including a repository with no `docs/completed/` at all. | Reported by name as not found. Human mode: message on stderr. JSON mode: a well-formed error object on stdout — never a partial success document (BR-30). | 1 |
+| EC-01 | Feature argument matches no directory under `docs/{feature}/` or `docs/completed/{feature}/`, including a repository with no `docs/completed/` at all. | Reported by name as not found. Human mode: message on stderr. JSON mode: BR-30's error object on stdout with `reason` `not_found` — never a partial success document. | 1 |
 | EC-02 | The feature exists under **both** `docs/{feature}/` and `docs/completed/{feature}/`, mid-archival. | Reported once, from `docs/{feature}/`. The archived copy is not read (BR-02). The header names the directory used, so the operator can see which snapshot the numbers came from. | 0 |
 | EC-03 | Feature directory exists but is empty. | Every metric reports its zero state: all six review-round rows `0`, DoD `0`, halts none, ratio `n/a` (spec bytes are zero). Not a gap and not an error — an empty directory is a real, reportable state. | 0 |
 | EC-04 | Feature directory contains a subdirectory (for example `_evidence/`). | Ignored entirely; no file inside it contributes to any metric (BR-03). | 0 |
