@@ -13,7 +13,19 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.1 | 2026-08-31 |
+| Draft | se-author | 1.2 | 2026-08-31 |
+
+**v1.2 (cross-review round 2).** Adds the sixth co-change site —
+`pdlc/engine/__tests__/loop-distribution.test.js`, the completed sibling's live enforcement of this
+exact co-change class — to DEC-STATS-01's cost table with its six assertions named, moves option A's
+cost from five edit sites to six (the verdict is unchanged: B pays the same site and still measures
+no coverage), gives the site an owning obligation (K-8) carrying the re-baselining shape and the
+word-map edit K-7's `five → six` prose depends on, names it in K-1 as the conjunct that reds first,
+corrects the third residual — which asserted an absence of an oracle that exists at HEAD — to the
+narrower gap that is genuinely unguarded, corrects the re-evaluation trigger's list count from six to
+eleven, restates K-3's `c8.include` conjunct as array-equality rather than set-equality, softens
+K-7's 0.15 precedent claim to what that changelog row actually records, and answers PM Q-02 in
+DEC-STATS-02.
 
 **v1.1 (cross-review round 1).** Corrects Option D's evidence sentence against HEAD; makes the
 sibling-feature amendment an owned obligation (K-7) rather than a claim this file discharges alone;
@@ -257,7 +269,16 @@ the human renderer reads would carry a key with no printed counterpart, and TSPE
 oracle would need a standing per-key exception — a permanent hole in the one check REQ-STATS-02's
 guarantee rests on.
 
-**Reversibility: easy.** One constant and one hoist site.
+**All three hoists are inside the released contract (PM Q-02).** The refusal document's
+`schemaVersion` is not an FSPEC-level convenience a later change could drop freely: FSPEC BR-30
+states the error object is *"a released shape under REQ R-5"* whose key set is exactly
+`schemaVersion`, `error`, `feature`, governed by BR-24's increment rule as the success document is.
+So a change to the refusal shape is a contract break on the same terms, and K-5's "referenced only
+inside `renderJson`" scope covers all three emitted documents, not the two success ones. Nothing in
+this decision changes on the answer — the constant lives in the same place either way — but it
+decides now what a future consumer would otherwise litigate after shipping.
+
+**Reversibility: easy.** One constant and three hoists in one function.
 
 **Re-evaluation trigger.** A second JSON-only field appears. Two hoists is where an explicitly named
 envelope type (`JsonEnvelope<T>`) becomes cheaper than repeating the hoist, and the oracle can then
