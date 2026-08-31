@@ -52,7 +52,54 @@ withdrawal removes a contradiction rather than a foundation.
 
 ## Behavioral Flow
 
+§3.2 Flow B step A7 computes the ratio via BR-14…BR-16 and reaches the zero-denominator branch
+(BR-15) only after the harvested branch (BR-16) has been evaluated. The erratum does not add,
+remove or reorder a branch: it fixes the **value** one existing leaf produces for one input class
+(only-out-of-catalogue cross-review basenames), and that leaf already produced `harvested` in FSPEC.
+The branch inventory a test author derives from Flow B is therefore identical before and after, so
+no flow-level oracle is reopened and no new test level is implied.
+
+Worth stating explicitly for the downstream reader: the input class in question is reachable at unit
+level from a fixture directory alone — no process boundary, no CLI invocation — so nothing in this
+cascade pushes a test up the pyramid.
+
 ## Business Rules
+
+**BR-16 is the load-bearing rule, and it now reads as a compression of REQ v1.7 rather than a
+decision ahead of it.** Side by side:
+
+- REQ v1.7: "evaluated over exactly the file set whose bytes the process side sums, so a basename the
+  driver's document-type catalogue does not recognise … contributes no process bytes and counts as no
+  file of its family remaining".
+- FSPEC BR-16: "It is evaluated over exactly the file set BR-14's numerator sums, so the two never
+  disagree: a basename failing a grammar contributes no bytes to the process side and counts as no
+  file remaining."
+
+The one wording gap I probed is that REQ says *"the catalogue does not recognise"* where FSPEC says
+*"failing a grammar"*. Those are the same set only if FSPEC's "grammar" is catalogue-bound, and it
+is, stated in the document rather than inferred: BR-06 says "Grammatical-but-out-of-catalogue
+basenames are included in 'fails the grammar'", and names the four files in
+`docs/completed/pdlc-advisory-wave-gate/` as the instance. So BR-16's predicate and REQ-STATS-06's
+predicate select the same files. No divergence to file.
+
+**The measured/harvested claim about the cited directory survives the erratum — verified at HEAD, not
+assumed.** BR-16 says that directory "carries four of them **alongside** grammar-matching
+cross-reviews and so reports a measured ratio itself; only the shape is borrowed, not the verdict".
+Under REQ v1.7 the four out-of-catalogue files contribute nothing, so the verdict turns entirely on
+what else is there. Listing it: `LEARNINGS-pdlc-advisory-wave-gate.md` is present, and **both**
+review families have grammar-matching survivors — catalogued `CROSS-REVIEW-{role}-{TSPEC,PLAN,
+PROPERTIES,DECISIONS,REQ,FSPEC}-v{N}.md` files, and `CODE_REVIEW-pdlc-advisory-wave-gate-v{1,2}.md`.
+Neither family is entirely absent, so BR-16's predicate is false and the directory reports measured.
+The count is four (`ls … | grep -c -- '-REVIEW-v'` → 4), matching BR-06, AT-09 and BR-16.
+
+This matters for testability rather than for prose accuracy: BR-16's citation is the fixture source
+for AT-09 and AT-15, and if the erratum had flipped the cited directory's own verdict, two acceptance
+tests would have been silently reading a fixture whose expected value moved. It did not.
+
+**BR-14 and BR-11 unchanged and still consistent.** BR-14's process-side enumeration is stated over
+the three basename grammars, not over a `CROSS-REVIEW-*` glob, which is precisely the property REQ
+v1.7's new sentence now asserts upstream. BR-11 (DoD family) was untouched by the erratum and pins
+the same shape on the `CODE_REVIEW-` side.
 
 ## Edge Cases and Error Scenarios
 
