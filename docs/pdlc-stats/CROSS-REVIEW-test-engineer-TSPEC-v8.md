@@ -242,3 +242,18 @@ one targeted edit:
 
 Neither blocks Phase T. The upstream REQ-STATS-06 / BR-16 reconciliation is raised separately as an
 erratum and should settle the byte-side question at the same time as the harvested/measured one.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Medium | delta | local | §4.3's new contested-scoping paragraph claims AT-15's byte half "is unaffected by the dispute, since neither reading gives the file spec-side bytes". AT-15's *Then* pins that the out-of-catalogue basename's bytes reach **neither** side, explicitly failing an implementation that globs `CROSS-REVIEW-*` into the **process** total (`FSPEC:730`–`:733`). Under REQ v1.6 the basename matches C-4's `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar (`REQ:110`–`:113`) and membership is "set-membership over C-4's grammars" (`REQ:205`–`:206`), so it **does** contribute process bytes and AT-15's neither-list is false under that reading. Consequences: the "exactly three things re-stamp" enumeration omits a fourth site — §4.3's own byte-membership paragraph at `:745`–`:748` ("contributes to neither side", "sized into nothing") — and "No type, signature, exit code or other oracle depends on the outcome" is too strong, since AT-15 is a literal-sum byte oracle with a removal probe whose totals shift under one reading. Nothing currently written is inconsistent (§4.3 implements BR-16 throughout), so this is a scoping hazard at re-stamp time, not an authoring error. | §4.3, contested-scoping paragraph, AT-15 sentence |
+| F-02 | Low | delta | local | The citation "§7.2's AT-09 row" appears twice this round (`:32` changelog, `:766` §4.3). §7.2 (`:1218`) is "FSPEC open item → decision", an `O-1`…`O-4` table containing no AT-09 row; the AT-09 baseline row is in §6.1 at `:926`, which the same clause already cites correctly. The claim is true and the evidence real — only the pointer is wrong. It matters because these sentences exist to tell a future re-stamper where things live. | §0 v1.6 changelog and §4.3, "§7.2's AT-09 row" |
+
+FINDING: Medium | delta | local | §4.3 claims AT-15's byte half is unaffected by the REQ/FSPEC dispute, justified by spec-side bytes; AT-15 pins neither-side and REQ v1.6's C-4 membership gives the basename process-side bytes, so the re-stamp list understates by one site and "no oracle depends on the outcome" is too strong | §4.3 contested-scoping paragraph, AT-15 sentence
+FINDING: Low | delta | local | "§7.2's AT-09 row" cited twice (`:32`, `:766`); §7.2 is the O-1…O-4 table and holds no AT-09 row — the row is in §6.1 at `:926` | §0 changelog and §4.3 AT-09 citation
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
