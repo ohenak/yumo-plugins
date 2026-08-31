@@ -172,12 +172,57 @@ BR-16 are still exactly those two, and no test dropped or gained a rule.
 
 ## Open Questions
 
+None. The erratum decided a clause that was open; it opens nothing new for this FSPEC.
+
+I considered whether §7.3's errata table owes a sixth row for this round and concluded it does not.
+That section's scope is stated in its own heading and preamble — "This section carried five errata
+against REQ *wording*. All five are closed at REQ v1.4" — a record of errata **this FSPEC raised**
+upstream. This erratum was not raised by this FSPEC; my v10 routed nothing upstream. The preamble's
+count and its "all five closed at v1.4" claim stay literally true, so adding a row would make the
+section's self-description wrong rather than more complete. Recording it is the REQ's job, and the
+REQ's v1.7 changelog paragraph does it. No finding.
+
 ## Delta-Confirmation Findings
+
+No findings.
 
 ## Findings
 
+No findings.
+
+The FSPEC's compression of REQ-STATS-06 is faithful to the REQ as it now stands, and strictly more
+faithful than it was to the version I approved against.
+
 ## Positive Observations
+
+- **The erratum resolved a divergence in the downstream document's favour, which is the cheap
+  direction.** BR-16 and AT-17 had specified the non-survivor reading since v1.4 with a stated
+  rationale — one file set, evaluated once, so numerator and predicate cannot disagree. The REQ
+  adopted that reading rather than forcing a rewrite of a business rule and its acceptance test. This
+  is the same pattern §7.3 records for E-1 through E-5, and it keeps working.
+- **BR-16's provenance sentence was built to survive exactly this.** By separating the borrowed
+  *shape* from the directory's own *verdict*, it stayed true through a reversal of the rule that
+  decides the verdict. I re-derived the verdict from `origin/main` under the new reading and it is
+  unchanged: 58 in-catalogue cross-reviews and two `CODE_REVIEW` files carry both families
+  independently of the four out-of-catalogue names. A sentence that had cited the directory as an
+  example of `harvested` would have inverted here.
+- **Delegation by citation limited the blast radius to zero.** §3.1 step A8, EC-07 and §2's trace row
+  all reach the moved clause, and none needed an edit, because each cites BR-16 instead of restating
+  the survivor rule inline. The one FSPEC site that spells the rule out — BR-16 itself — is the one
+  site that was already right.
 
 ## Recommendation
 
+**Approved** — the FSPEC holds against REQ v1.7 with no changes.
+
+The single clause the erratum moved is the one this FSPEC's BR-16 and AT-17 already encoded, in the
+same direction and for the same reason. Every other REQ-STATS-06 sentence, and every other AC, is
+byte-identical to my pinned bytes. The one repository-grounded claim that could have been collateral
+damage — BR-16's citation of `docs/completed/pdlc-advisory-wave-gate/` — I re-verified at HEAD under
+the new reading rather than carrying my v10 arithmetic forward, and it stands. The FSPEC's approval
+should be re-stamped against REQ `sha256:f75c348f…` with no edit to the document.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
