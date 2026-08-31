@@ -47,7 +47,25 @@ the routing is, and halting the FSPEC phase over a TSPEC-scoped item would be a 
 
 ## Linked Requirements
 
-_pending_
+DEC-ERR-03 asks me to re-read the upstream this FSPEC leans on *in its current version*, independently
+of the item list. I did, and the sweep is null for a verifiable reason rather than by assumption:
+
+- The REQ's last commit is `e33637af2` (*"REQ v1.4 — erratum round 3, scope REQ-STATS-06's harvested
+  predicate to C-4 grammars"*), and `git merge-base --is-ancestor e33637af2 6e7985d14` confirms that
+  commit is an **ancestor of the commit v6 reviewed**. The REQ has not moved since; its sha still
+  matches v6's `UPSTREAM-STATE` byte for byte.
+- The id surface FSPEC §2.1–§2.4 pins is intact at HEAD: REQ-STATS-01…09 all present, C-1…C-5 all
+  present, NG-1…NG-8 all present. Every §2.1 row therefore still names a live criterion, and §2.4's
+  four silences still name live non-goals (NG-1, NG-2, NG-3, NG-4, NG-5, NG-8 are all cited and all
+  exist).
+- The passages v6 flagged as quoting deleted REQ v1.3 text — BR-27's *"reports it by name as
+  missing/malformed"* quote, EC-09/D-9's dissent from REQ-STATS-09's *Given*, §1/BR-12/D-8's appeal
+  to a C-5 silence and a REQ-STATS-03 indecision — are unchanged in both documents, so they are
+  exactly as stale as v6 recorded and no more. They are carried below as **inherited**, not
+  re-litigated.
+
+Nothing in this FSPEC cites upstream text that has changed since the approval. Traceability is
+undisturbed: no §2.1 row lost its cover, because no row moved.
 
 ## Behavioral Flow
 
