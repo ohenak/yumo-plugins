@@ -971,12 +971,16 @@ claim:
 | BR-16 | harvested test before the zero-denominator test | §4.3 |
 | BR-17, BR-18, BR-19 | `renderHuman` | §4.2, §6.3 |
 | BR-20 | `StatsOutcome.stdout`; `checkFlags`'s stderr-only usage path | §3.4, §4.2 |
-| BR-21, BR-22, BR-23, BR-24 | `renderJson` over `StatsReport`; `FeatureResult`'s key discriminant | §4.1, §4.2 |
-| BR-25, BR-26 | `NON_FEATURE_DIRS`, `discoverFeatures`' underscore predicate | §4.4 |
+| BR-21 | `renderJson`'s `SingleDocument` projection — five keys, `feature`/`dir` dropped; §6.3's exact-key-set conjunct over a literal transcription | §4.2.1, §6.3 |
+| BR-22 | the `state`-carrying metric types, fixed shape in every state; PROP-2 | §4.1, §6.6 |
+| BR-23 | `renderJson`'s `FleetDocument` — three keys; `MetricObject`-or-`{gap}` per entry; §6.3's entry-discriminant conjunct | §4.2.1, §6.3 |
+| BR-24 | the `SCHEMA_VERSION` constant, hoisted by `renderJson` into all three documents; §6.3's `=== 1` conjunct against the literal | §4.2.1, §6.3 |
+| BR-25 | `NON_FEATURE_DIRS`' eight names; `isDirectory`-only discovery | §4.4 |
+| BR-26 | `discoverFeatures`' (provisional) underscore predicate **and** §6.4's exclusion-set equality oracle | §4.4, §6.4 |
 | BR-27 | per-feature `try`/`catch` → `{gap}`; fleet exit stays 0 | §5 |
 | BR-28 | seam bundle with no write member; no-write-capability oracle | §2.3, §6.4, §6.5 |
 | BR-29 | `StatsOutcome.exitCode: 0 | 1`; no `emitReport` call | §3.5 |
-| BR-30 | `StatsReport`'s `kind: "error"` with three `reason` values | §4.2, §5 |
+| BR-30 | `StatsReport`'s `kind: "error"` with three `reason` values; `renderJson`'s `ErrorDocument` — three keys, `error` exactly `{reason, message}`; §6.3's error-shape conjunct | §4.2, §4.2.1, §5, §6.3 |
 
 ### 7.2 FSPEC open item → decision
 
@@ -1018,9 +1022,10 @@ time rather than transcribed at five sites.
 |---|---|---|
 | RK-1 | The five-site vendoring co-change is done partially; the packed engine ships without `lib/stats.mjs` and `pdlc stats` fails only for installed users, never in a checkout — where `resolveWorkflowRoot` falls back to the checkout tree and finds the module anyway. | §6.4's vendoring oracle, deriving from `MODULE_NAMES` rather than transcribing. The fixture machine's install leg exercises the packed tarball, so the failure surfaces in CI, not in the field. |
 | RK-2 | The parser bundle is injected, so a suite of stubs could pass while production diverges from REQ C-5. | §6.4's identity oracle: `===` against the real exports, plus real-parser-by-default doubles (§6.1). |
-| RK-3 | `REVIEW_DOC_TYPE_ROWS` is a local copy of a module-private driver catalogue. | §6.4's catalogue-agreement oracle; FSPEC §7.4 A-3 already makes a seventh driver type an FSPEC edit. |
+| RK-3 | `REVIEW_DOC_TYPE_ROWS` is a local copy of a module-private driver catalogue. | §6.4's catalogue-agreement oracle, as a **set-equality over a probed candidate set with a real role slug** — a fixed containment probe could not have detected a seventh accepted type, which is the drift this row exists for. Residue: a seventh type outside the candidate set, bounded by FSPEC §7.4 A-3, which already makes a new driver doc type an FSPEC edit. |
 | RK-4 | Real-path tests bind to the live `docs/completed/` archive; a future feature archiving or harvesting a directory turns them red for a reason unrelated to this code. | Literals are declared as measurements of the archive and re-measured when it changes (§6.1); the failure is loud and its cause is named in the test's own comment. This is the `doc-moves-break-pinned-tests` pattern, accepted because FSPEC §6 explicitly requires literal, non-derived expectations on real paths. |
-| RK-5 | The underscore-prefix discovery predicate (§4.4) does not catch a future bare-named non-feature directory. | Erratum raised against FSPEC (§8.3); the residue is a directory reported as a feature with zero-state metrics, which is visible rather than silent. |
+| RK-5 | The underscore-prefix discovery predicate (§4.4) does not catch a future bare-named non-feature directory. | Erratum raised against FSPEC (§8.3), and the predicate is marked **provisional** on its answer, with the observable each answer implies named in §4.4. §6.4's exclusion-set oracle catches the bare-named case at test time whenever the directory carries files not named for it; the residue is an empty bare-named directory, reported as a feature with zero-state metrics — visible rather than silent. |
+| RK-6 | AT-21/AT-22's whole-tree snapshot flakes on the suite's own in-tree scratch directories under parallel jest workers (`.tmp-capture-driver-*`, `learningsCaptureScript.test.js`). | §6.5's declared-scratch-prefix exclusion, held in one exported constant, plus the guard conjunct that keeps the exclusion from becoming a hole. Serialising the suite was weighed and rejected there. |
 
 ### 8.3 Upstream errata — not folded into this document's verdict
 
@@ -1032,6 +1037,21 @@ Raised against the upstream document that owns each, per the erratum channel; no
   directory a normal measured row. AT-19's *Given* inherits the circularity. §4.4 adopts a
   leading-underscore discriminant as the only one the repository's convention supplies and flags the
   bare-named residue; the FSPEC should state the predicate it intends.
+- **FSPEC BR-16 phrases the harvested condition over `CROSS-REVIEW-*` while BR-14 defines the
+  numerator over the *grammars*, and the two readings disagree on a shape this archive contains.**
+  A post-harvest directory holding only `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files plus
+  `LEARNINGS-*.md` — the shape of `docs/completed/pdlc-advisory-wave-gate/`'s four out-of-catalogue
+  files — is `harvested` under the grammatical reading and `measured` under the literal one. §4.3
+  takes the grammatical reading, grounded on REQ C-4's "every file matching the documented …
+  grammars", and states it; the FSPEC should say which it means, since an operator reading the
+  ratio's state would act on the difference. (REQ-STATS-06 carries the same `CROSS-REVIEW-*`
+  phrasing, so the REQ may owe the same clarification.)
+- **FSPEC BR-11 states the DoD harvested condition as "no `CODE_REVIEW-*` file remains in the
+  directory", dropping REQ-STATS-04's "matching the version grammar" qualifier.** The readings
+  disagree on a directory left holding `CODE_REVIEW-{feature}-draft.md` or a foreign-feature
+  `CODE_REVIEW-` file. §4.3 implements the REQ's narrower reading — which is also what BR-11's own
+  neighbouring "does not contribute, exactly as an unrelated file" sentence implies — and cites
+  REQ-STATS-04 rather than BR-11 for it; the FSPEC's wording should be narrowed to match.
 - **FSPEC BR-25 names `docs/completed/REQ-completed.md` as the loose file its directories-only rule
   excludes, but `docs/completed/QUEUE-HISTORY-rows-0-1.md` is also present at that root.** No
   behavior changes — the `isDirectory` filter drops both — but the illustration is incomplete, and
