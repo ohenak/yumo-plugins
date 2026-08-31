@@ -25,3 +25,29 @@ fidelity but not re-litigated.
 | REQ-STATS-02 state enumeration over-distributes across ACs | **Landed in part** — see F-01 | The malformed/unmeasurable states are now attributed to REQ-STATS-03 alone and harvested to 03/04/06, which is the correct redistribution. The rewritten clause still omits REQ-STATS-06's not-available. |
 | REQ-STATS-08 conjunct (b) lost its list separator | **Landed** | The serial comma is restored: "…by path and modification time, issues no network request, and runs no `git` write command". Conjunct (b) now reads as three items rather than two. |
 
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | REQ-STATS-02's rewritten state enumeration names malformed and unmeasurable (REQ-STATS-03) and harvested (03/04/06), but omits REQ-STATS-06's **not-available**. The clause is normative — these states "ride in their own metric's value, never as extra top-level keys" — so the JSON placement of the fourth operator-visible state is now unstated at REQ level, even though the criterion, R-4 and O-1 all name it. FSPEC §3.1 A8 already puts `n/a` in the metric's value, so this is a wording gap, not a behavioural one. Fix: add not-available to the same list. | REQ-STATS-02, the "ride in their own metric's value" clause |
+| F-02 | Medium | inherited | nonlocal | REQ-STATS-08's conjunct (a) enumerates exactly two legitimate outcomes — exit zero with REQ-STATS-01's metric set, or REQ-STATS-09's non-zero not-found report — and then insists conjunct (b) never suffices alone. The `docs/`-root failure path satisfies neither: it exits non-zero with a root message and no metric set and no not-found report. REQ-STATS-07 already carried that path pre-round ("non-zero only when it could not read the `docs/` root"), so the gap is inherited; this round's REQ-STATS-09 carve-out widened it to single-feature mode by moving root failure out of the one AC that did license a non-zero exit. FSPEC EC-09 and EC-11 specify the behaviour, so nothing is ambiguous for an implementer — but a conformance test derived literally from this P0 criterion would fail a correct binary. Fix: add the root-failure (and EC-11 unreadable-feature) exit to (a)'s enumeration. | REQ-STATS-08, conjunct (a) |
+| F-03 | Low | delta | local | REQ-STATS-03's new sentence carries an inline shipped-behaviour claim — "the grammatical-but-out-of-catalogue names the pipeline writes (`CROSS-REVIEW-{role}-REVIEW-v{N}.md`)" — with no anchor. The claim is true (I verified `bad_doc_type` in `parseReviewFilename` and the four files in `docs/completed/pdlc-advisory-wave-gate/`), and per the REQ altitude rule the repair is **not** to add a `file:line` citation to the REQ but to relocate the fact to `docs/_constraints/` as a measured fact (`M-*`) and cite that id. No such fact exists there today. | REQ-STATS-03, "the grammatical-but-out-of-catalogue names the pipeline writes" |
+| F-04 | Low | delta | nonlocal | The REQ edits landed correctly, which leaves two FSPEC passages quoting upstream text that no longer exists. BR-27 says it "narrows REQ-STATS-07's *missing or fail to parse … reports it by name as missing/malformed*" — that string is gone from the REQ, and BR-27 now merely restates it. The EC-09 row says the root-failure behaviour "departs from REQ-STATS-09's *Given*, which sweeps this case in" — the Given no longer sweeps it in. Both are now stale characterisations of a repaired upstream rather than live departures. (D-8 and D-9's decision records are historical and legitimately retained; it is the two live narrowing/departure claims that need restating as agreement.) | FSPEC BR-27; FSPEC §5 EC-09 row |
+
+## Positive Observations
+
+- The C-5 carve-out is the right shape. It repairs the unsatisfiability without weakening the constraint's purpose: the `RESOLVED:` half — case-insensitive value matching, single-marker, outside-a-fenced-block — still defers to one place, and only the phase listing, which HEAD genuinely does not own, becomes the REQ's own. Nothing was traded away to make the sentence true.
+- REQ-STATS-03's malformed decision is the cheaper of the two available answers and the REQ says why: a third bucket would be an independent rule C-5 forbids. It also survives the check I expected it to fail — the driver's per-file reason really does separate `bad_doc_type` from `not_cross_review`, so the AC and C-5 agree rather than collide on the exact file class that prompted the erratum.
+- REQ-STATS-06 and REQ-STATS-07 now use FSPEC BR-16's and BR-27's own spellings. Round-tripping the downstream wording back into the criterion is what keeps the next reviewer from re-deriving the ambiguity.
+- REQ-STATS-04's harvested predicate is now internally consistent on the near-miss `CODE_REVIEW-` basename, which was the one place where two sentences of the same AC could be read against each other.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Every routed item landed, and the two I most expected to land badly — the C-5 carve-out and the REQ-STATS-03 malformed label — are correct against HEAD rather than merely plausible. No High finding. F-01 and F-02 are wording completeness gaps in criteria whose behaviour the FSPEC already pins; F-03 and F-04 are anchoring and stale-quote hygiene. None blocks TSPEC.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
