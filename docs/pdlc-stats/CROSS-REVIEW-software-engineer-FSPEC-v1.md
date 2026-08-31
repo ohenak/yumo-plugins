@@ -47,8 +47,41 @@ Every existing-code and repository-path claim in the FSPEC was checked against H
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | BR-01 makes `--cwd` part of the closed flag surface, but the REQ never mentions it. It is consistent with the existing commands (`FLAGS_BY_COMMAND`, `cli.mjs:168`) and it is what makes AT-21's snapshot discipline runnable against a fixture tree — but is a flag with no REQ criterion behind it intended, and does REQ-STATS-08's "leaves the working tree set-equal" apply to the `--cwd` target, the process cwd, or both? |
+| Q-02 | BR-01 makes a second positional a usage error, but `validateFlags` (`cli.mjs:198`) checks flag shape only and never counts positionals — no existing command enforces this. Is `stats` introducing a positional-arity check that the other commands lack, and if so should it live beside `validateFlags` so the surface stays uniform? |
+| Q-03 | BR-14 says "bytes are file sizes on disk, not character counts", and BR-28 forbids any write. Is a `stat` per file the intended mechanism (O-3 leaves it to the TSPEC), and is the fleet-mode cost over ~30 feature directories bounded well enough that O-4's sequential/concurrent choice is genuinely free? |
+| Q-04 | BR-24 says `schemaVersion` increments "when a released field is removed or its meaning changes". Who owns that judgement, and where is the increment recorded — this FSPEC, a DECISIONS file, or the engine's own version store? R-5's stability guarantee is only as strong as the place that records the promise. |
+
 ## Positive Observations
+
+- **The fidelity anchor is the right architectural instinct, and three of its four citations check out.** `parseReviewFilename`, `deriveRoundWindow` and `deriveDodRoundIndex` are exactly where §1 says they are, and BR-10's off-by-one warning is a genuinely useful piece of engineering foresight — it names a trap an implementer would otherwise fall into once per feature. F-03 is a gap in the fourth citation, not a flaw in the approach.
+- **The per-metric harvested discipline is stated where it can be enforced.** §3.1's note that steps A5–A8 are independent, plus BR-08's explicit "per document type, not per feature", plus AT-10's real archived fixture, together make REQ R-6's protection testable rather than aspirational. Pinning it on `docs/completed/pdlc-headless-engine/` — a directory that really is in the partial-harvest state — is better than a synthetic fixture.
+- **BR-16's precedence over BR-15 is decided, not left to evaluation order.** "Evaluated **before** BR-15's zero-denominator test" with the reason attached is precisely the kind of decision that otherwise emerges from whichever `if` an implementer writes first, and EC-13 pins it.
+- **AT-21 and AT-22 assert both conjuncts against one invocation.** REQ-STATS-08's liveness half is the part usually lost, and the document says explicitly why a read-only assertion alone is insufficient. The snapshot-versus-snapshot construction also correctly avoids the untracked-file flake this repo has hit before with `coveredViolations`.
+- **§7.3 routes upstream ambiguities as errata instead of silently resolving them,** and records which reading BR-16 derived from. That is the right handling, and the note that a foreign-feature `CODE_REVIEW-` file suppresses `harvested` under both documents — so no divergence is introduced — is accurate against `deriveDodRoundIndex`'s feature-scoped pattern.
+- **The exclusion set is exactly right against the tree.** BR-25's eight names are set-equal to the eight non-feature directories at the `docs/` root today, and BR-26's decision to *assert* rather than assume that equality is what will keep it right.
 
 ## Recommendation
 
+**Needs revision**
+
+Three High findings gate this document. F-01 and F-02 are internal contradictions that leave an
+implementer with no decidable behaviour — an empty feature directory, and an unclassified directory
+in JSON mode. F-03 is an existing-code claim that does not hold at HEAD: the driver has no
+post-mortem basename grammar to re-read, so the halts metric needs its own rule stated plainly
+rather than a fidelity citation that cannot be honoured.
+
+The Medium findings are mostly test-strength: two derived oracles (F-05), an unenforced enumeration
+(F-08), an untested state (F-07), and eight untested edge cases (F-09). None of them requires a
+behavioural decision — they require the expectations to be written as literals over fixtures that
+exercise the full contract.
+
+Everything else — the metric vocabulary, the harvested discipline, the read-only pairing, the flag
+surface, the exclusion set — is sound and verified against the tree.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 6, "low": 5}
