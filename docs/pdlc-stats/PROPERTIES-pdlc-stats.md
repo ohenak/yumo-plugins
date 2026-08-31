@@ -74,7 +74,38 @@ needs, §Oracles says why.
 
 ## Properties
 
-*(pending)*
+61 properties in twelve domains. Categories are the skill's table (Functional, Contract, Error
+Handling, Data Integrity, Integration, Security, Idempotency, Observability); levels are
+TSPEC §6.2's six (`unit-pure`, `unit-seamed`, `unit-render`, `integration-fake`, `integration-fs`,
+`process`).
+
+### CLI surface and exit codes
+
+| ID | Property | Category | Level | Traces to |
+|---|---|---|---|---|
+| PROP-CLI-01 | `parseStatsArgv` must return `{ok:true, feature, json, cwd}` for every argv drawn from the closed surface `[feature] [--json] [--cwd <path>]`, and `{ok:false, message}` for every other argv, and must never throw for any string array — including `[]`, an argv of only flags, and an argv carrying non-UTF-8-shaped tokens. | Contract | unit-pure | REQ-STATS-02, BR-01; TSPEC §3.3; PLAN T-03/T-12 |
+| PROP-CLI-02 | `pdlc stats {feature} {second}` must exit 1, write a usage message naming the offending second positional to stderr, and write **nothing** to stdout, in both human and `--json` mode. | Error Handling | process | BR-01, EC-08, AT-24; TSPEC §5 row 2; PLAN T-09 |
+| PROP-CLI-03 | Each of `--dev`, `--plugin-root {path}`, `--dry-run`, and `--cwd` with no following value must exit 1 with a stderr usage message and empty stdout — `--dev` and `--plugin-root` specifically, because `pdlc/engine/bin/cli.mjs:168`'s `doctor: ["plugin-root","cwd","allow-api-key-billing","dev"]` row is the neighbour a copied `stats` row would inherit them from. | Contract | process | BR-01, AT-24; TSPEC §3.4; PLAN T-09 |
+| PROP-CLI-04 | `pdlc stats --json` and `pdlc stats {feature} --cwd {path}` must be **accepted** (exit 0 on a reportable tree), so PROP-CLI-03's refusals are not satisfied by a `stats` row that refuses everything. | Functional | process | BR-01, AT-24; PLAN T-09 |
+| PROP-CLI-05 | `FLAGS_BY_COMMAND.stats` must be set-equal to `["json","cwd"]` — no more, so a later `--force` cannot arrive without an FSPEC edit; and `json` must **not** be a member of `VALUE_FLAGS`, so `--json` consumes no following token. | Contract | unit-pure | BR-01; TSPEC §3.4; PLAN T-10/T-17 |
+| PROP-CLI-06 | Every `stats` invocation must set `process.exitCode` to exactly `0` or `1`; the value `2` must never be produced on any path, and no `stats` code path may call `emitReport` — the only producer of `2` in `pdlc/engine/bin/cli.mjs`. | Contract | process | BR-29; TSPEC §3.5; PLAN T-09/T-10 |
+| PROP-CLI-07 | `cmdStats` must resolve `cwd` exactly once, at its own edge, from `--cwd` or `process.cwd()`; no function below `cmdStats` may read `process.cwd()`, `process.env` or any other ambient process state. Falsified by a test that runs `runStats` with an injected root while `process.cwd()` points elsewhere and asserts the report is of the injected root. | Contract | integration-fake | TSPEC §3.4; DEC-STATS-01; PLAN T-07/T-17 |
+| PROP-CLI-08 | An unexpected throw anywhere beneath `cmdStats` — including from the dynamic import inside `statsParsers()` — must produce a one-line stderr message and exit 1, never a stack trace on stdout and never a truncated JSON document on stdout. | Error Handling | process | TSPEC §3.4, §5 last row; PLAN T-09 |
+
+### Discovery and directory resolution
+
+| ID | Property | Category | Level | Traces to |
+|---|---|---|---|---|
+| PROP-DISC-01 | When `docs/{feature}/` exists, the report must be computed from it and the archived copy must not be read at all: the report over a tree carrying both locations must be **byte-identical** to the report over the same tree with `docs/completed/{feature}/` removed, and the header must name `docs/{feature}`. Byte-identity, not a negative probe — a merged read that deduplicates by basename would pass an "archive not mentioned" check. | Data Integrity | integration-fake | REQ C-2, BR-02, AT-02, EC-02; PLAN T-05/T-14 |
+| PROP-DISC-02 | When `docs/{feature}/` is absent and `docs/completed/{feature}/` exists, the report must be produced from the archived directory and the header must name it. | Functional | integration-fake | BR-02; PLAN T-05 |
+| PROP-DISC-03 | Only files **directly in** the resolved directory may contribute to any metric: the report over a feature directory carrying a subdirectory of artifact-shaped names must be byte-identical to the report over the same directory with that subdirectory absent. The real shape exists — `docs/completed/pdlc-loop-economics/_evidence/` — so this is not hypothetical. | Data Integrity | integration-fake | BR-03, AT-03, EC-04; TSPEC §4.3; PLAN T-07 |
+| PROP-DISC-04 | Fleet discovery must consider immediate **directories** only. A loose file at either root must yield no row, whatever its basename claims — `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/completed/REQ-completed.md` and `docs/completed/QUEUE-HISTORY-rows-0-1.md` are all present at HEAD and none may appear. | Functional | integration-fs | BR-25, AT-18; TSPEC §4.4; PLAN T-05/T-18 |
+| PROP-DISC-05 | `NON_FEATURE_DIRS` must be set-equal to `["_queue","_constraints","_decisions","design","requirements","ideas","discarded","completed"]`, asserted against a hand-transcribed literal (never against the module's own export), **and** set-equal to the non-feature directories actually present at this repository's `docs/` root, partitioned by an independent artifact-naming witness rather than by the leading-underscore predicate under test. | Contract | integration-fs | REQ-STATS-07, BR-25, BR-26; TSPEC §6.4; PLAN T-08 |
+| PROP-DISC-06 | `completed` must be excluded **as a feature** and traversed **as a container**: no fleet row may be named `completed`, and every directory under `docs/completed/` must appear as a row exactly once. | Functional | integration-fs | BR-25, AT-18; PLAN T-05/T-18 |
+| PROP-DISC-07 | A directory at the `docs/` root that is in neither `NON_FEATURE_DIRS` nor recognisable as a feature must surface as an `unclassified` entry — named in the human report's feature list in the same order and marked as such, and a member of the JSON document's top-level `unclassified` array — and must **not** appear as a key of `features`. It must be neither silently reported as a feature nor silently dropped. | Functional | integration-fake | BR-26, AT-19, EC-10; TSPEC §4.4; PLAN T-05/T-06 |
+| PROP-DISC-08 | Feature matching must be exact against directory names: no fuzzy, prefix or case-insensitive matching anywhere. On a case-insensitive filesystem two directories differing only in case must yield two distinct rows, and the command must perform no case folding of its own. | Data Integrity | integration-fake | REQ A-1, BR-04, EC-18, AT-18; PLAN T-05 |
+| PROP-DISC-09 | Fleet rows must be ordered lexicographically by feature name, and two runs over an unchanged tree must produce byte-identical stdout. | Idempotency | integration-fake | BR-18; PLAN T-07/T-19 |
+
 
 ## Oracles
 
