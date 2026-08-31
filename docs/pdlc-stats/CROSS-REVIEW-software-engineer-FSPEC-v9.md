@@ -134,5 +134,36 @@ FINDING: High | delta | local | §4.2 BR-16 provenance sentence | Says the cited
 
 ## Positive Observations
 
+- **The shape-not-verdict distinction is the right repair, and it is true.** TE v7 F-02's risk was
+  that citing a real directory for a malformed basename would be read as citing it for a
+  `harvested` verdict. The edit separates the two explicitly and the separation survives checking:
+  the directory really does report a measured ratio, because both harvest-deleted families are
+  non-empty there and all six spec documents are present. The claim that would have been easiest to
+  hand-wave is the one that holds.
+- **AT-15's new leg is properly paired.** The natural way to pin "these bytes reach neither side" is
+  an absence-only assertion, which no implementation error would ever fail. The edit instead hangs
+  the new file off the existing literal-sum equality and names the failing implementation — a
+  `CROSS-REVIEW-*` glob into the process total — so the leg has a concrete falsifier.
+- **The `nine` was kept honest.** Adding a file to AT-15's *Given* is exactly where an enumeration
+  count silently rots. The added file went to the neither-list and the nine stayed six-plus-three,
+  with the removal probe and its set-equality rationale intact.
+
 ## Recommendation
 
+**Needs revision** — one High finding (F-01), introduced by this round's edit.
+
+Both routed items land in substance and I would otherwise approve: the rule, exit codes, enum
+tokens, edge-case rows and every acceptance test but AT-15 are byte-identical, AT-15's new leg is
+correctly paired and set-equality-preserving, and BR-16's shape-not-verdict citation is sound where
+it matters most. What blocks is narrow and factual: the new sentence miscounts a real directory as
+carrying two out-of-catalogue cross-reviews when it carries four, contradicting both the repository
+at HEAD and this document's own BR-06 and AT-09.
+
+The fix is one word — `two` → `four` in §4.2 BR-16, with BR-06 and AT-09 left untouched, since both
+are correct as written and AT-09's oracle is verified green against the real directory.
+## Recommendation
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 0}
