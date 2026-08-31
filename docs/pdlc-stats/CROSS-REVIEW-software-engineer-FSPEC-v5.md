@@ -215,12 +215,38 @@ FINDING: Low | delta | local | §4.2 BR-06 | BR-06 still calls the malformed dis
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Does REQ-STATS-04's new "matching the version grammar" clause bind the *count* side as well as the harvested side? BR-10 already derives the count from `deriveDodRoundIndex`'s grammar and AT-28 pins it, so I read the answer as yes-and-already-so — but if the FSPEC agrees, saying it once in BR-10 makes F-01's fix obviously local rather than possibly the tip of a wider re-grammaring. |
+| Q-02 | (Carried v1–v4, unchanged and still cheap.) BR-13 names lexicographic collation and AT-14b pins the position of `P` and `PR`. Byte-wise, or locale-sensitive? One clause in BR-13 ("byte-wise, locale-independent") retires it. |
+| Q-03 | (Carried v4.) BR-30 calls the error object a released shape under REQ R-5, governed by BR-24's increment rule; three `reason` values now exist. Does adding a fourth bump `schemaVersion`? TSPEC material, but the answer is BR-24's wording. |
+
+**Not raised as findings.** The v4 round's still-open F-01 (Flow C3 routing a refusal Flow A's A4
+cannot raise) and F-03 (B5's read-only decision point versus EC-21's catch-all) are unchanged by
+the REQ edit and remain in the FSPEC's ordinary revision channel, not this confirmation's.
 
 ## Recommendation
 
-_pending_
+**Needs revision** — one High.
+
+Scope of the revision is narrow and entirely mechanical except for F-01:
+
+1. **F-01 (behavioral, High).** Narrow BR-11's harvested predicate to the
+   `CODE_REVIEW-{feature}-v{N}.md` version grammar, matching REQ-STATS-04 v1.3 and BR-10/EC-16; add
+   the AT-12 third leg (LEARNINGS + a non-grammar `CODE_REVIEW-` basename only → `harvested`, and
+   in no malformed list) so the corrected rule is asserted rather than merely stated. Remove §7.3's
+   "this FSPEC introduces no divergence" sentence, which is now false.
+2. **F-02/F-03/F-04/F-05 (citation fidelity).** Rewrite §7.3 as a settled record against REQ v1.3
+   and strip the four in-place erratum notices (BR-06, BR-27, EC-09, D-9), keeping every decision
+   and every rule they surround. No behaviour moves.
+
+Everything else in the FSPEC holds against the REQ as it now stands. Six of the seven errata this
+document raised came back resolved in the direction it had decided — BR-16's predicate, BR-27's
+gap/zero-state split, D-8's single malformed label, D-9's root failure, BR-12's post-mortem-listing
+carve-out and BR-11's lost subject — which is the confirmation's main finding and the reason the
+remaining work is a paragraph of deletions plus one clause.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 1}
