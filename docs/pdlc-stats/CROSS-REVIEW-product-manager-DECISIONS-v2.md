@@ -59,3 +59,47 @@ It did not hold for something the revision did not add, and that is F-01.
 |----|---------|
 | Q-01 | On F-01/F-02: once `loop-distribution.test.js` is edited, is the intent that its baselines grow (`NEW_LIB_MEMBERS_*` gaining `stats.mjs`, so it keeps asserting exact-set additivity over a three-member delta), or that the additive-only conjuncts are re-derived so a future `lib/` member does not re-open this? The first keeps the oracle strict and costs a line per future member; the second is the "derive rather than transcribe" move DEC-STATS-01's own re-evaluation trigger contemplates, and this feature is the third member that trigger counts. Naming which, in K-1 or the trigger, would stop the next feature re-deciding it. |
 | Q-02 | Q-02 from v1 is still open and unaddressed by the revision: is the refusal document's `schemaVersion` presence part of REQ R-5's consumer-stability promise, or an FSPEC-level convenience? The answer decides whether a future change to the refusal shape is a contract break. Not gating — DEC-STATS-02 traces cleanly to FSPEC BR-30 either way — but it is the kind of thing that is cheap now and expensive after a consumer ships. |
+
+## Positive Observations
+
+- **Every one of my v1 findings was closed by going back to the tree, not by hedging the prose.** F-02 is the clearest case: asked to correct one sentence, the author re-measured, found the true state was *stronger* than the original claim, and rewrote the paragraph so the asymmetry argument rests on the accurate fact. Eight new claims, eight verified. That is the behaviour the "measured at HEAD" promise is supposed to produce.
+- **K-7 is the right shape for the F-01 fix.** Splitting *justification* (stated once, here) from *execution* (an owned obligation with a PLAN task) resolves the contradiction without weakening either side, and it does so by complying with the sibling's co-change rule rather than overriding it. The 0.15 precedent it cites is real and checks out line for line — F-03 is a nit about one clause, not about the route.
+- **The Residuals section is a genuinely good addition and should survive F-02.** Naming obligations with no oracle, each with an explicit disposition (`Closed by erratum` / `Accepted`), is exactly how a decision record hands known risk to PLAN and the DoD reviewer instead of letting them discover it. Two of the three rows are right. The third is wrong in the *safe* direction — it over-declares risk — and fixing it makes the section stronger, not smaller.
+- **K-4's construction-site count conjunct is well-chosen and well-precedented.** Replacing "a review-blocking finding" with a mechanical check, and justifying it with a real structural-count test in the same repo (`bin-guard-structure.test.js`), answers my v1 F-03 with an actual detector rather than an assurance. The reasoning that *"a load-bearing claim on REQ C-5 with no detector has no expiry date"* is the right principle and worth harvesting.
+- **The re-evaluation triggers are now falsifiable.** `MODULE_NAMES.length` exceeding five is something an operator can check; enumerating the six lists that are still literal transcriptions tells a future reader exactly what the trigger would change. This is the v1 F-04 ask, met precisely.
+
+## Recommendation
+
+**Needs revision**
+
+Two High findings gate. Both are narrow and both point at the same newly-discovered
+file; neither touches a decision. DEC-STATS-01, DEC-STATS-02 and DEC-STATS-03 are all
+still the right calls — F-01 raises option A's measured cost from five sites to six,
+but option B's cost rises with it (`loop-distribution.test.js:186` hardcodes the
+engine `lib/` class as `15` in the same arithmetic), so the comparison and the verdict
+are unchanged. What is wrong is the *record* and one *obligation*.
+
+Exactly what to change:
+
+1. **F-01 (High, gating).** Add `pdlc/engine/__tests__/loop-distribution.test.js` to
+   the option-A site table as a sixth site; correct the option table's "five edit
+   sites" cell to six; give it an owning `K-*` row (or extend K-1); and name it in
+   K-1's falsifier column as the conjunct that reds first, since its
+   `assertAdditiveOnly` length equality and its `4 + 15 + 5 + 1` literal both fire
+   before TSPEC §6.4's oracle does.
+2. **F-02 (High, gating).** Strike the third residual's "no mechanical falsifier /
+   Accepted" content and replace it with P7-02 (`loop-distribution.test.js:182`) as
+   the existing falsifier for K-7's document half; extend K-7's prescribed edit to
+   include P7-02's `vendoredClassSize === 5 ? "five" : String(...)` word mapping, so
+   the derived word and the amended documents agree at 6.
+3. **F-03 (Low, non-gating).** Soften K-7's "exactly as that document's 0.15 row
+   records" — the precedent split the helper literal into a later task.
+
+Unchanged and not re-reviewed: DEC-STATS-02 and its trace to FSPEC BR-30, DEC-STATS-03's
+chosen option and identity oracle, K-5, K-6, *What these decisions do not decide*, and
+the *Relationship to project-level decisions* section.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
