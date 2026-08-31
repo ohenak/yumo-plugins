@@ -161,7 +161,6 @@ at HEAD and this document's own BR-06 and AT-09.
 
 The fix is one word — `two` → `four` in §4.2 BR-16, with BR-06 and AT-09 left untouched, since both
 are correct as written and AT-09's oracle is verified green against the real directory.
-## Recommendation
 
 ## Verdict
 
