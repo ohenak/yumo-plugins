@@ -81,7 +81,42 @@ agreement with it (F-05).
 
 ## Decision
 
-_pending_
+**DECISIONS no longer holds as approved against TSPEC v1.3.** Not because a decision changed — all
+three still read as the right calls — but because the document's load-bearing citations into TSPEC
+§2.1 and §6.4 now describe a version of TSPEC that no longer exists, and in two places assert the
+opposite of what upstream says.
+
+The two gating divergences:
+
+**1. The nine-site cost, and the README sentence (F-01, High).** DEC-STATS-01's *Context* prices
+option A at "**nine** sites", its option table says "sweep-derived, 5 → 6", K-1 says "**nine**
+co-change sites … edited in **one** change", *Reversibility: hard* says "amending nine sites", and
+*Standing costs accepted* says "**nine** edit sites — five enumerations plus four test files". TSPEC
+§2.1, §6.4's vendoring row, §7.3 and RK-1 all now say **ten**. Worse than a stale number, DECISIONS
+argues the point explicitly: *"it is not a tenth row of the site table, and the two reviewers agree …
+so the site count stays nine and the edit is still owed: an explicit, non-falsifying co-change
+obligation under K-9."* TSPEC v1.3 has since decided the other way — README is row ten, pinned by no
+oracle, named in RK-1's residue with an owning task. The *substance* the two documents want is
+identical (the edit is owed; nothing pins it; K-9 owns it). Only the accounting differs, and it is
+the accounting a PLAN author partitions. A ten-item upstream checklist compressed into a nine-item
+contract is exactly the partial-co-change failure RK-1 exists to prevent.
+
+**2. The purity detector, stated in terms upstream has withdrawn (F-02, High).** DEC-STATS-03's
+trigger carries a *named detector*: "a purity conjunct on the four exports — call each classifier
+twice with the same input in a fresh module instance and assert deep-equal, **non-aliased** results".
+TSPEC v1.3 split that conjunct by return type and says in terms why: `deriveDodRoundIndex` is typed
+`=> number`, "two equal numbers are `===`, so a non-aliasing assertion over it reds against a
+*correct*, wholly pure implementation", and it gets an **A-B-A** conjunct instead. DECISIONS'
+sentence, executed literally, produces a test that fails against correct code — the one failure mode
+worse than no test, because it trains the team to loosen the oracle. The same paragraph's "Until it
+lands, the residual is explicit" and the *Standing costs accepted* row's "Until it lands" are also
+now stale: it landed, as two of §6.4's seven oracles.
+
+Neither divergence changes which option is chosen, which is why this is a **bounded re-grounding
+edit**, not a re-decision. But both are `delta` and both sit inside the sections TSPEC's edit changed,
+so this confirmation cannot approve.
+
+**Recommendation: Needs revision.**
 
 ## Consequences
 
