@@ -52,6 +52,29 @@ it in from the pre-round bytes untouched (`inherited`).
 
 ## Linked Requirements
 
+Re-checked at REQ v1.4, not taken from the pre-round bytes.
+
+| Routed item | Where it landed | Faithful to REQ v1.4? |
+|---|---|---|
+| BR-11 vs REQ-STATS-04 version grammar (pm, se, te) | BR-11 now: "no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar remains (REQ-STATS-04)", plus an explicit leftovers clause | Yes — REQ-STATS-04 line-for-line: "where `LEARNINGS-{feature}.md` is present **and** no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar remains" |
+| BR-16 over `CROSS-REVIEW-*` vs documented grammar (pm, se, te) | BR-16 now names BR-14's `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` and `CODE_REVIEW-{feature}-v{N}.md` grammars | Yes — REQ-STATS-06 names C-4's grammars identically |
+| BR-16 vs BR-14 one-file-set disagreement (pm, se, te) | BR-16: "evaluated over exactly the file set BR-14's numerator sums" | Yes, and it is the right closure: it makes the numerator and the harvested test one predicate |
+| Out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` counts as "remaining"? (pm, se, te) | BR-16 says no; AT-17 gained a fourth fixture | Yes — REQ-STATS-03 itself declares those names fail the grammar ("covers the grammatical-but-out-of-catalogue names the pipeline writes"), so "no file matching the grammar remains" is satisfied. This is inherited upstream, not invented here |
+| BR-25 second archive-root loose file (se ×2) | BR-25 now names `docs/completed/QUEUE-HISTORY-rows-0-1.md` | Yes, and verified against the tree: the archive root holds exactly those two files |
+
+**Upstream drift check (DEC-ERR-03).** The header pin moved `v1.2 → v1.4` and the changelog says
+"re-grounded on REQ v1.4", but only REQ-STATS-04/06's harvested predicates were re-grounded. The other
+six v1.3 fixes (C-5's post-mortem-discovery carve-out, REQ-STATS-03's "one label stands",
+REQ-STATS-09's *Given* carve-out, REQ-STATS-07's gap/zero-state disposition, REQ-STATS-02's state
+attribution, REQ-STATS-08's separators) are unabsorbed. Every §2.1 / §2.2 traceability row still
+resolves — no criterion lost its business rule or its acceptance test — so this is a prose-fidelity
+gap, not a coverage gap. Findings F-01, F-04, F-05, F-06.
+
+One row I re-derived rather than trusted: §2.2 maps C-5 to "BR-05, BR-06, BR-10, BR-12". C-5 at v1.4
+now carves post-mortem *discovery* out of the fidelity rule, and BR-12 already splits discovery
+(this command's own match) from resolution tagging (the driver's). The row is still correct at v1.4 —
+BR-12 honors what remains of C-5 — so no finding beyond F-06's citation-freshness point.
+
 ## Behavioral Flow
 
 ## Business Rules
