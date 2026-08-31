@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.5
+Version: 1.6
 Feature: pdlc-decision-ledger
 ---
 
@@ -14,6 +14,21 @@ Feature: pdlc-decision-ledger
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 # DECISIONS — pdlc-decision-ledger
+
+**v1.6 erratum — two stale `TSPEC v0.7` recitals, and nothing else.** Routed to se-author by both
+REQ **v1.10** and FSPEC **v1.4**, neither of which names a TSPEC version anywhere: the two loci are
+here. The `## Context` measurement-rule passage and DEC-DECLEDGER-10/-12's re-evaluation-trigger row
+each recited "at HEAD (TSPEC **v0.7**, REQ **v1.9** / FSPEC **v1.3** …)" as a claim about HEAD; TSPEC
+is now **v1.3** pinned at REQ v1.10 / FSPEC v1.4, so both recitals named a superseded state. **No
+derived figure moves and no decision changes** — `12500 − 1200 = 11,300`, the ~4,995 bytes of
+project-level headroom and `M-6b`'s 441 are the same at TSPEC v1.3 as at v0.7, and what those two
+passages assert (that the discharge landed and the two sites agree) is still true. Rather than
+re-pin numerals that would go stale on the next erratum round, both sites now say **"at HEAD"** and
+carry no version list: the substance was never version-dependent, and a version numeral in prose is
+guaranteed staleness (`DEC-DOC-01`). The `Baseline` pin in the header table is unmoved at **v1.2**
+and remains this document's only version pin. The v1.4 changelog entry above still names TSPEC v0.7
+because it is a record of what that edit did, not a claim about HEAD. No standing decision is
+re-litigated and no other section moves.
 
 **v1.5 — DEC-DECLEDGER-16's predicate, and nothing else.** Round 4's single Medium, filed
 independently by `pm-review` and `te-review`: the provenance rule was stated **positionally** ("only
@@ -95,8 +110,7 @@ for two rounds TSPEC §3.6 — the cited site for byte figures — was still pin
 Baseline v1.1 and still carried pre-raise *derived* figures (a 6,800-byte allowance, ~495 bytes of
 headroom, the conclusion that the order is live under shipped defaults), while this document derived
 against 12,500 ahead of it. TSPEC's v0.5 erratum landed `ERR-2`'s propagation and its v0.7 erratum
-finished the tensing, so at HEAD (TSPEC **v0.7**, REQ **v1.9** / FSPEC **v1.3** / Baseline **v1.2**)
-the derived figures agree at both sites: §3.6 states `12500 − 1200 = 11,300`, the ~4,995 bytes of
+finished the tensing, so at HEAD the derived figures agree at both sites: §3.6 states `12500 − 1200 = 11,300`, the ~4,995 bytes of
 project-level headroom and `M-6b`'s 441, and every surviving mention of 8,000 there is explicitly
 tensed as retired. The figures this document *quotes* were never affected, because they are
 measurements of the corpus rather than of the bound: 10,859 and 6,305 are current as cited. The
@@ -395,7 +409,7 @@ a reader arriving from that table lands here without guessing.
 | DEC-DECLEDGER-04 | A harvest shows closed decisions being re-opened in *confirmation* rounds specifically; that is the only evidence that would justify paying the byte-identity cost of a wider surface |
 | DEC-DECLEDGER-06 | The first id recorded in two files at once appears at HEAD (`M-5a` currently records none) — precedence then acquires a live witness, and a uniqueness *report* becomes arguable, though a gate still is not |
 | DEC-DECLEDGER-08 | Any future feature earns an edit to `pdlc/engine/`, at which point `MODULE_NAMES` can grow and the one-file constraint — and the serial waves it costs — lifts for this code too |
-| DEC-DECLEDGER-10, DEC-DECLEDGER-12 | Either changes, and every byte figure in TSPEC §3.6 must be re-measured against C-5's `maxBytes` in one pass, not one figure at a time — REQ v1.8's raise to 12,500 (`ERR-2`, now closed) is the worked example of what a single-literal move costs downstream. **That re-measurement was outstanding for two rounds and is now discharged:** TSPEC's v0.5 erratum took REQ v1.8's raise and its v0.7 erratum finished the tensing, so at TSPEC v0.7 (REQ v1.9 / FSPEC v1.3 / Baseline v1.2) §3.6, §4.3, §7.3, D-10 and §9.2 all read against `12500` — `12500 − 1200 = 11,300`, ~4,995 bytes of project-level headroom, `M-6b`'s 441, `ERR-2` marked resolved — and every surviving mention of 8,000 is explicitly tensed as retired. The discharge list is kept here as the worked example of the shape a future one-pass re-measurement takes: the sites a `maxBytes` move touches are §3.6's allowance and headroom arithmetic, §4.3's framing-budget argument, §7.3's shipped-default assertions and their rationale, D-10's restatement, and §9.2's erratum record — enumerated before the move, not discovered one figure at a time |
+| DEC-DECLEDGER-10, DEC-DECLEDGER-12 | Either changes, and every byte figure in TSPEC §3.6 must be re-measured against C-5's `maxBytes` in one pass, not one figure at a time — REQ v1.8's raise to 12,500 (`ERR-2`, now closed) is the worked example of what a single-literal move costs downstream. **That re-measurement was outstanding for two rounds and is now discharged:** TSPEC's v0.5 erratum took REQ v1.8's raise and its v0.7 erratum finished the tensing, so at TSPEC HEAD §3.6, §4.3, §7.3, D-10 and §9.2 all read against `12500` — `12500 − 1200 = 11,300`, ~4,995 bytes of project-level headroom, `M-6b`'s 441, `ERR-2` marked resolved — and every surviving mention of 8,000 is explicitly tensed as retired. The discharge list is kept here as the worked example of the shape a future one-pass re-measurement takes: the sites a `maxBytes` move touches are §3.6's allowance and headroom arithmetic, §4.3's framing-budget argument, §7.3's shipped-default assertions and their rationale, D-10's restatement, and §9.2's erratum record — enumerated before the move, not discovered one figure at a time |
 | DEC-DECLEDGER-15 | **Fired and closed:** REQ v1.8 retyped both C-5 thresholds as non-negative, so REQ C-5 and FSPEC E-7 now agree and this decision spans no gap. Revisit only if a future REQ re-narrows either threshold to positive integers, which would re-break E-7 |
 | DEC-DECLEDGER-16 | The framing constants are written and measured — at that point the 1,200 ceiling re-classes to a measurement with a fixture source, and equalities become assertable **over that newly measured framing size only**. This is not licence to restore `12,059`: that figure is `10,859 + 1,200`, and 1,200 is the ceiling, not the measured framing size, so any block total must be re-derived from the new measurement and re-transcribed, never un-retired as written. The re-measurement travels with DEC-DECLEDGER-10/-12's one-pass trigger. The directional form of the rule, not a positional one, is what promotes to `DOMAIN-CONSTRAINTS.md` |
 
