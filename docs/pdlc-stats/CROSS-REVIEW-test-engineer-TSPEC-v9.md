@@ -26,11 +26,37 @@ The v1.3 changelog row (`TSPEC:113-114`) is neutralised in place rather than rew
 
 ## Architecture
 
-_pending_
+**DEC-ERR-03 re-grounding — did upstream move, and is the compression still faithful?**
+
+v1.7's changelog opens by attesting no upstream movement. I verified that independently rather than reading the attestation, because the *previous* round (v1.6) existed precisely to correct a false no-movement attestation in v1.5:
+
+```
+REQ-pdlc-stats.md    5f3e80519b982f29ab0b6dad30fa776b4be4b2d34085b235ad755890064ed9f8
+FSPEC-pdlc-stats.md  c7d2c832dee586c8e371ec843c0809b167b65dbbeced4dd140934fe68d0ec63d
+```
+
+Both match the pins the document carries (`TSPEC:19`, `TSPEC:63`) to the digit. REQ v1.6 / FSPEC v1.7 are the same bytes v1.6 absorbed. The attestation holds, and this round is a pure defect correction with no upstream decision to absorb — no new `BR-`, `E-` or `AC-` row, no vocabulary rename.
+
+**Is §4.3 still a faithful compression of BR-16 at v1.7?** I re-read FSPEC's BR-16 rule text (`FSPEC:364-380`) against §4.3's rendering:
+
+- BR-16 evaluates the harvested test "over exactly the file set BR-14's numerator sums, so the two never disagree." §4.3 states the same and derives the same consequence — a grammar-failing basename contributes no bytes and counts as no file remaining. Faithful.
+- BR-16 says the `docs/completed/pdlc-advisory-wave-gate/` citation borrows a basename *shape*, and that the directory "carries four of them **alongside** grammar-matching cross-reviews and so reports a measured ratio itself; only the shape is borrowed, not the verdict." §4.3 renders this correctly, including the correction of the earlier revision that misread it as naming the directory harvested. Faithful.
+
+§4.3's runtime-measured numbers for that directory are load-bearing for §6.1's baselines and §7.2's AT-09 row, so I measured them too: 62 `CROSS-REVIEW-*` files, of which 4 are the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form, leaving 58 grammar-matching. The document states 62 / 4 / 58 and concludes `crossReviews.length` is 58 with the harvested disjunct not firing. Correct at HEAD.
 
 ## Interfaces
 
-_pending_
+**Did the edit break anything previously approved?** The diff is 23 insertions / 3 deletions across exactly two places — the v1.7 changelog block and the one table row, plus the neutralising parenthetical in the v1.3 row. No behavioural claim, type, signature, exit code, oracle or code sketch is touched. I checked the seams most likely to be disturbed by a count edit:
+
+| Previously approved element | Status after delta |
+|---|---|
+| §2.1's **ten** co-change sites | Intact. The table still holds 12 rows = 10 sites + 2 completed-sibling document edits, matching the prose "ten … plus two document edits in a completed sibling feature". The 24 − 14 = 10 derivation is untouched. |
+| Packed class `5` → `6` (`_tspec-packed-set.mjs`, sibling TSPEC §5.4 / FSPEC §5.2) | Untouched, and still explicitly held distinct from the copied class. |
+| Copied class `4` → `5` (`MODULE_NAMES`, README) | Untouched. Verified at HEAD: `MODULE_NAMES` is exactly the four modules, and the README sentence prints "four workflow modules" over the same four. The row's warning that the two counts "must not be synchronised to each other" survives verbatim. |
+| `learningsPremises.test.js` title quoted "verbatim at HEAD" | Verified: `:78` reads exactly "MODULE_NAMES is exactly the four canonical workflow modules". |
+| `loop-distribution.test.js` row's `4 + 15 + 5 + 1` → `4 + 15 + 6 + 1` and `vendoredClassWord` ternary arm | Untouched by this edit. |
+
+The one adjacent count that *could* have been wrongly synchronised — the `loop-distribution.test.js` vendored-class-size `5` → `6` — was correctly left alone. That is the trap this row's whole class of defects sets, and the edit did not fall into it.
 
 ## Data Model
 

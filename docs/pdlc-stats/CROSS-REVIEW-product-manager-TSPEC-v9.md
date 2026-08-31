@@ -84,9 +84,39 @@ at that round and nothing in this diff reopens either.
 
 ## Delta-Confirmation Findings
 
+No findings.
+
+Both dispatched items are discharged on measured evidence; the upstream re-grounding surfaced nothing
+new; and no previously approved content was disturbed. This confirmation is approving, so it carries
+no `FINDING:` lines by design.
+
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Non-blocking, for the implementer rather than this document: §2.1 now specifies the corrected title text ("printed `six` → `eight`"). When the wave lands, is it worth having the title's number derive from the literal's `.length` rather than being typed, so this class of stale-count defect cannot recur a third time? The document need not decide this — it is an implementation nicety, and the row as written is unambiguous either way. |
+
 ## Positive Observations
+
+- **The edit reports a measurement, not a printed word.** The failure mode here was subtle: two
+  different numbers (what the set *is*, what the title *says*) had been conflated into one move. The
+  row now states both and keeps them apart — "the title and comment are already stale at HEAD and
+  this feature moves them by one, not from the number they print" is exactly the distinction that
+  prevents an implementer from "correcting" seven to seven and reding the `toEqual`.
+- **It carried the sharper of the two routed framings.** `te-review`'s item was strictly stronger
+  than the one I and `se-author` raised, because it named the stale comment as well as the title. The
+  edit absorbed the stronger framing rather than the first-arriving one, and restated the comment's
+  arithmetic explicitly (`four + one + three`) so the implementer has the target text, not just a
+  target number.
+- **Superseded history is voided in place rather than rewritten.** The v1.3 changelog row keeps the
+  record of what v1.3 wrote while stripping the number's live force. That is the right call for an
+  auditable changelog: silently editing a historical row would have destroyed the trail showing how
+  the count drifted, and leaving it alone would have left a second live count in the document.
+- **The blast-radius claim is falsifiable and I could falsify it.** "No other count moves — §2.1
+  still derives ten" is checkable in four places, and it holds in all four. Erratum changelogs that
+  state their own blast radius in checkable terms are what make a delta confirmation cheap.
+- **Correct restraint on §8.3.** A self-inflicted measurement error was not filed as an upstream
+  erratum. Keeping that section clean is what lets §8.3 stay a reliable signal about FSPEC.
 
 ## Recommendation
 
