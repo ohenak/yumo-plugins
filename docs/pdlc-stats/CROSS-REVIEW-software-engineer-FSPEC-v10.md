@@ -59,6 +59,29 @@ corrections, no rule changed" is accurate against the diff, not merely asserted 
 
 ## Acceptance Tests
 
+**No acceptance test moved.** The diff carries no `AT-*` definition line — AT-15, AT-17, AT-09 and
+every other test are byte-identical to the bytes I approved the oracle content of in v9. What moved
+is the §8 trace table's *record* of which tests pin BR-16, so that is what I checked.
+
+**The `BR-16 | AT-15, AT-17` edge is earned, not decorative.** AT-15's *Then* names BR-16 in its own
+words — the out-of-catalogue cross-review's "bytes reach neither side, so an implementation that
+globs `CROSS-REVIEW-*` into the process total fails here (BR-14, BR-16)". Before this round the
+table claimed AT-17 alone pinned BR-16, which understated the coverage a te-author or PLAN task
+would derive from §8. The added edge now matches the assertion that exists.
+
+**The edge set-equals, in both directions.** I swept every `BR-16` mention inside §6's acceptance
+tests: exactly two tests assert it, AT-15 (§6.6) and AT-17 (§6.6), and the row now lists exactly
+those two — no missing edge and no edge for a test that does not assert the rule. §2's requirement
+trace row for REQ-STATS-06 independently agrees (`BR-14, BR-15, BR-16 | AT-15, AT-16, AT-17`), so
+the two trace tables do not now disagree with each other. This is the failure mode the edit was
+most exposed to: adding one edge to a table whose value is set-equality can leave a second table
+stale, and it did not here.
+
+**AT-15's own counts survive untouched.** The `nine` (six BR-14 spec documents plus three process
+families) and the non-skippable removal probe that makes AT-15 set-equality rather than containment
+are byte-identical; the out-of-catalogue file remains on the neither-list, deliberately outside the
+nine. Nothing in this round's edits perturbs the arithmetic I verified in v9.
+
 ## Edge Cases and Error Scenarios
 
 ## Open Questions
