@@ -186,7 +186,75 @@ co-change `K-9` requires and the new command bullet, so no second batch re-opens
 
 ## Dependencies
 
-*(pending)*
+### Batch derivation
+
+Every `Batch` value is `max(batch of its dependencies) + 1`, sources being batch 1. Re-derived row
+by row:
+
+| Task | Deps (batches) | max + 1 | Column |
+|---|---|---|---|
+| T-01, T-02 | — (source) | 1 | 1 |
+| T-03 … T-11 | T-01 (1), T-02 (1) | 2 | 2 |
+| T-12 | T-03 (2), T-08 (2) | 3 | 3 |
+| T-13 | T-12 (3), T-04 (2) | 4 | 4 |
+| T-14 | T-13 (4), T-05 (2) | 5 | 5 |
+| T-15 | T-14 (5), T-06 (2) | 6 | 6 |
+| T-16 | T-15 (6), T-07 (2) | 7 | 7 |
+| T-17 | T-16 (7), T-09 (2), T-10 (2), T-11 (2) | 8 | 8 |
+| T-18, T-19, T-20 | T-17 (8) | 9 | 9 |
+| T-21 … T-25 | T-20 (9) | 10 | 10 |
+| T-26 | T-18 (9), T-19 (9), T-21 (10) | 11 | 11 |
+| T-27 | T-21 (10) | 11 | 11 |
+
+The graph is acyclic: every edge points from a higher-numbered batch to a strictly lower one. Task
+ids are written identically in the `#` column and in every `Deps` cell — bare `T-NN`, no emphasis
+markers — so the parser reads them as the same tokens.
+
+### Why each ordering edge exists
+
+- **T-03 … T-11 depend on T-02, not merely on T-01.** Every red fixture is built with
+  `fakeStatsIo`; a red written before the double exists fails for the wrong reason and the batch-2
+  split gate cannot distinguish it from a genuine red.
+- **T-12 → T-13 → T-14 → T-15 → T-16 is the single-writer chain** on `pdlc/workflows/lib/stats.mjs`
+  (see the manifest). It is the feature's dominant serialization cost and is taken deliberately: the
+  alternative — splitting the module — is refused by `DEC-STATS-01`, which fixes one module path.
+- **T-17 depends on all three engine-side reds**, not just on T-16. T-10's construction-site count
+  and T-11's scratch-prefix constant both constrain how `bin/cli.mjs` may be written; landing the
+  edit before its structural oracles exist would let a second `StatsParsers` construction site pass
+  unnoticed, which is exactly `K-4`'s residual.
+- **T-18 depends on T-17, not on T-16**, because its end-to-end conjunct runs the shipped command
+  and therefore the production `statsIo` — the real-fs seam that no workflows-side double exercises.
+- **T-20 gates the whole co-change batch.** Its red is what makes batch 10's five tasks a single
+  atomic obligation: `K-1`'s partial-edit failure mode is closed by the oracle being red *before*
+  any enumeration moves, so a batch that lands four clusters and forgets the fifth cannot go green.
+- **T-22 and T-23 are separated deliberately.** `loop-distribution.test.js`'s P7-02 oracle greps the
+  sibling documents' member-count **sentences** and derives the class size from `tspecPackedCount`,
+  and its word map (`6 → "six"`) must agree with the word T-22 writes. They are two files, so they
+  are two tasks in one batch; the coupling is real and is why neither may slip to a later batch.
+- **T-21 and T-24 are not merged**, per `DEC-STATS-01`'s note on `K-3` versus `K-9`: T-24's pair
+  (`package.json` + `coverageInstrumentation.test.js`) sits wholly inside `Unit tests`, while
+  T-21's files straddle the package boundary (`run.test.js` under `Engine tests`,
+  `learningsPremises.test.js` under `Unit tests`), so a partial edit reds a check on each side.
+- **T-26 depends on T-21**, so mutants are measured against the post-co-change tree, with the c8
+  per-file floor already active on `lib/stats.mjs`.
+
+### Integration points
+
+| Point | Direction | Detail |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | read-only consumer | four `export`ed classifiers imported by reference; **no edit to this file in any task** |
+| `pdlc/engine/bin/cli.mjs` | extended | `FLAGS_BY_COMMAND`, `main()`'s `switch`, `USAGE`, three new functions; `validateFlags`, `checkFlags`, `readFlag`, `VALUE_FLAGS` and `launch()`'s non-`dev`/`queue` passthrough are **reused unchanged** |
+| `resolveWorkflowRoot()` | reused unchanged | probes `orchestrate-dev.js` / `orchestrate-queue.js`; `lib/stats.mjs` loads from the resolved root exactly as `lib/loop-session.mjs` does |
+| Vendoring channel | extended | the five enumerations and four pinning test files of the Overview table |
+| `docs/completed/` archive | read-only fixture | T-18's literals are measurements of the archive; a future archive move reds them loudly (RK-4, and the `doc-moves-break-pinned-tests` pattern) — re-measure, never path-rewrite |
+| Required CI checks | unchanged set | no workflow file is added or edited; `pdlc/engine/__tests__/ci-arrangement.test.js` needs no amendment, and no task edits it |
+
+### Prior-phase baseline
+
+T-01 is the `P2-00`-shaped pre-flight gate and is the **first** task in the PLAN. Its `BL-PREREQ`
+set is the four driver classifiers plus `resolveWorkflowRoot`; it asserts **existence and
+importability only**, never the shape a later task creates. Any absent symbol is promoted to
+blocking work before batch 2 is dispatched.
 
 ## Verification
 
