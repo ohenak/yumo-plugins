@@ -58,11 +58,28 @@ exists. The repair is a re-grounding edit, not a design change — the `if` chai
 
 ## Seams
 
-_pending_
+Unaffected, and I checked rather than assumed. §3.2's four driver exports
+(`parseReviewFilename`, `deriveRoundWindow`, `deriveDodRoundIndex`, `parseResolvedMarker`) are the
+only classification seam, and the upstream delta changes no grammar any of them implements — it
+narrows two upstream *predicates* onto the grammars those functions already enforce. §3.1's
+`StatsIo` members, §3.3's public surface, §3.4's CLI wrapper and §3.5's exit codes are untouched by
+the delta, and the FSPEC's error paths, stdout guarantee and JSON envelopes were not edited this
+round.
+
+One seam-adjacent consequence is worth stating positively: because `deriveDodRoundIndex` escapes the
+feature name before matching and `parseReviewFilename` returns `ok: false` for out-of-catalogue doc
+types, the newly explicit upstream sentences ("neither raises the number nor suppresses
+`harvested`"; "a basename failing a grammar contributes no bytes and counts as no file remaining")
+are *inherited from the driver*, not re-coded here. That is the strongest possible form of the
+agreement, and §4.3 already says so.
 
 ## Data structures
 
-_pending_
+`MetricState`, `DodRounds`, the ratio record and §4.2.1's JSON key sets are unchanged by the delta.
+No new state token appears upstream: `harvested` still has the same three producers, `n/a` /
+`unavailable` still has one, and BR-16's precedence over BR-15 is restated in the new FSPEC text in
+the same order the TSPEC implements (`harvested` tested before `specBytes === 0`). The `schemaVersion`
+contract and the exact-key-set conjuncts I approved in v2 are untouched upstream and remain faithful.
 
 ## Verification
 
