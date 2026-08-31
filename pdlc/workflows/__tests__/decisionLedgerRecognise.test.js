@@ -76,7 +76,7 @@
 
 import fc from "fast-check";
 
-describe.skip("T-14: recogniseDecisionRecords — TSPEC §3.2/§3.3, BR-8/F-9, §7.5 P-REC", () => {
+describe("T-14: recogniseDecisionRecords — TSPEC §3.2/§3.3, BR-8/F-9, §7.5 P-REC", () => {
   // ══════════════════════════════════════════════════════════════════════════
   // §3.2 — five conjuncts, one Baseline instance each
   // ══════════════════════════════════════════════════════════════════════════
