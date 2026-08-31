@@ -234,4 +234,34 @@ makes an explicit durability claim about itself that the cascade has falsified.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | delta | local | Site count nine (DECISIONS, 5 places) vs ten (TSPEC §2.1/§7.3/RK-1/§8.4), and the two documents now apply different membership rules to the same table: DECISIONS says the site table holds only falsifiers and excludes `pdlc/README.md` for that reason; TSPEC adds it as a row marked "Pinned by no oracle" | DEC-STATS-01 option table, site table, sweep paragraph, Reversibility, K-1, Standing costs |
+| F-02 | High | delta | local | DEC-STATS-03's named detector prescribes a non-aliasing conjunct over all four exports; `deriveDodRoundIndex` returns a `number` (verified at `orchestrate-dev.js:12384`), so as written it reds a correct pure implementation. TSPEC §6.4 split it by return type; DECISIONS still carries the unsound form. Residuals also record the trigger "Closed by erratum" when upstream states A-B-A is blind to a memo — a cache being one of the three state shapes the trigger names | DEC-STATS-03 Re-evaluation trigger and its detector; Residuals row 2 |
+| F-03 | Medium | delta | local | TSPEC §2.1 states P9-02's title moves "six → seven"; measured at HEAD `c8.include` is seven and `REQUIRED_INCLUDES` is four, so the post-feature count is eight, as DECISIONS K-3 already states. The erratum reproduces the off-by-one K-3 diagnosed. Repair belongs in TSPEC, not in DECISIONS | K-3 vs TSPEC §2.1 `coverageInstrumentation.test.js` row |
+| F-04 | Medium | delta | local | Sweep scope diverges: DECISIONS' query excludes `*/dist/*` (25 files); TSPEC's derivation includes `dist/` as a candidate and filters it (24 − 14 = 10). Both reproduce, but TSPEC's arithmetic does not reproduce under the query K-9 promotes verbatim to `docs/_constraints/DOMAIN-CONSTRAINTS.md`. Cross-Feature: a standing constraint is the affected artifact | K-9 promoted constraint; sweep paragraph; TSPEC §2.1 derivation |
+| F-05 | Medium | delta | local | K-8 says "Seven assertion edits in all" and carries the `vendoredClassWord` ternary separately as "Plus the word map"; TSPEC now folds it in and says eight. Same edit set, but "in all" is false against upstream, and a reader working the row to a checklist count stops one edit short of the edit TSPEC says reds an otherwise-complete change | K-8 |
+| F-06 | Low | delta | nonlocal | DEC-STATS-01's re-evaluation trigger says "fifteen hand-written lists across nine files" and claims the count and the site table "cannot disagree again"; at upstream's ten sites they do. The trigger's actual detector (`MODULE_NAMES.length` exceeding five) is unaffected | DEC-STATS-01 Re-evaluation triggers |
+
+FINDING: High | delta | local | DEC-STATS-01 site table and K-1 | Site count nine vs upstream ten, and the site table's membership rule (falsifiers only) is contradicted by TSPEC adding an explicitly un-oracled `pdlc/README.md` row; the two documents must settle this the same way because PLAN reads both.
+FINDING: High | delta | local | DEC-STATS-03 detector and Residuals | The named purity detector asserts non-aliased results for all four exports, but `deriveDodRoundIndex` returns a `number`, so the conjunct as specified reds a correct implementation; TSPEC has split it by return type and DECISIONS has not followed, and the Residuals row records the trigger as closed when upstream leaves the memo-shaped half open.
+FINDING: Medium | delta | local | K-3 vs TSPEC §2.1 | TSPEC's new "six → seven" title count contradicts K-3's verified seven → eight; measured at HEAD, `c8.include` is seven and `REQUIRED_INCLUDES` is four. Repair belongs upstream in TSPEC; DECISIONS carries the correct arithmetic.
+FINDING: Medium | delta | local | K-9 promoted constraint and sweep scope | DECISIONS' promoted query excludes `*/dist/*` while TSPEC's derivation counts `dist/` as a candidate it then filters, so TSPEC's `24 − 14 = 10` does not reproduce under the rule K-9 promotes repo-wide.
+FINDING: Medium | delta | local | K-8 | "Seven assertion edits in all" is false against upstream's eight; the `vendoredClassWord` ternary is held outside the total in one document and inside it in the other.
+FINDING: Low | delta | nonlocal | DEC-STATS-01 Re-evaluation triggers | "Fifteen hand-written lists across nine files" and its claim that the count and the site table "cannot disagree again" no longer hold against upstream's ten sites.
+
 ## Verdict
+
+DECISIONS does **not** still hold as written against the TSPEC now at HEAD. Two High findings, both
+`delta`. F-02 is the one I would fix first: it is the only finding where following the document
+produces a failing test rather than a wrong sentence. F-01 is the one that needs a decision rather
+than an edit — the site table is either a table of falsifiers or a checklist with named residue, and
+both documents have to say the same thing. F-03 and F-04 are repairs owed upstream in TSPEC; F-05
+and F-06 are restatements in DECISIONS that the cascade has left behind.
+
+Nothing in DEC-STATS-01/02/03's verdicts, the option tables, K-1's partition or the settled material
+of v1–v5 is re-opened here, and the four Positive Observations above stand: the erratum's
+return-type split is a genuine repair, and its residue accounting is the right shape.
+
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 1}
