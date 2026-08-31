@@ -138,8 +138,31 @@ here. I re-litigated none of them.
 
 ## Positive Observations
 
+- The re-grounding was done **before** the routed item was touched, and the header pin was re-derived
+  mechanically (`shasum -a 256`) rather than transcribed. All four pins agree with disk at HEAD.
+- The correction was taken in the direction §7.3 mandates — downstream-to-TSPEC — instead of being
+  argued as a competing design. The v0.7 entry is marked superseded in place rather than rewritten,
+  which keeps the history honest without leaving a live contradictory claim.
+- Both restatement sites name their operands inline *and* explain why, pre-empting the exact
+  wrong-operand wiring §7.3 warns about. That is the harder, more useful form of the citation.
+- The regex-widening instruction travels with the conjunct that falsifies it. An instruction to widen
+  a regex, on its own, has no red; paired with non-empty-slice and resolves-to-exactly-one, it does.
+- The Definition of Done keeps set equality in **both** directions and set-equal-to-empty for notices.
+  No absence-only oracle survived the rewrite.
+
 ## Delta-Confirmation Findings
+
+No findings.
 
 ## Recommendation
 
+**Approved.**
+
+The delta resolves the routed item at all six sites, is a faithful compression of TSPEC v1.2 §7.3 and
+§7.2 at every site it leans on, and breaks nothing previously approved. The PLAN is ready for batches
+3–8.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
