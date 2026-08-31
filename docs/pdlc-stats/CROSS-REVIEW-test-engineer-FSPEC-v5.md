@@ -278,7 +278,35 @@ not here; I note it so the TSPEC author does not treat the single leg as the cei
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Is the granularity split between REQ-STATS-04 (version grammar) and REQ-STATS-06 (bare `CODE_REVIEW-*` prefix) intentional? The erratum narrowed one and not the other in the same commit, which reads deliberate, and BR-16 vs BR-11 would then be intentionally asymmetric. If it is deliberate, say so in one clause at BR-11 so the next editor does not "harmonise" the two and break BR-16. If it is not, the erratum is incomplete and REQ-STATS-06 needs the same narrowing — a REQ edit, not an FSPEC one. (F-01) |
+| Q-02 | Which resolution does EC-21 take — robustness guard below the criterion's altitude, or behaviour REQ-STATS-07 should carry? The answer decides whether §2.1's REQ-STATS-07 row keeps AT-20 and whether the gap row's reason must be distinguishable from a read failure. This subsumes my v4 Q-01, which is still open and now has upstream consequences. (F-02) |
+| Q-03 | Now that all seven §7.3 errata have landed, should §7.3 be rewritten as a resolved-erratum ledger (what was raised, what the REQ decided, at which REQ version) or removed? A ledger has real value for the harvest phase — it is the record that the FSPEC's decisions were vindicated upstream rather than quietly dropped — but only if it is stamped with REQ v1.3 so it is readable as history rather than as live disagreement. (F-03) |
+
+## Positive Observations
+
+- **The FSPEC won every erratum it raised, and that is a measurable outcome, not a compliment.**
+  Seven items were raised in §7.3 against the REQ's wording; the erratum round resolved all seven in
+  the direction the FSPEC had reasoned to, in several cases adopting the FSPEC's own sentences
+  (BR-16's three-way disjunction, §1's "the driver builds that path from a phase it already holds",
+  D-8's "a third bucket would be an independent rule"). A downstream document that decides against
+  its upstream and *documents the decision with its rationale* is what made that possible: the REQ
+  author had a written argument to accept rather than a silent divergence to discover later.
+- **The cascade defect that did land is the one no local review could have caught.** BR-11 was
+  correct at every previous round and is wrong now without a byte of the FSPEC changing. §7.3's
+  bullet even recorded the assumption it depended on ("so this FSPEC introduces no divergence") —
+  which is what let me find it by reading a diff of the *other* document. Recording the assumption a
+  literal reading rests on is the practice that turned an invisible breakage into a one-clause fix.
+- **The empty-directory disposition converged from both ends.** v1 found a contradiction, BR-27 and
+  EC-03 narrowed the FSPEC's behaviour, §7.3 raised the wording, and REQ-STATS-07 now states the
+  zero-state row upstream. Three rounds and one erratum, ending with both documents saying the same
+  thing in their own registers, and AT-26 and §3.2 B5 pinning it.
+- **AT-13's foreign-feature leg predates the criterion that now needs it.** The FSPEC was already
+  testing the post-mortem *listing* rule against a foreign-feature basename while C-5 still denied
+  the rule existed. When the carve-out landed, the coverage was already in place. Tests written to
+  the behaviour rather than to the citation survive upstream edits; that is the general lesson and it
+  is worth carrying to LEARNINGS.
 
 ## Delta-Confirmation Findings
 
