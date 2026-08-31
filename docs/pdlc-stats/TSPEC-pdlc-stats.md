@@ -13,7 +13,28 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.3 | 2026-08-31 |
+| Draft | se-author | 1.4 | 2026-08-31 |
+
+**v1.4 — erratum round 4 (continuation)** (targeted versioned edit; no restructuring, no
+re-litigation). **Upstream moved: FSPEC v1.4 → v1.5.** Re-grounded first. FSPEC v1.5 turns §7.3 into
+a settled record of five closed errata (E-1…E-5) and corrects stale "live disagreement" framing at
+§1's fidelity anchor, BR-06, BR-12, BR-27, EC-09 and §7.1's D-8/D-9 rationales; every E-row records
+its FSPEC sites as **standing unchanged**, and FSPEC states no behavioural change to rule, exit code
+or acceptance. Nothing in §3–§6 is therefore re-derived: this TSPEC never narrated any of those six
+sites as a live divergence — §4.3 already states BR-11/BR-16 as specified behaviour (absorbed at
+v1.2) and §5's `no_docs_root` row already carries D-9/BR-30 — and E-2's C-5 carve-out for post-mortem
+*discovery* leaves §4.3's halt matcher untouched, since this document reaches post-mortems by the
+artifact convention's basename form and never claimed a C-5 divergence there. §8.3's one remaining
+open erratum (FSPEC BR-26/EC-10's absent feature-recognition predicate) is **not** among E-1…E-5 and
+stands; E-5's now-settled zero-state row is what its EC-03/AT-26 argument rests on, so the argument
+strengthens rather than expires. Round-4 review findings
+(`CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md`) were all
+applied at v1.3 and verified present in the body this round, not rewritten. Two edits land: (a) §1's
+co-change cost still restated "four vendoring enumerations", a count v1.2/v1.3 corrected at §2.1,
+§6.4, §7.3 and RK-1 but not at §1 — it now cites §2.1's derived **ten** instead of carrying a second
+number; (b) §6.4's "the first of the four enumerations" is disambiguated as the four **script-side**
+sites (§2.1's sites 1–4), the subset `assertAdditiveOnly` reaches, so it cannot be misread as
+disagreeing with the ten. No behavioural claim, type, signature, oracle or code sketch changed.
 
 **v1.3 — erratum round 4** (targeted versioned edit; no restructuring, no re-litigation). Re-grounded
 on REQ v1.4 / FSPEC v1.4 first — both unchanged since v1.2's grounding, so no upstream decision is
