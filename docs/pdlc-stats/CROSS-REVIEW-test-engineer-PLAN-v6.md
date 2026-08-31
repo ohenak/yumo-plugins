@@ -210,21 +210,6 @@ DEFERRED: the `Status` ledger and the branch's commit subjects have drifted apar
 completion cannot be audited from either alone — worth one reconciliation pass before DoD, but not a
 planning decision to take in a frozen round.
 
-## Delta-Confirmation Findings
-
-The delta resolves all four routed items (my v4 F-01, F-02, F-04, F-05, plus pm F-01, F-02, F-03) and
-breaks nothing that was approved. No High finding is open, delta or inherited. Two findings below,
-both **inherited** and both **nonlocal** — neither was caused by this round's edit, and neither gates
-the PLAN.
-
-| ID | Severity | Provenance | Locality | Description | Section anchor |
-|----|----------|-----------|----------|-------------|----------------|
-| F-01 | Medium | inherited | nonlocal | The `Status` ledger no longer describes the branch. Eighteen tasks have landed `feat(pdlc-stats): T-NN` commits that are ancestors of HEAD (T-02…T-11, T-13…T-20), and T-12's `lib/stats.mjs` landed too, yet only three rows read `✅` (T-01, T-08, T-16). The delta's T-16 flip is itself **correct** — `c3acd694d` is an ancestor and `stats.mjs:451` exports `runStats` — but it is the third partial update to a ledger that is otherwise ~15 rows behind, and it is the one delta site the v1.3 changelog does not mention. A partially-updated ledger reads as authoritative in a way a uniformly-stale one does not: a DoD reviewer scanning the column concludes T-04…T-07 and T-09…T-15 are not started, when their tests and module are on disk. Not gating — every cell is individually true or conservatively stale, no expected value or task definition is affected, and the fix is a mechanical reconciliation. Suggested: reconcile the whole column in one pass and note it in the changelog, or state once that the column is not maintained during implementation and let the wave ledger own completion. | `## Batches` task table, `Status` column; `Status key` line |
-| F-02 | Low | inherited | nonlocal | Task completion cannot be audited from commit subjects either, so F-01 has no cheap cross-check. Most tasks landed under `feat(pdlc-stats): T-NN — …` subjects, but T-12's work (create `lib/stats.mjs`) has no `T-12` subject — the file is first added by `308afef94 docs(pdlc-stats): se PROPERTIES v3 scope section` — and `05315533e docs(pdlc-stats): PM TSPEC cross-review v11 — Architecture` carries substantive T-21/T-22/T-24/T-25-shaped edits to `prepack.mjs`, `fixture-machine.mjs`, `_tspec-packed-set.mjs`, `loop-distribution.test.js` and `coverageInstrumentation.test.js`. This is a commit-hygiene observation about the branch, not a defect in the PLAN, and it changes no task. It is worth recording because it is *why* the anchor-baseline qualifier this round added is load-bearing: implementation is landing under review-shaped subjects, so cited line numbers move without an obvious signal. | Branch history; PLAN `## Batches` task table |
-
-FINDING: Medium | inherited | nonlocal | `## Batches` task table, `Status` column | The `Status` ledger is ~15 rows behind the branch: eighteen tasks have landed `feat(pdlc-stats): T-NN` commits reachable from HEAD, but only T-01, T-08 and T-16 read `✅`. The delta's T-16 flip is factually correct and undocumented in the v1.3 changelog; the residual risk is that a partially-updated column misreads as authoritative to a DoD reviewer. No task definition or expected value is affected. Fix: reconcile the column in one pass, or state that it is not maintained during implementation.
-FINDING: Low | inherited | nonlocal | Branch history / PLAN `## Batches` task table | Commit subjects do not track task completion either, so F-01 has no cheap cross-check: T-12's `lib/stats.mjs` first appears under `308afef94 docs(…): se PROPERTIES v3 scope section`, and `05315533e docs(…): PM TSPEC cross-review v11` carries T-21/T-22/T-24/T-25-shaped source edits. A branch-hygiene observation, not a PLAN defect; recorded because it is why this round's pre-change-baseline anchor qualifier is load-bearing.
-
 ## Positive Observations
 
 - **The anchor fix chose the right axis.** Three findings asked for citation accuracy; the author
@@ -249,6 +234,21 @@ High finding is open. The two findings recorded are inherited and nonlocal: a st
 (Medium) and the branch-hygiene observation that explains why it has no cheap cross-check (Low).
 Neither touches a task definition, a dependency edge, an expected value or a coverage claim, so
 neither gates implementation. The PLAN is testable as written and the batch DAG is sound.
+
+## Delta-Confirmation Findings
+
+The delta resolves all four routed items (my v4 F-01, F-02, F-04, F-05, plus pm F-01, F-02, F-03) and
+breaks nothing that was approved. No High finding is open, delta or inherited. Two findings below,
+both **inherited** and both **nonlocal** — neither was caused by this round's edit, and neither gates
+the PLAN.
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Medium | inherited | nonlocal | The `Status` ledger no longer describes the branch. Eighteen tasks have landed `feat(pdlc-stats): T-NN` commits that are ancestors of HEAD (T-02…T-11, T-13…T-20), and T-12's `lib/stats.mjs` landed too, yet only three rows read `✅` (T-01, T-08, T-16). The delta's T-16 flip is itself **correct** — `c3acd694d` is an ancestor and `stats.mjs:451` exports `runStats` — but it is the third partial update to a ledger that is otherwise ~15 rows behind, and it is the one delta site the v1.3 changelog does not mention. A partially-updated ledger reads as authoritative in a way a uniformly-stale one does not: a DoD reviewer scanning the column concludes T-04…T-07 and T-09…T-15 are not started, when their tests and module are on disk. Not gating — every cell is individually true or conservatively stale, no expected value or task definition is affected, and the fix is a mechanical reconciliation. Suggested: reconcile the whole column in one pass and note it in the changelog, or state once that the column is not maintained during implementation and let the wave ledger own completion. | `## Batches` task table, `Status` column; `Status key` line |
+| F-02 | Low | inherited | nonlocal | Task completion cannot be audited from commit subjects either, so F-01 has no cheap cross-check. Most tasks landed under `feat(pdlc-stats): T-NN — …` subjects, but T-12's work (create `lib/stats.mjs`) has no `T-12` subject — the file is first added by `308afef94 docs(pdlc-stats): se PROPERTIES v3 scope section` — and `05315533e docs(pdlc-stats): PM TSPEC cross-review v11 — Architecture` carries substantive T-21/T-22/T-24/T-25-shaped edits to `prepack.mjs`, `fixture-machine.mjs`, `_tspec-packed-set.mjs`, `loop-distribution.test.js` and `coverageInstrumentation.test.js`. This is a commit-hygiene observation about the branch, not a defect in the PLAN, and it changes no task. It is worth recording because it is *why* the anchor-baseline qualifier this round added is load-bearing: implementation is landing under review-shaped subjects, so cited line numbers move without an obvious signal. | Branch history; PLAN `## Batches` task table |
+
+FINDING: Medium | inherited | nonlocal | `## Batches` task table, `Status` column | The `Status` ledger is ~15 rows behind the branch: eighteen tasks have landed `feat(pdlc-stats): T-NN` commits reachable from HEAD, but only T-01, T-08 and T-16 read `✅`. The delta's T-16 flip is factually correct and undocumented in the v1.3 changelog; the residual risk is that a partially-updated column misreads as authoritative to a DoD reviewer. No task definition or expected value is affected. Fix: reconcile the column in one pass, or state that it is not maintained during implementation.
+FINDING: Low | inherited | nonlocal | Branch history / PLAN `## Batches` task table | Commit subjects do not track task completion either, so F-01 has no cheap cross-check: T-12's `lib/stats.mjs` first appears under `308afef94 docs(…): se PROPERTIES v3 scope section`, and `05315533e docs(…): PM TSPEC cross-review v11` carries T-21/T-22/T-24/T-25-shaped source edits. A branch-hygiene observation, not a PLAN defect; recorded because it is why this round's pre-change-baseline anchor qualifier is load-bearing.
 
 ## Verdict
 
