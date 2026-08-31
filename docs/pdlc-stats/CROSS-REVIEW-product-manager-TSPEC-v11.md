@@ -122,3 +122,41 @@ criterion, and the data model absorbed zero change. The v1.8 entry restates it a
 prediction — "no type, signature, exit code, oracle, code sketch or count outside §8.3's own moves"
 — and I verified it against the diff rather than taking it on trust. Isolating a contested reading to
 prose plus one expected value was good defensive design, and this round is the proof of it.
+
+## Test Strategy
+
+Product lens on tests is narrow: does each acceptance criterion still have a test whose expected
+value is the one REQ requires? One row was in play, and it is now correct in both its value and its
+narration.
+
+**FSPEC AT-17's fourth leg.** I read the leg at its source rather than through TSPEC's summary.
+`FSPEC-pdlc-stats.md:758-766` gives the fixture — four directories each with `LEARNINGS-{feature}.md`,
+the fourth "holding `CODE_REVIEW` files intact plus, as its only `CROSS-REVIEW-` basenames, the
+out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form BR-16 names" — and the *Then*: "all four
+report `harvested` — the third not `n/a`, the fourth not a measured ratio, because files whose bytes
+BR-14 refuses are equally files BR-16 does not count as remaining."
+
+That expected value has not moved; TSPEC always carried `harvested`. What moved is that TSPEC no
+longer tells its downstream the value is provisional. This mattered concretely: `te-author` and the
+implementer read §4.3, and an annotation saying "the row to re-stamp if the reconciliation lands the
+other way" invites either a defensive re-derivation or an actual flip. The replacement text —
+"pinned, not provisional … no alternative expectation stands behind it" — closes that door. The
+downstream cost was the reason F-01 was High rather than cosmetic, and removing the cost is the fix.
+
+**On the expected-value discipline this round is judged against:** the leg's expectation is a literal
+transcription from FSPEC's *Then*, not a value derived by running the code under test, and its
+negative half is paired with a positive on the same path — "not a measured ratio" sits beside "report
+`harvested`". AT-15's neither-list pins the byte half positively (the file reaches neither side).
+That is the shape I want, and the revision did not weaken it.
+
+**Nothing else in the test surface moved.** `PROP-RATIO-08` leg 4 and AT-17 both assert `harvested`
+already. AT-09's four `bad_doc_type` rows are untouched.
+
+**I re-measured §4.3's real-path baseline**, since the delta edited a line adjacent to it and a stale
+measurement would be a live falsehood rather than a wording nit. §4.3 states that
+`docs/completed/pdlc-advisory-wave-gate/` holds 62 `CROSS-REVIEW-*` files, of which 4 are the
+out-of-catalogue form and 58 match the grammar, so the directory reports a **measured** ratio itself.
+At HEAD I count 62 `CROSS-REVIEW-*` basenames and exactly 4 matching
+`^CROSS-REVIEW-[a-z-]+-REVIEW-v[0-9]+\.md$`. The numbers are correct, and the directory's
+independence from the settled clause is real — it holds grammar-matching cross-reviews alongside the
+malformed shape, so it never depended on the disputed reading in either direction.
