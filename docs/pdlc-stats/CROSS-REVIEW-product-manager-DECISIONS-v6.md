@@ -120,7 +120,55 @@ so this confirmation cannot approve.
 
 ## Consequences
 
-_pending_
+What the next DECISIONS edit must change, in priority order. This is a **targeted re-grounding**: no
+restructuring, no re-litigation, no decision reopened.
+
+1. **F-01 — move nine → ten throughout, and replace the README argument with upstream's ruling.**
+   Sites: DEC-STATS-01's *Context* ("Option A's nine sites"), the option-A table row, the *Corrected
+   cost claim* paragraph, K-1's headline ("**nine** co-change sites"), K-1's site-numbering tail
+   ("sites 8 and 9" becomes 8–10 once README is a row), *Reversibility: hard*, and *Standing costs
+   accepted*'s "nine edit sites — five enumerations plus four test files". The paragraph that
+   declines README as a tenth row should be rewritten to record what actually happened: two reviewers
+   reached one placement, TSPEC v1.3 reached the other, and the site table is where it now lives —
+   with the falsifier column stating honestly that this row has **none**, which is the property that
+   originally motivated excluding it. Keep the K-9 ownership; only the accounting moves.
+
+2. **F-02 — restate DEC-STATS-03's detector as TSPEC now specifies it.** The *named detector*
+   paragraph and the *Standing costs accepted* row must say: deep-equal **and non-aliased** over the
+   three object-returning classifiers (`parseReviewFilename`, `deriveRoundWindow`,
+   `parseResolvedMarker`), **A-B-A** over `deriveDodRoundIndex`, all inside one freshly-imported
+   module instance — and must drop "Until it lands", which is no longer true. If DECISIONS wants to
+   keep one sentence of rationale, the load-bearing one is upstream's: deleting the conjunct rather
+   than splitting it would have removed DEC-STATS-03's only mechanical detector.
+
+3. **F-04 — re-ground K-9's promoted constraint on the derivation TSPEC now ships.** This one leaves
+   the feature: it is destined for `docs/_constraints/DOMAIN-CONSTRAINTS.md`. As written it promotes
+   `git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'` → 25 files → nine transcribers. TSPEC's
+   reproducible form is probe `lib/loop-session.mjs`, source-restricted, **24** candidates, one stated
+   filter dropping the **14** pure consumers, **10** sites. Promote the *rule* (repo-scoped never
+   `__tests__/`-scoped; `git grep` not `grep -r`, for NUL files; re-pick the probe when the class
+   changes) with upstream's **worked query and numbers**, plus the occurrence-not-file clause my v5
+   F-01 asked for — otherwise the durable artifact ships a query whose count no longer reproduces the
+   document that cites it.
+
+4. **F-03 — K-8's "Seven assertion edits in all" becomes eight.** TSPEC's row now folds P7-02's
+   `vendoredClassWord` ternary into the count. DECISIONS already owns that edit, as a separate "Plus
+   the word map K-7 depends on" clause, so the *work* agrees and only the headline number does not —
+   but the headline is what a task-sizing PLAN author reads.
+
+5. **F-05 — do not adopt TSPEC's "six → seven" for P9-02's title; route it back.** DECISIONS is the
+   correct document here (seven entries at HEAD, eight after the feature). Add nothing to DECISIONS
+   beyond, at most, a clause naming the divergence; the erratum is owed to TSPEC §2.1.
+
+6. **F-06 (inherited, non-gating) — my v5 F-01 remains open.** Option B is still priced at four
+   sites; `loop-distribution.test.js:186`'s `(4 + 15 + 1)` holds the engine `lib/` class a second
+   time. It is a rejected option's price, it does not touch the chosen option, and it was
+   *Approved with minor changes* at v5. Fold it into the same edit if convenient; it does not gate.
+
+**What is not affected.** Chosen option A, DEC-STATS-02, DEC-STATS-03's substance and trigger,
+K-2/K-4/K-5/K-6/K-7, the sibling-document carve-out, the exclusion-set and non-feature-directory
+material, and the project-level decisions. Phase D is not blocked on a re-decision — only on a
+re-grounding pass.
 
 ## Positive Observations
 
