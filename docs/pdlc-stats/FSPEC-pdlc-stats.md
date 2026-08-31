@@ -13,7 +13,12 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.6 | 2026-08-31 |
+| Draft | pm-author | 1.7 | 2026-08-31 |
+
+Revision (v1.7): three record corrections, no rule changed. BR-16's citation of
+`docs/completed/pdlc-advisory-wave-gate/` said "two" out-of-catalogue cross-reviews; it holds four,
+as BR-06 and AT-09 already state. §8's BR-16 trace row gains AT-15, whose *Then* asserts BR-16.
+§7.3 row E-5 now cites AT-20 and AT-26, the oracles §8's BR-27 row names, instead of AT-19.
 
 Revision (v1.6): two carried findings. BR-16 now cites
 `docs/completed/pdlc-advisory-wave-gate/` for the malformed *basename shape* only — that directory
@@ -366,7 +371,7 @@ contributes no bytes to the process side and counts as no file remaining. A dire
 `CROSS-REVIEW-` basenames are the out-of-catalogue
 `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files BR-06 reports as malformed reports `harvested`, not a
 measured ratio. That basename shape is cited from `docs/completed/pdlc-advisory-wave-gate/`, which
-carries two of them **alongside** grammar-matching cross-reviews and so reports a measured ratio
+carries four of them **alongside** grammar-matching cross-reviews and so reports a measured ratio
 itself; only the shape is borrowed, not the verdict. A
 stray `CODE_REVIEW-{feature}-draft.md` or foreign `CODE_REVIEW-` file does not hold the DoD family
 open. Post-mortems survive harvest while cross-reviews and DoD reviews do not, so a
@@ -886,7 +891,7 @@ wrong (EC-16, BR-06).
 | BR-13 | AT-14, AT-14b |
 | BR-14 | AT-15 |
 | BR-15 | AT-16, AT-06 |
-| BR-16 | AT-17 |
+| BR-16 | AT-15, AT-17 |
 | BR-17 | AT-01 |
 | BR-18 | AT-18, AT-20, AT-06, AT-19 |
 | BR-19 | AT-06, AT-10, AT-16, AT-25 |
@@ -961,7 +966,7 @@ settled.
 | E-2 | REQ-STATS-05 requires a post-mortem listing C-5 defines nowhere (software-engineer FSPEC v1 F-03, High) | REQ v1.4: C-5 states the carve-out — post-mortem *discovery* is REQ-STATS-05's own, fidelity binds the `RESOLVED:` marker, not the listing | §1, BR-12 |
 | E-3 | REQ-STATS-03's malformed disposition swallows pipeline-authored `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files (test-engineer FSPEC v1 F-01, High) | REQ v1.4: REQ-STATS-03 decides the label explicitly — those names are malformed, one label stands, a third bucket would be an independent rule C-5 forbids | D-8, BR-06 |
 | E-4 | REQ-STATS-09's *Given* sweeps in the no-`docs/`-root case (software-engineer FSPEC v2 F-02, Medium) | REQ v1.4: the *Given* now scopes itself to a repository whose `docs/` root is present and readable, and names a missing or unreadable root a root failure | D-9, EC-09, BR-30 |
-| E-5 | REQ-STATS-07's gap wording does not describe a zero-state row (software-engineer FSPEC v2 F-04, Medium) | REQ v1.4: the criterion now states a readable but empty directory "is not a gap but a normal row whose metrics report their zero states" | BR-27, AT-19 |
+| E-5 | REQ-STATS-07's gap wording does not describe a zero-state row (software-engineer FSPEC v2 F-04, Medium) | REQ v1.4: the criterion now states a readable but empty directory "is not a gap but a normal row whose metrics report their zero states" | BR-27, AT-20, AT-26 |
 
 Two Low findings remain recorded but route nowhere: **REQ-STATS-02's state enumeration
 over-distributes across the ACs it names** (test-engineer v3 F-03) and **REQ-STATS-08's conjunct (b)
