@@ -13,7 +13,9 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.0 | 2026-08-31 |
+| Draft | se-author | 1.1 | 2026-08-31 |
+
+**v1.1 (round 1 revision).** Addresses `CROSS-REVIEW-{product-manager,test-engineer}-PLAN-v1.md`: AT-15's symbolic-link leg gets a real-fs falsifying test in T-18 plus an `lstat`-not-`stat` structural conjunct in T-10 (te F-01); T-01 cites `pdlc/engine/lib/run.mjs` for `resolveWorkflowRoot` (te F-02); T-04 names the `unmeasurable`/`harvested` mutant's dedicated fixture and T-26 declares it authors no test file (te F-03); T-10 regains the parser-identity pass-through conjunct (te F-04); the "Claims verified" measurements are corrected — three `lib/` modules, 20 helper modules (te F-05, pm F-02/F-04); T-18's dependency rationale states its seam and T-02's `realStatsIo()` gains an equivalence pin (te F-06); T-24 names the second P9-02 test (te F-07); T-09's conjunct takes `--cwd` (te F-08); T-23 counts nine assertion edits and names the ninth (te F-09); the co-change premise and the constraint T-21 promotes are scoped to runtime-reachable modules with `document-oracles.mjs` as the worked exclusion (pm F-01); AT coverage reads "at least one task" (pm F-03). File Ownership Manifest gives T-12…T-16 one row each so the PLAN contract lint parses them.
 
 ## Overview
 
