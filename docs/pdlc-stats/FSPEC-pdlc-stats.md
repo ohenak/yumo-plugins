@@ -76,20 +76,20 @@ under-specifies the command.
 | REQ criterion | Behavioral surface | Business rules | Acceptance tests |
 |---|---|---|---|
 | REQ-STATS-01 single-feature human-readable stats | §3.1 Flow A; §4.3 human rendering | BR-01, BR-02, BR-03, BR-17 | AT-01, AT-02, AT-03 |
-| REQ-STATS-02 machine-readable `--json` | §3.3 Flow C; §4.4 JSON document | BR-18, BR-19, BR-20, BR-21 | AT-04, AT-05, AT-06 |
+| REQ-STATS-02 machine-readable `--json` | §3.3 Flow C; §4.4 JSON document | BR-20, BR-21, BR-22, BR-24 | AT-04, AT-05, AT-06 |
 | REQ-STATS-03 review rounds by document type | §3.1 step 5; §4.2 | BR-05, BR-06, BR-07, BR-08, BR-09 | AT-07, AT-08, AT-09, AT-10 |
 | REQ-STATS-04 DoD-round count | §3.1 step 6; §4.2 | BR-10, BR-11 | AT-11, AT-12 |
 | REQ-STATS-05 halts by phase and resolution | §3.1 step 7; §4.2 | BR-12, BR-13 | AT-13, AT-14 |
 | REQ-STATS-06 process-to-spec byte ratio | §3.1 step 8; §4.2 | BR-14, BR-15, BR-16 | AT-15, AT-16, AT-17 |
-| REQ-STATS-07 fleet mode, gaps explicit | §3.2 Flow B | BR-22, BR-23, BR-24, BR-25 | AT-18, AT-19, AT-20 |
-| REQ-STATS-08 read-only, no network, no git writes | §3.4; §4.5 | BR-26, BR-27 | AT-21, AT-22 |
-| REQ-STATS-09 unknown feature reported | §3.1 step 3; §5 EC-01 | BR-04, BR-28 | AT-23, AT-24 |
+| REQ-STATS-07 fleet mode, gaps explicit | §3.2 Flow B | BR-18, BR-23, BR-25, BR-26, BR-27 | AT-18, AT-19, AT-20 |
+| REQ-STATS-08 read-only, no network, no git writes | §3.4; §4.5 | BR-28, BR-29 | AT-21, AT-22 |
+| REQ-STATS-09 unknown feature reported | §3.1 step 3; §5 EC-01 | BR-04, BR-30 | AT-23, AT-24 |
 
 ### 2.2 Constraint coverage
 
 | REQ constraint | Where honored |
 |---|---|
-| C-1 read-only surface | BR-26, BR-27; AT-21, AT-22 |
+| C-1 read-only surface | BR-28, BR-29; AT-21, AT-22 |
 | C-2 feature-directory discovery, never summed | BR-02; AT-02, EC-02 |
 | C-3 spec-document set, fixed | BR-14 (spec side enumeration) |
 | C-4 process-artifact set, fixed | BR-14 (process side enumeration) |
@@ -100,9 +100,9 @@ under-specifies the command.
 | REQ goal | Where honored |
 |---|---|
 | G-1 single-feature stats | §3.1, BR-01 |
-| G-2 machine-readable mode | §3.3, BR-18 |
-| G-3 fleet mode with explicit gaps | §3.2, BR-22, BR-25 |
-| G-4 read-only, always | §3.4, BR-26 |
+| G-2 machine-readable mode | §3.3, BR-20 |
+| G-3 fleet mode with explicit gaps | §3.2, BR-25, BR-27 |
+| G-4 read-only, always | §3.4, BR-28 |
 
 ### 2.4 Non-goals restated as behavioral silence
 
@@ -148,10 +148,10 @@ reviews survive reports `harvested` rows *and* a measured DoD number in the same
 |---|---|---|---|
 | B1 | Validate flags as A1. | — | Usage error → exit 1. |
 | B2 | Read the `docs/` root. | Readable? | No → EC-09, exit 1 (the one non-zero exit fleet mode has). Yes → B3. |
-| B3 | Discover candidate features: immediate **directories** under `docs/`, minus BR-22's exclusion set; plus the immediate directories under `docs/completed/`. | Is this entry a directory? Is its name in the exclusion set? | Loose files at either root are never candidates (BR-23). |
+| B3 | Discover candidate features: immediate **directories** under `docs/`, minus BR-25's exclusion set; plus the immediate directories under `docs/completed/`. | Is this entry a directory? Is its name in the exclusion set? | Loose files at either root are never candidates (BR-25). |
 | B4 | Assert the exclusion set is set-equal to the non-feature directories actually present at the `docs/` root. | Equal? | No → EC-10: the report still prints, and the unexpected directory is reported as an unclassified entry rather than silently joining or silently vanishing. |
-| B5 | For each candidate, run A4–A8. | Did the feature's computation fail to produce a metric set (unreadable directory, no artifacts at all)? | Yes → a gap row naming the feature and the reason (BR-25). No → a normal row. |
-| B6 | Render (Flow C) and exit 0. | — | Gap rows are rows, not failures: fleet mode exits 0 whenever it produced its report (BR-24). |
+| B5 | For each candidate, run A4–A8. | Did the feature's computation fail to produce a metric set (unreadable directory, no artifacts at all)? | Yes → a gap row naming the feature and the reason (BR-27). No → a normal row. |
+| B6 | Render (Flow C) and exit 0. | — | Gap rows are rows, not failures: fleet mode exits 0 whenever it produced its report (BR-27). |
 
 A feature that appears under both `docs/` and `docs/completed/` is reported **once**, from
 `docs/{feature}/`, per BR-02 — never summed and never listed twice.
@@ -163,7 +163,7 @@ A feature that appears under both `docs/` and `docs/completed/` is reported **on
 | C1 | Choose a mode. | Was `--json` supplied? | Yes → C3. No → C2. |
 | C2 | Human mode: render §4.3's table(s) to stdout. | Single feature or fleet? | One feature block, or one row per feature plus the gap rows. |
 | C3 | JSON mode: serialize §4.4's document to stdout. | Single feature or fleet? | The 5-key single-feature document, or the 2-key fleet document. |
-| C4 | Emit. | Is there any diagnostic to say? | Diagnostics go to stderr in **both** modes; in JSON mode stdout carries the JSON document and nothing else (BR-18). |
+| C4 | Emit. | Is there any diagnostic to say? | Diagnostics go to stderr in **both** modes; in JSON mode stdout carries the JSON document and nothing else (BR-20). |
 
 The two renderings consume the same computed metric set. That is what makes REQ-STATS-02's
 set-equality checkable: a metric that reached the human table without reaching the JSON document
