@@ -141,3 +141,18 @@ enumeration.
   to review.
 
 ## Recommendation
+
+**Approved** — no findings.
+
+The single High finding that blocked v9 is resolved at its named site and the corrected claim is
+true at HEAD: `docs/completed/pdlc-advisory-wave-gate/` carries four out-of-catalogue
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` files on `origin/main`, and BR-06 and AT-09 — both correct and
+both untouched — now agree with BR-16 instead of contradicting it. The two record corrections are
+sound: §8's `BR-16 | AT-15, AT-17` edge matches the two acceptance tests that actually assert BR-16
+and set-equals in both directions, and §7.3 row E-5 now cites the zero-state oracles §8's BR-27 row
+names. No rule, exit code, enum token, JSON field or acceptance-test oracle moved.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
