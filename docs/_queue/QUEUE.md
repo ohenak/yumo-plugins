@@ -130,6 +130,23 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
 | 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |
 | 26 | blocked | pdlc-loop-automation-followups | docs/pdlc-loop-automation-followups/REQ-pdlc-loop-automation-followups.md | pdlc-engineering-loop |  |
+| 27 | pending | pdlc-stats | docs/pdlc-stats/REQ-pdlc-stats.md | — |  |
+| 28 | blocked | pdlc-review-tightenings | docs/pdlc-review-tightenings/REQ-pdlc-review-tightenings.md | pdlc-stats |  |
+| 29 | blocked | pdlc-queue-autoresolve | docs/pdlc-queue-autoresolve/REQ-pdlc-queue-autoresolve.md | pdlc-stats |  |
+| 30 | blocked | pdlc-phase-g | docs/pdlc-phase-g/REQ-pdlc-phase-g.md | pdlc-decision-ledger, pdlc-stats |  |
+| 31 | blocked | pdlc-size-tiers | docs/pdlc-size-tiers/REQ-pdlc-size-tiers.md | pdlc-phase-g |  |
+| 32 | blocked | pdlc-two-axis-dod | docs/pdlc-two-axis-dod/REQ-pdlc-two-axis-dod.md | pdlc-size-tiers |  |
+| 33 | pending | pdlc-init | docs/pdlc-init/REQ-pdlc-init.md | — |  |
+
+**Rows 27–33 added 2026-08-30 from `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` (§8
+rollout order).** They sequence the minimal-loop redesign: measurement first (27), then the
+always-on review tightenings (28), unattended halt resolution (29), the Phase G experiment (30),
+size tiers (31), the two-axis DoD collapse (32), and repo scaffolding (33). Row 30's dependency
+on `pdlc-decision-ledger` (M4 — developed as a direct single-feature run, no queue row) resolves
+against the base branch during Phase-0 readiness triage once its PR merges, per the convention
+above. Row 32 additionally carries `ready: false` in its REQ: it contradicts a standing operator
+decision (see the REQ's gating precondition) and must not be picked up until that re-decision is
+recorded. Row 33 is independent of the rest and may run whenever picked.
 
 **Row 26 (`pdlc-loop-automation-followups`) added 2026-08-25 to bind `pdlc-engineering-loop`'s
 prose-only deferrals (CODE_REVIEW-pdlc-engineering-loop-v2 §4(b), B-03…B-08).** REQ §8 defers five
