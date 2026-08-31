@@ -136,11 +136,50 @@ not be edited to guess the outcome.
 
 ## Open Questions
 
-_TBD_
+**Why the drift was not caught in-round (F-02).** The v1.5 changelog opens:
+
+> Re-grounded on REQ / FSPEC HEAD first — both are the versions this round's dispatch pins
+> (`REQ sha256:5f3e8051…`, `FSPEC sha256:c7d2c832…`) and neither moved since v1.4's grounding, so no
+> upstream decision is absorbed.
+
+The two hashes are correct and current — I recomputed both. The claim attached to them is not. At
+v1.4 the TSPEC grounded on **FSPEC v1.5** and **REQ v1.4**; HEAD carries **FSPEC v1.7** and **REQ
+v1.6**. In that window FSPEC took a BR-16 rewrite (v1.6, basename-shape-only citation), a BR-16
+count correction and an AT-15 trace row (v1.7), and REQ took the harvested-halt withdrawal (v1.5–v1.6).
+Both moved, substantially. "Neither moved" is what let the round skip the re-grounding that would
+have surfaced F-01.
+
+This is a Medium rather than a High because it is a record error rather than a spec error, but it is
+the proximate cause of the High, so I would rather it be corrected than quietly overwritten by the
+next changelog entry. Citing a current hash is not the same check as diffing against the previously
+grounded one; the hashes agreed with the dispatch and were read as agreeing with v1.4.
+
+**One thing that got better on its own.** FSPEC v1.7 corrected BR-16's count of out-of-catalogue
+cross-reviews in `docs/completed/pdlc-advisory-wave-gate/` from two to **four**. §2.1's AT-09 row and
+§6.1's measured-baseline inventory already said four (`:863`, `:877`). The TSPEC was right and the
+FSPEC has now converged on it — no action, but it confirms the §6.1 baselines are genuinely
+re-measured rather than transcribed from FSPEC.
+
+**Still open, unchanged and correctly still open.** BR-26/EC-10 remains a TSPEC→FSPEC erratum, §4.4
+still ships its discovery predicate as stated-provisional with a blast-radius table, and RK-1's two
+un-oracled residues (`PK-26`'s existence row; `pdlc/README.md`'s prose count word) remain named
+accepted residue rather than implied coverage. I re-checked that the ten-site correction did not
+sweep any of these closed by association. It did not.
 
 ## Recommendation
 
-_TBD_
+**Needs revision**
+
+The dispatched erratum item is fully landed and I would have approved it on its own. The blocker is
+independent of it: §4.3 cites REQ-STATS-06 for a scoping REQ v1.6 no longer carries, and now
+contradicts, on the exact fixture that pins AT-17's fourth leg. Per DEC-ERR-03 that is a finding in
+this confirmation even though it is outside the dispatched list.
+
+To resolve: reconcile REQ-STATS-06's "survivor" sentence with FSPEC BR-16's "reports `harvested`"
+disposition at the owning phase, then re-stamp §4.3's two `at v1.4` pins and its
+"FSPEC §7.3 records it closed" clause to the settled outcome. F-01 is tagged `inherited`, so this
+routes back rather than halting. F-02 (the changelog's "neither moved") should be corrected in the
+same versioned edit.
 
 ## Delta-Confirmation Findings
 

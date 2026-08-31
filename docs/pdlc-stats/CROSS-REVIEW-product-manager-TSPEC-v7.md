@@ -138,7 +138,57 @@ grounding claim is one a reader can rely on.
 
 ## Test Strategy
 
-_(pending)_
+### Ground truth for the disputed path
+
+`docs/completed/pdlc-advisory-wave-gate/` at HEAD, counted by basename:
+
+| Class | Count | Examples |
+|---|---|---|
+| `CROSS-REVIEW-*` total | 62 | — |
+| Out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` | **4** | `CROSS-REVIEW-product-manager-REVIEW-v{1,2}.md`, `CROSS-REVIEW-test-engineer-REVIEW-v{1,2}.md` |
+| Grammar-matching (`BR-14`'s `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`) | **58** | `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-software-engineer-REQ-v6.md`, … |
+
+Under `BR-16`, `crossReviews.length` for this directory is 58, not 0. The harvested disjunct
+`crossReviews.length === 0` does not fire. The directory reports a **measured ratio** — exactly what
+FSPEC v1.7 says, and the opposite of what TSPEC §4.3 says FSPEC says.
+
+### Why this is High and not a wording nit
+
+TSPEC §4.3's *rule* is correct, and its code sketch is correct. If the divergence stopped there I
+would raise it Low. It does not, for three reasons:
+
+1. **It misdescribes a real path the suite binds to.** §7 pins tests against the live
+   `docs/completed/` archive on purpose (`RK-4` accepts the coupling). A test author reading §4.3
+   could reasonably write a real-path expectation that `pdlc-advisory-wave-gate` reports
+   `harvested`. It would go red — and the red would look like a production bug, not a spec typo.
+
+2. **It points at the wrong fix.** The natural way to make `harvested` true for that directory is to
+   widen cross-review membership from `parseReviewFilename(...).ok` to a bare `CROSS-REVIEW-*` glob.
+   That is precisely the mutation FSPEC's `BR-16` sentence exists to kill ("an implementation that
+   globs `CROSS-REVIEW-*` into the process total fails here (`BR-14`, `BR-16`)"), and it would break
+   `BR-14`'s numerator at the same time. A wrong worked example that recommends the wrong repair is
+   materially more dangerous than one that is merely inert.
+
+3. **TSPEC already contradicts itself.** §7.2's `AT-09` row asserts `TSPEC` row = `6` for this same
+   directory, off `CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v6.md` — a grammar-matching
+   file — and lists the four `REVIEW` basenames as `malformed`. §4.3 and §7.2 cannot both be right
+   about the same path, and §7.2 is the one that matches HEAD.
+
+### What would close it
+
+A minimal, local edit to the §4.3 sentence — no restructuring, no re-litigation of the rule:
+
+- Say that `BR-16` cites `pdlc-advisory-wave-gate` for the **basename shape only**, and that the
+  directory itself reports a measured ratio because it carries grammar-matching cross-reviews
+  alongside the four out-of-catalogue ones. Mirror FSPEC's "only the shape is borrowed, not the
+  verdict".
+- Move the `harvested` verdict onto the construct that actually earns it — a directory whose *only*
+  `CROSS-REVIEW-` basenames are the out-of-catalogue form. §4.3 already has that construct to hand
+  in `AT-17`'s fourth leg, which it describes correctly one paragraph later.
+- Re-pin the citation from "FSPEC `BR-16` at v1.4" to `BR-16` at v1.7.
+
+`F-02` closes by correcting the changelog's grounding sentence to record that FSPEC moved v1.5 →
+v1.7 and to name what was absorbed from it.
 
 ## Open Questions
 
