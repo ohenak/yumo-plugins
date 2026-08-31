@@ -246,9 +246,21 @@ behavioral equivalence (option C) is a sample, and a sample cannot discharge a u
 **Reversibility: easy.** Switching to a static import is a local change in `lib/stats.mjs` and
 deletes the oracle rather than requiring a new one.
 
-**Re-evaluation trigger.** The driver exports gain state — a closure over configuration, a cache, a
-module-level mutable. Sharing a function reference stops being sufficient the moment two callers can
-observe each other through it, and the seam would need to share the state, not the function.
+**Re-evaluation trigger, and its detector.** The driver exports gain state — a closure over
+configuration, a cache, a module-level mutable. Sharing a function reference stops being sufficient
+the moment two callers can observe each other through it, and the seam would need to share the
+state, not the function.
+
+The identity oracle is structurally blind to this trigger's arrival: adding a module-level cache
+inside `deriveRoundWindow` changes no reference, so `===` stays true while the property it stands
+for is gone — and the recording double of TSPEC §6.1 wraps the real parsers, so it inherits the
+shared state rather than exposing it. The trigger therefore carries a **named detector**: a purity
+conjunct on the four exports — call each classifier twice with the same input in a fresh module
+instance and assert deep-equal, non-aliased results, so a cache or a mutable that makes call *n*
+depend on call *n−1* goes red. That conjunct belongs with the identity oracle in TSPEC §6.4 and is
+routed there as an erratum rather than being restated as a rule of this document (K-6). Until it
+lands, the residual is explicit and is listed under Standing costs accepted: the trigger is
+observable only by review of `orchestrate-dev.js`.
 
 ## Consequences
 
