@@ -81,6 +81,24 @@ What I re-measured at HEAD rather than taking from either document.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Section anchor |
+|----|----------|-----------|----------|----------------|
+| F-01 | Medium | delta | nonlocal | `## Residual risks carried into implementation` (and T-04 / the AC coverage table's `AT-17` row / the DoD's "All 29 FSPEC acceptance tests pass"). TSPEC §8.3 now reads "**Two** remain open", and the second open erratum — REQ-STATS-06 v1.6 ("a grammatical basename outside the driver's document-type catalogue is **a survivor**", so a directory holding only those is **measured**) against FSPEC BR-16 v1.7 (same file counts as no file remaining, directory reports **`harvested`**) — decides the expected value of a named acceptance test. §4.3 says so in terms: AT-17's fourth leg "is the single place the contested scoping above becomes an assertion", and it is one of exactly three sites that re-stamp when the reconciliation lands. The PLAN routes AT-17 wholly to T-04 ("AT-17's four directories") with no marker, and its Residual risks table — the table whose stated purpose is "Named so the DoD reviewer inherits them rather than discovering them" — carries the *other* open erratum (RK-5's leading-underscore predicate, with an explicit blast radius) and not this one. Fix: add one Residual row sourced to TSPEC §8.3 / §4.3 — contested REQ-STATS-06-versus-BR-16 scoping, blast radius `computeFeatureStats`'s harvested disjunct plus T-04's AT-17 fourth-leg expectation, disposition "T-04 asserts BR-16's `harvested` as TSPEC §4.3 directs; re-stamps if the reconciliation lands on REQ-STATS-06's reading" — and a half-sentence in T-04 flagging that leg. No task, dependency or DoD item changes. |
+
+FINDING: Medium | delta | nonlocal | Residual risks table does not inherit TSPEC §8.3's second open erratum (REQ-STATS-06 v1.6 vs FSPEC BR-16 v1.7), whose reconciliation re-stamps T-04's AT-17 fourth-leg expected value
+
+Provenance is `delta` because the TSPEC edit under confirmation is what created the second open
+erratum — at the version I approved the PLAN against, §8.3 said "One remains open" and the PLAN's
+single provisional-erratum row was a complete inheritance. Locality is `nonlocal` because the PLAN's
+own bytes did not move, so no PLAN section is inside the round's edit. Severity is Medium, not High:
+no acceptance criterion is dropped, narrowed or reinterpreted by the PLAN, every task is executable
+as written, and the TSPEC has already made the interim choice (implement BR-16) that keeps
+implementation unblocked. What is missing is the hand-off of a named, upstream-acknowledged risk to
+the DoD reviewer — a completeness gap in the PLAN's own inheritance mechanism, not a fidelity break.
+Scope, for the harvest phase, is `Local`: the row belongs in this feature's PLAN, and the general
+lesson (a downstream document's residual-risk table should be re-checked whenever an upstream's open-
+erratum count moves) is already carried by the cascade-confirmation protocol itself.
+
 ## Questions
 
 ## Positive Observations
