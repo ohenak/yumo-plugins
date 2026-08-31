@@ -117,7 +117,23 @@ oracles green — are stated over TSPEC oracles, none of which the erratum moved
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+No finding is caused by this cascade. The two below are the unaddressed Lows from v4, carried at
+unchanged severity because the PLAN was not edited; both are `inherited` and `nonlocal` — they sit
+outside anything this round touched, since this round touched nothing in the PLAN at all.
+
+| ID | Severity | Provenance | Locality | Scope | Finding | Requirement ref |
+|----|----------|-----------|----------|-------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | Local | T-24's second P9-02 test title is claimed transcribed verbatim but prints backticks around `` `lib/` `` that the source string at `coverageInstrumentation.test.js:278` does not carry. Unchanged from v4 F-02. | te F-04 (round 2), TSPEC §6.4 |
+| F-02 | Low | inherited | nonlocal | Local | T-23's citation of the `assertAdditiveOnly` message anchors `loop-distribution.test.js:73-77`; the quoted message sits at `:77` and its `assert.equal` statement spans `:74-78`. Quotation exact, anchor off by one. Unchanged from v4 F-03. | DEC-DOC-01 |
+
+**Resolved since v4, recorded rather than carried:** v4's F-01 (Medium, inherited) — the Residual-risks
+table naming one open erratum where TSPEC §8.3 named two — is **closed by this cascade**. The second
+erratum was the REQ-STATS-06-versus-BR-16 disagreement, and REQ v1.7 decides it. There is nothing left
+for the table to carry, so the gap I flagged no longer exists. I am not re-raising it, and the DoD
+reviewer no longer inherits it.
+
+FINDING: Low | inherited | nonlocal | T-24, second P9-02 title transcription | Claimed verbatim, but adds backticks around `lib/` that the source string at `coverageInstrumentation.test.js:278` does not carry. Carried unchanged from v4 F-02; not caused by this cascade.
+FINDING: Low | inherited | nonlocal | T-23, `assertAdditiveOnly` message citation | Quoted text exact; anchor `loop-distribution.test.js:73-77` off by one (message at `:77`, statement `:74-78`). Carried unchanged from v4 F-03; not caused by this cascade.
 
 ## Questions
 
