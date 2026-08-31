@@ -301,6 +301,141 @@ visibly absent. This test is evaluated **before** BR-15's zero-denominator test:
 whose spec documents are also gone reports `harvested`, not `n/a`, because the more specific
 explanation is the true one.
 
+### 4.3 Human-readable rendering
+
+**BR-17 (single-feature layout).** Human mode prints one block per feature: a header naming the
+feature and the artifact directory it was read from (so BR-02's preference is visible, not
+inferred), then the four metrics in REQ-STATS-01's order — review rounds, DoD rounds, halts, byte
+ratio. Review rounds render as a two-column table, document type and value, one row per BR-09
+document type in catalogue order. Malformed basenames render as a labelled list under that table,
+omitted entirely when there are none. Halts render as a two-column table, phase and resolution,
+replaced by an explicit "none" line when the halt set is empty — a blank region would be
+indistinguishable from a metric that failed to render. The ratio line carries the rendered value
+and, in parentheses, the two byte totals it came from, so an operator can sanity-check a surprising
+ratio without re-deriving it.
+
+```
+Feature: pdlc-loop-economics   (docs/completed/pdlc-loop-economics)
+
+Review rounds
+  REQ           3
+  FSPEC         harvested
+  TSPEC         unmeasurable (colliding role: test-engineer)
+  PLAN          harvested
+  PROPERTIES    harvested
+  DECISIONS     harvested
+  malformed: CROSS-REVIEW-pm-REQ-v01.md
+
+DoD rounds      2
+Halts           none
+Byte ratio      1.42  (process 123456 B / spec 87000 B)
+```
+
+The block above is illustrative of layout and token spelling, not a fixture: the numbers are not a
+measurement of that directory.
+
+**BR-18 (fleet layout).** Fleet mode prints one row per feature: the feature name, one column per
+BR-09 document type, then DoD rounds, halt count, and the ratio. Features are ordered
+lexicographically by name so two runs over an unchanged tree agree byte for byte. Gap features are
+printed in the same list, in the same order, with the reason in place of the metric columns and a
+visible marker — never in a separate section an operator could skim past, and never omitted
+(REQ-STATS-07).
+
+**BR-19 (the tokens are fixed).** The non-numeric states render as exactly `harvested`,
+`unmeasurable` and `n/a`, in both modes, in every metric. Fixing the spellings here is what lets a
+consumer and a test agree on them without either re-deriving the vocabulary; REQ O-1 assigns that
+choice to this document.
+
+### 4.4 JSON rendering
+
+**BR-20 (stdout carries the document and nothing else).** In `--json` mode, stdout is exactly one
+well-formed JSON document. Progress notes, warnings and error text go to stderr in both modes, so a
+caller can parse stdout unconditionally. The human table never appears in JSON mode, and the JSON
+document never appears in human mode.
+
+**BR-21 (single-feature top-level key set).** The single-feature JSON document has exactly five
+top-level keys: `schemaVersion`, `reviewRounds`, `dodRounds`, `halts`, `byteRatio` — REQ-STATS-01's
+four printed metrics plus one schema-version field, set-equal and no longer. A metric added to
+human mode without a JSON field breaks this equality, which is the point (REQ R-5). The feature name
+is not echoed as a top-level key: the caller supplied it, and adding it would break set-equality
+with the printed metric set.
+
+**BR-22 (states ride inside their metric's value).** `harvested`, `unmeasurable`, `n/a` and the
+malformed list are all carried **within** the value of the metric they belong to — never as sibling
+top-level keys, which would widen the schema silently as states are added. Each metric's value is
+an object carrying a `state` field alongside its measurement:
+
+```json
+{
+  "schemaVersion": 1,
+  "reviewRounds": {
+    "byDocType": {
+      "REQ":        { "state": "measured",     "rounds": 3,    "collidingRole": null },
+      "FSPEC":      { "state": "harvested",    "rounds": null, "collidingRole": null },
+      "TSPEC":      { "state": "unmeasurable", "rounds": null, "collidingRole": "test-engineer" }
+    },
+    "malformed": ["CROSS-REVIEW-pm-REQ-v01.md"]
+  },
+  "dodRounds":  { "state": "measured", "rounds": 2 },
+  "halts":      [ { "phase": "PR", "resolution": "open" } ],
+  "byteRatio":  { "state": "measured", "ratio": 1.42, "processBytes": 123456, "specBytes": 87000 }
+}
+```
+
+`byDocType` always carries all six BR-09 document types. `rounds` is `null` in every non-`measured`
+state and `collidingRole` is `null` outside `unmeasurable`, rather than the key being absent: a
+consumer reads a fixed shape and distinguishes states by the `state` field alone. `state` for
+`byteRatio` is one of `measured`, `harvested`, `unavailable` — `unavailable` being the JSON form of
+the `n/a` token, with `ratio` `null`; `processBytes` and `specBytes` are still reported in the
+`unavailable` state, since they are what explains it.
+
+**BR-23 (fleet document, and the gap discriminant).** The fleet JSON document has exactly two
+top-level keys: `schemaVersion` and `features`. `features` maps each discovered feature name to
+either the four-metric object (BR-21's document minus its hoisted `schemaVersion`) or, for a gap
+feature, an object whose single key is `gap`, a string naming the reason. Key presence is the
+discriminant, so a consumer never has to distinguish a gap by a sentinel value inside a metric.
+
+**BR-24 (schema version).** `schemaVersion` is an integer, `1` at first release. It increments when
+a released field is removed or its meaning changes; adding a field to a metric's value does not
+increment it. Its presence is one of REQ R-5's two observable stability guarantees.
+
+### 4.5 Discovery, exits and the read-only stance
+
+**BR-25 (fleet discovery: directories only, fixed exclusion set).** Discovery considers immediate
+**directories** only. A loose file at either root is never a feature — `docs/PLAN-pdlc-integration-boundary-gates.md`
+and `docs/completed/REQ-completed.md` are both present in this repository and neither is a feature.
+The excluded directory names, fixed by REQ-STATS-07 and not configurable, are `_queue`,
+`_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded` and `completed`.
+`completed` is excluded **as a feature** and traversed **as a container**: its children are
+discovered, it is never itself reported. That is what stops the archive marker
+`docs/completed/REQ-completed.md` presenting a phantom feature named `completed`.
+
+**BR-26 (the exclusion set is asserted, not assumed).** The exclusion set is checked set-equal
+against the non-feature directories present at the `docs/` root. A directory added later that
+belongs on neither list surfaces as an unclassified entry in the report rather than silently
+joining the feature list with meaningless metrics or silently vanishing from it.
+
+**BR-27 (gap rows are rows).** A feature whose artifacts are missing or cannot be read is reported
+by name with a reason and does not affect the exit code. Fleet mode exits 0 whenever it produced its
+report; the only non-zero fleet exit is failure to read the `docs/` root itself.
+
+**BR-28 (read-only, on every path).** No filesystem write, no deletion, no directory creation, no
+temporary file anywhere, no network request, and no `git` write command (`commit`, `push`, `add`,
+`checkout`, or similar) on any path, including error paths. Read-only `git` inspection is permitted
+but is not required by any rule here: every metric derives from the working tree as it stands.
+
+**BR-29 (exit codes).** `0` — the report was produced, including a report containing gap rows,
+malformed entries or non-numeric states. `1` — the command refused or could not report: usage error,
+unknown feature, unreadable `docs/` root. `2` is never emitted: the existing CLI reserves it for a
+pipeline halt (`pdlc/engine/bin/cli.mjs`, exit-code header), and a reporting command has no halt to
+signal.
+
+**BR-30 (not-found is reported in both modes).** An unknown feature exits 1 and says so by name. In
+human mode that is a message on stderr; in `--json` mode stdout carries a well-formed error object,
+never a truncated document and never a partial success document with empty metrics — a caller that
+parses stdout must be able to tell "this feature does not exist" from "this feature has no
+artifacts".
+
 ## 5. Edge Cases and Error Scenarios
 
 *(pending)*
