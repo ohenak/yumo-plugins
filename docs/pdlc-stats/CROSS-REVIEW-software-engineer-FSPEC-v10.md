@@ -84,6 +84,29 @@ nine. Nothing in this round's edits perturbs the arithmetic I verified in v9.
 
 ## Edge Cases and Error Scenarios
 
+**No edge-case row changed**, and the one row this round's subject matter touches stays consistent.
+EC-05 — a `CROSS-REVIEW-`-prefixed basename outside BR-09's six types, "including the pipeline's own
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md`" — is byte-identical and still agrees with the corrected BR-16
+and with AT-15: excluded from every round count, listed as malformed, exit column `0`. EC-12
+(`n/a` on zero denominator), EC-13 and EC-19 (a link contributes its own size) are untouched.
+
+**§7.3 row E-5's re-citation is a record correction and it is correct.** E-5's "FSPEC sites that
+stand unchanged" column previously read `BR-27, AT-19`; it now reads `BR-27, AT-20, AT-26`. I
+checked the three tests rather than the table: AT-19 pins the fleet-mode *exclusion set*
+(BR-23/BR-26), not the zero-state row, so it was the wrong citation. AT-26 is the zero-state oracle
+by name — "an empty feature directory is a measurement, not a gap", asserting all six round rows
+`0`, DoD `0`, halts empty, ratio `n/a`, exit `0`, and a normal fleet row carrying no gap marker
+(EC-03, BR-27) — and AT-20 asserts the gap-row-is-a-row half of BR-27 that E-5's erratum was about.
+§8's own `BR-27 | AT-20, AT-26, AT-27` row names both, so the correction moves E-5 into agreement
+with the trace table instead of away from it.
+
+**AT-19 is not orphaned by the removal.** It remains cited by §8's BR-23 and BR-26 rows and by §2's
+REQ-STATS-07 requirement-trace row, so dropping it from E-5's record column removed a wrong
+citation without dropping a test out of the trace. E-5 citing two of BR-27's three tests rather
+than all three is fine — the column records the sites standing behind that erratum, not BR-27's
+full oracle set, and AT-27 (unreadable directory) is a different case from the zero-state one E-5
+raised.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
