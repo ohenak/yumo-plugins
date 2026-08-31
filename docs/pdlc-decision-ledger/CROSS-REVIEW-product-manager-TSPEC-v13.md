@@ -209,8 +209,6 @@ Product lens only: whether the requirements this delta touches are still provabl
   constants = fourteen" disambiguates the phrase against the numerically identical forbidden/exempt
   partition, at zero cost to the count or its membership.
 
-## Positive Observations
-
 ## Recommendation
 
 **Approved with minor changes**
