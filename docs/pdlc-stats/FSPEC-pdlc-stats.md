@@ -17,7 +17,7 @@ feature: pdlc-stats
 
 Erratum round (v1.4): re-grounded on REQ v1.4. BR-11 and BR-16 state their harvested conditions over
 the basename grammars REQ-STATS-04/06 name, not bare globs, so BR-16 and BR-14 read one file set;
-BR-25 names the archive root's second loose file; §7.3's harvested-predicate errata are absorbed.
+BR-25 names the archive root's second loose file; §7.3's harvested errata are absorbed.
 No other change.
 
 **ID:** `FSPEC-STATS-01`
