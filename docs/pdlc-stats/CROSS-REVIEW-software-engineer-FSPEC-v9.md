@@ -98,6 +98,23 @@ No other `AT-*` definition carries a diff line — AT-16, AT-17 and the AT-12 ma
 are byte-identical, so the round did not move an oracle while rewording the rule it pins.
 ## Edge Cases and Error Scenarios
 
+No edge-case row changed. EC-05 — the row that classifies a `CROSS-REVIEW-`-prefixed basename
+failing the grammar, explicitly including "a document type outside BR-09's six … including the
+pipeline's own `CROSS-REVIEW-{role}-REVIEW-v{N}.md`" — is byte-identical and remains consistent
+with the rewritten BR-16 and the extended AT-15: excluded from every round count, listed as
+malformed, exit column `0`. EC-12 (`n/a` on zero denominator) and EC-19 (a link contributes its own
+size) are untouched and still agree with the AT-15 legs that cite them.
+
+This was the neighbour set most exposed to the edit — a rule rewrite about out-of-catalogue
+basenames could easily have drifted from the edge-case row that classifies them — so I checked it
+rather than assuming the "no rule changed" self-certification. The certification holds for
+behaviour: no exit code, enum token (`no_docs_root`, `unreadable_feature`, `harvested`, `n/a`,
+`unmeasurable`) or JSON field moved in the diff.
+
+## Open Questions
+
+None. The one open item is F-01, which is a one-word correction with an unambiguous direction, not
+a question needing a decision.
 ## Delta-Confirmation Findings
 
 ## Findings
