@@ -149,7 +149,50 @@ incomplete. Recorded as F-01, Low. The *plan's* ordering is sound and unchanged.
 
 ## Verification
 
-_pending_
+Every claim below was measured at HEAD or at the declared baseline commit, not read off the
+changelog. The changelog's account of what it fixed is itself one of the things under test.
+
+| Claim in v1.3 | How measured | Result |
+|---|---|---|
+| v5 F-02 fixed: `assertAdditiveOnly` literal at `77`, statement `74-78`, at pre-change baseline | `git show main:pdlc/engine/__tests__/loop-distribution.test.js \| sed -n '72,80p'` | **Exact.** Literal `${label}: delta over baseline must be exactly the two new members, got …` on line **77**; `assert.equal(` spans **74–78** |
+| v5 F-01 fixed: second-`P9-02` title carries no backticks around `lib/` | `git show main:…/coverageInstrumentation.test.js:278` | **Exact.** `P9-02: the shipped c8 config resolves the two new lib/ modules too (F4)` — bare `lib/`, count word `two` |
+| T-04: erratum discharged, TSPEC §8.3 carries it closed | `TSPEC-pdlc-stats.md:16` (v1.8), `:806`, `:822`, `:1311`, `:1314` at HEAD | **Confirmed.** §8.3 header reads "One remains open"; REQ-STATS-06 listed closed; BR-16's `harvested` reading is the settled one |
+| Residual risks: BR-26/EC-10 is the sole open erratum | `TSPEC-pdlc-stats.md:1311` | **Confirmed**, same wording |
+| Batch 10: the four enumerations `assertAdditiveOnly` reads are §2.1 sites 1–4 | `TSPEC-pdlc-stats.md:1088-1089` | **Confirmed**, same four files in the same order |
+| Batch 10: `c8.include` is **not** one of those four | `TSPEC-pdlc-stats.md:1045` | **Confirmed.** Oracle covers four of ten directly; `c8.include` reached via `coverageInstrumentation.test.js` |
+| AT-15's new `T-09` cell agrees with T-09's own row | `PLAN:308` vs `PLAN:103` | **Agree.** T-09's row already claimed the production-path symlink leg (EC-19) |
+| T-16 `✅` is truthful | `runStats` at `pdlc/workflows/lib/stats.mjs:451`; `npm test -- __tests__/statsOutcome.test.js` | **True.** 21 passed, 21 total |
+| No dependency edge moved | `git diff 034205d4 HEAD` — `Batch`/`Depends on` columns | **Unchanged** across all 27 rows |
+| Diff is the small revision it claims | `git diff --stat` | **11 insertions, 8 deletions**, one file |
+
+**Files the changed rows name — all exist.** T-16's `pdlc/workflows/__tests__/statsOutcome.test.js`
+and `pdlc/workflows/lib/stats.mjs`: both tracked. T-23's
+`pdlc/engine/__tests__/loop-distribution.test.js` and T-24's
+`pdlc/workflows/__tests__/coverageInstrumentation.test.js` and `pdlc/workflows/package.json`: all
+tracked, and each row already carries the `(exists)` marker the manifest convention requires. T-04's
+`statsMetrics.test.js`: tracked. No changed row names a file that is absent without declaring it new.
+
+**Coverage claims versus the current suite layout.** The suite layout the PLAN assumes is on disk:
+`statsAntiDrift`, `statsArgv`, `statsDiscovery`, `statsMetrics`, `statsOutcome`, `statsPreflight`,
+`statsProperties`, `statsRealPaths`, `statsRender` under `pdlc/workflows/__tests__/`, and
+`stats-cli`, `stats-cli-structure`, `stats-read-only`, `stats-vendoring` (plus
+`_stats-scratch-prefixes.mjs`) under `pdlc/engine/__tests__/`. That is one-for-one with the task
+table's `Test File` column. The single-owner property the File Ownership Manifest asserts is
+preserved by the delta — no changed row acquired a file another row owns.
+
+**Test-quality bar, applied to what the delta changed.** The Batch 10 gate edit *strengthens* the
+falsifiability story rather than weakening it: it replaces an unqualified "as soon as the first
+enumeration moves" with a named four-member set and an explicit statement that a fifth, adjacent edit
+(`c8.include`) does **not** red the same oracle — that is precisely the "what happens instead" pairing
+a negative claim owes, and it is what stops an implementer reading a green suite as drift. Likewise
+T-24's `toEqual` note ("array equality, position-sensitive") keeps the enumeration a set-equality-grade
+check rather than containment. The transcriptions at issue in both my v5 findings are literal
+transcriptions from source, verified above against source — no implementation echo, since the expected
+strings are quoted from the baseline file, not derived from the code under test.
+
+**Nothing the delta touched narrowed, broadened or dropped an acceptance criterion.** AT-15 gained a
+third owning task that already did the work; AT-17's owner and expected value are unchanged; the AC
+coverage table's other 26 assignments are byte-identical.
 
 ## Findings
 
