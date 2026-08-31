@@ -215,3 +215,45 @@ module-level mutable. Sharing a function reference stops being sufficient the mo
 observe each other through it, and the seam would need to share the state, not the function.
 
 ## Consequences
+
+### Obligations these decisions create for PLAN and implementation
+
+| # | Obligation | Owner | Falsified by |
+|---|---|---|---|
+| K-1 | The five co-change sites in DEC-STATS-01's table are edited in **one** change with `lib/stats.mjs` itself; a partial edit ships an engine whose `pdlc stats` fails only for installed users, since a checkout's `resolveWorkflowRoot()` finds the module regardless | PLAN task ordering; a single owning task per file, per the batch-safety rules | TSPEC §6.4's vendoring oracle, derived from `MODULE_NAMES` rather than transcribed, plus the fixture machine's install leg on the packed tarball |
+| K-2 | `tspecPackedCount`'s vendored term moves `5` → `6` in the same change as `WORKFLOW_MEMBERS` — the count is deliberately derived from class sizes, not from `tspecPackedSet().length`, so it does not follow automatically | same task as the `_tspec-packed-set.mjs` edit | the packed-set tests in `pdlc/engine/__tests__/` |
+| K-3 | `pdlc/workflows/package.json`'s `c8.include` gains a `**/`-anchored, path-qualified entry for `lib/stats.mjs`. Bare basenames do not match under `allow-external`, which is already on | same task | `coverageInstrumentation.test.js`, which runs c8 against the block |
+| K-4 | `statsParsers()` remains the sole production construction of the bundle. A second construction site voids DEC-STATS-03's oracle without failing it | implementation | TSPEC §6.4's identity oracle covers the one site; a second site is a review-blocking finding, not a test failure |
+| K-5 | `SCHEMA_VERSION` is referenced only inside `renderJson`. Any read of it from `computeFeatureStats` or `renderHuman` reintroduces the coupling DEC-STATS-02 rejected | implementation | TSPEC §6.3's cross-mode oracle |
+| K-6 | Downstream documents cite `DEC-STATS-01` for the frozen-enumeration carve-out and do not restate its text | PLAN, PROPERTIES authors | review |
+
+### What these decisions do not decide
+
+No observable behavior. Token spellings, key sets, exit codes, row order and edge-case outcomes are
+fixed by FSPEC §4 and §5 and restated nowhere here. DEC-STATS-02 decides where a value is stored,
+not what BR-24's increment rule is. DEC-STATS-01 decides a file path, not any metric's definition.
+
+### Standing costs accepted
+
+- **Co-change surface roughly the size of the feature's own logic.** One ~300-line module costs five
+  enumeration edits and an amendment to a completed feature's frozen table. Accepted because every
+  alternative trades it for no coverage gate (B, C) or for a command that is broken on installed
+  engines (D), and because the vendored class has already grown once by this exact route.
+- **A second consumer of four driver exports.** `parseReviewFilename`, `deriveRoundWindow`,
+  `deriveDodRoundIndex` and `parseResolvedMarker` acquire an out-of-driver caller. This adds no new
+  obligation on them — they are already `export`ed, already called from `orchestrate-dev.js`'s own
+  loops, and already covered — but a future change to any of their return shapes now has two call
+  sites to reconcile, and DEC-STATS-03's identity oracle guarantees the second one cannot silently
+  drift onto a stale copy instead.
+- **Real-path test bindings to the live archive.** Grounding tests on `docs/completed/` means a
+  future feature archiving or harvesting a directory turns them red for an unrelated reason — the
+  `doc-moves-break-pinned-tests` pattern. Accepted because FSPEC §6 requires literal, non-derived
+  expectations on real paths; the mitigation is that each literal is declared in its test as a
+  *measurement of the archive*, re-measured when the archive changes, never path-rewritten.
+
+### Relationship to project-level decisions
+
+Neither contradicted nor re-litigated: `DECISIONS-seam-defaults.md` (DEC-SEAM-01) governs the
+`StatsIo` and `StatsParsers` defaults and DEC-STATS-03 applies it rather than restating it;
+`DECISIONS-review-severity-bars.md` (DEC-DOC-01) is why every citation above names a stable symbol,
+heading or exported name rather than a `file:line` anchor.
