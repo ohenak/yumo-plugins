@@ -145,38 +145,56 @@ ratio (REQ-STATS-06); the command issues no network call and writes no file to d
 **Source:** US-02. **Who:** pipeline operator, or an automated caller such as `harvest-learnings` /
 `consolidate-learnings`. **Given:** the same feature argument as REQ-STATS-01 plus a `--json` flag.
 **When:** `pdlc stats {feature} --json` runs. **Then:** stdout is exactly one well-formed JSON
-document containing the same metric set as REQ-STATS-01, under stable field names; no other text is
+document whose top-level key set is set-equal to the metric set REQ-STATS-01 prints plus one schema
+-version field, so a metric added to human mode without a JSON field is a failure; no other text is
 mixed into stdout in this mode.
 
 ### REQ-STATS-03 Review rounds by document type (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** the feature directory contains
 `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` files for one or more document types. **When:** the
-command computes the round count for a document type. **Then:** the reported count equals the round
-window the review-loop driver would derive from those same basenames for that document type per
-C-5; any basename that fails the already-documented well-formed cross-review grammar is excluded
-from the count and reported separately as malformed, never silently folded into a document type's
-count.
+command computes the round count for a document type. **Then:** the reported count is **the highest
+round index present on disk for that document type, taken across all roles** — one number per
+document type, not per role, and not a range: a document type whose test-engineer review reached
+round 5 and whose product-manager review reached round 3 reports `5`. A basename that begins
+`CROSS-REVIEW-` but fails the grammar (per C-5) is excluded from the count and reported separately
+as malformed; a file that does not claim that prefix — the feature's own REQ, LEARNINGS or
+POSTMORTEM — is neither counted nor reported as malformed. Where the same convention refuses to
+yield a round for a document type at all (one role carrying two files that both claim round one),
+that document type is reported **unmeasurable**, naming the colliding role, rather than as a count.
+Where the feature has a `LEARNINGS-{feature}.md` present and zero cross-review files on disk, every
+document type is reported **harvested** — a state distinct from a measured `0`, since harvest
+deletes the evidence (NG-6) and an unreviewed feature and a harvested one must never print the same
+number.
 
 ### REQ-STATS-04 DoD-round count (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** the feature directory contains zero or
 more `CODE_REVIEW-{feature}-v{N}.md` files. **When:** the command computes the DoD-round count.
-**Then:** the reported count equals the highest version `N` found on disk, or `0` when no such file
-is present.
+**Then:** the reported value is the **highest version `N` found on disk** — the last DoD round
+index, deliberately not a count of files present, because harvest deletes DoD reviews (NG-6) and a
+file count would understate a partially harvested feature — or `0` when no such file is present. A
+basename that begins `CODE_REVIEW-` but fails the version grammar (per C-5) is excluded and reported
+as malformed, on the same terms as REQ-STATS-03; the harvested state of REQ-STATS-03 is reported
+here too rather than `0`.
 
 ### REQ-STATS-05 Halts by phase and resolution state (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** the feature directory contains zero or
 more `POSTMORTEM-{phase}-{feature}.md` files. **When:** the command computes halts. **Then:** it
-reports one entry per distinct phase with a post-mortem file present, each tagged resolved (a
-`RESOLVED: yes` line is present per the already-documented POSTMORTEM lifecycle convention) or open
-(that line is absent, says anything other than `yes`, or the file cannot be parsed); absence of any
-post-mortem file for the feature is reported as zero halts, never as an error.
+reports one entry per distinct phase with a post-mortem file present, each tagged resolved or open
+**exactly as the pipeline's own `RESOLVED:` marker rule classifies that file (C-5)** — this REQ
+states no marker-matching rule of its own, so case, duplicate markers and fenced-block placement are
+decided in one place only; absence of any post-mortem file for the feature is reported as zero
+halts, never as an error.
 
 ### REQ-STATS-06 Process-to-spec byte ratio (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** the feature directory contains any subset
 of the spec document types (C-3) and any subset of the process artifact types (C-4). **When:** the
 command computes the ratio. **Then:** it reports process bytes (C-4 set, present files only) divided
 by spec bytes (C-3 set, present files only); when spec bytes total zero (no spec document present),
-the command reports the ratio as not-available rather than dividing by zero or crashing.
+the command reports the ratio as not-available rather than dividing by zero or crashing. When
+REQ-STATS-03's harvested state holds, the ratio is reported as harvested rather than as a measured
+value, since its numerator has been deleted. The ratio's rendering precision and the exact
+not-available / harvested tokens in each mode are FSPEC material (O-1), deferred explicitly rather
+than left to the implementation.
 
 ### REQ-STATS-07 Fleet mode reports every feature, flags gaps explicitly (P1)
 **Source:** US-03. **Who:** pipeline operator. **Given:** `pdlc stats` invoked with no feature
