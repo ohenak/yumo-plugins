@@ -133,6 +133,63 @@ freshness defect, not a falsified compression.
 
 ## Consequences
 
+**The erratum channel worked, and that is worth recording.** v9 routed one `ERRATUM: TSPEC` for a
+count this document refused to match because it was measurably wrong. TSPEC v1.7 landed exactly
+that repair, and I confirmed it against HEAD code rather than against TSPEC's account of itself.
+The refusal-to-match call made at v1.5 — carry the correct arithmetic, record the divergence, route
+the repair upstream — is now vindicated end to end: had this document matched "six → seven" for
+agreement's sake, two documents would have agreed on a number that HEAD contradicts, and PLAN would
+have read a task mis-sized by two with nothing to red it.
+
+**The cost of that call is the residue this round found.** A document that records a disagreement
+takes on an obligation to notice when the disagreement ends. This one cannot, because it is frozen
+— so the record outlives the defect it describes. That is not an argument against recording
+divergences; it is an argument for phrasing them so they degrade safely. K-3's clause would have
+aged better as *"TSPEC's row for this site is the authority; if it narrates the move from the
+printed word rather than the measurement, that is the erratum"* — a conditional that becomes inert
+rather than false. Worth carrying into the next feature that records a cross-document divergence
+under freeze; tagged `Process` below.
+
+**Three one-line repairs are owed to the next DECISIONS touch, none to this round.** They are
+purely textual, touch no decision or falsifier, and I state them here so a later round does not
+have to re-derive them:
+
+1. K-3's *"Upstream divergence, owed to TSPEC and not resolved here (TE F-05)"* clause — the
+   divergence is discharged as of TSPEC v1.7; the clause should be reduced to the arithmetic it
+   protects, or dropped.
+2. The v1.5 changelog's *"carried unresolved by design"* paragraph and the v1.6 changelog's
+   *"records TSPEC §2.1's 'six → seven' as an erratum owed upstream"* sentence — both now
+   historical rather than live; they should read as history, the way TSPEC v1.7 handled its own
+   v1.3 changelog row by removing the number so it cannot be read as a live claim. That is the
+   pattern to copy.
+3. The v1.6 grounding attestation (F-02 below), which is now three versions stale.
+
+**Nothing is owed upstream from this round.** No `ERRATUM:` line is routed. TSPEC v1.7 is correct
+where this document is correct, and the two now agree on every conjunct of the include-set
+arithmetic.
+
+**The cascade mechanism itself has a defect worth more than this document.** Two consecutive rounds
+have now written an `UPSTREAM-STATE` TSPEC pin that resolves to no version in history — v8's
+`512a9fcf…` and v9's `235fd3dd…`. Both times the reviewing round recovered by falling back to the
+hash measured in its own body, and both times that recovery was manual. A pin that does not resolve
+silently converts a cascade confirmation into a guess about what the baseline was; the next
+reviewer who does not think to cross-check the body against the trailer will diff from the wrong
+base and confirm against a version nobody reviewed. Tagged `Process`, F-04.
+
+### Positive observations
+
+- **The probe-invariance table keeps earning its place.** It is why §7.3's 25-vs-24 totals needed no
+  re-litigation this round: the reconciliation is written down, so an upstream edit elsewhere in
+  §7.3 cannot reopen it by accident.
+- **K-3's decision to re-measure rather than carry forward** is the reason this document was right
+  and upstream was wrong, and the reason the erratum was actionable when it was raised. Re-measuring
+  a count at HEAD instead of transcribing it from a sibling document is the habit that produced the
+  only durable win in this document's review history.
+- **TSPEC v1.7's repair is better than the one that was asked for.** It did not merely swap the
+  numbers; it restated *why* the printed word and the measurement differ, so the row now survives
+  the next `REQUIRED_INCLUDES` change without going stale again. That is the failure mode fixed at
+  the root rather than at the symptom.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
