@@ -145,3 +145,67 @@ edit K-8 already owns. Worth one clause in K-8's list.
 |----|---------|
 | Q-01 | Does `pdlc/workflows/__tests__/coverageInstrumentation.test.js`'s P9-02 test belong to K-3 as a *conjunct to be added* or as a *site already pinning at HEAD*? K-3 currently reads both ways: it says the literal "gains the same module" (site, live now) and that the two conjuncts are "both to be added in this change and routed to TSPEC §6.4" (new work). At HEAD the P9-02 test is live and array-equal over six entries, so the literal edit is a co-change of an existing oracle, and only the c8-run driver's third import is new. Splitting those two halves in K-3's text would also settle F-01's table question mechanically. |
 | Q-02 | The third residual now says the P7-02 document oracle greps two member-count *sentences*, not `PK-*` rows, so a counts-only edit that omits `PK-26` stays green — accurate at HEAD. Given K-7 is a single owning task that writes the row and the counts together, is the residual still worth carrying, or has it shrunk to "one task could be done half-way", which is true of every task? I lean toward keeping it, because the sibling document is frozen and the failure is silent, but the row would read stronger if it said what a DoD reviewer should actually *look at* (the §5.4 table's last row id) rather than what the oracle does not cover. |
+
+## Positive Observations
+
+- **The v2 High was resolved by measuring, not by hedging.** The revision could have added a table
+  row and moved on. Instead it wrote *"The sixth site, and why it was missed on the first
+  measurement"* and named the mechanism — the assertions that pin an enumeration's size live in a
+  different package from the enumeration, so a per-file scan never reaches them. That paragraph is
+  what makes the same defect findable next time, and it is why F-01 above is a Medium about one
+  remaining instance rather than a High about a missing guard.
+- **Every re-measured figure in the delta holds at HEAD.** `MODULE_NAMES` is exactly the four entries
+  the site table claims (`prepack.mjs:20-25`); `loop-distribution.test.js` has four live tests and no
+  `.skip`; `assertAdditiveOnly`'s third conjunct is a length equality, not containment; the vendored
+  count is pinned twice, once literally (`:158-162`) and once derived (`:203-207`); `pdlc/engine/lib`
+  holds exactly 15 `.mjs` files, so B's *"the `15` in that arithmetic is B's own class term"* is
+  correct and B really does pay the sixth site.
+- **K-8 chose the harder and correct shape.** Re-baselining rather than widening the delta is the
+  right answer to v2's Q-01: `D1_BASELINE` at HEAD is `pdlc-engineering-loop`'s *pre*-state, and
+  simply appending `lib/stats.mjs` to `NEW_LIB_MEMBERS_*` would silently rewrite that completed
+  feature's frozen measurement into something it never measured. Folding its two members into the
+  baselines and making `added` this feature's single member keeps each constant meaning what its name
+  says. That is a subtle call and the document made it explicitly rather than by default.
+- **The word-map obligation is the kind of coupling that usually ships as a surprise.** `:187`'s
+  `vendoredClassSize === 5 ? "five" : String(vendoredClassSize)` greps for the *digit* at 6 while K-7
+  writes the *word*, so K-7 landing exactly as specified would red K-8's file. Catching a
+  cross-obligation red before PLAN exists — and stating it in both rows, K-7's *"the prose target is
+  the word 'six'"* and K-8's *"K-7 landed exactly as specified would leave this oracle red"* — is
+  precisely the work a DECISIONS document is for.
+- **The K-7 precedent claim was softened to what the source actually says.** The 0.15 changelog row
+  really does end *"`tspecPackedCount`'s vendored-class literal moves separately, in a later task"*
+  (`docs/completed/pdlc-engine-distribution/TSPEC-…md:32`), and K-7 now says this feature bundles
+  *more tightly* than that precedent rather than claiming the precedent for its own bundling. A
+  citation corrected against the cited file, in the direction that weakens the author's own case.
+- **The third residual now describes a real gap.** It went from asserting the document half has no
+  falsifier — false at HEAD, and the kind of statement that sends a DoD reviewer past the one guard
+  that exists — to naming the guard, quoting its own comment, and narrowing the residual to
+  `PK-26`'s row, which the sentence-level grep genuinely does not see.
+- **PM Q-02 was answered against FSPEC, not asserted.** BR-30's closing sentence reads *"the error
+  object is a released shape under REQ R-5 and BR-24's increment rule governs it as it governs the
+  success document"* (`FSPEC-pdlc-stats.md:527-528`), and the three-key set is stated there too. The
+  DECISIONS quote is verbatim and the conclusion — K-5's scope covers all three emitted documents —
+  follows from it.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The v2 blocking finding is fully resolved and the resolution is stronger than the change I asked for:
+the site is in the table, it has an owning obligation with the re-baselining shape spelled out, the
+cross-obligation word-map red is named on both sides, and the residual that asserted a false absence
+now describes the real one. Nothing in this document is unowned or unfalsifiable, and no High finding
+is open.
+
+The four remaining findings are documentary and none blocks. F-01 is the one worth landing before
+PLAN: the site table and the trigger paragraph disagree about whether this feature touches six files
+or seven, and the file they disagree about — `coverageInstrumentation.test.js` — is the fifth site's
+pinning test, the same relationship site 6 has to the four enumerations. The obligation is safe
+because K-3 owns it explicitly; the cost table is what needs the seventh row. F-02 is one word
+("Six" → "Seven") in K-8's own list, F-03 one noun in DEC-STATS-02's trigger, F-04 one clause in
+K-8's edit list. All four are local edits with no decision consequence.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
