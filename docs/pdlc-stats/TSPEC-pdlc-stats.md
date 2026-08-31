@@ -849,14 +849,16 @@ checkable rather than asserted.
 
 ### 6.4 Anti-drift oracles
 
-Five, each closing a way this design could silently stop being what it says it is:
+Seven, each closing a way this design could silently stop being what it says it is:
 
 | Oracle | Asserts | Fails when |
 |---|---|---|
 | **Parser identity** (§2.5) | the four members of the bundle `statsParsers()` returns are `===` the corresponding `orchestrate-dev.js` exports — asserted against the **exported** `statsParsers` from `bin/cli.mjs` (§3.4), the one production construction site, never against a bundle the test builds; plus a second conjunct that the object `cmdStats` passes to `runStats` is that same bundle, so the recording double of §6.1 can never become the production path | someone re-implements a grammar locally, even one that agrees on today's corpus; or a future refactor slips a wrapper between `statsParsers()` and production |
 | **Doc-type catalogue agreement** (§3.3) | **set-equality** between `REVIEW_DOC_TYPE_ROWS` and the doc types the driver accepts, computed by probing `parseReviewFilename` over a *candidate* set — see below — with a **real role slug** | the driver's private `REVIEW_DOC_TYPES` grows or shrinks without FSPEC §7.4 A-3's required FSPEC edit |
 | **Exclusion-set equality** (§4.4) | **set-equality** between `NON_FEATURE_DIRS` and the non-feature directory names present at this repository's `docs/` root — see below | a ninth non-feature directory appears at `docs/` and silently joins the feature list, which is the regression REQ-STATS-07 and BR-26 exist to prevent |
-| **Vendoring co-change** (§2.1) | `lib/stats.mjs` appears in `prepack.mjs`'s `MODULE_NAMES`, `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES` and `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`; and that `tspecPackedCount`'s vendored class size **equals `MODULE_NAMES.length + 1`** — see below | one of the five sites is edited and another is not — the exact failure `pdlc-engineering-loop`'s LEARNINGS names as "a co-change set enumerated in prose with no oracle is unsound by construction" |
+| **Vendoring co-change** (§2.1) | `lib/stats.mjs` appears in `prepack.mjs`'s `MODULE_NAMES`, `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES` and `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`; and that `tspecPackedCount`'s vendored class size **equals `MODULE_NAMES.length + 1`** — see below | any of §2.1's **nine** sites is edited and another is not — the exact failure `pdlc-engineering-loop`'s LEARNINGS names as "a co-change set enumerated in prose with no oracle is unsound by construction". This oracle covers four of the nine directly and a fifth (`c8.include`) by way of `coverageInstrumentation.test.js`; it is **not** the first thing that reds — see below |
+| **Classifier purity** (§2.5) | each of the four driver classifiers, called **twice with the same input inside one freshly-imported module instance**, returns results that are `deepEqual` **and non-aliased** (the second result is not the same object reference as the first, so a memoised return is distinguishable from a recomputed one) | a driver export acquires state — a module-level cache, a memo table, an accumulating ledger — which is `DEC-STATS-03`'s re-evaluation trigger and which every other conjunct here is structurally blind to: reference identity survives a cache untouched, and §6.1's recording double wraps the real parsers and would silently inherit the shared state rather than expose it |
+| **Construction-site count** (§3.4) | reading `pdlc/engine/bin/cli.mjs`'s own source, the four-classifier object literal occurs **exactly once**, inside `statsParsers` — a set-equality over occurrences, not an "at least one" | a second construction site appears, which voids the parser-identity oracle without failing it (`DEC-STATS-01` `K-4`). Positive structural counts over a source file are a precedented mechanism here: `pdlc/engine/__tests__/bin-guard-structure.test.js` pins `bin/pdlc.mjs` to an exact shape — zero static imports, exactly three top-level statements, zero `await` tokens |
 | **No-write capability** (§2.3) | the `StatsIo` object literal `statsIo()` returns has exactly the four keys `listDir`, `fileSize`, `readFile`, `exists` | a fifth seam is added, which is how a write would first become possible |
 
 **The doc-type probe uses a role slug, not a reviewer skill id.** `parseReviewFilename` validates the
@@ -893,6 +895,28 @@ the transcribed number to its source, so adding `lib/stats.mjs` to `MODULE_NAMES
 the packed-set table and the count is red, and amending one of the two without the other is red too.
 Deriving from `MODULE_NAMES` rather than transcribing a literal is the `EXPECTED_TEST_COMMAND`
 lesson from `pdlc-loop-economics`'s LEARNINGS F-4, applied before it recurs.
+
+**But this oracle is not what reds first, and the PLAN should not assume it is.** It ships with this
+feature; `pdlc/engine/__tests__/loop-distribution.test.js` — §2.1's sixth site — is at HEAD already,
+and its `assertAdditiveOnly` length equality fires the moment the first of the four enumerations is
+edited, before the new oracle exists. Behind both sit `run.test.js`'s manifest `deepEqual`s and
+process-entry `ENOENT` leg and `learningsPremises.test.js`'s P-1 array-equality over the parsed
+`MODULE_NAMES` — sites 8 and 9, and they sit in *different* required checks (`Engine tests
+(ubuntu-latest)` and `Unit tests (ubuntu-latest, node 20)` respectively), so a partial edit reds a
+check on either side of the package boundary. The `c8.include` pair (`package.json` plus
+`coverageInstrumentation.test.js`'s P9-02 literal) is a mutual falsifier in one check: editing
+either alone is red, and because P9-02's shipped assertion is `toEqual` — array-equality, strictly
+stronger than set-equality — a correct-as-a-set but wrongly-positioned entry is red too.
+
+**The purity conjunct closes `DEC-STATS-03`'s trigger, and it needs a fresh module instance.** The
+trigger — "the driver exports gain state" — is otherwise detectable only by reading
+`orchestrate-dev.js`, i.e. review-only, because reference identity is preserved by adding a cache and
+the recording double inherits shared state instead of exposing it. Calling each classifier twice on
+the same input **within one freshly-imported instance** and asserting `deepEqual` **and** distinct
+object references makes a mutable cache observable: with a memo, call *n* returns the same reference
+call *n − 1* returned, and the non-aliasing half goes red. The fresh instance matters because a
+module-level cache populated by an earlier test in the same worker would otherwise make the first
+call itself a cache hit, and the conjunct would pass vacuously.
 
 **The exclusion-set oracle.** BR-26 decides that the set is "checked set-equal against the
 non-feature directories present at the `docs/` root", and §4.4 previously discharged that in prose —
