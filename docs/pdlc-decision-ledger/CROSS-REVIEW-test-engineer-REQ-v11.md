@@ -96,6 +96,12 @@ approved. No AC, no threshold, no `M-*` id, no `Verified at` commit changed.
 
 ## Disposition of my v10 findings
 
+| v10 ID | Severity | Status at v11 |
+|---|---|---|
+| F-01 | Medium | **Closed.** The Baseline's *Cited by* row (`baseline:6`) now reads "(§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, **§6 R-5**, §7 O-1, §7 O-5, **§7 O-6**, **§7 Assumptions A-1**)". I re-derived the required set rather than accepting the three additions: every `M-*` citation in the REQ is at `:105` (§2 G-1), `:193`/`:194` (§4 C-5), `:216` (§5 REQ-DECLEDGER-01), `:266` (§5 REQ-DECLEDGER-04, between `:254` and `:270`), `:351-352` (§6 R-5, the `M-6d`/`M-7d` site I named), `:367` (§7 O-1, between `:358` and `:372`), `:390` (§7 O-6) and `:399-400` (§7 Assumptions A-1). Set equality holds: the row's REQ-side list is now exactly the set of citing sites, with no member missing and none invented. My v10 wording named "§1's pin" — that was the same off-by-one-section error the v1.9 note carried, and the correct anchor is §2 G-1, which the row already listed |
+| F-02 | Low | **Partially addressed, still open.** `REQ:13` moved from `v{1,2,3,4,5,6}` to `v{1,2,3,4,5,6,7,8,9}`, but `CROSS-REVIEW-software-engineer-REQ-v10.md` and `CROSS-REVIEW-test-engineer-REQ-v10.md` both exist on the branch and both are dated 2026-08-28, two days before this edit. The changelog's own account — "named v1–v6 while v7–v9 exist" — is the same enumeration stopping one round short. Re-raised as F-03 below |
+| F-03 | Low | **Closed.** The version table now reads `1.10 | 2026-08-31`-era (`| Draft | pm-author | 1.10 | 2026-08-30 |`) with a v1.10 changelog paragraph, so the header again describes the file it heads |
+
 ## What I found by re-reading upstream at HEAD
 
 ## Positive Observations
