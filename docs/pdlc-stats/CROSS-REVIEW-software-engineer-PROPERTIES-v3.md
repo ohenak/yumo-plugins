@@ -43,6 +43,44 @@ Both are Medium and neither gates. Provenance is `delta` because the upstream ed
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | AT-15's neither-list gained a member and BR-16 gained an AT-15 trace at FSPEC v1.7; PROP-RATIO-03's transcription and the AT-15 / BR-16 matrix rows do not reflect it, though PROP-RATIO-06 pins the behaviour | §Properties → PROP-RATIO-03, PROP-RATIO-06; §Traceability |
+| F-02 | Medium | Cross-Feature | PROP-RATIO-08 leg 4 carries an assertion its own cited authority (REQ-STATS-06 v1.6) now contradicts; the REQ-versus-FSPEC dispute is unrecorded in §Gaps | §Properties → PROP-RATIO-08; §Gaps |
+
+### F-01 (Medium) — AT-15's new leg is covered, but not by the property that owns AT-15
+
+FSPEC v1.7 added a fourth member to AT-15's neither-list: a `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file, "`CROSS-REVIEW-`-prefixed but outside BR-09's six document types" (`FSPEC:727`), whose *Then* now reads that adding it "leaves both unchanged — including the out-of-catalogue cross-review, whose bytes reach neither side, so an implementation that globs `CROSS-REVIEW-*` into the process total fails here (BR-14, BR-16)" (`FSPEC:730`). §8's trace table moved with it: `BR-16 | AT-15, AT-17` (`FSPEC:894`).
+
+My first read had this as a coverage hole, and it is not — worth stating plainly, because the conclusion changes the severity. **PROP-RATIO-06 already pins exactly this behaviour**: "A grammatically-failing `CROSS-REVIEW-` basename must contribute to **neither** side … Asserted over the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` shape." That is the same mutant FSPEC's new clause names, at the same level (`unit-seamed`), in the same task (T-04). The implementer who follows PROPERTIES writes the test FSPEC wants. TSPEC reached the same reading independently: AT-15's byte half "is unaffected by the dispute, since neither reading gives the file spec-side bytes."
+
+What is stale is the map, in three places:
+
+1. **PROP-RATIO-03**, the property whose text *is* AT-15's neither-list, lists `LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`, `HANDOFF-PROMPT.md`. FSPEC's list is now `LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`, `CROSS-REVIEW-{role}-REVIEW-v{N}.md`. The two diverge in both directions — PROPERTIES carries an extra (`HANDOFF-PROMPT.md`, harmless, additive, and present since v1) and is missing the one FSPEC declared load-bearing.
+2. **§Traceability AT-15 → PROP-RATIO-01…04** does not include PROP-RATIO-06, so the row understates its own coverage.
+3. **§Traceability BR-16 → PROP-RATIO-08, PROP-RATIO-09** predates FSPEC routing BR-16 through AT-15 as well; PROP-RATIO-06's Traces cites `BR-14, BR-06` and not BR-16.
+
+Why Medium and not Low: PROP-RATIO-03 is the AT-15 fixture transcription, and a fixture transcription that has drifted from the normative fixture body is the thing a later reader trusts instead of re-reading FSPEC. Why Medium and not High: no behaviour goes unasserted, so nothing an implementer builds from this document is wrong.
+
+**What resolves it** — add the out-of-catalogue cross-review to PROP-RATIO-03's list (keeping `HANDOFF-PROMPT.md`, which is a fine local addition), and add PROP-RATIO-06 to the AT-15 and BR-16 matrix rows with `BR-16` in its Traces column. Three line edits, no new property, no decision.
+
+### F-02 (Medium) — a contested assertion is carried without being marked contested
+
+REQ v1.6 rewrote REQ-STATS-06's predicate: "The predicate is set-membership over C-4's grammars, so a grammatical basename outside the driver's document-type catalogue is a survivor even where REQ-STATS-03 reports it malformed" (`REQ:203`). FSPEC BR-16 v1.7 classes the same file as no file remaining, and a directory holding only those as `harvested` (`FSPEC:367`). Both cannot hold, and the file they disagree about is the one PROP-RATIO-08's fourth leg is built on.
+
+**PROPERTIES made the right call.** It asserts the BR-16 reading, which is its immediate upstream, and that is the same choice TSPEC made and defended: "the sketch below is written against BR-16, the immediate upstream, and §8.3 routes the reconciliation to the owning phase" (`TSPEC:796`), naming AT-17's fourth leg as "the single place the contested scoping above becomes an assertion." I am not asking PROPERTIES to switch sides, and under this round's freeze I would not entertain re-deciding it here.
+
+Two smaller things follow from it, both inside PROPERTIES' own conventions:
+
+- **PROP-RATIO-08's Traces column reads `REQ-STATS-06, BR-16, AT-17`.** REQ-STATS-06 at HEAD no longer supports leg 4; it contradicts it. Citing it as authority for the leg is a claim about an upstream document that is false at HEAD.
+- **§Gaps has no row for this**, although the document already has the right pattern for exactly this situation: G-1 marks the discovery predicate "provisional", says which property does and does not assert it, and names TSPEC §8.3 as the owner. The byte-ratio dispute is the same shape and deserves the same row — TSPEC names three sites that re-stamp when it settles, and PROP-RATIO-08 leg 4 is effectively a fourth.
+
+**What resolves it** — a G-8 row saying leg 4's expected value is provisional on the REQ/FSPEC reconciliation TSPEC §8.3 routes, and either dropping `REQ-STATS-06` from PROP-RATIO-08's Traces or marking it "(BR-16's reading; REQ-STATS-06 v1.6 contests — see G-8)". This is bookkeeping on a dispute that already exists upstream, not a new decision.
+
+I have not folded this into the verdict on PROPERTIES; the defect is in the upstream pair, and it is raised as an erratum instead.
+
+DEFERRED: PROP-RATIO-03's `HANDOFF-PROMPT.md` is a PROPERTIES-local addition to AT-15's neither-list that FSPEC does not carry — harmless and arguably good coverage, but it means the two lists will keep needing manual reconciliation.
+
 ## Questions
 
 ## Positive Observations
