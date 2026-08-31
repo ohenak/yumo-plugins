@@ -230,6 +230,60 @@ All four are new to this round; every round-1 finding landed. None is High.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T-10 now reads a file owned by T-02 (`pdlc/workflows/__tests__/helpers/statsDoubles.js`) from a test in the **engine** suite, which CI runs as `cd pdlc/engine && npm test`. There is precedent — `loop-distribution.test.js` reads the real `pdlc/workflows/` checkout — so the path resolves in a dev checkout and in the `Engine tests` job. Is it worth stating the resolution base (repo root, not `pdlc/engine/`) in T-10's row, so the equivalence conjunct does not become the first engine test to red under a packed-tarball run? |
+| Q-02 | Round-1 Q-02 stands unanswered and is now slightly larger: T-11's scratch-prefix exclusion (`.tmp-*`, created by the **workflows** suite) carries a guard conjunct requiring the exclusion to be non-empty and pre-run-empty, but T-11 runs in the **engine** suite where nothing creates that prefix. Is the guard expected green in CI, or does it depend on a local `npm test`-both run? |
+| Q-03 | Round-1 Q-03 stands: batch 10 lands five clusters while `assertAdditiveOnly` and T-20's oracle are red mid-batch by design. Is the wave gate's `postWaveCommand` guaranteed to run at batch end rather than between tasks, or is that dispatcher convention? A mid-batch measurement would surface T-20's intended red as a wave failure. |
+
 ## Positive Observations
 
+- **The revision fixed the premise, not just the finding.** Round-1 F-05 was filed as a
+  two-number measurement error. The author traced it back and found that the *rule* it
+  supported — "a module in `pdlc/workflows/lib/` owes the vendoring co-change" — was
+  false at HEAD, with the counterexample already on disk. Replacing it with runtime
+  reachability, and carrying `document-oracles.mjs` as the worked exclusion into the
+  constraint T-21 promotes, is a strictly better outcome than the correction I asked
+  for.
+- **F-01 was answered on both arms, not the cheaper one.** The round-1 finding offered
+  behaviour or mechanism and said "ideally both". The revision took both: a real-fs
+  falsifying leg in T-18 *and* a named-call structural conjunct in T-10, with the
+  reasoning for each stated in the row rather than in a changelog.
+- **T-04's disclaimer is the right shape.** Rather than quietly dropping the symlink leg,
+  the row states that it is *not* claimed there and gives the reason a fake cannot see
+  the difference. A future reader who wonders why the metrics suite skips EC-19 finds
+  the answer at the point of doubt.
+- **T-26's "authors no test file" is a small line that prevents a real stall.** Declaring
+  that the `Test File` column names suites it runs, both single-owned elsewhere, keeps
+  the manifest's ownership invariant intact and pre-declares where a surviving mutant
+  gets fixed.
+- **Every new claim in the delta is measurable, and every one I measured was true** —
+  `run.mjs:90`, the two `CODE_REVIEW` files, the seven `c8.include` entries, the ninth
+  assertion site at `loop-distribution.test.js:228`, the second P9-02 test at
+  `coverageInstrumentation.test.js:278`, the three `lib/` modules, the 20 helpers. Only
+  F-03's consumer list and F-04's two quotations drift from what is on disk, and both
+  are one-word corrections.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The round-1 High is discharged: AT-15's symbolic-link behaviour now has a real-filesystem
+falsifying test in T-18, and the `lstat`-not-`stat` mechanism is named as a structural
+conjunct on the shipped seam in T-10 — the mutant that motivated the finding now dies in
+two places. All eight remaining round-1 findings landed, several with better fixes than
+were asked for. No High finding is open anywhere in the document, so this does not gate
+implementation.
+
+Five findings are recorded and none blocks. Two are worth folding in before the wave
+starts, because both are cheap and both concern the oracles that just replaced the High:
+F-02 (name a boundary-anchored matcher, since `lstatSync` contains `statSync` and the
+naive matcher makes the conjunct unfalsifiable) and F-01 (give T-09's existing
+production-path conjunct the symlink case, so the shipped seam has behavioural evidence
+and not only textual evidence). F-03 is worth correcting before T-21 promotes the
+sentence into `DOMAIN-CONSTRAINTS.md`; F-04 and F-05 are transcription and presentation.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 3}
