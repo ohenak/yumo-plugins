@@ -183,7 +183,14 @@ more `POSTMORTEM-{phase}-{feature}.md` files. **When:** the command computes hal
 reports one entry per distinct phase with a post-mortem file present, each tagged resolved or open
 **exactly as the pipeline's own `RESOLVED:` marker rule classifies that file (C-5)** — this REQ
 states no marker-matching rule of its own, so case, duplicate markers and fenced-block placement are
-decided in one place; no post-mortem file is zero halts, never an error.
+decided in one place. Where the post-mortem family is entirely absent, absence alone does not decide
+the count: where `LEARNINGS-{feature}.md` is present **and** no `POSTMORTEM-{phase}-{feature}.md`
+file remains, halts report **harvested**, never `0`, because harvest is observed to delete
+post-mortems as well as reviews — `docs/completed/pdlc-advisory-tier/` retains its LEARNINGS and no
+post-mortem, and that LEARNINGS' `Harvested from` row names two it deleted. A plain `0` is reserved
+for the case where absence really does mean never halted: no post-mortem file **and** no
+`LEARNINGS-{feature}.md`. Neither state is an error. Where any post-mortem survives, the measured
+per-phase entries stand, harvested or not.
 
 ### REQ-STATS-06 Process-to-spec byte ratio (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** any subset of the spec document types
@@ -193,9 +200,11 @@ by spec bytes (C-3 set, present files only); when spec bytes total zero, it repo
 not-available rather than dividing by zero or crashing. Where `LEARNINGS-{feature}.md` is present and at least one of the two
 harvest-deleted process families is entirely absent — no file matching C-4's
 `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains, or no file matching its
-`CODE_REVIEW-{feature}-v{N}.md` grammar does, or neither — the ratio is **harvested**, not measured: harvest
-deletes cross-reviews and DoD reviews while post-mortems survive, so the numerator is only
-*partially* deleted and a computed value would silently undercount rather than be absent. The rendering precision
+`CODE_REVIEW-{feature}-v{N}.md` grammar does, or neither — the ratio is **harvested**, not measured:
+at least one family harvest deletes is gone from the numerator, so a computed value would silently
+undercount rather than be absent. How much of the numerator harvest removes is not asserted here;
+the predicate is set-membership over C-4's grammars, so a grammatical basename outside the driver's
+document-type catalogue still counts as a survivor even where REQ-STATS-03 reports it malformed. The rendering precision
 and the exact not-available / harvested tokens per mode are FSPEC material (O-1).
 
 ### REQ-STATS-07 Fleet mode reports every feature, flags gaps explicitly (P1)
