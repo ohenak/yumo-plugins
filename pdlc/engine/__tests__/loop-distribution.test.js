@@ -42,23 +42,37 @@ const FSPEC_DISTRIBUTION_PATH = path.join(
 );
 
 // TSPEC §7's shared delta, transcribed once, here, exactly as its D-1...D-6
-// table names the two new members -- never derived from a directory
-// listing. Two shapes: bare (D-1, D-5 -- source-tree-relative, as copied
-// *from* `pdlc/workflows/`) and vendored (D-2, D-3 -- vendor-tree-relative,
-// as they land *in* `vendor/workflows/`).
-const NEW_LIB_MEMBERS_BARE = ["lib/loop-session.mjs", "lib/escalation-view.mjs"];
-const NEW_LIB_MEMBERS_VENDORED = [
-  "vendor/workflows/lib/loop-session.mjs",
-  "vendor/workflows/lib/escalation-view.mjs",
-];
+// table names the new member this feature adds -- never derived from a
+// directory listing. Two shapes: bare (D-1, D-5 -- source-tree-relative, as
+// copied *from* `pdlc/workflows/`) and vendored (D-2, D-3 --
+// vendor-tree-relative, as it lands *in* `vendor/workflows/`).
+const NEW_LIB_MEMBERS_BARE = ["lib/stats.mjs"];
+const NEW_LIB_MEMBERS_VENDORED = ["vendor/workflows/lib/stats.mjs"];
 
-const D1_BASELINE = ["orchestrate-dev.js", "orchestrate-queue.js"];
+// Baselines re-based onto HEAD's post-state: the prior feature's D-1/D-2/
+// D-3/D-5 delta (`loop-session.mjs`, `escalation-view.mjs`, bare and
+// vendored) has already landed and is no longer "new" -- it is now part of
+// the pre-existing member set this feature's single new member is additive
+// over.
+const D1_BASELINE = [
+  "orchestrate-dev.js",
+  "orchestrate-queue.js",
+  "lib/loop-session.mjs",
+  "lib/escalation-view.mjs",
+];
 const D2_D3_BASELINE = [
   "vendor/workflows/orchestrate-dev.js",
   "vendor/workflows/orchestrate-queue.js",
   "vendor/workflows/VENDOR-MANIFEST.json",
+  "vendor/workflows/lib/loop-session.mjs",
+  "vendor/workflows/lib/escalation-view.mjs",
 ];
-const D5_BASELINE = ["orchestrate-dev.js", "orchestrate-queue.js"];
+const D5_BASELINE = [
+  "orchestrate-dev.js",
+  "orchestrate-queue.js",
+  "lib/loop-session.mjs",
+  "lib/escalation-view.mjs",
+];
 
 // Both-directions-lite: every pre-existing member is still present
 // (nothing dropped), and the delta over baseline is exactly `added` --
@@ -74,7 +88,7 @@ function assertAdditiveOnly(actual, baseline, added, label) {
   assert.equal(
     actual.length,
     baseline.length + added.length,
-    `${label}: delta over baseline must be exactly the two new members, got ${JSON.stringify(actual)}`,
+    `${label}: delta over baseline must be exactly the new member, got ${JSON.stringify(actual)}`,
   );
 }
 
@@ -158,8 +172,8 @@ test("P7-02: D-1, D-2, D-3 and D-5 are additive-only over the pre-existing membe
   );
   assert.equal(
     packedSetNs.tspecPackedCount({ licence: false }),
-    4 + 15 + 5 + 1,
-    "D-3 (_tspec-packed-set.mjs tspecPackedCount): vendored class size must be 5",
+    4 + 15 + 6 + 1,
+    "D-3 (_tspec-packed-set.mjs tspecPackedCount): vendored class size must be 6",
   );
 
   const fixtureMachineNs = await import("../scripts/fixture-machine.mjs");
@@ -184,7 +198,12 @@ test("P7-02: docs/completed/pdlc-engine-distribution/ TSPEC §5.4, FSPEC §5.2 a
   // 4 manifest-adjacent/bin/ + 15 lib/*.mjs + 1 install script; the
   // remainder of the licence:false count is the vendored class size.
   const vendoredClassSize = tspecPackedCount({ licence: false }) - (4 + 15 + 1);
-  const vendoredClassWord = vendoredClassSize === 5 ? "five" : String(vendoredClassSize);
+  // Number-word map, not a single-value ternary: this feature's D-3 grows
+  // the vendored class from five to six, and the map must keep agreeing
+  // with whichever word the sibling documents (TSPEC §5.4 / AT-3.8b, FSPEC
+  // §5.2) name at test time, not just the two values seen so far.
+  const CLASS_SIZE_WORDS = { 5: "five", 6: "six" };
+  const vendoredClassWord = CLASS_SIZE_WORDS[vendoredClassSize] ?? String(vendoredClassSize);
 
   const tspecText = readFileSync(TSPEC_DISTRIBUTION_PATH, "utf8");
   const fspecText = readFileSync(FSPEC_DISTRIBUTION_PATH, "utf8");
@@ -203,8 +222,8 @@ test("P7-02: docs/completed/pdlc-engine-distribution/ TSPEC §5.4, FSPEC §5.2 a
   );
   assert.equal(
     vendoredClassSize,
-    5,
-    "tspecPackedCount's vendored class size must be 5 once D-3 lands (TSPEC §7 D-3)",
+    6,
+    "tspecPackedCount's vendored class size must be 6 once D-3 lands (TSPEC §7 D-3)",
   );
 });
 
@@ -213,27 +232,29 @@ test("P7-02: docs/completed/pdlc-engine-distribution/ TSPEC §5.4, FSPEC §5.2 a
 // `packaging.test.js`'s `packRealTarball()` derives its own workflow
 // member list from D-3's `WORKFLOW_MEMBERS` via
 // `.filter(...).map(m => path.basename(m))` (`packaging.test.js:49-51`).
-// `path.basename` flattens the `lib/` segment: once D-3 grows the two
-// vendored `lib/` members, that derivation yields bare `loop-session.mjs`
-// / `escalation-view.mjs`, which resolve to the non-existent
-// `pdlc/workflows/loop-session.mjs` and `packRealTarball()` throws `ENOENT`
+// `path.basename` flattens the `lib/` segment: once D-3 grows the vendored
+// `lib/` members, that derivation yields bare `loop-session.mjs` /
+// `escalation-view.mjs` / `stats.mjs`, which resolve to non-existent
+// top-level `pdlc/workflows/` files and `packRealTarball()` throws `ENOENT`
 // (TSPEC §7 D-6). This block owns no file but `loop-distribution.test.js`
 // (P7-01's file-ownership boundary), so it cannot un-skip
 // `packaging.test.js`'s own blocks; instead it reproduces the same
-// derivation -- extended with D-3's post-fix delta -- against the real
-// `pdlc/workflows/` checkout, proving the flattening bug independently of
-// when D-3 itself grows.
+// derivation against the real `pdlc/workflows/` checkout, proving the
+// flattening bug independently of when D-3 itself grows. D-3's own
+// `WORKFLOW_MEMBERS` is read post-state here -- once this feature's D-3
+// task lands, it already carries the new member, so this conjunct iterates
+// the post-state member set directly rather than concatenating the delta
+// on top (concatenating would double-count the new member once D-3 lands).
 test("P7-02: the workflow-member copy step preserves each member's relative path (no path.basename flattening)", async () => {
   const { WORKFLOW_MEMBERS } = await import("./_tspec-packed-set.mjs");
-  const postFixMembers = [
-    ...WORKFLOW_MEMBERS.filter((m) => m !== "vendor/workflows/VENDOR-MANIFEST.json"),
-    ...NEW_LIB_MEMBERS_VENDORED,
-  ];
+  const postStateMembers = WORKFLOW_MEMBERS.filter(
+    (m) => m !== "vendor/workflows/VENDOR-MANIFEST.json",
+  );
   // packaging.test.js:49-51's derivation, reproduced here -- post-D-6, the
   // derivation strips the `vendor/workflows/` prefix but preserves the
   // remaining relative path (no `path.basename` flattening) -- never used
   // to decide production behaviour.
-  const flattenedNames = postFixMembers.map((m) => m.replace(/^vendor\/workflows\//, ""));
+  const flattenedNames = postStateMembers.map((m) => m.replace(/^vendor\/workflows\//, ""));
 
   let firstMissing = null;
   for (const name of flattenedNames) {

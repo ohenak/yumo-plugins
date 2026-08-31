@@ -428,6 +428,7 @@ export const WORKFLOW_MODULE_NAMES = [
   "orchestrate-queue.js",
   "lib/loop-session.mjs",
   "lib/escalation-view.mjs",
+  "lib/stats.mjs",
 ];
 
 /**

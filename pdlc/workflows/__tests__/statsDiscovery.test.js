@@ -22,7 +22,7 @@ const NON_FEATURE_DIRS_LITERAL = Object.freeze([
   "completed",
 ]);
 
-describe.skip("T-14: discoverFeatures (TSPEC §3.3, §4.4)", () => {
+describe("T-14: discoverFeatures (TSPEC §3.3, §4.4)", () => {
   it("BR-02: prefers the live directory over the archived one for a feature present in both (AT-02, PROP-DISC-01)", async () => {
     const { discoverFeatures } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({

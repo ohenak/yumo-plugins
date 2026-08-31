@@ -42,3 +42,41 @@ all sit inside the v1.7 and v1.6 **historical** changelog entries, describing th
 v1.6's is now explicitly flagged superseded. A changelog entry that correctly describes the round it
 names is not a stale live claim. There is no remaining sentence in the document that asserts the
 question is open.
+
+## Architecture
+
+**No design moved, and that is the correct outcome for this round.** The whole point of my v10
+finding was that TSPEC's *behaviour* was already right — it implemented BR-16, the side REQ v1.7
+then chose — and only its account of its own upstream was false. The revision changed prose and
+pins. I re-verified that claim mechanically rather than trusting it: across the +52/−44 diff, no
+type, no signature, no exit code, no branch, no code sketch and no expected value is touched. The
+`if (harvested && (crossReviews.length === 0 || dodReviews.length === 0))` sketch is byte-identical,
+and harvested still precedes the zero-denominator test, which is BR-16's stated precedence.
+
+**Does the design trace to REQ as REQ now stands?** Yes, and the trace is now stated rather than
+hedged. REQ-STATS-06 v1.7 requires that the predicate be "evaluated over exactly the file set whose
+bytes the process side sums". §4.3 derives both the harvested test and the numerator from BR-14's
+grammars — `crossReviews` is grammatical membership via `parseReviewFilename(...).ok`, and the
+out-of-catalogue file "contributes **neither** side" of the ratio. One file set, both halves. That
+is REQ's new binding satisfied structurally, not coincidentally.
+
+**The v1.8 changelog's characterisation of REQ's reasoning is accurate.** §4.3 says REQ "withdrew
+that clause as contradicting its own preceding rationale and C-5's fidelity rule". REQ's own erratum
+note at `REQ-pdlc-stats.md:20-24` reads: the clause "contradicted its own preceding rationale and
+C-5's fidelity rule, and dissented from every downstream reading of the same file." The TSPEC does
+not overstate REQ's grounds or invent a rationale REQ did not give.
+
+**The FSPEC-side claim checks out too.** §4.3 now pins "BR-16 at v1.8 (unchanged since v1.7)" and
+says "FSPEC v1.8 absorbed the same decision with no rule changed." FSPEC's v1.8 changelog
+(`FSPEC-pdlc-stats.md:18-22`) confirms both halves: "re-grounded on REQ v1.7; **no rule changed**",
+and the item is "**absorbed**, not open: BR-16, BR-14 and REQ-STATS-06 now [read one file set]".
+The pin moved for the right reason — the document version advanced while the rule it cites did not —
+and the parenthetical says exactly that, which is the honest form of a version bump.
+
+**The re-stamp matched its own pre-declaration.** §4.3 has said since v1.6 that when the dispute
+settled, "exactly three things here re-stamp — this paragraph, BR-16's version pin above, and AT-17's
+fourth-leg expectation." All three moved, and the §8.3 bullet it also named closed. I found no fourth
+site: I grepped the document for every occurrence of `survivor`, `contested`, `REQ v1.6` and
+`re-stamp if`, and every hit falls in a historical changelog entry or the deliberate in-place record.
+A document that predicts its own blast radius and then holds to it is cheap to re-review, and this
+one did for the second round running.

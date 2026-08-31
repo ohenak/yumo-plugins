@@ -110,6 +110,26 @@ function maskNonCode(source) {
         put(c, false); i++; prevCh = c; prevWord = "";
         continue;
       }
+      // A code frame opened by `${` must pop back to its template on the
+      // interpolation's closing `}` (brace-depth tracked, so `${ {a: 1} }`
+      // still closes at the right brace) — without this, the template's own
+      // closing backtick reads as OPENING a new template and masking inverts
+      // for the remainder of the source.
+      if (c === "{" && s.fromTemplate) {
+        s.depth++;
+        put(c, true); prevCh = c; prevWord = ""; i++;
+        continue;
+      }
+      if (c === "}" && s.fromTemplate) {
+        if (s.depth === 0) {
+          stack.pop();
+          put(c, true); prevCh = c; prevWord = ""; i++;
+          continue;
+        }
+        s.depth--;
+        put(c, true); prevCh = c; prevWord = ""; i++;
+        continue;
+      }
       if (c === "/") {
         const regexish =
           prevCh === "" || "(,=:[!&|?{};+-*%~^<>".includes(prevCh) || REGEX_PREFIX_WORDS.has(prevWord);
@@ -145,7 +165,7 @@ function maskNonCode(source) {
     if (s.mode === "template") {
       if (c === "\\") { put(c, false, i); put(d, false, i + 1); i += 2; continue; }
       if (c === "$" && d === "{") {
-        stack.push({ mode: "code" });
+        stack.push({ mode: "code", fromTemplate: true, depth: 0 });
         put(c, true, i); put(d, true, i + 1); i += 2;
         continue;
       }
@@ -207,6 +227,17 @@ function countObjectLiteralsWithKeys(masked, keys) {
   while (i < masked.length) {
     const open = masked.indexOf("{", i);
     if (open === -1) break;
+    i = open + 1; // allow nested/overlapping spans to be found independently
+    // Only literal-position braces count: a function/block body's `{` (it
+    // follows `)`, `{`, `}` or `;`) would otherwise double-count by enclosing
+    // the very literal under test — statsParsers' body span contains the same
+    // four names as the object it returns.
+    let p = open - 1;
+    while (p >= 0 && /\s/.test(masked[p])) p--;
+    const literalPosition =
+      p >= 0 &&
+      ("(=,:[".includes(masked[p]) || /\breturn$/.test(masked.slice(Math.max(0, p - 5), p + 1)));
+    if (!literalPosition) continue;
     let depth = 0;
     let j = open;
     for (; j < masked.length; j++) {
@@ -218,8 +249,9 @@ function countObjectLiteralsWithKeys(masked, keys) {
     }
     if (j >= masked.length) break;
     const span = masked.slice(open, j + 1);
-    if (keys.every((k) => new RegExp(`\\b${k}\\b`).test(span))) count++;
-    i = open + 1; // allow nested/overlapping spans to be found independently
+    // Key position (`name:`), not bare mention — dot access and destructuring
+    // spans must not count as construction sites (DEC-STATS-01 K-4).
+    if (keys.every((k) => new RegExp(`\\b${k}\\s*:`).test(span))) count++;
   }
   return count;
 }
@@ -412,7 +444,7 @@ function objectLiteralTopLevelKeys(masked, openBraceIndex) {
 // symbol) before writing anything.
 
 describe("CLI structural anti-drift oracles owned by T-17 (bin/cli.mjs)", () => {
-  test.skip("T-17: statsParsers()'s four members are === orchestrate-dev.js's four exports (TSPEC §2.5/§6.4)", async () => {
+  test("T-17: statsParsers()'s four members are === orchestrate-dev.js's four exports (TSPEC §2.5/§6.4)", async () => {
     const mod = await import(pathToFileURL(CLI_PATH).href);
     const bundle = await mod.statsParsers();
     assert.equal(bundle.parseReviewFilename, parseReviewFilename);
@@ -421,7 +453,7 @@ describe("CLI structural anti-drift oracles owned by T-17 (bin/cli.mjs)", () => 
     assert.equal(bundle.parseResolvedMarker, parseResolvedMarker);
   });
 
-  test.skip("T-17: the object cmdStats hands runStats is that same statsParsers() bundle — pass-through, not rebuilt or wrapped (TSPEC §2.5/§6.4)", () => {
+  test("T-17: the object cmdStats hands runStats is that same statsParsers() bundle — pass-through, not rebuilt or wrapped (TSPEC §2.5/§6.4)", () => {
     const source = readCliSource();
     const masked = maskNonCode(source);
     const cmdStatsBody = extractFunctionBody(source, masked, "cmdStats");
@@ -448,7 +480,7 @@ describe("CLI structural anti-drift oracles owned by T-17 (bin/cli.mjs)", () => 
     );
   });
 
-  test.skip("T-17: the four-classifier object literal occurs exactly once in bin/cli.mjs's source (construction-site count, TSPEC §3.4/§6.4)", () => {
+  test("T-17: the four-classifier object literal occurs exactly once in bin/cli.mjs's source (construction-site count, TSPEC §3.4/§6.4)", () => {
     const source = readCliSource();
     const masked = maskNonCode(source);
     const count = countObjectLiteralsWithKeys(masked, [
@@ -465,7 +497,7 @@ describe("CLI structural anti-drift oracles owned by T-17 (bin/cli.mjs)", () => 
     );
   });
 
-  test.skip("T-17: the StatsIo object literal statsIo() returns has exactly the four keys listDir, fileSize, readFile, exists (no-write capability, TSPEC §2.3/§6.4)", () => {
+  test("T-17: the StatsIo object literal statsIo() returns has exactly the four keys listDir, fileSize, readFile, exists (no-write capability, TSPEC §2.3/§6.4)", () => {
     const source = readCliSource();
     const masked = maskNonCode(source);
     const statsIoBody = extractFunctionBody(source, masked, "statsIo");
@@ -477,7 +509,7 @@ describe("CLI structural anti-drift oracles owned by T-17 (bin/cli.mjs)", () => 
     assert.deepEqual([...keys].sort(), ["exists", "fileSize", "listDir", "readFile"]);
   });
 
-  test.skip("T-17: statsIo().fileSize's body names lstatSync, never statSync (TSPEC §2.4/§3.1)", () => {
+  test("T-17: statsIo().fileSize's body names lstatSync, never statSync (TSPEC §2.4/§3.1)", () => {
     const source = readCliSource();
     const masked = maskNonCode(source);
     const statsIoBody = extractFunctionBody(source, masked, "statsIo");
@@ -490,14 +522,14 @@ describe("CLI structural anti-drift oracles owned by T-17 (bin/cli.mjs)", () => 
     assert.equal(calls.has("statSync"), false, "fileSize must never call statSync");
   });
 
-  test.skip("T-17: bin/cli.mjs's source contains no statSync call anywhere in the stats seam (TSPEC §2.4/§3.1)", () => {
+  test("T-17: bin/cli.mjs's source contains no statSync call anywhere in the stats seam (TSPEC §2.4/§3.1)", () => {
     const source = readCliSource();
     const masked = maskNonCode(source);
     const calls = fsSyncCallNames(masked);
     assert.equal(calls.has("statSync"), false, "the stats seam must use lstatSync exclusively, never statSync");
   });
 
-  test.skip("T-17: statsIo()'s node:fs call set is identical to T-02's realStatsIo() call set (equivalence conjunct, TSPEC §6.1/§6.4)", () => {
+  test("T-17: statsIo()'s node:fs call set is identical to T-02's realStatsIo() call set (equivalence conjunct, TSPEC §6.1/§6.4)", () => {
     const source = readCliSource();
     const masked = maskNonCode(source);
     const statsIoBody = extractFunctionBody(source, masked, "statsIo");

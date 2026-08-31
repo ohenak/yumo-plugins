@@ -640,3 +640,34 @@ the supervisor), `pdlc-plugin-retirement` (§4 — a hand-orchestrated session i
 conflict, which the LEARNINGS records as luck, not design).
 
 **Applies to:** orchestration, `orchestrate-dev`, `orchestrate-queue`, engine backlog
+
+---
+
+## DC-23: A vendoring co-change sweep is scoped to what the shipped engine loads, not to a directory
+
+**Constraint:** When a class of modules is vendored into a published package (`pdlc/workflows/lib/`
+into the engine at pack time), the co-change sweep that finds every site enumerating, sizing or
+pinning that class is **repo-scoped and source-restricted `git grep -l`** over a tracked member of
+the class — never `__tests__/`-scoped (a narrower sweep silently drops a production-side enumeration
+copy) and never `grep -rln` unqualified (it silently drops files containing NUL bytes). The sweep's
+membership question is **"does the shipped engine load this module at runtime?"**, never **"does this
+module live under `pdlc/workflows/lib/`?"** — directory placement and vendoring obligation are
+independent facts, and treating the second as a proxy for the first over- or under-counts the set.
+
+**Worked exclusion.** `pdlc/workflows/lib/document-oracles.mjs` sits in the same directory as every
+vendored module and, by directory alone, would appear to owe the same co-change discipline. It does
+not: at HEAD it is imported only by `documentOracles.test.js`; `advisoryWaveGate.test.js` merely
+*mentions* it in a comment and is not a consumer; and it appears in none of the vendoring
+enumerations — not `prepack.mjs`'s `MODULE_NAMES`, not the `WORKFLOW_MEMBERS` copy, not
+`fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`, not `package.json`'s `c8.include`. It is a dev-only
+`lib/` module — used to build and check documents in this repo, never imported by anything the
+packaged engine ships or runs — so it owes no co-change. A module earns the sweep because the engine
+CLI loads it at runtime (as `lib/stats.mjs` does, dispatched from `pdlc/engine/bin/cli.mjs`'s
+`cmdStats`), not because of where it sits on disk.
+
+**Origin:** promoted 2026-08-31 from `TSPEC-pdlc-stats.md` §2.1 (the ten-site, repo-scoped,
+source-restricted co-change derivation for `lib/stats.mjs`'s addition to the vendored `lib/` class,
+and the residue argument distinguishing a directory's membership from the shipped engine's runtime
+load set).
+
+**Applies to:** TSPEC, PLAN, `se-implement`, co-change sweeps over any vendored/packaged module class

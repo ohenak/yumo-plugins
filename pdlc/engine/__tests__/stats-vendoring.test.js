@@ -50,28 +50,28 @@ describe("vendored class size is derived from MODULE_NAMES, not transcribed (TSP
 });
 
 describe("lib/stats.mjs membership, owned by batch 10", () => {
-  test.skip("T-21: lib/stats.mjs is a member of prepack.mjs's MODULE_NAMES (TSPEC §2.1/§6.4)", () => {
+  test("T-21: lib/stats.mjs is a member of prepack.mjs's MODULE_NAMES (TSPEC §2.1/§6.4)", () => {
     assert.ok(
       MODULE_NAMES.includes("lib/stats.mjs"),
       "prepack.mjs's MODULE_NAMES must copy lib/stats.mjs into vendor/workflows/ at pack time",
     );
   });
 
-  test.skip("T-22: vendor/workflows/lib/stats.mjs is a member of _tspec-packed-set.mjs's WORKFLOW_MEMBERS (TSPEC §2.1/§6.4)", () => {
+  test("T-22: vendor/workflows/lib/stats.mjs is a member of _tspec-packed-set.mjs's WORKFLOW_MEMBERS (TSPEC §2.1/§6.4)", () => {
     assert.ok(
       PACKED_SET_WORKFLOW_MEMBERS.includes("vendor/workflows/lib/stats.mjs"),
       "_tspec-packed-set.mjs's WORKFLOW_MEMBERS must list vendor/workflows/lib/stats.mjs",
     );
   });
 
-  test.skip("T-25: vendor/workflows/lib/stats.mjs is a member of publish-preflight.mjs's WORKFLOW_MEMBERS (TSPEC §2.1/§6.4)", () => {
+  test("T-25: vendor/workflows/lib/stats.mjs is a member of publish-preflight.mjs's WORKFLOW_MEMBERS (TSPEC §2.1/§6.4)", () => {
     assert.ok(
       PREFLIGHT_WORKFLOW_MEMBERS.includes("vendor/workflows/lib/stats.mjs"),
       "publish-preflight.mjs's WORKFLOW_MEMBERS must list vendor/workflows/lib/stats.mjs",
     );
   });
 
-  test.skip("T-25: lib/stats.mjs is a member of fixture-machine.mjs's WORKFLOW_MODULE_NAMES (TSPEC §2.1/§6.4)", () => {
+  test("T-25: lib/stats.mjs is a member of fixture-machine.mjs's WORKFLOW_MODULE_NAMES (TSPEC §2.1/§6.4)", () => {
     assert.ok(
       WORKFLOW_MODULE_NAMES.includes("lib/stats.mjs"),
       "fixture-machine.mjs's WORKFLOW_MODULE_NAMES must list lib/stats.mjs",

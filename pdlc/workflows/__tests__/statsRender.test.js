@@ -79,7 +79,7 @@ function buildSingleReport(featureStatsOverrides = {}) {
   return { kind: "single", result: buildFeatureStats(featureStatsOverrides) };
 }
 
-describe.skip("T-15: renderHuman / renderJson over hand-built StatsReport values", () => {
+describe("T-15: renderHuman / renderJson over hand-built StatsReport values", () => {
   describe("AT-01: single-feature human block order", () => {
     it("prints header, review rounds (six rows in catalogue order), DoD rounds, halts, byte ratio — in that order", async () => {
       const { renderHuman } = await import("../lib/stats.mjs");

@@ -65,7 +65,7 @@ async function compute(io, parsers, feature = FEATURE, dir = ROOT) {
   return computeFeatureStats(io, parsers, feature, dir);
 }
 
-describe.skip("T-13: computeFeatureStats (TSPEC §4.3)", () => {
+describe("T-13: computeFeatureStats (TSPEC §4.3)", () => {
   describe("Review rounds (BR-05...BR-09)", () => {
     it("AT-07: highest index across roles, not a sum and not per role", async () => {
       const io = ioFor({

@@ -225,10 +225,11 @@ Once installed, the pipeline runs only through the installed engine CLI (`pdlc/e
 - `pdlc queue` — run the next ready row from `docs/_queue/QUEUE.md`
 - `pdlc doctor` — startup/environment checks only; dispatches nothing
 - `pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [--rationale <text>]` — record a decision-entry outcome
+- `pdlc stats [feature] [--json] [--cwd <path>]` — read-only report over `docs/`
 
 Flags: `--loop [--max-iterations <n>]` and `--loop-state <path>` (queue-only), `--dry-run` (inspection surface, no dispatch), the `forcePhases` override `<R,F,T,P,D,PR|all>` (dev-only), and the common `--plugin-root <path>`, `--cwd <path>`, `--allow-api-key-billing`.
 
-The CLI resolves versions from a local store at `~/.pdlc/versions` (override with `PDLC_HOME`). The four workflow modules it dispatches (`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`) are vendored into the package at pack time, falling back to this repo's `pdlc/workflows/` in a dev checkout. Full flag semantics live in `pdlc/OPERATIONS.md`.
+The CLI resolves versions from a local store at `~/.pdlc/versions` (override with `PDLC_HOME`). The five workflow modules it dispatches (`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`, `lib/stats.mjs`) are vendored into the package at pack time, falling back to this repo's `pdlc/workflows/` in a dev checkout. Full flag semantics live in `pdlc/OPERATIONS.md`.
 
 ## Ptah engine integration
 

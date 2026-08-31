@@ -54,6 +54,7 @@ export const WORKFLOW_MEMBERS = [
   "vendor/workflows/VENDOR-MANIFEST.json",
   "vendor/workflows/lib/loop-session.mjs",
   "vendor/workflows/lib/escalation-view.mjs",
+  "vendor/workflows/lib/stats.mjs",
 ];
 
 export const TSPEC_SOURCE_NOTE =
@@ -96,5 +97,5 @@ export function tspecPackedSet({ licence }) {
  * per-class counts — never this file alone.
  */
 export function tspecPackedCount({ licence }) {
-  return 4 + 15 + 5 + 1 + (licence ? 1 : 0);
+  return 4 + 15 + 6 + 1 + (licence ? 1 : 0);
 }

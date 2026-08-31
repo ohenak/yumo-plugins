@@ -75,7 +75,7 @@ function extractFunctionBody(source, declRegex, label) {
 // ---------------------------------------------------------------------------
 
 describe("P-1 — prepack.mjs MODULE_NAMES exact membership", () => {
-  test("MODULE_NAMES is exactly the four canonical workflow modules", () => {
+  test("MODULE_NAMES is exactly the five canonical workflow modules", () => {
     const m = /const MODULE_NAMES = \[([^\]]*)\];/.exec(PREPACK_SOURCE);
     expect(m).not.toBeNull();
     const names = m[1]
@@ -88,6 +88,7 @@ describe("P-1 — prepack.mjs MODULE_NAMES exact membership", () => {
       "orchestrate-queue.js",
       "lib/loop-session.mjs",
       "lib/escalation-view.mjs",
+      "lib/stats.mjs",
     ]);
   });
 });

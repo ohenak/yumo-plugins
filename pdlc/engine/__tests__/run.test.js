@@ -117,6 +117,7 @@ test("prepack vendors the workflow modules byte-for-byte with a verifiable manif
     assert.deepEqual(names, [
       "lib/escalation-view.mjs",
       "lib/loop-session.mjs",
+      "lib/stats.mjs",
       "orchestrate-dev.js",
       "orchestrate-queue.js",
     ]);
@@ -249,6 +250,7 @@ test("prepack run as a process (npm's prepack lifecycle) vendors every workflow 
       "orchestrate-queue.js",
       "lib/loop-session.mjs",
       "lib/escalation-view.mjs",
+      "lib/stats.mjs",
     ]) {
       const dest = path.join(scratchWorkflows, name);
       mkdirSync(path.dirname(dest), { recursive: true });
@@ -271,6 +273,7 @@ test("prepack run as a process (npm's prepack lifecycle) vendors every workflow 
       [
         "lib/escalation-view.mjs",
         "lib/loop-session.mjs",
+        "lib/stats.mjs",
         "orchestrate-dev.js",
         "orchestrate-queue.js",
       ],

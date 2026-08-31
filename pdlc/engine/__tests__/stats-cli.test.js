@@ -118,7 +118,7 @@ function lastStderrLine(stderr) {
 // specific offending token — never a bare exit-code check, which the
 // `default: Unknown command` branch already satisfies at HEAD.
 
-describe.skip("T-17: AT-24: pdlc stats's flag set is closed; a usage error writes nothing to stdout", () => {
+describe("T-17: AT-24: pdlc stats's flag set is closed; a usage error writes nothing to stdout", () => {
   test("`--dev` is refused even though `doctor`/`dev`/`queue` accept it", async () => {
     const { stdout, stderr, exitCode } = await captureRun(() =>
       main(["node", "pdlc", "stats", "pdlc-stats", "--dev", "--cwd", repoRoot]),
@@ -183,11 +183,21 @@ describe.skip("T-17: AT-24: pdlc stats's flag set is closed; a usage error write
 // unrecognised, so stdout is empty — `JSON.parse("")` throws, which is the
 // right-reason failure this case pins until T-17 lands `cmdStats`.
 
-describe.skip("T-17: AT-04: stdout is exactly one JSON document under --json", () => {
+describe("T-17: AT-04: stdout is exactly one JSON document under --json", () => {
   test("`pdlc stats pdlc-stats --json --cwd <repoRoot>` stdout parses as a single JSON document, exit 0", async () => {
-    const { stdout, stderr, exitCode } = await captureRun(() =>
-      main(["node", "pdlc", "stats", "pdlc-stats", "--json", "--cwd", repoRoot]),
+    // A real child process, not captureRun: the in-process capture swaps
+    // `process.stdout.write` across await points, and under `node --test`'s
+    // child-process protocol the runner's own serialized reporter frames land
+    // in the buffer ahead of the CLI's document — which this oracle's "no
+    // surrounding text" clause would then fail for a reason that is not AT-04's.
+    const { spawnSync } = await import("node:child_process");
+    const run = spawnSync(
+      process.execPath,
+      [path.join(engineRoot, "bin", "cli.mjs"), "stats", "pdlc-stats", "--json", "--cwd", repoRoot],
+      { encoding: "utf8" },
     );
+    const { stdout, stderr } = run;
+    const exitCode = run.status;
     assert.equal(exitCode, 0, stderr || stdout);
     let parsed;
     assert.doesNotThrow(() => {
@@ -209,7 +219,7 @@ describe.skip("T-17: AT-04: stdout is exactly one JSON document under --json", (
 
 const UNKNOWN_FEATURE = "pdlc-stats-cli-test-does-not-exist";
 
-describe.skip("T-17: AT-23: an unknown feature is reported by name, in both modes", () => {
+describe("T-17: AT-23: an unknown feature is reported by name, in both modes", () => {
   test("human mode: exit 1, stderr names the unknown feature", async () => {
     const { stderr, exitCode } = await captureRun(() =>
       main(["node", "pdlc", "stats", UNKNOWN_FEATURE, "--cwd", repoRoot]),
@@ -266,7 +276,7 @@ function cleanupUnreadableFeatureFixture({ root, featureDir }) {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-describe.skip("T-17: AT-27 (single-feature half): an unreadable feature directory fails the single run", () => {
+describe("T-17: AT-27 (single-feature half): an unreadable feature directory fails the single run", () => {
   test("human mode: no report, feature and reason named on stderr, exit 1", { skip: isRoot }, async () => {
     const fixture = makeUnreadableFeatureFixture();
     try {
@@ -315,7 +325,7 @@ describe.skip("T-17: AT-27 (single-feature half): an unreadable feature director
 // against this repository's own archive, exercised through the CLI
 // process entry, over the SAME `main()` this file's other cases use.
 
-describe.skip("T-17: End-to-end: pdlc stats pdlc-loop-economics --json --cwd <repoRoot> reads DoD rounds 2", () => {
+describe("T-17: End-to-end: pdlc stats pdlc-loop-economics --json --cwd <repoRoot> reads DoD rounds 2", () => {
   test("`--json --cwd <repoRoot>` reads dodRounds === 2 against the real repository archive", async () => {
     const { stdout, stderr, exitCode } = await captureRun(() =>
       main(["node", "pdlc", "stats", "pdlc-loop-economics", "--json", "--cwd", repoRoot]),
@@ -325,7 +335,9 @@ describe.skip("T-17: End-to-end: pdlc stats pdlc-loop-economics --json --cwd <re
     assert.doesNotThrow(() => {
       parsed = JSON.parse(stdout);
     }, `stdout did not parse as JSON: ${JSON.stringify(stdout)}`);
-    assert.equal(parsed.dodRounds, 2);
+    // dodRounds is the `{state, rounds}` discriminated shape (TSPEC §3.2's
+    // metric envelope), never a bare number — the measurement itself is 2.
+    assert.deepEqual(parsed.dodRounds, { state: "measured", rounds: 2 });
   });
 
   // `--cwd` is required (TSPEC §3.4's "already `VALUE_FLAGS`") — the

@@ -23,7 +23,8 @@
       "**/pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs",
       "**/scripts/capture-learnings-baseline.mjs",
       "**/pdlc/workflows/lib/loop-session.mjs",
-      "**/pdlc/workflows/lib/escalation-view.mjs"
+      "**/pdlc/workflows/lib/escalation-view.mjs",
+      "**/pdlc/workflows/lib/stats.mjs"
     ],
     "allow-external": true,
     "reporter": [

@@ -49,7 +49,7 @@ const EXPLODING_PARSERS = Object.freeze({
 });
 
 describe("T-16: Flow A — single-feature run (FSPEC §3.1)", () => {
-  it.skip("T-16: a readable feature directory produces one report on stdout, empty stderr, exit 0 (human mode)", async () => {
+  it("T-16: a readable feature directory produces one report on stdout, empty stderr, exit 0 (human mode)", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({
       "/repo/docs": { dirs: ["pdlc-sample"], files: [] },
@@ -64,7 +64,7 @@ describe("T-16: Flow A — single-feature run (FSPEC §3.1)", () => {
     expect(outcome.stdout.length).toBeGreaterThan(0);
   });
 
-  it.skip("T-16: the same run under --json produces stdout that parses as the five-key single-feature document (Flow C)", async () => {
+  it("T-16: the same run under --json produces stdout that parses as the five-key single-feature document (Flow C)", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({
       "/repo/docs": { dirs: ["pdlc-sample"], files: [] },
@@ -89,7 +89,7 @@ describe("T-16: Flow A — single-feature run (FSPEC §3.1)", () => {
 });
 
 describe("T-16: Flow B — fleet run (FSPEC §3.2)", () => {
-  it.skip("T-16: a docs root with two feature directories produces a fleet report on stdout, exit 0 (human mode)", async () => {
+  it("T-16: a docs root with two feature directories produces a fleet report on stdout, exit 0 (human mode)", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({
       "/repo/docs": { dirs: ["feature-a", "feature-b"], files: [] },
@@ -104,7 +104,7 @@ describe("T-16: Flow B — fleet run (FSPEC §3.2)", () => {
     expect(outcome.stdout).toEqual(expect.stringContaining("feature-b"));
   });
 
-  it.skip("T-16: the same fleet run under --json produces stdout parsing as the three-key fleet document (Flow C)", async () => {
+  it("T-16: the same fleet run under --json produces stdout parsing as the three-key fleet document (Flow C)", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({
       "/repo/docs": { dirs: ["feature-a", "feature-b"], files: [] },
@@ -123,7 +123,7 @@ describe("T-16: Flow B — fleet run (FSPEC §3.2)", () => {
 });
 
 describe("T-16: AT-03 — a subdirectory contributes nothing (BR-03, EC-04)", () => {
-  it.skip("T-16: stdout is byte-identical whether or not the feature directory carries a subdirectory of artifact-named files", async () => {
+  it("T-16: stdout is byte-identical whether or not the feature directory carries a subdirectory of artifact-named files", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const args = (io) => ({ argv: ["pdlc-sample"], io, parsers: REAL_PARSERS, cwd: "/repo" });
 
@@ -157,7 +157,7 @@ describe("T-16: AT-03 — a subdirectory contributes nothing (BR-03, EC-04)", ()
 });
 
 describe("T-16: AT-04 — stdout is exactly one JSON document (BR-20)", () => {
-  it.skip("T-16: --json stdout parses as a single document with no surrounding text and empty stderr, exit 0", async () => {
+  it("T-16: --json stdout parses as a single document with no surrounding text and empty stderr, exit 0", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({
       "/repo/docs": { dirs: ["pdlc-sample"], files: [] },
@@ -180,7 +180,7 @@ describe("T-16: AT-04 — stdout is exactly one JSON document (BR-20)", () => {
 });
 
 describe("T-16: AT-20 — gap rows are rows, and one bad feature does not sink the fleet", () => {
-  it.skip("T-16: B5's read failure — a fleet feature whose directory cannot be listed becomes a gap row; every other feature is still reported; exit 0", async () => {
+  it("T-16: B5's read failure — a fleet feature whose directory cannot be listed becomes a gap row; every other feature is still reported; exit 0", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo(
       {
@@ -199,7 +199,7 @@ describe("T-16: AT-20 — gap rows are rows, and one bad feature does not sink t
     expect(doc.features["good-feature"].reviewRounds).toBeDefined();
   });
 
-  it.skip("T-16: EC-21's catch-all — a fleet feature whose directory reads fine but whose metric computation throws unexpectedly also becomes a gap row; every other feature is still reported; exit 0 (a guard placed around `listDir` alone must not pass this leg)", async () => {
+  it("T-16: EC-21's catch-all — a fleet feature whose directory reads fine but whose metric computation throws unexpectedly also becomes a gap row; every other feature is still reported; exit 0 (a guard placed around `listDir` alone must not pass this leg)", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({
       "/repo/docs": { dirs: ["good-feature", "bad-feature"], files: [] },
@@ -218,7 +218,7 @@ describe("T-16: AT-20 — gap rows are rows, and one bad feature does not sink t
 });
 
 describe("T-16: AT-26 — an empty feature directory is a measurement, not a gap", () => {
-  it.skip("T-16: a readable, empty feature directory is a normal fleet row — no gap marker, zero-state metrics, exit 0", async () => {
+  it("T-16: a readable, empty feature directory is a normal fleet row — no gap marker, zero-state metrics, exit 0", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo({
       "/repo/docs": { dirs: ["empty-feature"], files: [] },
@@ -245,7 +245,7 @@ describe("T-16: AT-26 — an empty feature directory is a measurement, not a gap
 });
 
 describe("T-16: AT-27 — an unreadable feature directory gaps the fleet (fleet half; single-feature half is T-09)", () => {
-  it.skip("T-16: the fleet run carries the unreadable feature as a gap row, reports every other feature normally, and exits 0", async () => {
+  it("T-16: the fleet run carries the unreadable feature as a gap row, reports every other feature normally, and exits 0", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo(
       {
@@ -263,7 +263,7 @@ describe("T-16: AT-27 — an unreadable feature directory gaps the fleet (fleet 
     expect(outcome.stdout).toEqual(expect.stringContaining("ok-feature"));
   });
 
-  it.skip("T-16: the fleet run under --json carries the unreadable feature as the single-key {gap} entry, distinct from a metrics object", async () => {
+  it("T-16: the fleet run under --json carries the unreadable feature as the single-key {gap} entry, distinct from a metrics object", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const io = fakeStatsIo(
       {
@@ -310,7 +310,7 @@ describe("T-16: AT-27 — the eight root-failure runs ({docs root absent, unread
         // un-skip guard attributes a skip token to the task named in its first
         // string argument, and a variable here would fall back to this file's
         // red owner and halt the wave.
-        it.skip(`T-16: docs root ${root.label}, ${mode.label} mode, ${render.label} rendering — exit 1, the correct-condition message, and never EC-01's not_found`, async () => {
+        it(`T-16: docs root ${root.label}, ${mode.label} mode, ${render.label} rendering — exit 1, the correct-condition message, and never EC-01's not_found`, async () => {
           const { runStats } = await import("../lib/stats.mjs");
           const io = root.buildIo();
 
@@ -338,7 +338,7 @@ describe("T-16: AT-27 — the eight root-failure runs ({docs root absent, unread
     }
   }
 
-  it.skip("T-16: the absent-root message and the unreadable-root message are not byte-identical (single-feature, human mode)", async () => {
+  it("T-16: the absent-root message and the unreadable-root message are not byte-identical (single-feature, human mode)", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const absentOutcome = runStats({
       argv: ["pdlc-sample"],
@@ -361,7 +361,7 @@ describe("T-16: AT-27 — the eight root-failure runs ({docs root absent, unread
 });
 
 describe("T-16: exit codes are 0 or 1 only", () => {
-  it.skip("T-16: a representative sweep of decided scenarios never yields an exitCode outside {0, 1}", async () => {
+  it("T-16: a representative sweep of decided scenarios never yields an exitCode outside {0, 1}", async () => {
     const { runStats } = await import("../lib/stats.mjs");
     const outcomes = [
       runStats({
