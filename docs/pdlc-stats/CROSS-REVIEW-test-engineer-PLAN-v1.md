@@ -35,7 +35,45 @@ structural defect.
 
 ## Batches
 
-_(task-table checks: file existence, red-before-green, `[Fake first]`, same-new-file guard)_
+**TDD ordering — green.** Every 🟢 row has a preceding 🔴 row naming the same test file and ≥1 AT:
+T-12←T-03/T-08, T-13←T-04, T-14←T-05, T-15←T-06, T-16←T-07, T-17←T-09/T-10/T-11. No implementation
+task precedes its red.
+
+**`[Fake first]` — green.** T-02 is the only double-creating task, is labelled `[Fake first]`, sits
+in batch 1, and is a declared dependency of every red in batch 2. TSPEC §6.1's "shared
+`__tests__/helpers/` module owned by a single batch-1 task" is honoured literally; `pdlc/workflows/
+__tests__/helpers/` exists, so T-02 adds a peer.
+
+**Same-new-file guard — green.** Checked row by row against the File Ownership Manifest. Batch 2's
+nine tasks own nine distinct new files (T-11 owns two, both its own). Batch 9's three tasks are
+three distinct new files. Batch 10's five tasks touch twelve files with no overlap:
+T-21 {`prepack.mjs`, `run.test.js`, `learningsPremises.test.js`, `pdlc/README.md`,
+`DOMAIN-CONSTRAINTS.md`}, T-22 {`_tspec-packed-set.mjs`, two sibling documents},
+T-23 {`loop-distribution.test.js`}, T-24 {`package.json`, `coverageInstrumentation.test.js`},
+T-25 {`publish-preflight.mjs`, `fixture-machine.mjs`}. The one multi-writer file,
+`pdlc/workflows/lib/stats.mjs`, is serialized across five distinct batches by real `Deps` edges, not
+by prose — the correct discharge.
+
+**File existence — one ambiguity, one inaccuracy.** Every `(exists)` annotation is true at HEAD, and
+every unannotated file is genuinely absent. Two exceptions:
+
+- T-01 asserts `resolveWorkflowRoot` is "exported from `pdlc/engine/bin/cli.mjs`'s import surface".
+  The symbol is exported by `pdlc/engine/lib/run.mjs` and merely *imported* by `cli.mjs`
+  (`import { … resolveWorkflowRoot … } from "../lib/run.mjs"`); `cli.mjs`'s own `export` list does
+  not carry it. Read as "importable from `cli.mjs`" the assertion is red at HEAD, and batch 1 is a
+  **green gate** whose stated remedy for an absent symbol is "promoted to blocking work" — i.e. a
+  spurious wave halt at the first gate. F-02.
+- The "Claims verified against the tree" section says `pdlc/workflows/lib/` holds `loop-session.mjs`
+  and `escalation-view.mjs`. It holds **three** modules: `document-oracles.mjs` as well — and that
+  module is in neither `MODULE_NAMES` nor `c8.include`, so the section's own evidence base carries a
+  live counterexample to the "a module in `lib/` obliges the vendoring co-change" premise. The same
+  section says `__tests__/helpers/` has 21 modules; it has 20. F-05.
+
+**Batch gates.** The split-gate wording is the right instrument and each split gate names the
+permitted red *and its reason*, so a red for the wrong reason is a batch failure. Batch 9's "T-20 is
+the only permitted red" and batch 10's "the reds-first signal is expected mid-batch, the gate is
+measured at batch end" are both correct readings of `assertAdditiveOnly`'s behaviour at
+`pdlc/engine/__tests__/loop-distribution.test.js`.
 
 ## Dependencies
 
