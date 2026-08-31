@@ -81,11 +81,60 @@ reports a **measured ratio**, not `harvested`. Detail in `## Test Strategy` belo
 
 ## Interfaces
 
-_(pending)_
+### Upstream citation surface, re-checked at HEAD
+
+`DEC-ERR-03` asks whether anything the TSPEC cites still says what the TSPEC says it says. I swept
+every TSPEC anchor touched by FSPEC v1.6/v1.7 and by REQ at HEAD.
+
+| Upstream anchor | What changed in FSPEC v1.6/v1.7 | TSPEC's citation | Still faithful? |
+|---|---|---|---|
+| `BR-16` worked example | The `pdlc-advisory-wave-gate` citation was re-scoped: the directory carries four out-of-catalogue files **alongside** grammar-matching ones and reports a **measured ratio**; only the basename *shape* is borrowed, not the verdict | §4.3 still calls it "a harvested directory whose only `CROSS-REVIEW-` basenames are the out-of-catalogue … form … as reporting `harvested`" | **No** — `F-01` |
+| `BR-16` version pin | `BR-16`'s text changed at v1.6 and again at v1.7 | §4.3 cites "FSPEC `BR-16` **at v1.4**" | **No** — stale pin, folded into `F-01` |
+| `BR-16` rule itself | Unchanged: harvested is evaluated over exactly the file set `BR-14`'s numerator sums; a basename failing a grammar contributes no bytes and counts as no file remaining | §4.3's rule statement and its `if (harvested && (crossReviews.length === 0 \|\| dodReviews.length === 0))` sketch | **Yes** — the implementable rule is correct and unmoved |
+| `BR-16` precedence | Unchanged: harvested is tested **before** `BR-15`'s zero-denominator test | §4.3's ordering and §7.4's mutation row | **Yes** |
+| §8 `BR-16` trace row | Gains `AT-15` (`BR-16` \| `AT-15, AT-17`) | §4.3 calls `AT-17`'s fourth leg "the boundary fixture" | **Yes, narrowly** — TSPEC never claims `AT-17` is the *only* test asserting `BR-16`, so this is an omission rather than a misstatement. Noted, not raised |
+| `AT-15` neither-list | Gains a `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file, pinning the `BR-16` half no test reached | TSPEC cites `AT-15` only for `EC-19`'s symbolic-link leg (§3, and §8's `EC-19 \| AT-15` row) | **Yes** — FSPEC §8 still maps `EC-19` to `AT-15 (symbolic-link member)`; TSPEC enumerates no neither-list of its own |
+| §7.3 row `E-5` | Now cites `BR-27, AT-20, AT-26` instead of `BR-27, AT-19` | TSPEC §1 rests `E-5`'s settled zero-state row on the `EC-03`/`AT-26` argument | **Yes** — TSPEC already cites `AT-26`, matching the corrected trace. Its separate `AT-19` mentions are about `AT-19`'s own *Given*, not `E-5`'s trace |
+| `pdlc-advisory-wave-gate` out-of-catalogue count | "two" corrected to "four" | TSPEC §7.2's `AT-09` row already asserts "the **four** `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md` basenames" | **Yes** — TSPEC was already right here, which is what makes §4.3's survival an internal contradiction |
+| REQ (`sha256:5f3e8051…`) | Unmoved; hash matches this round's dispatch pin exactly | `REQ-STATS-06` at v1.4 scoping, `C-4`'s process-side definition | **Yes** — verified by hash, no re-read divergence |
+
+One row in this table is the whole of `F-01`. Everything else in TSPEC's upstream surface survived
+the FSPEC v1.5 → v1.7 move intact, which is worth saying plainly: this is a narrow, single-passage
+divergence, not a document that has drifted from its upstream.
 
 ## Data Model
 
-_(pending)_
+### The changelog's grounding attestation
+
+The v1.5 changelog states:
+
+> Re-grounded on REQ / FSPEC HEAD first — both are the versions this round's dispatch pins
+> (`REQ sha256:5f3e8051…`, `FSPEC sha256:c7d2c832…`) and neither moved since v1.4's grounding, so no
+> upstream decision is absorbed.
+
+Two halves, and they are not both true.
+
+**The hashes are right.** `REQ-pdlc-stats.md` hashes to `5f3e8051…`, matching the dispatch pin
+character-for-character. `FSPEC-pdlc-stats.md` hashes to `c7d2c832…`, matching both the changelog
+and the approval-anchor commit `e4a92e4a6`. The document correctly identifies *which bytes* it is
+grounded on.
+
+**"Neither moved since v1.4's grounding" is false for FSPEC.** TSPEC v1.4's own changelog records
+grounding on **FSPEC v1.5**. FSPEC's header at HEAD reads **v1.7**, and its changelog carries two
+further revision entries (v1.6, v1.7) above the v1.5 one. FSPEC moved by two revisions between the
+two groundings.
+
+This is the mechanism that produced `F-01`. The erratum protocol's re-grounding step is the control
+that catches upstream drift; an attestation that upstream did not move discharges that control
+without exercising it. Had the round compared FSPEC v1.5 to v1.7, the `BR-16` rewrite — which is the
+*first* substantive line of both revision entries — would have been the first thing it saw.
+
+I am recording this separately from `F-01` and at **Medium**, not High, deliberately. Its own user
+impact is a record-accuracy defect in a changelog, and the behavioural consequence it permitted is
+already carried at full severity by `F-01`. Booking the same impact twice as two Highs would inflate
+severity rather than calibrate it. But it is `delta`-provenance and `local` — the erratum edit wrote
+this sentence — and it should be corrected in the same revision that fixes §4.3, so the next round's
+grounding claim is one a reader can rely on.
 
 ## Test Strategy
 

@@ -87,7 +87,52 @@ round, and on this axis it happened not to need it. On the axis below, it did.
 
 ## Test Strategy
 
-_TBD_
+The delta touches no oracle. §6.4's purity split, the vendoring oracle, the catalogue-agreement
+set-equality, the exact-key-set conjuncts, the snapshot isolation property and the named mutation
+kills are all unchanged, and §6.4's renaming of the four-enumeration subset is a naming improvement:
+"the four enumerations `assertAdditiveOnly` reads" identifies the subset by its falsifier, which is
+checkable, where "script-side" was a directory claim falsified by `_tspec-packed-set.mjs` sitting
+under `__tests__/`. Good correction.
+
+**The problem is F-01, and it lands on a load-bearing oracle.**
+
+§4.3 (`:725`–`:737`) argues that the harvested test is asked over grammar-passing cross-reviews, so a
+directory whose only `CROSS-REVIEW-` basenames are the out-of-catalogue
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` form reports `harvested`. It closes that argument with:
+
+> `REQ-STATS-06` at v1.4 carries the same scoping. … Nothing on this point is routed upstream
+> (FSPEC §7.3 records it closed).
+
+At REQ **v1.6**, REQ-STATS-06 no longer carries the same scoping. It now states:
+
+> The predicate is set-membership over C-4's grammars, so a grammatical basename outside the
+> driver's document-type catalogue is **a survivor** even where REQ-STATS-03 reports it malformed.
+
+`CROSS-REVIEW-test-engineer-REVIEW-v1.md` parses against C-4's `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`
+with `doc-type = REVIEW` — a doc-type outside the driver's catalogue. REQ v1.6 therefore classes it a
+**survivor**, which makes the cross-review family non-empty and the ratio **measured**. FSPEC BR-16
+(still, at v1.7) and TSPEC §4.3 both class the same directory **harvested**. These cannot both hold.
+
+This is not a prose nit — it flips an expected value on a named fixture:
+
+- **AT-17's fourth leg**, the boundary fixture §4.3 calls out by name: `LEARNINGS` present,
+  `CODE_REVIEW` files intact, only out-of-catalogue `CROSS-REVIEW-` basenames. TSPEC expects
+  `harvested`; REQ v1.6's predicate yields `measured`.
+- The **precedence** leg (harvested before zero-denominator) is unaffected in ordering but its
+  third fixture's expectation inherits the same flip.
+- §4.3's disjunction analysis — that keeping the DoD family populated is "what makes the grammatical
+  cross-review test the disjunct that fires" — is precisely the reasoning that breaks: under REQ
+  v1.6 that disjunct no longer fires on this fixture.
+
+A test engineer writing to this TSPEC today would write an assertion that contradicts the REQ. That
+is the definition of an infidelity worth a High.
+
+**Where the fix belongs.** The root contradiction is REQ v1.6 against FSPEC BR-16, not a TSPEC
+authoring error — the TSPEC faithfully compresses FSPEC, and FSPEC has not yet absorbed REQ v1.6's
+new sentence. So F-01 is tagged `inherited`: it routes back to the owning phase to reconcile
+REQ-STATS-06 and BR-16 first. Once BR-16 settles, §4.3's two version pins ("at v1.4") and its
+"FSPEC §7.3 records it closed" clause need re-stamping to whatever disposition wins. The TSPEC should
+not be edited to guess the outcome.
 
 ## Open Questions
 
