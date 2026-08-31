@@ -80,3 +80,45 @@ site: I grepped the document for every occurrence of `survivor`, `contested`, `R
 `re-stamp if`, and every hit falls in a historical changelog entry or the deliberate in-place record.
 A document that predicts its own blast radius and then holds to it is cheap to re-review, and this
 one did for the second round running.
+
+## Interfaces
+
+No product-visible seam moved this round, and none should have. REQ v1.7 added no verb, no flag, no
+output token and no exit code — its erratum note says "one clause decided, no rule added … No other
+change" — and FSPEC v1.8 absorbed it with "no rule changed". §0's v1.8 entry states the matching
+negative for this layer: "No new `BR-`, `E-` or `AC-` row and no vocabulary rename accompany it."
+The diff bears that out.
+
+Re-checking the same five seams I tabulated in v10, because these are the ones REQ-STATS-06 owns:
+
+| Seam | REQ v1.7 requirement | TSPEC at v1.8 | Faithful? |
+|---|---|---|---|
+| Ratio outcome vocabulary | `harvested`, not-available, or a measured ratio; tokens per mode are FSPEC material (O-1) | §5's `state: "measured" \| "harvested" \| "unavailable"` | Yes — untouched |
+| Harvested precedence | harvested rather than a value that "would silently undercount" | §4.3: harvested disjunct before `specBytes === 0` | Yes — untouched |
+| Out-of-catalogue basename, byte side | "contributes no process bytes" | §4.3: the file "contributes **neither** side" | Yes |
+| Out-of-catalogue basename, remaining-file side | "counts as no file of its family remaining" → **harvested** | §4.3: `crossReviews` is grammatical membership, so it is not a survivor — and the prose now **says so** | Yes — this is the row F-01 fixed |
+| Malformed reporting of the same basename | REQ-STATS-03 reports it malformed (C-5) | §5's `malformed: string[]` with `reason: "bad_doc_type"`; §7.2 AT-09's four rows | Yes |
+
+The fourth row is the only one that changed, and it changed from "yes in the sketch, no in the prose"
+to "yes in both". That was the entire gap.
+
+**The malformed/survivor coherence is now upstream-sanctioned.** §5 keeps the out-of-catalogue
+basename in `malformed[]` while excluding it from `crossReviews` — two disjoint sets, one file
+reported honestly in both roles. Under REQ v1.6 that was a layer-local reconciliation of two
+upstream clauses that could not both hold. Under v1.7 it is what REQ itself now cross-references
+(C-5). The interface did not move; its justification got stronger, which is the cheapest possible
+way for an upstream reversal to land.
+
+## Data Model
+
+Nothing in §5 was touched, and nothing needed to be. The three-valued `RatioState` union, `DodRounds`,
+`malformed: string[]` and the five-key JSON literal all predate the erratum, and none of them ever
+carried a discriminator for the contested scoping.
+
+This is worth one more sentence than it looks, from a product lens. §4.3's long-standing claim was
+"No type, signature, exit code or other oracle depends on the outcome." That claim has now been
+tested by an actual upstream reversal, and it held: REQ flipped a clause governing a P0 acceptance
+criterion, and the data model absorbed zero change. The v1.8 entry restates it as fact rather than
+prediction — "no type, signature, exit code, oracle, code sketch or count outside §8.3's own moves"
+— and I verified it against the diff rather than taking it on trust. Isolating a contested reading to
+prose plus one expected value was good defensive design, and this round is the proof of it.
