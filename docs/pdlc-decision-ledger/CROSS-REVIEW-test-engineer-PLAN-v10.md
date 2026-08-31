@@ -109,6 +109,33 @@ bullet was re-worded, and no absence-only oracle crept back in.
 
 ## Verification
 
+Did the delta break anything I previously approved? I diffed the erratum range and checked each
+previously-approved property that the changed regions could plausibly disturb.
+
+| Previously-approved property | Effect of the delta |
+|---|---|
+| TDD order — every `[green]` row preceded by a `[red]` row naming the same test file and ≥1 AT | Untouched. The edit changed prose inside T-11 (`[red]`) and T-18 (`[green]`); no row's `[red]`/`[green]` label, test-file column or AT reference moved |
+| Batch column = `max(dep batch) + 1` | Untouched. No `Batch` or `Depends on` cell is in the diff. T-11 stays batch 2 (deps T-00, T-01); T-18 stays batch 8 |
+| Same-batch same-new-file authoring guard | **Improved.** Moving all three census constants into `decisionLedgerCensus.test.js` removes T-18's write to a declaration T-11 also reasoned about; the batch-8 manifest row for `orchestrate-dev.js` is now narrower, not wider |
+| `[Fake first]` convention | Untouched — T-01's doubles row is outside the diff |
+| Census non-vacuity conjuncts (non-empty slice, resolves-to-exactly-one) | Preserved verbatim in T-11 and restated in the Definition of Done. This is the load-bearing pair; I checked it explicitly because a test-file-homed constant with an empty slice is exactly how this census could go vacuously green |
+| T-10a's `main()`-driven live arm (DC-07 production-path oracle) | Preserved. Conjunct 3 still asserts on the arm's own paired runs, not a stored artefact |
+| §Definition of Done mutation-testing bullet | Untouched by the diff |
+
+**The one substantive improvement worth naming.** Before this edit, `DECISION_LEDGER_CENSUS_TOKENS`
+was specified as a production declaration written by T-18 *and* as a member of
+`DECISION_LEDGER_OWNED_DECLS`. That combination is not merely inconsistent bookkeeping — it is
+unsatisfiable as a test: the owned list's every-member-resolves-to-exactly-one-top-level-declaration
+conjunct would have to resolve a name that the census's own scanned source excludes the body of,
+while the constant's own literals (the six token names) sat in its body inside the scanned module.
+An implementer following v0.7 would have hit a red they could not make green without contradicting
+another conjunct. The delta removes the contradiction at its root rather than papering over one
+site's numeral, which is why I read it as resolving the item rather than deferring it.
+
+**What I did not re-review.** Sections outside the diff — T-00…T-10, T-12a…T-17, T-19, T-20, the
+traceability tables, the batch-boundary rationale — were approved in earlier rounds and are unchanged
+here. I re-litigated none of them.
+
 ## Positive Observations
 
 ## Delta-Confirmation Findings
