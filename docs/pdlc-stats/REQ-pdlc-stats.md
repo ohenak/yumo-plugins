@@ -69,8 +69,8 @@ fail-closed gate: `pdlc stats` never writes a `RESOLVED:` line or participates i
 by `harvest-learnings`). `pdlc stats` reports only what is on disk — but says so where it applies,
 per REQ-STATS-03's harvested state.
 
-**NG-7** No new decision-ledger, glossary or size-tiering mechanism (proposal moves M4/R3-3/R3-5)
-is introduced or altered here.
+**NG-7** No new decision-ledger, glossary or size-tiering mechanism (proposal moves M4/R3-3/R3-5) is
+introduced or altered here.
 
 **NG-8** Dispatch count is out of scope, though `DESIGN-pdlc-minimal-loop-2026-08-30.md` §4
 ("rounds, dispatches, payload bytes, halts") and §5.2 ("dispatch count") name it: a dispatch leaves
@@ -206,14 +206,14 @@ partial success document.
 
 ## 6. Risks
 
-**R-1** A permissive basename parser could silently include malformed cross-review files in a round
+**R-1** A permissive basename parser could silently fold malformed cross-review files into a round
 count, inflating it. Mitigated by REQ-STATS-03: exclude and report separately, never fold in.
 
 **R-2** A feature present in both locations mid-archival move could be double-counted. Mitigated by
 C-2's fixed preference order, never summed.
 
 **R-3** An implementation could reach for `git log`/`git show` for byte sizes or history and
-inadvertently fetch or write. Mitigated by C-1 and REQ-STATS-08: filesystem `stat`/read only.
+inadvertently fetch or write. Mitigated by C-1/REQ-STATS-08: reads only.
 
 **R-4** The ratio's denominator can be legitimately zero mid-authoring. Mitigated by
 REQ-STATS-06's explicit not-available reporting instead of a divide-by-zero failure.
