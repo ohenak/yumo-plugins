@@ -115,6 +115,29 @@ that — which is exactly why F-01 below is bookkeeping, not contract.
 
 ## Test Strategy
 
+The delta touches no test-strategy surface. I re-verified the parts of §7 that the edited citations
+reach into, plus the ones a stale-pointer sweep could plausibly have damaged.
+
+- **§7.6 AT-14 is still falsifiable.** It asserts a *positive* byte-identity against AT-04's stream
+  across all three E-7 cases (zero-decision set, `maxEntries` `0`, `maxBytes` `0`). This is the
+  preservation oracle with a positive-presence conjunct that I asked for in an earlier round — it is
+  intact, and the id-swap makes its case enumeration traceable to the clause that defines it.
+- **§7.3's census oracle is untouched.** The declaration-anchored slice, the widened `DECL_RE`
+  covering `const`/`let` bindings, the set-equality partition, and the zero-occurrence assertion all
+  stand. The precedent clone (`loopEconomicsAnchorGuard.test.js`'s `bodyOf` / `allTopLevelDecls`) is
+  unchanged, so the mutation story I approved — rename an owned declaration, expect RED — still
+  holds.
+- **§6.1's failure table** keeps every row's positive terminal-state conjunct. F-13 in particular
+  asserts `""` (an exact value), never `!= error`, so no absence-only oracle was introduced.
+- **AT budget and traceability rows** are unchanged in count and membership; no AT lost an owner and
+  no AC lost its AT. Nothing in the delta could understate a batch or reorder a red-before-green
+  edge, since no PLAN-facing task ordering lives in this document.
+
+**No new testability debt.** The delta adds prose to the changelog and rewrites three pointers. It
+adds no new behavior, no new component, no new parameterisable surface — so there is no new
+property-based-testing obligation and no new coverage floor to check. The property strategies and
+the ≥85% branch floor I approved at v1.2 apply unchanged.
+
 ## Open Questions
 
 ## Recommendation
