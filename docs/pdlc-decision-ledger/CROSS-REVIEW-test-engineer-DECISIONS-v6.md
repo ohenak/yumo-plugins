@@ -129,3 +129,90 @@ Note for whoever fixes it: the `DECISIONS:36` occurrence is inside the **v1.4** 
 is correct as history — a changelog records what was true when it was written. Only `DECISIONS:98`
 (the "at HEAD (…)" statement) and `DECISIONS:398` (the discharge record) assert current position and
 need the re-pin.
+
+## Consequences
+
+- **For te-author (PROPERTIES).** The `## Consequences` PROPERTIES row is now the operative
+  instruction for encoding DEC-DECLEDGER-16, and it is written in a form a property can implement:
+  admitted comparisons are the ones that survive substituting a smaller value for 1,200, and the two
+  halves of `12,059 ≤ 12,500` are pinned separately per TSPEC §7.3's conjuncts (5)–(6). Encode the
+  substitution test, not a string match on "larger side" — a property that greps for a position will
+  reproduce exactly the defect this round removed.
+- **No erratum is owed upstream.** The only divergence found is the stale version literal in *this*
+  document. TSPEC v1.2 is conformant to the corrected rule at every site checked, and TSPEC's own
+  open item (its v1.2 changelog notes an unaddressed PM F-01 about `PLAN` v0.7's retired
+  fifteen-member owned list) belongs to PLAN, not here — this document makes no owned-list-size claim
+  for it to contradict.
+- **Downstream re-pinning is a one-line job, not a decision.** When the freeze lifts, `DECISIONS:98`
+  and `DECISIONS:398` re-pin to v1.2 in the same pass; nothing else in the document is coupled to the
+  TSPEC version literal, which is itself a consequence of the v1.3/v1.4 choice to cite §-anchors and
+  mechanisms rather than transcribe TSPEC line positions.
+
+### Deferred observations (freeze in force — recorded, not decided)
+
+DEFERRED: Re-pin the two current-position `TSPEC v0.7` literals (`DECISIONS:98`, `DECISIONS:398`) to `v1.2` on the next edit this document has reason to make; leave the v1.4 changelog occurrence as history.
+DEFERRED: In the v1.5 changelog, "the three prose sites carrying `10,859 + 1,200 = 12,059`" counts two literal sites plus one worded site (`TSPEC:208`); say "three sites, two of them the literal sum" if the sentence is ever touched.
+DEFERRED: At promotion of DEC-DECLEDGER-16 to `docs/_constraints/DOMAIN-CONSTRAINTS.md`, carry the substitution test as the normative wording and the position-based phrasing not at all, per the trigger row's own instruction.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The document still names TSPEC's HEAD version `v0.7`; HEAD reads `1.2`.** Carried from v5, now two versions staler after the v0.9→v1.2 upstream move. `DECISIONS:98` ("at HEAD (TSPEC **v0.7**, REQ **v1.9** / FSPEC **v1.3** / Baseline **v1.2**)") and `DECISIONS:398` ("at TSPEC v0.7 (REQ v1.9 / FSPEC v1.3 / Baseline v1.2)") vs `TSPEC:15-19`. The three co-stated pins are still exact (`TSPEC:9`, `TSPEC:11`) and every figure and mechanism these sentences license was re-verified true at HEAD, so only the literal is stale. The edit under review did not touch these lines. | § Context (v1.4 re-grounding); Re-evaluation triggers, DEC-DECLEDGER-10/-12 row |
+| F-02 | Low | Local | **The v1.5 changelog says "the three prose sites carrying `10,859 + 1,200 = 12,059`"; exactly two sites carry that expression literally** (`TSPEC:253`, `TSPEC:745`). A third states the same sum in words at `TSPEC:208` ("12,059 is `10,859 + the full 1,200-byte framing ceiling`"), so the count is right on a semantic reading and off by one on a textual one. The substantive claim — that every such site is a labelled recount and none is asserted — is true at HEAD. Delta-introduced but immaterial to the decision. | § Revision history, v1.5 entry |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried, still TSPEC-side and not a DECISIONS edit)* Is §7.3's 41-id / 6,305-byte project-level pin re-derived from the same source §7.3's per-file digest guard uses, or hand-transcribed? Unchanged in force by the v1.0–v1.2 errata. |
+| Q-02 | At promotion, does DEC-DECLEDGER-16's substitution test want a worked counter-example table (admitted / refused) in `DOMAIN-CONSTRAINTS.md`? The three cases already in the narrative would carry over verbatim and save the next feature re-deriving them. |
+
+## Positive Observations
+
+- **The edit answers the finding and stops.** 50 insertions across four commits, every one of them
+  inside DEC-DECLEDGER-16's four sites and the header. Under a decision freeze that is precisely the
+  right shape: a round that also "improved" a neighbouring row would have forced a re-review of
+  sections approved four iterations ago.
+- **The correction is a decision procedure, not a better sentence.** The v4/v5 finding could have
+  been discharged by rewording — instead the rule was re-founded on substitution, which is the
+  property a mechanical check needs. The document even names why the old form was wrong ("a
+  positional 'larger side only' rule would have admitted the first and rejected the second for no
+  reason a substitution can name"), so the next reader cannot reintroduce the positional form by
+  accident.
+- **The trigger row was hardened at the same time as the rule.** Fixing the predicate without
+  fixing the re-classing trigger would have left the round-6/-7 literal recoverable through the back
+  door. Both `pm-review`'s Q-01 and my Q-02 were answered inside the artifact rather than in a
+  reply, which is where a downstream author will actually read them.
+- **The document again survived a multi-version upstream rewrite with no false claim.** TSPEC moved
+  v0.9 → v1.2 including a census-constant erratum that re-specified §7.3's scanned-source slicing, and
+  every load-bearing citation — the wiring sentinels, the corpus literals, the erratum ledger, the
+  retired-`8000` tensing — still reads true at HEAD. That is the dividend of citing mechanisms and
+  §-anchors instead of transcribing upstream prose, and it is now three rounds of evidence for it.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No open High finding. The delta lands round 5's single Medium at all four of its sites, introduces
+no defect in the sections it touched, and — verified line by line against a TSPEC that advanced three
+versions — asserts nothing about upstream that is false at HEAD. Two non-gating findings are
+recorded: F-01, the inherited and now two-versions-stale `TSPEC v0.7` literal, whose surrounding
+claims all remain true; and F-02, a Low off-by-one in the changelog's site count whose substantive
+claim holds. Both are fixed in a single line each at the next edit this document has reason to make;
+the freeze forbids opening either here.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | Document names TSPEC's HEAD version `v0.7` at `DECISIONS:98` and `DECISIONS:398`; `TSPEC:15-19` reads `1.2`. The three co-stated pins (REQ v1.9 / FSPEC v1.3 / Baseline v1.2) and every figure these sentences license verify true at HEAD; only the version literal is stale. | § Context (v1.4 re-grounding); Re-evaluation triggers, DEC-DECLEDGER-10/-12 row |
+| F-02 | Low | delta | local | v1.5 changelog says "the three prose sites carrying `10,859 + 1,200 = 12,059`"; two sites carry it literally (`TSPEC:253`, `TSPEC:745`), a third states it in words (`TSPEC:208`). The substantive claim (all are labelled recounts, none asserted) is true. | § Revision history, v1.5 entry |
+
+FINDING: Medium | inherited | nonlocal | § Context (v1.4 re-grounding) and Re-evaluation triggers DEC-DECLEDGER-10/-12 row | document states TSPEC's HEAD version as v0.7 at DECISIONS:98 and DECISIONS:398 while TSPEC:15-19 reads 1.2; the co-stated REQ v1.9 / FSPEC v1.3 / Baseline v1.2 pins and all licensed figures verify true at HEAD
+FINDING: Low | delta | local | § Revision history, v1.5 entry | changelog says "three prose sites" carrying 10,859 + 1,200 = 12,059 but only TSPEC:253 and TSPEC:745 carry the literal sum, TSPEC:208 states it in words; the substantive claim that none is asserted holds
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
