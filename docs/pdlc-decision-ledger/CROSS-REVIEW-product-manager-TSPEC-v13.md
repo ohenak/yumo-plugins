@@ -213,6 +213,40 @@ Product lens only: whether the requirements this delta touches are still provabl
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My v12 blocking finding is resolved — by `PLAN` v0.8 at HEAD, verified site by site — and both of my
+document-local findings are closed by this delta. Nothing the delta touched broke anything that
+worked before, no acceptance criterion moved, and upstream is byte-unmoved and faithfully compressed.
+The two findings I raise are delta-introduced Mediums, each a single sentence to fix, and neither
+falsifies a normative claim of this document:
+
+1. **F-01 — changelog disposition of PM F-01 is stale against `PLAN` at HEAD.** One sentence: change
+   "`PLAN` v0.7 still carries the retired fifteen-member owned list" to record that `PLAN` v0.8 closed
+   it, and withdraw the erratum rather than raising it.
+2. **F-02 — §4.3's enforcement rationale over-claims the guard.** One clause: attribute the pin to
+   this section's normative statement plus review against §7.3's fourteen, rather than to a test that
+   would red.
+
+Neither needs a further review round; they can land with the next edit this document takes.
+
+DEFERRED: §7.3's *Forbidden token set* row carries the same "a symbol added later must be classified into one list or the other or the test reddens" over-claim as §4.3's new sentence — true for a data-carrying addition, silent for an inert one; a one-clause qualification would make the row's reach exact.
+DEFERRED: The census's set equality is over three frozen test-file lists, so it detects a deleted or renamed owned member but not an added, inert module declaration; if that gap is ever to be closed mechanically, the instrument is a set-equality between `DECISION_LEDGER_OWNED_DECLS` and the module's feature-introduced top-level declarations at HEAD — a design decision, not a defect, and out of scope in a frozen round.
+DEFERRED: `PLAN` v0.8's header still pins TSPEC v1.1 while HEAD is v1.2; nothing normative moved between them, so this is a pin refresh for the cascade to absorb, not a content divergence.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | The v1.2 changelog states "PM F-01 (High, `inherited`/`nonlocal`) is **not** addressed here and is not this document's to fix: `PLAN` v0.7 still carries the retired fifteen-member owned list and a production home for `DECISION_LEDGER_CENSUS_TOKENS`… it is raised on the erratum channel from this dispatch". That is false at HEAD: `PLAN` is at **v0.8** and all six sites are corrected — `:19` (v0.8 entry naming this document as authority), `:25` (v0.7 entry demoted to "superseded in part… retained as history"), `:158` (test-file home, eight exempt, fourteen owned), `:164` ("This task writes **no census constant**… this reverses the v0.7 instruction"), `:213` (manifest: census test file is the sole home of all three) and `:496–505` (DoD: six ∪ eight = fourteen). The three `PLAN` commits (`0c3c71d7c`, `2a13b74a7`, `cc386ebae`, 2026-08-29 09:58–09:59) are **ancestors** of this changelog commit (`3a17387d6`, 2026-08-30 22:45), so the state was observable when the entry was written. The entry's disposition (PLAN's phase owns it) was right; its tense is not. Consequence is process cost, not a wrong spec: it re-raises a closed High on the erratum channel and invites a `PLAN` round with nothing to change. Medium rather than High because no normative section, count, contract or acceptance criterion of this document is affected — the error is confined to the revision history. Fix: one sentence recording that `PLAN` v0.8 closed the item, and withdraw the erratum. | Revision history, v1.2 entry, :25 |
+| F-02 | Medium | delta | local | §4.3's new paragraph states that hoisting a sentinel to a top-level `const` "would introduce a feature-declared name absent from `DECISION_LEDGER_OWNED_DECLS`, which §7.3's classify-or-redden guard fires on" (:908–910). As §7.3 specifies the census, it does not fire for this case: the set-equality conjunct compares three frozen literals declared in the census **test file** (:1447), which an unclassified production `const` leaves untouched and still equal; the resolves-to-exactly-one conjunct ranges only over members of the owned list; and the one indirect path — an unsliced body remaining in the scanned remainder — reddens only if that body contains one of the six forbidden tokens, which an inert sentinel string does not. The guard fires for a newly added *data-carrying* declaration and is silent for the inert one the sentence invokes. The normative rule ("ship inline") is correct and unaffected; the stated reason a violation would be caught is not, and it is exactly the sentence a future editor would rely on to conclude the pin is self-enforcing. Fix: one clause attributing the pin to this section's normative statement and to review against §7.3's fourteen, not to a red test. | §4.3 framing paragraph, :908–910 |
+| F-03 | Low | inherited | nonlocal | §7.3's *Forbidden token set* row asserts "a symbol added later must be classified into one list or the other or the test reddens" (:1447). Same over-claim as F-02, and its source: an added declaration reddens only when its body carries a forbidden token, since the three compared lists are frozen test-file literals. Pre-round bytes, untouched by this delta; recorded so the two are fixed together rather than one at a time. | §7.3 *Forbidden token set*, :1447 |
+
+FINDING: Medium | delta | local | Revision history, v1.2 entry, :25 | The changelog says PM F-01 is unaddressed because "PLAN v0.7 still carries the retired fifteen-member owned list and a production home for DECISION_LEDGER_CENSUS_TOKENS" and raises it on the erratum channel; PLAN is at v0.8 at HEAD with all six sites corrected (:19, :25, :158, :164, :213, :496-505), and the three PLAN commits are ancestors of this changelog commit — so the entry re-raises a closed High. Disposition right, tense wrong; confined to the revision history, no normative content affected.
+FINDING: Medium | delta | local | §4.3 framing paragraph, :908-910 | The new sentence claims hoisting a sentinel to a top-level const fires §7.3's classify-or-redden guard; as §7.3 specifies the census, it does not — the set equality compares three frozen test-file literals an unclassified production const leaves equal, resolves-to-exactly-one ranges only over owned members, and the unsliced-remainder path reddens only on a forbidden token, which an inert sentinel string is not. The normative "ship inline" rule stands; its stated enforcement does not.
+FINDING: Low | inherited | nonlocal | §7.3 *Forbidden token set*, :1447 | The row's "a symbol added later must be classified into one list or the other or the test reddens" carries the same over-claim as §4.3's new sentence and is its source; an added declaration reddens only if its body carries a forbidden token. Pre-round bytes, untouched by this delta.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
