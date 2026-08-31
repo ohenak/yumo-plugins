@@ -20,7 +20,20 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | O-2 leaves reuse-vs-reimplement to TSPEC. Reuse is feasible — `parseReviewFilename`, `deriveRoundWindow` and `deriveDodRoundIndex` are all `export`ed (`pdlc/workflows/orchestrate-dev.js:10133`, `:10192`, `:12384`) — but they live in an ~18k-line module whose other exports drive dispatch. Is importing that module from a read-only path acceptable, given C-1's no-writes-on-any-path stance? If TSPEC picks reuse, it should confirm the module is import-side-effect-free. |
+| Q-02 | O-3 leaves subcommand-vs-script to TSPEC. Note the engine CLI gates every command through a per-command flag table — `case "doctor"`/`case "decide"`/`case "dev"`/`case "queue"` each call `checkFlags(rest, cmd)` (`pdlc/engine/bin/cli.mjs:1268-1279`), and `stats` is absent today. If `--json` (REQ-STATS-02) is to be accepted, `stats` and its flag set need registering there. Is that in scope for this REQ's PLAN? |
+| Q-03 | REQ-STATS-09 requires exit non-zero for an unknown feature. Does fleet mode (REQ-STATS-07) also exit non-zero when *some* feature is malformed, or is a malformed feature a reported row with a zero exit? The two ACs do not resolve each other, and an automated caller (US-02) will branch on it. |
+
 ## Positive Observations
+
+- The `[-v{N}]` optional-suffix bracket in C-4 and REQ-STATS-03 is exactly right, and it is not the obvious choice: the un-suffixed `CROSS-REVIEW-{role}-{DOC}.md` form **is** round 1 in this codebase (`pdlc/workflows/orchestrate-dev.js:10125-10130`, `:10148`), so a spec that had written `-v{N}` as mandatory would have silently under-counted every historical review. The REQ got this right without being told.
+- REQ-STATS-04 is a model of the altitude this document should hold throughout: "the highest version `N` found on disk, or `0` when no such file is present" is a pure observable, and it maps cleanly onto the shipped `deriveDodRoundIndex`, which returns `max + 1` (`pdlc/workflows/orchestrate-dev.js:12384-12396`). The `- 1` is an implementation detail the REQ correctly declines to state. F-01 asks only that REQ-STATS-03 be written to this same standard.
+- C-5's "no independent parsing rules" is the right constraint to have written down, and it is the single highest-value line in the document: an independent basename parser is precisely how a measurement tool drifts from the thing it measures.
+- NG-3's citation checks out — `report.learningsInjection` is real (`pdlc/workflows/orchestrate-dev.js:15068`), so the deferred payload-size series is a genuine, locatable follow-on rather than a vague gesture.
+- G-4/C-1/REQ-STATS-08's read-only stance is stated three times at three altitudes and is mechanically testable as written (no writes, no network, no `git` write verbs, on success *and* error paths). That is a testable non-functional requirement, which is rarer than it should be.
+- R-2 and R-4 anticipate the two failure modes that actually bite: the mid-archival double-count and the zero denominator. Both are mitigated by a named constraint rather than by hope.
 
 ## Recommendation
 
