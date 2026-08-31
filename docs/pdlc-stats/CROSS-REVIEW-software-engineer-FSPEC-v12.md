@@ -163,8 +163,41 @@ widened by this edit.
 
 ## Positive Observations
 
+- The erratum did the **cheapest correct thing**: upstream moved toward this document, so the
+  author recorded the absorption and fixed the pin instead of rewriting rule text that was already
+  right. Editing BR-16 to "match" a clause it already matched would have churned bytes and risked
+  a regression in a rule three downstream documents depend on.
+- The erratum paragraph states *what the conflict was*, *which way it was decided*, and *which
+  downstream artifact pins the outcome* (PROP-RATIO-08's fourth leg). That is enough for a future
+  reader to reconstruct the decision without diffing three REQ revisions — the durable value of an
+  erratum record, and the thing most of them omit.
+- The stale-pin correction is itself the finding I would otherwise have raised: a document declaring
+  v1.4 while grounded on v1.7 is a trap for the next reviewer, who cannot tell re-grounded text from
+  stranded text without re-reading upstream. Fixing the pin in the same edit that records the
+  re-grounding is the right coupling.
+- BR-16's co-evaluation guarantee ("evaluated over exactly the file set BR-14's numerator sums")
+  is what made this conflict *resolvable in one clause* rather than by adding a third rule. It
+  remains the strongest sentence in this section.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves the routed item — which upstream absorbed — without breaking anything I approved
+at v11. Every rule, flow step, edge case and acceptance test this document carries still reads
+correctly against REQ v1.7 at HEAD, including the two rules exposed to the v1.5/v1.6 upstream churn
+that the three-version pin jump crossed. The one finding below is Low, non-gating, and needs no
+re-review round: it can be folded into any later touch of the history preamble.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | Erratum preamble cites downstream PROPERTIES (`PROP-RATIO-08`) as corroboration for an upstream-decided rule; direction of dependency is inverted | Metadata block, erratum round (v1.8) paragraph |
+
+FINDING: Low | delta | local | Metadata block, erratum round (v1.8) paragraph | The new erratum paragraph supports its "absorbed" claim partly by citing PROP-RATIO-08's fourth leg. PROPERTIES is derived from this FSPEC, so citing it as corroboration is circular: if BR-16 were wrong, PROP-RATIO-08 would be wrong with it and would agree anyway. The authority for the absorption is REQ v1.7's REQ-STATS-06 alone, which the paragraph already cites correctly. The claim is factually true (I verified PROP-RATIO-08 and fixture F-HARVEST-FOUR carry the fourth leg) and nothing downstream is misled, so this is a Low record nit, not a correctness defect — on the next touch of this preamble, drop the PROP-RATIO-08 clause or mark it explicitly as a downstream-coverage note rather than as grounds. Citation is by spec id, so DEC-DOC-01 is not engaged.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
