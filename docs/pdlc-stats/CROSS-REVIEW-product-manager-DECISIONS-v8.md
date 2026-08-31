@@ -194,3 +194,6 @@ FINDING: Low | inherited | nonlocal | K-3 / DEC-STATS-01 site table, coverageIns
 ## Questions
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
