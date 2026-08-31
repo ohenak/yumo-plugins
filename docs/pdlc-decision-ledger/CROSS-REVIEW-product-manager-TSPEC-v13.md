@@ -148,6 +148,38 @@ delta did not touch, so I note it as inherited rather than folding it into F-02.
 
 ## Test Strategy
 
+Product lens only: whether the requirements this delta touches are still provable as the REQ asks.
+
+- **No acceptance criterion moved.** I diffed the changed regions against the AT and traceability
+  tables: no AT row, no BR/E/AC mapping and none of the four corpus literals is touched. REQ v1.9 and
+  FSPEC v1.3 are byte-unmoved, so the compression this TSPEC performs is still faithful.
+- **BR-11 / REQ-DECLEDGER-08 / NG-4 (P0) are now served end to end.** §7.3 remains the oracle, the
+  traceability rows still point at it, and with `PLAN` v0.8 re-pinned the *instructions* implementation
+  reads no longer contradict the specification. At v12 the proof path was broken at `PLAN`; at HEAD it
+  is not. That was the substance of my blocking finding and it is gone.
+- **The repository claims the changed prose leans on are true.** I verified each rather than trusting
+  the prose: `pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js:61` declares
+  `DECL_RE = /^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/` — anchored to
+  `function` only, which is why §7.3 requires the clone to widen it; `allTopLevelDecls` (:63),
+  `bodyOf` (:123) and `ANCHOR_TOKENS` (:114) all exist as cited, and `ANCHOR_TOKENS` is indeed a
+  top-level constant of the **test** file, which is the precedent the census-constant homing rests on.
+  In `pdlc/workflows/orchestrate-dev.js` the five shipped `/Decision/i`-matching declarations §7.3
+  names all exist — `MERGE_MAX_DECISION_STEPS` (:88), `renderDecisionEntry` (:4640),
+  `escalationDecision` (:4738), `erratumGateDecision` (:6914), `parseDecisionsWarranted` (:7044) — so
+  the "enumerated, never derived from a name pattern" argument is grounded in real symbols.
+- **The framing pin is still a literal transcription, not an echo.** §4.3's ≤ 1,200 bytes is asserted
+  "by a pure unit test against that literal" (:901) and §7.3 conjunct (5) explicitly refuses to fold
+  framing into the 12,059 equality because the constants do not exist yet. The delta preserves both,
+  and the "measures rendered output, not a constant count" clause makes the unit test robust to how
+  the sentinels are spelled — which is the right property for an expectation that must not import its
+  expected value from the code under test.
+- **The completeness question my F-02 raises is a real set-equality gap, but an inherited one.** The
+  census's set equality is over three frozen test-file lists, so it catches a *deleted or renamed*
+  owned member (via resolves-to-exactly-one) but not an *added, inert* module declaration. For BR-11's
+  purpose — proving a coupling does not exist — an added data-carrying declaration does red, which is
+  the case the requirement is about. So the oracle serves the requirement; only §4.3's description of
+  its reach is wrong. That is why F-02 is Medium and not High.
+
 ## Open Questions
 
 ## Positive Observations
