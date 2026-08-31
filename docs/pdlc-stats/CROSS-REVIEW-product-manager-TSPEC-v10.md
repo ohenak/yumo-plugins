@@ -113,7 +113,53 @@ re-stamp is needed anywhere in §5.
 
 ## Test Strategy
 
+Product lens on tests is narrow: does an acceptance criterion still have a test whose expected value
+is the one REQ requires? Here, one row matters.
+
+**FSPEC AT-17's fourth leg** is the single place the settled scoping becomes an assertion — TSPEC
+§4.3 says so itself (`TSPEC:805-806`: "This leg's expected value is the single place the contested
+scoping above becomes an assertion"). The leg's fixture is `LEARNINGS-{feature}.md` present,
+`CODE_REVIEW` files intact, and the out-of-catalogue form as the only `CROSS-REVIEW-` basenames.
+TSPEC carries it as **`harvested`** — BR-16's value.
+
+At HEAD that is now also REQ's value. The leg is correct and needs no change. What needs changing is
+the sentence around it: §4.3 currently annotates the leg "expected `harvested` on BR-16's reading,
+and `measured` on REQ-STATS-06 v1.6's … the row to re-stamp if the reconciliation lands the other
+way." There is no other way left to land. Leaving that annotation live tells `te-author` and the
+implementer that a P0 acceptance test's expected value is provisional, which invites either a
+defensive re-derivation or an actual flip during implementation. This is the downstream cost that
+makes F-01 High rather than cosmetic.
+
+No other test obligation moves. `PROP-RATIO-08` leg 4 and AT-17 already assert `harvested`; AT-15's
+neither-list pins the byte half, which §4.3 correctly noted was never in dispute (neither reading
+gave the file spec-side bytes). AT-09's four-file `bad_doc_type` count and §6.1's measured baselines
+for `docs/completed/pdlc-advisory-wave-gate/` (62 `CROSS-REVIEW-*`, 4 out-of-catalogue, 58
+grammatical, so a **measured** ratio) are untouched — that directory holds grammar-matching
+cross-reviews alongside the malformed shape, so it never depended on the contested clause.
+
 ## Open Questions
+
+**§8.3's open-erratum ledger is now one item too long.** Of the two bullets it carries:
+
+- **FSPEC BR-26/EC-10's missing feature-recognition predicate** — still genuinely open. FSPEC did not
+  move this round; §4.4's leading-underscore discriminant remains provisional on it, and RK-5's
+  mitigation stands. No change.
+- **REQ-STATS-06 versus FSPEC BR-16** — **closed by `e12b78fd8`**, in favour of BR-16. Per §8.3's own
+  preamble rule, this bullet should be removed rather than left standing, with §4.3 restating the
+  behaviour as specified rather than contested.
+
+That is the whole of the cascade. I found no other TSPEC claim that leans on REQ text the erratum
+touched: I grepped the document for the withdrawn clause's vocabulary (`survivor`, `contested`,
+`REQ-STATS-06 v1.6`, `re-stamp`) and every hit falls inside the three sites named in F-01, plus
+§0's grounding line at `TSPEC:39` and `TSPEC:20` (F-02). Nothing in §1, §2, §3, §6, §7's other rows
+or §8.1/§8.2 cites the moved paragraph.
+
+**One question I am deliberately not raising as a finding.** REQ v1.7 phrases the predicate as
+"evaluated over exactly the file set whose bytes the process side sums", which binds the harvested
+test and the numerator to one file set. TSPEC §4.3 already derives both from BR-14's grammars, so it
+satisfies this. I note it only because it is the one place where REQ's new wording is *stronger* than
+its old wording, and a future edit to §4.3 that decoupled the two sets would now violate REQ
+directly rather than merely diverge from BR-16.
 
 ## Delta-Confirmation Findings
 
