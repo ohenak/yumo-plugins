@@ -13,7 +13,23 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.2 | 2026-08-31 |
+| Draft | se-author | 1.3 | 2026-08-31 |
+
+**v1.3 (cross-review round 3).** Replaces the per-file reading of the co-change set with a **mechanical
+sweep**, cited so the next reader can tell completeness was established by a command rather than by
+another file turning up: the sweep finds three sites the six-row table missed —
+`pdlc/workflows/__tests__/coverageInstrumentation.test.js` (already an obligation under K-3 and
+already named in the re-evaluation trigger, but absent from the table, which is why the table's six
+rows and the trigger's seven files disagreed), `pdlc/engine/__tests__/run.test.js`, and
+`pdlc/workflows/__tests__/learningsPremises.test.js`. Option A's measured cost moves six → **nine**
+sites; the trigger's count moves eleven lists across seven files → **fifteen across nine**; K-9 is
+added to own the two newly-found tests; K-3 is split into its live-site half and its new-conjunct
+half (TE Q-01); K-8's headline count is corrected six → seven, its re-baselining is extended so the
+importability conjunct keeps proving all three `lib/` members rather than only this feature's, and it
+gains the provenance-comment and message-string edits; DEC-STATS-02's re-evaluation trigger is
+restated in *fields* rather than *hoists*. It also **corrects a cost claim made in review rather than
+inheriting it**: options B and C do *not* pay `run.test.js` or `learningsPremises.test.js`, because
+both fence `MODULE_NAMES`, which B and C never move — see *What the sweep found*.
 
 **v1.2 (cross-review round 2).** Adds the sixth co-change site —
 `pdlc/engine/__tests__/loop-distribution.test.js`, the completed sibling's live enforcement of this
