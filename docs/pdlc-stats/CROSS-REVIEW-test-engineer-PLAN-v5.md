@@ -100,6 +100,43 @@ Confirmed by `git diff --stat 9c56d0c..HEAD -- docs/pdlc-stats/`: among the six 
 
 ## Verification
 
+**How I confirmed rather than re-reviewed.** I read my v4 cross-review, took the erratum diff
+(`git diff 1847dd9c0 HEAD -- docs/pdlc-stats/REQ-pdlc-stats.md` — 12 insertions, 3 deletions, one
+clause), read REQ-STATS-06 whole at v1.7, then grepped PLAN for every surface that could lean on it
+(`REQ-STATS-06`, `BR-16`, `harvested`, `survivor`, `AT-17`). I did not re-open settled rows.
+
+**Falsification attempts that failed to find a defect** — each is a way this confirmation could have
+gone the other way:
+
+1. *Does PLAN quote the withdrawn "survivor" sentence anywhere?* No. `grep -n "survivor" PLAN` returns
+   nothing; the string lives only in TSPEC §4.3/§8.3 and in the REQ line the erratum deleted.
+2. *Does any PLAN expectation flip from `measured` to `harvested`?* No. The two real-path verdicts were
+   re-measured on disk, not read from the document: advisory-wave-gate keeps 58 grammatical
+   cross-reviews and 2 `CODE_REVIEW` files (measured); headless-engine has 0 `CODE_REVIEW` files
+   (harvested via a disjunct the delta does not touch).
+3. *Does the new "contributes no process bytes" clause contradict a pinned oracle?* No. AT-15's
+   neither-list already pins that an out-of-catalogue basename reaches neither the spec nor the process
+   side, and TSPEC's `crossReviews` filter (`parseReviewFilename(b).ok`, which rejects `bad_doc_type`)
+   already excludes it from the numerator. The erratum makes REQ agree with behaviour that was already
+   specified and already claimed by a task.
+4. *Does the settlement open an uncovered acceptance test?* No. Its one observable consequence is
+   AT-17's fourth leg, already inside T-04's claim list.
+5. *Could a coverage floor or gate command shift?* No. The delta touches no module boundary; T-24's
+   per-file `lib/stats.mjs` branches ≥ 85 obligation and its `c8.include` pair oracle are byte-unchanged
+   and value-unchanged.
+
+**One genuine consequence, and it is not PLAN's.** TSPEC §4.3's "What the shape itself yields is
+contested upstream and is not decided here" paragraph and §8.3's second erratum entry are now **stale**:
+both quote REQ v1.6's survivor clause in the present tense ("REQ-STATS-06 at **v1.6** now states…") and
+describe a live disagreement that v1.7 has closed. TSPEC itself names the remedy — "exactly three things
+here re-stamp: this paragraph, BR-16's version pin above, and AT-17's fourth-leg expectation" — and the
+third of those already carries the winning value, so the re-stamp is documentation, not behaviour. This
+routes to TSPEC's owning phase, does not gate PLAN, and costs the implementer nothing: building T-04 to
+§4.3 as written yields the behaviour REQ v1.7 requires. Filed as F-01 (Low, inherited, nonlocal).
+
+**Rigour bar.** No High finding is open, delta or inherited. The two findings below are Low and
+non-gating; both are inherited and nonlocal, so neither is damage this round's edit caused.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
