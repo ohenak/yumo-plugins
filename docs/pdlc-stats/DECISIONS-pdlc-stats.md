@@ -109,14 +109,14 @@ Every cost below was measured against the tree at HEAD, not estimated.
 
 | Option | Location | Enumeration co-change (verified) | Coverage gate (verified) |
 |---|---|---|---|
-| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | **six** edit sites; vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass — **contingent on K-3's two conjuncts**: c8 opens only what `include` matches (`all` is not set), so an unincluded module produces no per-file entry and the second stage has nothing to check |
-| B | `pdlc/engine/lib/stats.mjs` | engine `lib/*.mjs` class 15 → 16 (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3), plus the same `tspecPackedCount` amendment **and the same sixth site**: `loop-distribution.test.js`'s `4 + 15 + 5 + 1` arithmetic pins the engine `lib/` class as `15` in the same expression, so B moves that literal too | **none** — `pdlc/engine/package.json`'s only test script is `node __tests__/_run-suite.mjs`; the package declares no `c8` block and no coverage dependency at all |
+| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | **nine** edit sites (sweep-derived, see below); vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass — **contingent on K-3's two conjuncts**: c8 opens only what `include` matches (`all` is not set), so an unincluded module produces no per-file entry and the second stage has nothing to check |
+| B | `pdlc/engine/lib/stats.mjs` | **three** edit sites: engine `lib/*.mjs` class 15 → 16 (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3), the same `tspecPackedCount` amendment, and `loop-distribution.test.js` — whose `4 + 15 + 5 + 1` arithmetic pins the engine `lib/` class as `15` in the same expression, so B moves that literal too. B does **not** pay A's `MODULE_NAMES`-fencing sites (`run.test.js`, `learningsPremises.test.js`, `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs`) or either `c8.include` site: an engine `lib/` module is not vendored from `pdlc/workflows/` and is measured by nothing | **none** — `pdlc/engine/package.json`'s only test script is `node __tests__/_run-suite.mjs`; the package declares no `c8` block and no coverage dependency at all |
 | C | inline in `pdlc/engine/bin/cli.mjs` | none | **none**, same reason as B |
 | D | `pdlc/workflows/lib/stats.mjs`, **not vendored** | none | same as A |
 
-**Option A's six sites**, each confirmed to contain the member list it is claimed to contain. The
-sixth is a *test* file in a different package from the four enumerations it fences, which is why a
-per-file scan of the first five never reaches it:
+**Option A's nine sites**, each confirmed at HEAD to contain the member list it is claimed to contain.
+Four *hold* the enumerations; five *pin* them from two other packages, which is why a per-file scan of
+the holders reaches none of the five (see *What the sweep found*):
 
 | Site | Symbol | Members at HEAD |
 |---|---|---|
@@ -126,6 +126,9 @@ per-file scan of the first five never reaches it:
 | `pdlc/engine/__tests__/_tspec-packed-set.mjs` | `WORKFLOW_MEMBERS` and `tspecPackedCount` | the five; `tspecPackedCount` returns `4 + 15 + 5 + 1 + (licence ? 1 : 0)` |
 | `pdlc/workflows/package.json` | `c8.include` | seven `**/`-anchored entries, including both existing `lib/*.mjs` members |
 | `pdlc/engine/__tests__/loop-distribution.test.js` | `D1_BASELINE`, `D2_D3_BASELINE`, `D5_BASELINE`, `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, and two count assertions | five transcribed member lists plus the vendored-class count; **six assertions** pin the four enumerations above with strict-length equality and pin the count K-2 moves |
+| `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | P9-02's expected include literal (`REQUIRED_INCLUDES` + `CAPTURE_SCRIPT_INCLUDE` + the two `lib/` modules) | mirrors `c8.include`'s seven entries; asserted `expect(include).toEqual([…])`, so it reds in both directions and is position-sensitive. Its test title also names the count (*"exactly the six modules the feature owns"*) |
+| `pdlc/engine/__tests__/run.test.js` | two `assert.deepEqual` manifest name lists plus the `scratchWorkflows` copy list | the same bare four, transcribed three times. The first `deepEqual`'s own comment states the intent as *"a prepack that … vendored a third file, must still fail this assertion"*, so a fifth member reds it by design; the copy list left at four makes the real `runPrepack` miss `lib/stats.mjs` and reds the process-entry leg's `assert.equal(result.status, 0, …)` |
+| `pdlc/workflows/__tests__/learningsPremises.test.js` | P-1's `expect(names).toEqual([…])` over the `MODULE_NAMES` array it parses out of `prepack.mjs`'s **source text** | the same bare four; the test's title pins the count too (*"exactly the four canonical workflow modules"*) |
 
 **The sixth site, and why it was missed on the first measurement.**
 `pdlc/engine/__tests__/loop-distribution.test.js` is `pdlc-engineering-loop`'s enforcement of exactly
