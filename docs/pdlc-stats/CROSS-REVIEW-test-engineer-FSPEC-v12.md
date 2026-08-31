@@ -55,7 +55,48 @@ None of the four traceability rows FSPEC §2 draws to REQ-STATS-06 has lost its 
 
 ## Behavioral Flow
 
+Unchanged, and not reopened. The erratum edits no line below the header block, so §3.1 step 8 and
+§3.2 Flow B stand at the bytes I approved. The branch inventory a flow-level test derives from Flow
+B is identical: the harvested test still precedes the zero-denominator test, and the erratum neither
+adds a leaf nor reorders one.
+
+Worth stating explicitly for the test lens, because it is the thing that *could* have gone wrong and
+did not: upstream's decision changed which **value** one existing leaf produces for one input class
+— a directory whose only `CROSS-REVIEW-` basenames are out-of-catalogue. Under the withdrawn
+"survivor" clause that class would have yielded a measured ratio; under REQ v1.7 it yields
+`harvested`. FSPEC's leaf already produced `harvested` for that class. So the upstream withdrawal
+*removed a contradiction* against FSPEC rather than requiring FSPEC to move. No flow-level oracle is
+invalidated, no test level shifts, and no previously-approved acceptance test changes its expected
+value. That asymmetry is the reason this is a pin correction and not a rule edit.
+
 ## Business Rules
+
+This is where the absorption claim has to hold, so I re-derived it from the current bytes on both
+sides rather than from the erratum paragraph's summary.
+
+REQ-STATS-06 at v1.7 (REQ:205–215) now reads: the harvested predicate "is evaluated over exactly the
+file set whose bytes the process side sums, so a basename the driver's document-type catalogue does
+not recognise … contributes no process bytes and counts as no file of its family remaining: a
+feature whose only `CROSS-REVIEW-` basenames are of that shape reports **harvested**, not a measured
+ratio."
+
+FSPEC BR-16 (FSPEC:373–384) reads: harvested fires when `LEARNINGS-{feature}.md` is present and at
+least one of the two harvest-deleted families is entirely absent; "It is evaluated over exactly the
+file set BR-14's numerator sums, so the two never disagree: a basename failing a grammar contributes
+no bytes to the process side and counts as no file remaining. A directory whose only `CROSS-REVIEW-`
+basenames are the out-of-catalogue … files BR-06 reports as malformed reports `harvested`, not a
+measured ratio."
+
+That is a faithful compression, near-verbatim on the load-bearing clause, and the two now agree on
+the case that was in contradiction. BR-14 (FSPEC:357–365) fixes both sides to REQ C-3/C-4 and states
+that files on neither list contribute to neither side, so BR-14 and BR-16 demonstrably read **one**
+file set — the property the erratum claims and the one that makes the contradiction unreachable
+rather than merely unstated. BR-15's zero-denominator rule is untouched upstream and downstream.
+
+I also checked the direction the erratum does *not* claim, since a withdrawal can over-reach: REQ
+v1.7 did not weaken C-5's parsing-fidelity constraint (REQ:121–133 unchanged), so FSPEC's BR-06,
+BR-10, BR-12 and §7.3 E-3 still rest on live upstream text. No FSPEC business rule now cites a REQ
+clause that v1.7 deleted — the withdrawn sentence was never quoted or leaned on anywhere in FSPEC.
 
 ## Edge Cases and Error Scenarios
 
