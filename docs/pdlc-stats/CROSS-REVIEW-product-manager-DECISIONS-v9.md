@@ -140,3 +140,47 @@ questions are recorded as deferred items instead:
 DEFERRED: The document's v1.6 grounding line reads in the present tense ("TSPEC HEAD **is** v1.4") and is now three upstream revisions stale; a future round may prefer version-scoped past tense in changelog attestations so a superseded pin cannot be misread as live.
 
 DEFERRED: TSPEC §8.3's REQ-STATS-06-versus-BR-16 conflict decides AT-17's fourth-leg expected value; if its reconciliation ever reaches the parser-catalogue seam, `DEC-STATS-03`'s bundle identity oracle is the place to re-check, though nothing today makes that likely.
+
+## Consequences
+
+**For Phase D / PLAN.** Not blocked. The PLAN author reads a document whose ten-site table, K-row
+partition and falsifier column are all intact and now agree with TSPEC's ten from both sides. The
+co-change set partitions mechanically: ten in-repo rows, four K-rows covering them without overlap,
+two sibling-document edits owned separately by K-7 and explicitly outside the ten, and one site
+(`pdlc/README.md`) flagged as having no red behind it.
+
+**For the implementer.** Unchanged from v8. The purity detector, the array-equality warning on
+`c8.include` (P9-02 asserts `toEqual`, so position matters, not just membership), the
+`MODULE_NAMES`-versus-packed-class distinction (4 → 5 copied, 5 → 6 packed — different numbers that
+must not be synchronised to each other), and K-9's third site going green-but-undone all survive
+this round untouched. The document names that last risk rather than hiding it.
+
+**For upstream (TSPEC).** One erratum stays owed and is now two revisions old: §2.1's
+`coverageInstrumentation.test.js` row still says *six → seven* where HEAD measures seven already.
+The product risk is direction-of-travel, not arithmetic: the pin says TSPEC is authoritative, so a
+later reader could "correct" DECISIONS into agreement with a number that is known wrong, and a task
+sized off that row would ship a passing test whose title misstates its own assertion by two. K-3's
+clause naming the divergence and its direction remains the strongest mitigation a downstream
+document can apply unilaterally.
+
+**For upstream (REQ / FSPEC).** Nothing owed from this document. Their movement was real and
+substantial, but it lands in halt states, harvested-family scoping and BR-16's basename shape — none
+of which DECISIONS decides or cites. That is a healthy sign about the seam: a document confined to
+module boundaries and co-change cost should be able to sit through three upstream revisions of
+predicate semantics without owing a round, and this one did.
+
+**For harvest.** One signal from this round looks durable beyond the feature. I flag it for
+`docs/_constraints/DOMAIN-CONSTRAINTS.md` rather than inflating a severity here:
+
+- **Citing a current upstream hash is not the same check as diffing it against the previously
+  grounded one.** TSPEC v1.6 diagnosed this in itself in plain terms, and it is the more general
+  lesson of this round: an attestation that reads "upstream did not move" is only sound if the round
+  compared *two* hashes. A round that reads one current hash and calls it agreement will skip
+  re-grounding and not know it did. The `Process` shape of the fix belongs in the erratum checklist —
+  record the previously grounded hash alongside the current one — not in a domain constraint.
+
+**On the stale dispatch pin (carried from v7 and v8).** Two consecutive rounds cited a TSPEC hash
+(`sha256:512a9fcf…`) matching no revision on the branch; this round the dispatch names no DECISIONS
+delta at all because there is none. The document handled the earlier case correctly by re-grounding
+on HEAD under `DEC-ERR-03`. It remains a pipeline observation rather than a document defect, and
+stays a question.
