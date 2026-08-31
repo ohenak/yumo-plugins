@@ -455,6 +455,59 @@ Gaps are named in §Gaps and Open Items rather than left for a reader to discove
 | AT-28 | PROP-DOD-04 | | |
 
 
+### PLAN tasks
+
+Every row of PLAN §Batches' task table, with the properties it discharges and the test file it
+writes. All fifteen new test files were confirmed **absent** at HEAD, so each is planned-new, not
+assumed-existing; the five files this feature *amends* were confirmed **present**.
+
+| Task | Test file (status at HEAD) | Properties |
+|---|---|---|
+| T-01 pre-flight | `pdlc/workflows/__tests__/statsPreflight.test.js` (new) | PROP-DRIFT-07 |
+| T-02 doubles | `pdlc/workflows/__tests__/helpers/statsDoubles.js` (new) | infrastructure — §Fixtures; asserts nothing itself, by PLAN's own declaration |
+| T-03 argv reds | `pdlc/workflows/__tests__/statsArgv.test.js` (new) | PROP-CLI-01 |
+| T-04 metric reds | `pdlc/workflows/__tests__/statsMetrics.test.js` (new) | PROP-RR-01, -02, -04, -06…-09, -11; PROP-DOD-02…-04; PROP-HALT-03, -05, -07; PROP-RATIO-01…-03, -06…-09; PROP-ERR-08; PROP-NEG-02, -04 |
+| T-05 discovery reds | `pdlc/workflows/__tests__/statsDiscovery.test.js` (new) | PROP-DISC-01, -02, -06, -07, -08; PROP-NEG-03 |
+| T-06 render reds | `pdlc/workflows/__tests__/statsRender.test.js` (new) | PROP-RENDER-01…-06; PROP-RR-12; PROP-JSON-03…-10; PROP-RATIO-10 |
+| T-07 outcome reds | `pdlc/workflows/__tests__/statsOutcome.test.js` (new) | PROP-DISC-03, -09; PROP-ERR-01…-07, -09; PROP-CLI-07; PROP-NEG-05, -06 |
+| T-08 anti-drift (workflows half) | `pdlc/workflows/__tests__/statsAntiDrift.test.js` (new) | PROP-RR-13, PROP-DISC-05 |
+| T-09 CLI process reds | `pdlc/engine/__tests__/stats-cli.test.js` (new) | PROP-CLI-02, -03, -04, -06, -08; PROP-JSON-01, -02; PROP-NEG-08 |
+| T-10 CLI structural reds | `pdlc/engine/__tests__/stats-cli-structure.test.js` (new) | PROP-DRIFT-01…-04; PROP-RO-05; PROP-RATIO-05; PROP-CLI-05; PROP-NEG-07 |
+| T-11 read-only reds | `pdlc/engine/__tests__/stats-read-only.test.js`, `…/_stats-scratch-prefixes.mjs` (both new) | PROP-RO-01…-04, -06; PROP-NEG-01 |
+| T-12 green: argv + constants | amends T-03/T-08 files | turns PROP-CLI-01, PROP-RR-13, PROP-DISC-05 green |
+| T-13 green: metrics | amends T-04's file | turns the T-04 set green |
+| T-14 green: discovery | amends T-05's file | turns the T-05 set green |
+| T-15 green: renderers | amends T-06's file | turns the T-06 set green |
+| T-16 green: `runStats` | amends T-07's file | turns the T-07 set green |
+| T-17 green: `bin/cli.mjs` | amends T-09/T-10/T-11 files; edits `pdlc/engine/bin/cli.mjs` (exists) | turns the T-09…T-11 sets green |
+| T-18 real-path tests | `pdlc/workflows/__tests__/statsRealPaths.test.js` (new) | PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04; PROP-DISC-04 |
+| T-19 property-based | `pdlc/workflows/__tests__/statsProperties.test.js` (new) | PROP-PBT-01…-04 |
+| T-20 vendoring oracle | `pdlc/engine/__tests__/stats-vendoring.test.js` (new) | PROP-DRIFT-05 (lands deliberately red) |
+| T-21 co-change cluster | amends `pdlc/engine/__tests__/run.test.js`, `pdlc/workflows/__tests__/learningsPremises.test.js` (both exist); edits `prepack.mjs`, `pdlc/README.md`, `docs/_constraints/DOMAIN-CONSTRAINTS.md` | PROP-DRIFT-05 |
+| T-22 packed-set + sibling docs | amends `pdlc/engine/__tests__/_tspec-packed-set.mjs` (exists) | PROP-DRIFT-05 |
+| T-23 distribution baselines | amends `pdlc/engine/__tests__/loop-distribution.test.js` (exists) | PROP-DRIFT-05 |
+| T-24 coverage config | amends `pdlc/workflows/package.json` + `coverageInstrumentation.test.js` (both exist) | PROP-DRIFT-06 |
+| T-25 publication path | edits `publish-preflight.mjs`, `fixture-machine.mjs`; asserted by T-20's file | PROP-DRIFT-05 |
+| T-26 mutation evidence | amends T-04's and T-18's files; writes `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | §Oracles' kill map — PROP-DOD-01, PROP-RR-03, PROP-RR-11, PROP-RATIO-09 |
+| T-27 operator documentation | writes no test file (PLAN's own declaration) | none — see §Gaps G-4 |
+
+### Test-level distribution
+
+| Level | Properties | Count |
+|---|---|---|
+| unit-pure | PROP-CLI-01, -05; PROP-RR-13; PROP-DRIFT-04, -07 | 5 |
+| unit-seamed | PROP-RR-01…-02, -04, -06…-09, -11; PROP-DOD-02…-04; PROP-HALT-03, -05, -07; PROP-RATIO-01…-03, -06…-09; PROP-ERR-08; PROP-PBT-01, -02, -04; PROP-NEG-02, -04 | 27 |
+| unit-render | PROP-RR-12; PROP-RENDER-01…-06; PROP-JSON-03…-10; PROP-RATIO-10 | 16 |
+| integration-fake | PROP-DISC-01…-03, -07…-09; PROP-ERR-01…-07, -09; PROP-CLI-07; PROP-PBT-03; PROP-NEG-03, -05, -06 | 19 |
+| integration-fs | PROP-DISC-04…-06; PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04 | 14 |
+| process | PROP-CLI-02…-04, -06, -08; PROP-JSON-01, -02; PROP-RO-01…-06; PROP-RATIO-05; PROP-DRIFT-01…-03, -05, -06; PROP-NEG-01, -07, -08 | 21 |
+| E2E (spawned) | none | 0 |
+
+The shape is the intended pyramid: 48 properties falsifiable without a filesystem or a process, 14
+needing the real archive because `lstat` semantics and real basenames are the claim, 21 at the CLI
+edge because flag closure, stdout emptiness, exit codes, wiring identity and the read-only stance
+are not observable below it, and no spawned end-to-end test at all.
+
 ## Gaps and Open Items
 
 *(pending)*
