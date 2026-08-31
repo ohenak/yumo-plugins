@@ -94,9 +94,12 @@ similar).
 
 **C-2 (feature-directory discovery).** A feature's artifacts are looked up under `docs/{feature}/`
 if that directory exists, else under `docs/completed/{feature}/` if that exists — never both summed
-together for one feature. This mirrors the two locations already named in this repo's `CLAUDE.md`
-Artifact convention section (active features under `docs/{feature}/`; features "already archived
-under `docs/completed/{feature}/`" per this REQ's own dispatch input).
+together for one feature. This preference order is **this REQ's own decision**, not an inherited
+convention: `CLAUDE.md`'s Artifact convention section names only `docs/{feature}/`. The archive
+location is verifiable elsewhere — `pdlc/OPERATIONS.md` (learnings-injection bullet "Where the
+material comes from", naming `docs/completed/*/LEARNINGS-*.md`) and the archive marker
+`docs/completed/REQ-completed.md`, which documents the archive convention and its `coveredViolations`
+interaction. When neither directory exists, REQ-STATS-09 governs.
 
 **C-3 (spec-document set — fixed, not operator-configurable).** The "spec" side of the
 process-to-spec byte ratio (REQ-STATS-06) is the byte total of whichever of these document types are
@@ -111,13 +114,16 @@ DoD-review basename grammars for that feature: `CROSS-REVIEW-{role}-{doc-type}[-
 `POSTMORTEM-{phase}-{feature}.md`, `CODE_REVIEW-{feature}-v{N}.md`. Fixed for the same reason as
 C-3.
 
-**C-5 (round-count fidelity — no independent parsing rules).** The review-round count this command
-reports for a document type must never diverge from the round window the review-loop driver itself
-would derive from the same `CROSS-REVIEW-*` basenames on disk for that document type, per the
-grammar and round-window convention already documented in this repo's `CLAUDE.md` and
-`pdlc/OPERATIONS.md` (review loop mechanics). This REQ does not define a new, separate parsing rule
-for cross-review basenames — the count is a read of the same convention the pipeline already
-enforces, not a reinterpretation of it.
+**C-5 (parsing fidelity — no independent parsing rules).** For **every** artifact-parsing rule this
+command re-reads — the `CROSS-REVIEW-*` basename grammar and round derivation, the
+`CODE_REVIEW-*-v{N}` version grammar, and the POSTMORTEM `RESOLVED:` marker — the classification
+`pdlc stats` reports must never diverge from the classification the pipeline's own driver derives
+from the same bytes, per the conventions documented in `pdlc/OPERATIONS.md` (review loop mechanics;
+post-mortem lifecycle). This REQ defines no new, separate parsing rule for any of them, and no AC
+below restates one: where an AC needs a classification, it names the observable outcome and defers
+the rule itself to this constraint. Notably, this makes the `RESOLVED:` marker's case-insensitivity,
+its single-marker requirement, and its outside-a-fenced-block requirement binding on this command
+without this REQ restating them.
 
 ## 5. Acceptance Criteria
 
