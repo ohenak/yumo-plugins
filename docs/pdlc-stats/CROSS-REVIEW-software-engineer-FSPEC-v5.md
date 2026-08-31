@@ -77,7 +77,67 @@ minor findings.
 
 ## Business Rules
 
-_pending_
+**BR-11 — the one behavioral divergence the REQ edit opened (F-01).**
+
+REQ v1.3, REQ-STATS-04: harvested where "`LEARNINGS-{feature}.md` is present **and** no
+`CODE_REVIEW-{feature}-v{N}.md` file matching **the version grammar** remains".
+
+FSPEC BR-11 (unchanged): harvested when LEARNINGS is present "**and** no `CODE_REVIEW-*` file
+remains in the directory".
+
+These were the same rule against REQ v1.2, and §7.3's third bullet says so explicitly: "BR-11
+follows the REQ literally; a foreign-feature `CODE_REVIEW-` file would suppress the harvested state
+under both documents, so this FSPEC introduces no divergence". The REQ has now moved to the
+narrower predicate the erratum asked for, and BR-11 has not, so that sentence is false as of HEAD
+and the divergence it denies now exists. The witness is the exact fixture the erratum was about:
+
+> `docs/{f}/` holds `LEARNINGS-{f}.md` and `CODE_REVIEW-otherfeature-v1.md` (or
+> `CODE_REVIEW-{f}-draft.md`), and no grammar-matching DoD review.
+
+Under REQ-STATS-04 v1.3 no grammar-matching file remains, so the metric reports **`harvested`**.
+Under BR-11 a `CODE_REVIEW-*` file does remain, so the harvested test fails and "the measured
+highest version wins" — over an empty match set, i.e. **`0`**. A divergence between `harvested` and
+`0` on the same directory is exactly the class of defect REQ C-5 and the FSPEC's own §1 fidelity
+anchor exist to prevent: a confident wrong number.
+
+Two internal signals agree with the REQ's narrowing rather than with BR-11, which is why I read
+this as an unpropagated edit and not a decision:
+
+- **EC-16** already says a `CODE_REVIEW-` basename that does not match the version grammar
+  "contributes nothing, exactly as an unrelated file". A file that is *exactly as an unrelated
+  file* cannot also suppress a state that unrelated files do not suppress. BR-11 and EC-16 are in
+  tension with each other independently of the REQ.
+- **BR-10** derives the count from `deriveDodRoundIndex`'s grammar, so the metric's evidence set is
+  already the grammar-matched set. BR-11 is the only place the broader prefix is used.
+
+Fix, one clause: BR-11 reads "…and no `CODE_REVIEW-{feature}-v{N}.md` file matching the version
+grammar remains in the directory (BR-10's grammar; a basename outside it is not this metric's
+evidence — EC-16)". Nothing else in §4.2 moves.
+
+**BR-06 — decision now shared with the REQ, notice stale (F-05).**
+
+BR-06's paragraph on `CROSS-REVIEW-{role}-REVIEW-v{N}.md` still closes: "That a pipeline-authored
+artifact lands in a list an operator reads as 'malformed' is a wording defect of the upstream
+criterion, not a divergence introduced here; it is raised as an erratum against the REQ (§7.3)".
+REQ-STATS-03 v1.3 now decides that case in the same direction and for the same reason ("a third
+bucket would be an independent rule C-5 forbids"). The disposition is right, the tests (AT-09) are
+right, and only the "wording defect… raised as an erratum" sentence should go — replaced by a
+citation of the criterion that now settles it.
+
+**BR-27 — rule agrees, quotation does not (F-03).**
+
+BR-27's narrowing sentence quotes REQ-STATS-07 as saying "missing or fail to parse … reports it by
+name as missing/malformed". That string is gone from the REQ; v1.3 reads "for any feature whose
+directory cannot be read, reports it by name with the reason… a readable but empty directory is not
+a gap but a normal row whose metrics report their zero states". BR-27's *rule* is now the REQ's
+rule, so what remains is a downstream document quoting upstream text that no longer exists and
+describing itself as a narrowing of it — which will read, to TSPEC, as an unresolved gap between
+the two documents. Delete the quotation and the "raised as an erratum" clause; keep the
+zero-state-versus-gap distinction and the EC-03 pointer, which are load-bearing.
+
+**BR-16, BR-22, BR-28 — no change needed.** BR-16 is now the REQ's own predicate including the
+"or neither" arm; BR-22's states-ride-inside-the-value rule is untouched by REQ-STATS-02's
+re-attribution; BR-28's three prohibitions match REQ-STATS-08's re-separated conjunct (b).
 
 ## Edge Cases and Error Scenarios
 
