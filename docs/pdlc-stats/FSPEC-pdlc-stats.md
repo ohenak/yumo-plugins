@@ -119,7 +119,69 @@ enumeration would be one of these leaking in.
 
 ## 3. Behavioral Flow
 
-*(pending)*
+Three flows share one metric computation. Flow A is the single-feature run, Flow B the fleet run,
+Flow C the rendering fork that both take. §3.4 is the read-only invariant that holds across all of
+them, on every path including error paths.
+
+### 3.1 Flow A — `pdlc stats {feature}` (single feature)
+
+| Step | Action | Decision point | Outcome |
+|---|---|---|---|
+| A1 | Read the invocation: subcommand `stats`, at most one positional (the feature name), flags. | Is every flag in BR-01's closed set, and does every value flag carry a value? | No → usage error, exit 1, nothing on stdout (EC-08). Yes → A2. |
+| A2 | Resolve the repository root and the `docs/` root (BR-01's `--cwd`). | Is the `docs/` root readable? | No → EC-09, exit 1. Yes → A3. |
+| A3 | Resolve the feature's artifact directory. | Does `docs/{feature}/` exist? | Yes → use it, do not look further (BR-02). No → does `docs/completed/{feature}/` exist? Yes → use it. No → EC-01 not-found, exit 1. |
+| A4 | List the artifact files directly in the resolved directory (BR-03: no subdirectory traversal). | — | A5. |
+| A5 | Compute review rounds per document type (BR-05…BR-09). | Per document type: any well-formed cross-review? a round-1 collision? a `LEARNINGS-{feature}.md` present? | A number, `unmeasurable`, `harvested`, or `0`. Malformed basenames accumulate separately (BR-06). |
+| A6 | Compute the DoD-round count (BR-10, BR-11). | Any `CODE_REVIEW-*` file present? | Highest version found, `harvested`, or `0`. |
+| A7 | Compute halts by phase (BR-12, BR-13). | Per post-mortem file: what does the driver's `RESOLVED:` rule classify it as? | One entry per phase, tagged `resolved` or `open`. No files → an empty halt set, not an error. |
+| A8 | Compute the process-to-spec byte ratio (BR-14…BR-16). | Is either process family entirely absent alongside a `LEARNINGS-{feature}.md`? Is the spec total zero? | `harvested`, `n/a`, or a rendered ratio. Harvested is checked before the zero-denominator test (BR-16). |
+| A9 | Render (Flow C) and exit 0. | — | Exactly one report on stdout. |
+
+Steps A5–A8 are independent of one another: none consumes another's result, so a state in one
+metric never propagates into another. That independence is REQ-STATS-03/04/06's per-metric
+harvested discipline stated as flow — a feature whose cross-reviews were harvested but whose DoD
+reviews survive reports `harvested` rows *and* a measured DoD number in the same report.
+
+### 3.2 Flow B — `pdlc stats` (no feature argument, fleet mode)
+
+| Step | Action | Decision point | Outcome |
+|---|---|---|---|
+| B1 | Validate flags as A1. | — | Usage error → exit 1. |
+| B2 | Read the `docs/` root. | Readable? | No → EC-09, exit 1 (the one non-zero exit fleet mode has). Yes → B3. |
+| B3 | Discover candidate features: immediate **directories** under `docs/`, minus BR-22's exclusion set; plus the immediate directories under `docs/completed/`. | Is this entry a directory? Is its name in the exclusion set? | Loose files at either root are never candidates (BR-23). |
+| B4 | Assert the exclusion set is set-equal to the non-feature directories actually present at the `docs/` root. | Equal? | No → EC-10: the report still prints, and the unexpected directory is reported as an unclassified entry rather than silently joining or silently vanishing. |
+| B5 | For each candidate, run A4–A8. | Did the feature's computation fail to produce a metric set (unreadable directory, no artifacts at all)? | Yes → a gap row naming the feature and the reason (BR-25). No → a normal row. |
+| B6 | Render (Flow C) and exit 0. | — | Gap rows are rows, not failures: fleet mode exits 0 whenever it produced its report (BR-24). |
+
+A feature that appears under both `docs/` and `docs/completed/` is reported **once**, from
+`docs/{feature}/`, per BR-02 — never summed and never listed twice.
+
+### 3.3 Flow C — rendering fork
+
+| Step | Action | Decision point | Outcome |
+|---|---|---|---|
+| C1 | Choose a mode. | Was `--json` supplied? | Yes → C3. No → C2. |
+| C2 | Human mode: render §4.3's table(s) to stdout. | Single feature or fleet? | One feature block, or one row per feature plus the gap rows. |
+| C3 | JSON mode: serialize §4.4's document to stdout. | Single feature or fleet? | The 5-key single-feature document, or the 2-key fleet document. |
+| C4 | Emit. | Is there any diagnostic to say? | Diagnostics go to stderr in **both** modes; in JSON mode stdout carries the JSON document and nothing else (BR-18). |
+
+The two renderings consume the same computed metric set. That is what makes REQ-STATS-02's
+set-equality checkable: a metric that reached the human table without reaching the JSON document
+would have to have been computed twice.
+
+### 3.4 The read-only invariant (all flows)
+
+The command performs no filesystem write, no deletion, no directory creation, no temporary file
+anywhere (including outside the repository), no network request and no `git` write command, on
+every path — success, usage error, not-found, unreadable root, or an unexpected failure. Byte
+sizes come from the working tree as it is on disk, never from `git show` or any other history
+read (REQ R-3). The invariant is stated here as a flow property because it must hold on paths that
+have no other flow: an invocation that exits at A1 with a usage error is still bound by it.
+
+REQ-STATS-08 pairs this with a liveness conjunct: leaving the tree untouched never suffices on its
+own. The same invocation must also do its job — exit 0 having emitted the metric set, or exit
+non-zero having emitted the not-found report. A command that printed nothing would satisfy the
+read-only half and fail the criterion. AT-21 and AT-22 assert both halves against one invocation.
 
 ## 4. Business Rules
 
