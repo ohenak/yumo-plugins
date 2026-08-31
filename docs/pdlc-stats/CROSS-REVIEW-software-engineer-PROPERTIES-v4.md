@@ -40,6 +40,39 @@ compresses.
 
 ## Properties
 
+I re-read REQ-STATS-06 at HEAD in full, then re-read every property whose Traces column cites it,
+asking of each whether PROPERTIES is still a faithful compression of the sentence it leans on.
+
+| PROPERTIES pin | What REQ v1.7 now says | Still faithful? |
+|---|---|---|
+| **PROP-RATIO-08** — `state: "harvested"` when `LEARNINGS-{feature}.md` is present **and at least one** of the two families is entirely absent, "over exactly the file set the numerator sums"; leg 4 = `CODE_REVIEW` intact alongside only out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` basenames | "evaluated over exactly the file set whose bytes the process side sums"; unrecognised basename "counts as no file of its family remaining"; such a feature "reports **harvested**" | **Yes — and now positively supported.** The property's own qualifier and REQ's new qualifier are the same sentence. Leg 4's expected value is the value REQ now states. |
+| **PROP-RATIO-06** — a grammatically-failing `CROSS-REVIEW-` basename contributes to **neither** side: listed as malformed, "sized as nothing" | unrecognised basename "contributes no process bytes", and is "the same one REQ-STATS-03 reports malformed (C-5)" | **Yes — strengthened.** v1.6 was the version in tension with this (a "survivor" that is nonetheless malformed); v1.7 states both halves the property asserts. |
+| **PROP-RATIO-07** — spec total zero ⇒ `state: "unavailable"`, `ratio: null`, both byte totals still reported, exit 0 | unchanged: "when spec bytes total zero, it reports the ratio as not-available rather than dividing by zero or crashing" | **Yes.** Untouched by the edit. |
+| **PROP-RATIO-09** — harvested test evaluated **before** the zero-denominator test | REQ still states no precedence; the ordering is BR-16/EC-13 material, and the property traces it there | **Yes.** The edit adds no precedence claim, so nothing new to reconcile. |
+| **PROP-RATIO-01, -02, -03** — the two byte-total sets and the removal probe | C-3/C-4 set definitions unchanged by the edit | **Yes.** |
+| **PROP-NEG-04**, §Traceability row `REQ-STATS-06 → PROP-RATIO-01…10, PROP-NEG-04` | REQ-STATS-06 keeps its identity, scope and P0 priority | **Yes.** |
+
+**The citation that was false is now true.** My v3 F-02's concrete complaint was that PROP-RATIO-08's
+Traces column reads `REQ-STATS-06, BR-16, AT-17` while REQ-STATS-06 at that HEAD contradicted leg 4 —
+citing as authority a document that said the opposite. At this HEAD REQ-STATS-06 supports leg 4
+verbatim, so the Traces column is accurate as written. **No edit to PROPERTIES is required to
+resolve F-02**; the upstream edit resolved it. That is the right outcome — the defect was upstream,
+and I said so at the time rather than patching the symptom here.
+
+**The §Gaps row I proposed is now correctly absent.** v3 suggested a `G-8` recording the
+REQ-versus-FSPEC dispute as provisional, on the G-1 pattern. G-1's pattern is for a rule that is
+*still* unsettled; this one is settled. Adding G-8 now would record a live dispute that no longer
+exists, and would have to be withdrawn again. PROPERTIES' §Gaps table (G-1…G-7) is correct
+unchanged.
+
+**Nothing in PROPERTIES leaned on the withdrawn clause.** I checked this directly rather than by
+inspection of the diff alone: `grep -n "set-membership\|survivor\|v1\.6"` over
+`PROPERTIES-pdlc-stats.md` returns nothing. The document never transcribed v1.6's set-membership
+framing, and pins no REQ version number, so the withdrawal removes no support from any property.
+The one place C-4 membership is cited — the §Traceability row `C-4 process-artifact set →
+PROP-RATIO-01, PROP-RATIO-02, PROP-RATIO-06` — is about the numerator's composition, which C-4 still
+defines and which the edit did not touch; it is not the harvested predicate's basis.
+
 ## Oracles
 
 ## Fixtures
