@@ -72,6 +72,38 @@ dispatch is correct. Still open upstream; restated below so the erratum owed to 
 
 ## Decision
 
+**The delta resolves every routed item it was asked to resolve, and breaks nothing previously
+approved.** All four verdicts, the three `DEC-STATS-*` decisions, the option table, the site table,
+K-1's partition and every falsifier cell are byte-identical apart from K-3's rejoin; the diff is
++51/-13 and every added line is changelog, the two count-breakdown repairs, the superseded marker and
+the K-3 rejoin. Nothing a PLAN task or a red test hangs off moved.
+
+Two Low findings remain, both **inherited** and **nonlocal** — they predate this round's edit, sit
+outside the bytes it touched, and neither is gating. I raise them because DEC-ERR-03 asks this
+confirmation to measure the document against upstream at HEAD, not against the item list, and both
+belong in the same erratum bundle that already owes TSPEC a repair.
+
+**F-01 — the partition sentence introducing the site table was not brought along.** At `DEC-STATS-01`
+the paragraph above the site table still reads *"Four* hold *the enumerations; five* pin *them from
+two other packages"*. The arithmetic still totals ten (4 + 5 + 1), which is why no count word is
+wrong — but the partition contradicts the two breakdowns this erratum repaired, which count
+`pdlc/workflows/package.json` as the **fifth enumeration holder** and the four test files as the
+pinners (5 + 4 + 1), and it contradicts upstream TSPEC §7.3, which uses the same 5 + 4 + 1 split.
+`package.json`'s `c8.include` is a transcribed member list; it pins nothing — `coverageInstrumentation.test.js`
+pins it. The sentence dates from the nine-site era (`17ddc28a0`) and survived two count moves.
+Membership, the total, K-1's numbering and every falsifier are unaffected, so this is presentation,
+not an oracle gap: **Low**. A two-word edit whenever DECISIONS is next opened.
+
+**F-02 — the sweep's candidate cardinality diverges from upstream, in DECISIONS' favour.** I re-ran
+the shipped command at HEAD. `git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'` returns
+**25** files; ten transcribe a member list, fifteen import a module. DECISIONS states 25 and *"the
+other fifteen"* and is **correct at HEAD**. TSPEC §7.3 (`TSPEC:1166`) states *"24 candidates"* and
+*"the 14 pure consumers"* — stale by one on both terms, with the same difference, so the derived ten
+is unaffected. Same shape as the six → seven divergence K-3 already records, and DECISIONS again
+holds the right number; what is missing is only that this second divergence is not recorded alongside
+the first, so the erratum owed upstream reads as covering one stale count when it covers two.
+**Low**, cheapest to fix in the same TSPEC round as K-3's.
+
 ## Consequences
 
 ## Recommendation
