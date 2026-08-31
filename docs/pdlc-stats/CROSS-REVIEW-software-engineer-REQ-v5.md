@@ -85,7 +85,20 @@ turns out to be. The v4 approval's other anchors are unmoved.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | inherited | local | REQ-STATS-06's rationale asserts as shipped fact that "harvest deletes cross-reviews and DoD reviews while post-mortems survive". Upstream at HEAD contradicts itself: `harvest-learnings/SKILL.md:28,128,129` scopes deletion to `CROSS-REVIEW-*` / `CODE_REVIEW-*` only, but `pdlc/OPERATIONS.md:296` names `POSTMORTEM-*` inside the set the `Harvested from` row records as deleted. The claim is load-bearing twice over — it justifies REQ-STATS-06's per-family predicate, and its converse justifies REQ-STATS-05 having no harvested state at all ("no post-mortem file is zero halts, never an error"). If OPERATIONS is the correct side, REQ-STATS-05 reports `0 halts` for a harvested feature that in fact halted — the exact silent undercount NG-6 and REQ-STATS-03/04/06 all exist to prevent. Fix: settle which upstream is authoritative (an operator/DECISIONS call, not a REQ edit), then either cite the settled source here, or hedge the clause and give REQ-STATS-05 the harvested state its siblings carry. | REQ-STATS-06, §5 (the "harvest deletes … while post-mortems survive" clause); knock-on REQ-STATS-05 |
+| F-02 | Low | delta | local | The v1.4 changelog note justifies the edit as stopping "a foreign-feature file" from suppressing the harvested state. That reasoning holds for `CODE_REVIEW-{feature}-v{N}.md`, which carries a feature token, but not for `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, which carries none — cross-review basenames are scoped by their feature *directory*, never by the grammar. The AC text is correct; only the note's stated rationale overclaims. Fix: describe the win as "a non-conforming basename can no longer read as a survivor", which is what the grammar actually buys. | Metadata block, "Erratum round 3 (v1.4)" note (lines 20–23) |
+
+FINDING: High | inherited | local | REQ-STATS-06, §5 — "post-mortems survive" harvest clause | Load-bearing shipped-behaviour claim contradicted at HEAD: harvest-learnings/SKILL.md:28,128,129 deletes only CROSS-REVIEW-*/CODE_REVIEW-*, but pdlc/OPERATIONS.md:296 names POSTMORTEM-* among the files harvest deleted. REQ-STATS-05's lack of a harvested state depends on the survive side being true.
+FINDING: Low | delta | local | Metadata block, v1.4 erratum note (lines 20-23) | The note's "foreign-feature file" rationale does not hold for the cross-review family, whose grammar carries no feature token; the scoping win is over non-conforming basenames, not foreign features.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Which upstream is authoritative on post-mortem deletion at harvest — `harvest-learnings/SKILL.md` (survive) or `pdlc/OPERATIONS.md:296` (deleted)? The answer decides whether REQ-STATS-05 needs a harvested state, so it wants a `docs/_decisions/` entry rather than a REQ-local assertion. |
+| Q-02 | If post-mortems do survive, is REQ-STATS-05's "no post-mortem file is zero halts" still right for a *harvested* feature — i.e. is a surviving post-mortem set genuinely complete evidence, or does harvest ever consolidate them into LEARNINGS §1 Non-Convergences and drop the originals? |
 
 ## Positive Observations
 
