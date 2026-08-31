@@ -112,8 +112,6 @@ the v1.5/v1.6 upstream churn. Both read correctly against REQ v1.7: BR-11's cond
 REQ-STATS-04's, and BR-13 reports an empty halt set with no harvested alternative, which is
 REQ-STATS-05 after v1.6's withdrawal.
 
-## Business Rules
-
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
