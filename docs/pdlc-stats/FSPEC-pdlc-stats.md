@@ -15,11 +15,10 @@ feature: pdlc-stats
 |---|---|---|---|
 | Draft | pm-author | 1.4 | 2026-08-31 |
 
-Erratum round (v1.4): re-grounded on REQ v1.4. BR-11 and BR-16 now state their harvested
-conditions over the documented basename grammars REQ-STATS-04 and REQ-STATS-06 name, rather than
-bare `CODE_REVIEW-*` / `CROSS-REVIEW-*` globs, so BR-16 and BR-14 read one file set; BR-25 names the
-second loose file at the `docs/completed/` root; §7.3's two harvested-predicate errata are absorbed,
-the REQ having decided them. No other change.
+Erratum round (v1.4): re-grounded on REQ v1.4. BR-11 and BR-16 state their harvested conditions over
+the documented basename grammars REQ-STATS-04/06 name, not bare globs, so BR-16 and BR-14 read one
+file set; BR-25 names the archive root's second loose file; §7.3's harvested-predicate errata are
+absorbed, the REQ having decided them. No other change.
 
 **ID:** `FSPEC-STATS-01`
 
@@ -298,9 +297,9 @@ including reporting `1` for a feature that never ran DoD.
 present **and** no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar remains
 (REQ-STATS-04). Where any survives, the measured highest version wins — the harvested state never
 displaces evidence this metric can actually read. The qualifier decides the leftovers: a basename
-that begins `CODE_REVIEW-` but does not match — a `-draft` suffix, or another feature's name —
-contributes nothing to BR-10's measured value, and equally counts as nothing remaining here, so it
-neither raises the number nor suppresses `harvested`. The two tests read one file set.
+beginning `CODE_REVIEW-` that does not match — a `-draft` suffix, another feature's name —
+contributes nothing to BR-10's value and counts as nothing remaining here, so it neither raises the
+number nor suppresses `harvested`.
 
 **BR-12 (halts: one entry per phase, resolution as the driver classifies it).** One entry is
 reported per distinct phase that has a `POSTMORTEM-{phase}-{feature}.md` file, each tagged
@@ -344,14 +343,14 @@ total is zero — legitimately reachable mid-authoring (REQ R-4) — the ratio i
 `LEARNINGS-{feature}.md` is present **and at least one of the two harvest-deleted process families
 is entirely absent** — that is, either no file matching BR-14's
 `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains, or no file matching its
-`CODE_REVIEW-{feature}-v{N}.md` grammar remains, or neither (REQ-STATS-06). The condition is
-evaluated over exactly the file set BR-14's numerator sums, so the two can never disagree: a
-basename that fails a grammar contributes no bytes to the process side and counts as no file
-remaining. Two leftovers follow from that and are named because both exist on disk. A directory
-left holding only the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files that BR-06 reports
-as malformed — the shape `docs/completed/pdlc-advisory-wave-gate/` carries — reports `harvested`,
-not a measured ratio; and a stray `CODE_REVIEW-{feature}-draft.md` or another feature's
-`CODE_REVIEW-` file does not hold the DoD family open. Post-mortems survive harvest while cross-reviews and DoD reviews do not, so a
+`CODE_REVIEW-{feature}-v{N}.md` grammar remains, or neither (REQ-STATS-06). It is evaluated over
+exactly the file set BR-14's numerator sums, so the two never disagree: a basename failing a grammar
+contributes no bytes to the process side and counts as no file remaining. A directory holding only
+the out-of-catalogue
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` files BR-06 reports as malformed — the shape
+`docs/completed/pdlc-advisory-wave-gate/` carries — reports `harvested`, not a measured ratio; and a
+stray `CODE_REVIEW-{feature}-draft.md` or foreign `CODE_REVIEW-` file does not hold the DoD family
+open. Post-mortems survive harvest while cross-reviews and DoD reviews do not, so a
 numerator computed over a partially deleted process set would silently undercount rather than be
 visibly absent. This test is evaluated **before** BR-15's zero-denominator test: a harvested feature
 whose spec documents are also gone reports `harvested`, not `n/a`, because the more specific
@@ -479,10 +478,9 @@ increment it. Its presence is one of REQ R-5's two observable stability guarante
 ### 4.5 Discovery, exits and the read-only stance
 
 **BR-25 (fleet discovery: directories only, fixed exclusion set).** Discovery considers immediate
-**directories** only. A loose file at either root is never a feature, whatever its basename claims —
-`docs/PLAN-pdlc-integration-boundary-gates.md` at the `docs/` root, and both
-`docs/completed/REQ-completed.md` and `docs/completed/QUEUE-HISTORY-rows-0-1.md` at the archive
-root, are all present in this repository and none of the three is a feature.
+**directories** only. A loose file at either root is never a feature, whatever its basename claims:
+`docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/completed/REQ-completed.md` and
+`docs/completed/QUEUE-HISTORY-rows-0-1.md` are all present here and none of the three is one.
 The excluded directory names, fixed by REQ-STATS-07 and not configurable, are `_queue`,
 `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded` and `completed`.
 `completed` is excluded **as a feature** and traversed **as a container**: its children are
@@ -659,7 +657,7 @@ surviving `CODE_REVIEW-{feature}-v4.md` and no other, one with none. *When:* bot
 *Then:* the first reads exactly `4` and the second reads `harvested`; neither reports `0` in place
 of the other's state. A third directory, holding `LEARNINGS` plus only
 `CODE_REVIEW-{feature}-draft.md` and another feature's `CODE_REVIEW-{other}-v2.md`, also reads
-`harvested`: neither leftover matches the version grammar, so neither is evidence (BR-11).
+`harvested`: neither leftover matches the grammar, so neither is evidence (BR-11).
 
 ### 6.5 Halts
 
@@ -726,9 +724,9 @@ cross-reviews intact and no `CODE_REVIEW` file; one with `CODE_REVIEW` files int
 cross-review; one with neither and no spec documents either; and one holding `CODE_REVIEW` files
 intact plus, as its only `CROSS-REVIEW-` basenames, the out-of-catalogue
 `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form — the shape `docs/completed/pdlc-advisory-wave-gate/`
-carries. *When:* all four are reported. *Then:* all four report `harvested` — the third does
-**not** report `n/a`, and the fourth does **not** report a measured ratio, because the files whose
-bytes BR-14 refuses are equally files BR-16 does not count as remaining (BR-16, EC-13).
+carries. *When:* all four are reported. *Then:* all four report `harvested` — the third not `n/a`,
+the fourth not a measured ratio, because files whose bytes BR-14 refuses are equally files BR-16
+does not count as remaining (BR-16, EC-13).
 
 ### 6.7 Fleet mode
 
@@ -929,16 +927,13 @@ no oracle.
 
 ### 7.3 Upstream errata raised, not folded in
 
-Two REQ cross-review rounds closed *Approved with minor changes* with wording findings still open in
-the REQ text. They are raised as errata against the REQ rather than silently resolved here, and this
-FSPEC records which reading it derived from so the two documents can be reconciled without guessing:
+Wording findings left open in the REQ text are raised as errata against it rather than silently
+resolved here, and this FSPEC records which reading it derived from.
 
-All three of the harvested-predicate errata this section previously carried are **closed**: REQ v1.3
-and v1.4 decided them, scoping REQ-STATS-04's and REQ-STATS-06's harvested tests to the documented
-basename grammars. BR-11, BR-16, AT-12 and AT-17 state and pin that decided form; nothing about the
-harvested predicates is routed upstream any longer.
-
-Two further errata are raised by this round's cross-reviews:
+The three harvested-predicate errata this section carried are **closed**: REQ v1.3 and v1.4 scoped
+REQ-STATS-04's and REQ-STATS-06's harvested tests to the documented basename grammars. BR-11, BR-16,
+AT-12 and AT-17 state and pin that form; nothing about them is routed upstream now. Two errata
+remain:
 
 - **REQ-STATS-05 requires a post-mortem-listing classification that C-5 says the REQ defines
   nowhere** (software-engineer FSPEC v1 F-03, High). "One entry per distinct phase with a
@@ -952,9 +947,8 @@ Two further errata are raised by this round's cross-reviews:
   operator as malformed. D-8 follows the REQ literally rather than diverging; whether that is the
   intended operator-facing wording is the REQ's to decide.
 
-Three more bullets follow, from this round's cross-reviews: the first two against criterion *wording*
-whose behaviour this FSPEC decides differently and deliberately, the third collecting two wording
-findings no FSPEC behaviour turns on:
+Three more follow: the first two against criterion *wording* whose behaviour this FSPEC decides
+differently and deliberately, the third collecting two findings no FSPEC behaviour turns on:
 
 - **REQ-STATS-09's *Given* sweeps in the no-`docs/`-root case** (software-engineer FSPEC v2 F-02,
   Medium). A repository with no `docs/` root satisfies "absent under both `docs/{feature}/` and
