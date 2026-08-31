@@ -60,7 +60,21 @@ The one adjacent count that *could* have been wrongly synchronised — the `loop
 
 ## Data Model
 
-_pending_
+No type, constant or signature moved this round. For completeness against the counts the corrected row now leans on, the shipped `c8.include` array at HEAD is:
+
+```
+**/pdlc/workflows/orchestrate-dev.js                          ┐
+**/pdlc/workflows/orchestrate-queue.js                        │ REQUIRED_INCLUDES
+**/pdlc/workflows/build-runtime.mjs                           │  (four entries)
+**/pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs┘
+**/scripts/capture-learnings-baseline.mjs                     ← CAPTURE_SCRIPT_INCLUDE
+**/pdlc/workflows/lib/loop-session.mjs                        ┐ two lib/ modules
+**/pdlc/workflows/lib/escalation-view.mjs                     ┘
+```
+
+Seven members, in exactly the spread order the `toEqual` literal produces — which is why the row's note that "the shipped assertion is `toEqual`, i.e. array-equality, so position matters" remains correct and load-bearing. Adding `lib/stats.mjs` as an eighth member at the end of the `lib/` group keeps position discipline; the row says so.
+
+The document's own §4.2 surface (`lib/stats.mjs` exporting six functions and two frozen constants, `REVIEW_DOC_TYPE_ROWS` as BR-09's six rows) is unchanged and was not re-reviewed — it was approved at v1.6 and the edit does not touch it.
 
 ## Test Strategy
 

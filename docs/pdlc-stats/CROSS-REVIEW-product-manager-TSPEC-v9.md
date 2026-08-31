@@ -120,4 +120,20 @@ no `FINDING:` lines by design.
 
 ## Recommendation
 
+**Approved.**
+
+Both routed erratum items are resolved, and resolved on the stronger of the two framings. Every
+number the edit asserts was verified against shipped source at HEAD — `REQUIRED_INCLUDES`' four
+entries, the seven-member `c8.include` array in `package.json`, the verbatim stale title and comment,
+and the eight-member post-feature set. Upstream was re-grounded independently of the item list: REQ
+and FSPEC hash exactly to the versions v1.6 absorbed, and neither says anything about coverage
+instrumentation, so this row compresses no upstream text and puts no acceptance criterion at risk.
+Nothing previously approved moved: no type, signature, exit code, oracle, code sketch or behavioural
+claim changed, and §2.1 still derives ten co-change sites.
+
+No changes required.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
