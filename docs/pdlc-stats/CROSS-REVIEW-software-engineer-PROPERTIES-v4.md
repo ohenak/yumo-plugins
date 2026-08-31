@@ -75,6 +75,31 @@ defines and which the edit did not touch; it is not the harvested predicate's ba
 
 ## Oracles
 
+Checks actually executed this round, so a later reader can re-run them rather than trust this file.
+
+| Check | Command | Result |
+|---|---|---|
+| PROPERTIES bytes unchanged since approval | `shasum -a 256 docs/pdlc-stats/PROPERTIES-pdlc-stats.md` | `7baf9b33…` = v3 `APPROVAL-HASH:` ✅ |
+| REQ delta is exactly the erratum | blob hash per commit over `git log -- REQ-pdlc-stats.md` | `5f3e8051…` (v1.6, `1847dd9c0`) → `f75c348f…` (v1.7, `e12b78fd8`), one commit ✅ |
+| REQ HEAD matches the dispatch sha | `shasum -a 256 docs/pdlc-stats/REQ-pdlc-stats.md` | `f75c348f299ebff8518b590f64668d054587c0c9d4d7ba442477e6fdfa7a8862` ✅ |
+| FSPEC did not move | `shasum -a 256 docs/pdlc-stats/FSPEC-pdlc-stats.md` | `c7d2c832…` = v3 `UPSTREAM-STATE: FSPEC` and dispatch sha ✅ |
+| REQ v1.7 and FSPEC BR-16 now agree on the same file | read both at HEAD | BR-16: "evaluated over exactly the file set BR-14's numerator sums… a basename failing a grammar contributes no bytes to the process side and counts as no file remaining… reports `harvested`". REQ-STATS-06 v1.7 states the same rule in the same terms ✅ |
+| No PROPERTIES text depends on the withdrawn clause | `grep -n "set-membership\|survivor\|v1\.6"` over PROPERTIES | no matches ✅ |
+
+**On the three-document agreement.** The reason this confirmation is short is that the erratum
+collapsed a three-against-one into a four-way agreement on one file, `CROSS-REVIEW-{role}-REVIEW-v{N}.md`:
+REQ-STATS-06 v1.7, FSPEC BR-16, TSPEC §4.3 and PROP-RATIO-08 leg 4 now all say the same thing about
+it — no process bytes, no file remaining, `harvested` rather than a silently-undercounting measured
+ratio. PROP-RATIO-06 supplies the other half (the same basename is simultaneously reported malformed),
+which REQ v1.7 now names explicitly via C-5. There is no longer a document in this feature that
+reads that file differently, which is the condition F-02 said had to hold before the phase could
+converge believing leg 4 settled.
+
+**What I did not re-do.** I did not re-derive the archive measurements (62 `CROSS-REVIEW-*`, 4
+`-REVIEW-v{1,2}.md`, 58) or the PLAN trace resolution; both were re-derived at HEAD in v3, and the
+only upstream movement since is a REQ paragraph that touches neither. G-6's staleness caveat on
+those literals stands as written.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
