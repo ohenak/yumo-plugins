@@ -134,17 +134,65 @@ the holders reaches none of the five (see *What the sweep found*):
 measurement scanned the files that *hold* the enumerations and found five; round 2 added
 `loop-distribution.test.js` by hand and made it six. That is the wrong instrument: the assertions that
 pin an enumeration's membership and size live in *other packages* than the enumeration, so no scan of
-the holders reaches them. The set is derivable mechanically instead, in one command —
+the holders reaches them. The set is derivable mechanically instead, in one command — and the command is stated **over tracked
+sources, not over `__tests__/`**, because the enumeration is mirrored in production code as well as in
+tests (round 4 corrected both the scope and the tool; see the two notes below):
 
-    grep -rln "escalation-view" pdlc/engine/__tests__/ pdlc/workflows/__tests__/
+    git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'
 
-— fifteen files at HEAD, of which the ones that **transcribe a member list** (rather than importing a
-module, which is what the other ten do) are: `_tspec-packed-set.mjs` and `loop-distribution.test.js`,
-already in the table, plus three that were not — `coverageInstrumentation.test.js`,
-`run.test.js` and `learningsPremises.test.js`. `loop-cli.test.js` is the one hit that survives the
-grep but fails the predicate: its five references are `path.join(…, "lib", "loop-session.mjs")` import
-paths and comments, never a list. So the co-change set is **nine sites**, and the number is now
-reproducible rather than accumulated.
+— **25 files at HEAD**, of which the ones that **transcribe a member list** (rather than importing a
+module, which is what the other fifteen do) are exactly the nine in the table above: the five
+enumeration holders — `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs`,
+`_tspec-packed-set.mjs`, `pdlc/workflows/package.json` — plus `loop-distribution.test.js`,
+`coverageInstrumentation.test.js`, `run.test.js` and `learningsPremises.test.js`. Three rounds of
+per-file reading found five, then six; this one command finds all nine, and finds them without
+knowing in advance which package they live in.
+
+Two hits survive the grep and fail the predicate. `loop-cli.test.js` has **six** references on six
+lines — `:122`, `:637`, `:652`, `:681` for `loop-session.mjs` and `:827`, `:852` for
+`escalation-view.mjs` (the pair that makes it a hit at all) — all of them `path.join(…)` /
+`pathToFileURL(…)` import paths and comments, never a list. `pdlc/engine/bin/cli.mjs` (`:114`,
+`:117`) is the same shape, a dynamic `import()` path. So the co-change set is **nine sites**, and the
+number is now reproducible rather than accumulated.
+
+**Note on scope — why not `__tests__/` (TE F-01).** The first form of this sweep read two test
+directories, and a test-directory query structurally cannot see a production-side copy of an
+enumeration. `publish-preflight.mjs` is the worked example: at `:205-219` it holds its own
+`LIB_MODULES_AT_HEAD` (12) + `LIB_MODULES_FROM_THIS_FEATURE` (3), and its own comment at `:200-203`
+says the duplication is deliberate — *"mirroring — not importing — `packaging.test.js`'s oracle: … a
+deliberate second, production-side copy of the same TSPEC §5.4 table, run for real at publish time
+rather than only in CI's test suite."* It is the copy that runs at publish time, so it is the one a
+narrow query can least afford to miss; missing it is what mispriced option B by a site (see
+*Corrected cost claim*). The rule K-9 promotes says *wherever it lives*; the query it ships beside
+now says the same thing.
+
+**Note on tool — `git grep -l`, not `grep -rln` (PM F-02, TE F-02).** The two forms disagree, silently.
+`grep` classifies a file containing NUL bytes as binary and drops it from an `-l` listing;
+`pdlc/workflows/__tests__/loopProperties.test.js:370` contains two (`` `${n.code}\0${n.subject}\0${n.text}` ``,
+a deliberate field separator), as does `pdlc/workflows/lib/escalation-view.mjs`. Repo-scoped,
+`git grep -l` returns 25 and `grep -rln` returns 23; over the earlier two test directories they
+returned 15 and 14. Both dropped files are importers here, so the nine-site set survives either way —
+but the omission is unannounced, and a dropped *transcriber* would have been the exact miss this
+sweep exists to end. Use `git grep -l` (or `grep -ral`), and state the divergence wherever the rule is
+copied.
+
+**Note on the probe (PM Q-01).** `escalation-view` works as a probe only because every enumeration in
+this class currently contains that member. An enumeration listing only `orchestrate-dev.js` and
+`orchestrate-queue.js` would survive the grep unseen. The predicate belongs in the promoted rule:
+*grep a member that appears in every enumeration of the class, and re-pick the probe when the class
+changes.*
+
+**A tenth transcription, outside every oracle (PM F-01, TE F-03).** The repo-scoped sweep also returns
+`pdlc/README.md:231`, which states the class in prose — *"The four workflow modules it dispatches
+(`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`) are
+vendored into the package at pack time"*. Under option A that sentence's count **and** its list go
+stale on this feature's commit. It is not a tenth row of the site table, and the two reviewers agree
+on the reason from opposite directions: the table is a table of *falsifiers*, every row of which reds
+on a partial edit, and nothing pins this line — `documentOracles.test.js` reads `pdlc/README.md`
+(`:316`, `:672`) but pins `workflows/dist/` and the absence of seam-count prose, never the member
+list. So the site count stays **nine** and the edit is still owed: it is an explicit,
+non-falsifying co-change obligation under K-9, and it is recorded again under *Standing costs
+accepted* as a place the number drifts silently and is corrected by review rather than by a red.
 
 Two of the three were already visible in this document and simply not in the table.
 `coverageInstrumentation.test.js` is named in K-3 as an obligation and in the re-evaluation trigger's
