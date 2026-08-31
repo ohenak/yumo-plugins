@@ -123,3 +123,8 @@ FINDING: Low | delta | local | §7.3 closing paragraph | The two Low errata desc
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:25af3c47c218d8987d258c6bda917cb5fecd21014ec794864c4e7b9a1cafd7f8
+APPROVAL-HASH-NORMALIZED: sha256:25af3c47c218d8987d258c6bda917cb5fecd21014ec794864c4e7b9a1cafd7f8
+REVIEWED-COMMIT: 65f49aca144f1d9398c2af72a35adea263afa32b
+UPSTREAM-STATE: REQ sha256:60a516fb2ede925b2428dca1bc8e4e61587c52827ea55b9e4965ea57b9a8f1c9
