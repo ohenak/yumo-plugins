@@ -160,4 +160,45 @@ still accurate) and the dispatch/anchor mismatch described in `## Context`.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | **Carried from v6 F-02, unresolved and still accurate.** The v1.5 changelog entry (`DECISIONS:46`) says "the three prose sites carrying `10,859 + 1,200 = 12,059`"; at TSPEC HEAD exactly **two** sites carry that expression literally (`TSPEC:281`, `TSPEC:773`) and a third states it in words. The count is right on a semantic reading and off by one on a textual one. The substantive claim the sentence makes — that every such site is a labelled worst-case recount and none is asserted — verifies true at TSPEC v1.3. Immaterial to every decision; the v1.6 erratum correctly declined to touch it. | § Revision history, v1.5 entry |
+| F-02 | Low | delta | local | **The dispatch's premise and this document's approval anchors both disagree with disk.** The dispatch states this document's own bytes did not change, but `1c0881dae` advanced it **v1.5 → v1.6** after the iteration-6 approval, and my v6 anchors record `REVIEWED-COMMIT: 420edb564` (v1.5) with `UPSTREAM-STATE: TSPEC sha256:fc57bc56…c27504` against a HEAD of `sha256:2c84d525…3c911be49b`. I reviewed the v1.6 delta rather than trust the premise: it is the routed stale-`TSPEC v0.7` erratum, in scope, correct, and it closes my v6 F-01. No substantive consequence — but the round was framed as a pure cascade when it was in fact a cascade *and* a delta, and the anchors need re-stamping so the next round's staleness check does not read this as un-cascaded. | § Revision history, v1.6 entry; approval anchors on `CROSS-REVIEW-test-engineer-DECISIONS-v6.md` |
+
+FINDING: Low | inherited | nonlocal | § Revision history, v1.5 entry | carried v6 F-02: the v1.5 changelog at DECISIONS:46 says "three prose sites" carrying 10,859 + 1,200 = 12,059 but only TSPEC:281 and TSPEC:773 carry the literal sum, a third states it in words; the substantive claim that all are labelled recounts and none is asserted verifies true at TSPEC v1.3
+FINDING: Low | delta | local | § Revision history, v1.6 entry and the approval anchors on CROSS-REVIEW-test-engineer-DECISIONS-v6.md | the dispatch states this document's bytes did not change but commit 1c0881dae advanced it v1.5 to v1.6 after the iteration-6 approval; the v6 anchors pin REVIEWED-COMMIT 420edb564 and TSPEC sha256:fc57bc56 against a HEAD document of v1.6 and TSPEC sha256:2c84d525, so both need re-stamping; the v1.6 delta was reviewed on its merits and is the correct in-scope routed erratum
+
+## Positive Observations
+
+- **The de-versioning fix removes a finding class, not an instance.** My v6 F-01 could have been
+  discharged by re-pinning two literals to `v1.3`. Instead both recitals now say "at HEAD" and carry
+  no version list, on the stated reasoning that the substance was never version-dependent. That is
+  the difference between closing a ticket and closing a defect class — and TSPEC v1.3 independently
+  reached the same conclusion about its own FSPEC pointers in the same round.
+
+- **This document was already on the right side of the upstream migration.** TSPEC spent an erratum
+  round moving `FSPEC v1.3's E-7` to `FSPEC E-7`; all four of this document's FSPEC citations were
+  already by id, so the move cost it nothing. Citing mechanisms and §-anchors rather than
+  transcribing upstream prose has now carried this document through four upstream versions
+  (TSPEC v0.9 → v1.3) with no false claim, which is about as strong as this kind of evidence gets.
+
+- **The erratum stayed inside its locus on both sides.** TSPEC's 38-line diff touches five sections
+  and adds nothing to the round-12 items it says it adds nothing to; DECISIONS' v1.6 touches two
+  passages and explicitly leaves the v1.4 changelog occurrence alone as history. Under a decision
+  freeze that discipline is what makes a cascade confirmation cheap instead of a re-review.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High or Medium finding, open or new. DECISIONS v1.6 holds against TSPEC v1.3: every one of its
+TSPEC-dependent claims was re-read at the cited locus on disk and verifies, the erratum's touched
+sections are almost disjoint from what this document cites, and the one section it does cite (§4.1)
+changed only in a pointer numeral and not in the rule DEC-DECLEDGER-15 rests on. Two Low findings
+recorded — a carried changelog miscount and the dispatch/anchor mismatch — neither of which gates,
+and the second of which asks for anchor re-stamping rather than a document edit.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
