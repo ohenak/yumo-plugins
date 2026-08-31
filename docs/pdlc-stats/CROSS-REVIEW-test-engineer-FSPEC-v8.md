@@ -111,4 +111,15 @@ errata as open that REQ v1.4 appears to have repaired. Both are record-keeping c
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | §7.3 E-5's "FSPEC sites that stand unchanged" column cites AT-19, which pins the exclusion set (BR-23/BR-26/EC-10), not the zero-state row. The oracles behind E-5's subject are AT-26 (EC-03's trace target) and AT-20; §8's own BR-27 row already says `AT-20, AT-26, AT-27`. One token swap. | §7.3, row E-5 |
+| F-02 | Low | delta | local | §7.3's closing paragraph says REQ-STATS-02's state over-distribution and REQ-STATS-08's conjunct-(b) separator "remain recorded"; on REQ v1.4 both read as repaired (REQ-STATS-02 distributes malformed/unmeasurable to REQ-STATS-03 and harvested to REQ-STATS-03/04/06; REQ-STATS-08 (b) carries its separators). Same staleness class the round removed above it. | §7.3, closing paragraph |
+
+FINDING: Low | delta | local | §7.3 row E-5 | E-5 cites AT-19 as the standing oracle for the zero-state row; AT-19 pins the exclusion set. The correct oracles are AT-26 and AT-20, as §8's BR-27 trace row already states.
+FINDING: Low | delta | local | §7.3 closing paragraph | The two Low errata described as still open (REQ-STATS-02 state distribution, REQ-STATS-08 conjunct (b) separators) both read as repaired at REQ v1.4.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
