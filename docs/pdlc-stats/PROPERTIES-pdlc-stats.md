@@ -474,9 +474,9 @@ assumed-existing; the five files this feature *amends* were confirmed **present*
 | T-02 doubles | `pdlc/workflows/__tests__/helpers/statsDoubles.js` (new) | infrastructure — §Fixtures; asserts nothing itself, by PLAN's own declaration |
 | T-03 argv reds | `pdlc/workflows/__tests__/statsArgv.test.js` (new) | PROP-CLI-01 |
 | T-04 metric reds | `pdlc/workflows/__tests__/statsMetrics.test.js` (new) | PROP-RR-01, -02, -04, -06…-09, -11; PROP-DOD-02…-04; PROP-HALT-03, -05, -07; PROP-RATIO-01…-03, -06…-09; PROP-ERR-08; PROP-NEG-02, -04 |
-| T-05 discovery reds | `pdlc/workflows/__tests__/statsDiscovery.test.js` (new) | PROP-DISC-01, -02, -06, -07, -08; PROP-NEG-03 |
+| T-05 discovery reds | `pdlc/workflows/__tests__/statsDiscovery.test.js` (new) | PROP-DISC-01, -02, -06, -07, -08, -10 (discovery half); PROP-NEG-03 |
 | T-06 render reds | `pdlc/workflows/__tests__/statsRender.test.js` (new) | PROP-RENDER-01…-06; PROP-RR-12; PROP-JSON-03…-10; PROP-RATIO-10 |
-| T-07 outcome reds | `pdlc/workflows/__tests__/statsOutcome.test.js` (new) | PROP-DISC-03, -09; PROP-ERR-01…-07, -09; PROP-CLI-07; PROP-NEG-05, -06 |
+| T-07 outcome reds | `pdlc/workflows/__tests__/statsOutcome.test.js` (new) | PROP-DISC-03, -09, -10; PROP-ERR-01…-07, -09, -10; PROP-CLI-07; PROP-NEG-05, -06 |
 | T-08 anti-drift (workflows half) | `pdlc/workflows/__tests__/statsAntiDrift.test.js` (new) | PROP-RR-13, PROP-DISC-05 |
 | T-09 CLI process reds | `pdlc/engine/__tests__/stats-cli.test.js` (new) | PROP-CLI-02, -03, -04, -06, -08; PROP-JSON-01, -02; PROP-NEG-08 |
 | T-10 CLI structural reds | `pdlc/engine/__tests__/stats-cli-structure.test.js` (new) | PROP-DRIFT-01…-04; PROP-RO-05; PROP-RATIO-05; PROP-CLI-05; PROP-NEG-07 |
