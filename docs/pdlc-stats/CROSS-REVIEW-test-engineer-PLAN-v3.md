@@ -163,8 +163,17 @@ batch 2 respectively, and neither blocks the wave.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | nonlocal | Batch-10 gate note says `assertAdditiveOnly` reds "as soon as the first enumeration moves"; TSPEC §6.4 now scopes that trigger to the four enumerations the oracle *reads* (sites 1–4), and batch 10 also contains T-24's `c8.include` edit, which it does not read | PLAN §Batch gates, batch 10 |
+| F-02 | Low | delta | nonlocal | T-04 owns AT-17, whose fourth leg is now the single assertion site of a live REQ-STATS-06 v1.6 versus FSPEC BR-16 v1.7 dispute (TSPEC §8.3, second open erratum); the row gives the implementer no signal that its expected value re-stamps if the reconciliation lands the other way | PLAN §Batches, T-04 |
+| F-03 | Low | inherited | nonlocal | T-23 counts nine assertion edits on `loop-distribution.test.js`; TSPEC §2.1's row for the same file says eight. PLAN is the superset and names the extra edit, so no coverage is lost — a transcription divergence predating this round | PLAN §Batches, T-23 |
+
+FINDING: Low | delta | nonlocal | PLAN §Batch gates, batch 10 | "reds as soon as the first enumeration moves" reads wider than TSPEC §6.4's edited scope (the four enumerations `assertAdditiveOnly` reads, sites 1-4); T-24's `c8.include` edit sits in the same batch and does not trigger it, so an implementer landing T-24 first sees a green PLAN told them to expect red. Bounded: T-21, T-22 and T-25 are all in batch 10 and the gate is measured at batch end. Fix: name the subset the way §6.4 now does.
+FINDING: Low | delta | nonlocal | PLAN §Batches, T-04 | AT-17's fourth leg is now the only place TSPEC's live REQ-STATS-06 v1.6 vs FSPEC BR-16 v1.7 dispute becomes an assertion (§4.3 writes it against BR-16, §8.3 routes the reconciliation). T-04 states no expected value so it contradicts nothing, but it should name the leg as a re-stamp site so the implementer checks §8.3 before writing the expectation.
+FINDING: Low | inherited | nonlocal | PLAN §Batches, T-23 | T-23 says nine assertion edits on `loop-distribution.test.js` where TSPEC §2.1 says eight. Predates this cascade; PLAN is the superset and names the ninth edit with its rationale, so it costs no coverage — recorded so it is not misread as this round's damage.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}

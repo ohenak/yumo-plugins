@@ -132,4 +132,24 @@ erratum count moves) is already carried by the cascade-confirmation protocol its
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+The PLAN still holds against the TSPEC as it now stands. No acceptance criterion it carried has been
+narrowed, reinterpreted or dropped by the erratum; nothing the PLAN cites has stopped being said, or
+started being said differently, in a way that changes a task, a dependency edge or a DoD item. Four
+of the five TSPEC deltas resolve *toward* the PLAN, because the PLAN was written from measurements of
+the tree rather than from transcriptions of its upstream.
+
+One change to make, non-gating, before or during the next PLAN touch:
+
+1. **Add one row to the Residual risks table** (F-01), sourced to TSPEC §8.3 / §4.3, naming the
+   REQ-STATS-06 v1.6 versus FSPEC BR-16 v1.7 conflict, its blast radius (`computeFeatureStats`'s
+   harvested disjunct and T-04's AT-17 fourth-leg expectation) and its disposition (T-04 asserts
+   BR-16's `harvested` per §4.3; re-stamps if the reconciliation lands the other way). Optionally add
+   a half-sentence marker to T-04's AT-17 clause so the implementer meets it in the task, not only in
+   the risk table.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
