@@ -39,7 +39,55 @@ claims about HEAD." No contract site carries fifteen.
 
 ## Batches
 
-_pending_
+Two task rows moved in this round — T-10a and T-11 — plus the §Definition of Done bullets that
+mirror them (reported under **Verification**). No batch number, task id, ownership or dependency
+assignment moved; I verified that claim rather than accepting it (see **Dependencies**).
+
+**T-10a conjunct 3 — my v9 F-01 is closed, and closed with the referent upstream actually names.**
+My v9 finding was that conjunct 3 asserted (a) `report`'s key set "set-equal to the flag-off key
+set" — a tautology on the flag-off run, unfalsifiable — and (b) `notices` "set-equal to the baseline
+notices array", where the only baseline this PLAN owns is T-02's recording, which holds
+reviewer-prompt bytes and no notices array at all. The revision is not a patch over that phrasing;
+it adopts TSPEC §7.2's own two forms verbatim in substance:
+
+- the **symmetric difference** between the arm's flag-off and flag-on `report` key sets is exactly
+  `{decisionLedger}`, asserted as a set equality in **both** directions;
+- the emitted `NTC-DECLEDGER-*` notice set is **set-equal to empty**.
+
+Both are falsifiable, and both are self-contained within the arm's own paired runs. The row now
+states that referent explicitly — "the referent for both clauses is the paired flag-off/flag-on runs
+inside this arm, never a stored artefact" — and re-scopes the §7.4 citation to the prompt clause
+alone. That is the exact defect my v9 F-01 named: §7.4's recording was being cited for an obligation
+it cannot discharge. It is now cited only for the one it can.
+
+**Product fidelity of the replacement.** This is where a stronger-looking assertion could quietly
+narrow an acceptance criterion, so I checked it against the requirement rather than against the
+TSPEC alone. REQ-DECLEDGER-02 (P0) is *"the dispatch stream is byte-identical to the pre-feature
+baseline; no index text or rule text is ever rendered"*, and FSPEC AT-04 is the byte-identity of the
+disabled dispatch against **the committed fixture baseline, not a same-branch before/after
+comparison**. Conjunct 3's **first** clause — prompt byte-identical to T-02's committed merge-base
+recording — is the clause that carries that P0, and it is untouched by this edit, including the
+"not a string computed by subtracting the block from the flag-on prompt" guard that keeps AT-04's
+independent-referent requirement intact. What changed is only the two *side-effect* conjuncts
+(report field, notices), which are the no-observable-residue guard around the P0, not the P0 itself.
+So the acceptance criterion is preserved as written; it is the guard that got sharper.
+
+**T-11 — the census row.** Two edits. (1) The companion assertion now names its operands inline —
+`CENSUS_TOKENS`'s **six data-carrying names** ∪ `CENSUS_EXEMPT`'s **eight plumbing declarations** =
+the owned list's **fourteen** — and cites §7.3's *The size of the owned list, stated once* as the
+authority for the count. I checked the reason given for naming the nouns, and it is upstream's own:
+§7.3 v1.2 now reads *six functions ∪ eight constants = fourteen* and states inline that its
+*Forbidden token set* row carries a second, numerically identical but membership-different
+partition, "so a bare 'six ∪ eight = fourteen' cited elsewhere could be wired to the wrong
+operands." The PLAN carries the *census* partition at every site, and now says so at every site.
+The apparent asymmetry — upstream calls the census partition "second", the PLAN calls the
+functions/constants partition "second" — is each document naming the one it does *not* carry, not a
+disagreement. (2) The closing pointer that summarised T-10a's flag-off arm is re-read to the
+corrected both-directions form, so the two rows no longer describe the same conjunct differently.
+
+The self-refuting "stated nowhere else in this document" clauses my v9 F-02 (Low) flagged are gone,
+replaced by an explicit citation of the authority paragraph — which is the *stronger* of the two
+resolutions I offered, and matches how §7.3 v1.2 restated its own single-siting claim.
 
 ## Dependencies
 
