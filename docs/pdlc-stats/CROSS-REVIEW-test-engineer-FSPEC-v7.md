@@ -111,15 +111,46 @@ grammar for round counts still passes every test in §6.
 
 ## Positive Observations
 
-_pending_
+- The approval anchors did their job. `REVIEWED-COMMIT` and `UPSTREAM-STATE` in v6 let me establish
+  "nothing moved on either side" in two commands instead of re-reading 979 lines — this is exactly
+  the staleness check those anchors exist for, and it held.
+- Nothing regressed. Whatever went wrong in routing, no approved acceptance test became wrong, no
+  business rule shifted under a test, and the read-only invariant (§3.4 / BR-28, BR-29 / AT-21,
+  AT-22) is untouched.
+- The routed item itself is good testing work: DEC-STATS-01's K-7 does own two sibling-feature
+  document edits that no site table in this feature's TSPEC lists, and `loop-distribution.test.js`'s
+  P7-02 oracle covers only the *count* sentences, not `PK-26`'s existence as a row. That gap deserves
+  to land — against the document that actually holds the table.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes.**
+
+No delta landed on this FSPEC, so nothing previously approved could break, and the upstream it leans
+on has not moved since the round that approved it. The document stands as approved.
+
+The routed item cannot be discharged here — it names a co-change table this document does not
+contain — so I am recording it as a Medium routing defect (F-01) rather than a High unlanded delta.
+Halting the FSPEC phase over an item that belongs to `TSPEC-pdlc-stats.md` §2.1 would be a spurious
+halt, and the fail-closed rule exists to catch *unlanded* edits, not *unlandable* ones.
+
+What should change: re-dispatch the item against the TSPEC, and route v6's six still-open findings
+into the FSPEC's ordinary revision loop — F-03's missing AT-15 leg is the only one that leaves real
+behavior unpinned by any test.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | The routed erratum edit did not land: `FSPEC-pdlc-stats.md` is byte-identical to v6's `REVIEWED-COMMIT`. The item is also unlandable here — FSPEC §2.1 is the acceptance-criteria coverage table, and the document has zero occurrences of `co-change`, `MODULE_NAMES`, `vendor`, `PK-26` or `K-7`. The five-site table is `TSPEC-pdlc-stats.md` §2.1 | §2.1 Acceptance criteria coverage / routing |
+| F-02 | Medium | inherited | nonlocal | v6's four Medium findings other than the byte-ratio gap are still open verbatim (§7.3's five re-affirmed errata that REQ v1.3 closed; BR-16's `pdlc-advisory-wave-gate` citation; BR-27's quote of deleted REQ text; EC-09/D-9's dissent from a *Given* that no longer sweeps the case in) | §7.3 / BR-16 / BR-27 / EC-09 |
+| F-03 | Medium | inherited | nonlocal | BR-16's "contributes no bytes to the process side" half is still unpinned: BR-14 does not close `{doc-type}` to BR-09's six, and AT-15's neither-list still carries no `CROSS-REVIEW-`-prefixed non-matching basename, so an implementation globbing `CROSS-REVIEW-*` into `processBytes` passes §6 in full | BR-16 / AT-15 |
+| F-04 | Low | inherited | nonlocal | §1's fidelity anchor, BR-12 and D-8 still argue toward a C-5 silence and a REQ-STATS-03 indecision that REQ v1.3 removed; they should cite the carve-out and the "one label stands" decision instead | §1 Fidelity anchor / BR-12 / §7.1 D-8 |
+
+FINDING: Medium | delta | nonlocal | §2.1 Acceptance criteria coverage / routing | The erratum edit this confirmation was dispatched for did not land on `docs/pdlc-stats/FSPEC-pdlc-stats.md`: `git diff` against v6's `REVIEWED-COMMIT` (`6e7985d14`) is empty and that commit is still the file's last. The item is also not this document's to discharge — FSPEC §2.1 is "Acceptance criteria coverage", and a case-insensitive grep finds zero occurrences of `co-change`, `MODULE_NAMES`, `vendor`, `pdlc-engine-distribution`, `PK-26`, `DEC-STATS-01` or `K-7` (the single `site` hit is the substring in "opposite", line 684). The five-row co-change table the item describes lives in `TSPEC-pdlc-stats.md` §2.1, whose prose reads "enumerated at four sites plus a fifth that counts it". Re-dispatch against the TSPEC; no edit to this FSPEC can resolve it. Filed Medium, not High, because this document is not wrong — the routing is — and a High delta here would halt the FSPEC phase for a TSPEC-scoped defect.
+FINDING: Medium | inherited | nonlocal | §7.3 / BR-16 / BR-27 / EC-09 | Four of v6's five Mediums are unchanged because the document is unchanged: §7.3 still re-affirms five errata as open that REQ v1.3 closed (two of them labelled High, sitting in the fail-closed erratum channel harvest reads); BR-16's appositive still reads as a claim that `docs/completed/pdlc-advisory-wave-gate/` reports `harvested` when it reports a measured ratio; BR-27 still quotes REQ-STATS-07 text v1.3 deleted and points at a dead erratum; EC-09 and §7.1 D-9 still frame the decided root-failure behavior as a departure from a *Given* that now explicitly excludes it. Behavior and acceptance tests are unaffected in all four cases — this is stale self-description, not a wrong spec. Route them into the ordinary revision loop rather than re-confirming them each round.
+FINDING: Medium | inherited | nonlocal | BR-16 / AT-15 | BR-16's two-claim sentence still has one oracle. AT-17 leg 4 pins "counts as no file remaining"; nothing pins "contributes no bytes to the process side", because BR-14 does not close `{doc-type}` to BR-09's six document types and AT-15's neither-list enumeration is still only `LEARNINGS-*.md` / `MUTATION-EVIDENCE-*.md` / `SIZING-*.md`. An implementation that parses the grammar for round counts but globs `CROSS-REVIEW-*` into `processBytes` is green across all 29 acceptance tests. Fix: add `CROSS-REVIEW-{role}-REVIEW-v1.md` to AT-15's neither-list and assert both totals unchanged. This is the only carried finding that leaves real behavior unpinned by any test.
+FINDING: Low | inherited | nonlocal | §1 Fidelity anchor / BR-12 / §7.1 D-8 | §1 and BR-12 still argue that post-mortem selection is not a C-5 divergence "because there is no driver classification of that listing to diverge from", and D-8 still leaves the malformed label as "the REQ's to decide". C-5 now states the carve-out and REQ-STATS-03 now decides the label. The conclusions remain correct; the reasoning implies an upstream silence and an upstream indecision that no longer exist.
 
 ## Verdict
 
