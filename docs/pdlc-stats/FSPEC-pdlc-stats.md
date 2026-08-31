@@ -826,6 +826,9 @@ no oracle.
 | D-5 | Does the single-feature JSON document echo the feature name? | No (BR-21). | REQ-STATS-02 requires the top-level key set be set-equal to the printed metric set plus one schema-version field; a `feature` key would break that equality. The caller supplied the name. Fleet mode carries names as the keys of `features`, inside the metric container, not as extra top-level keys. |
 | D-6 | Does an unreadable feature directory in single-feature mode degrade to a gap or fail? | It fails, exit 1 (EC-11). | Fleet mode's gap row exists so one bad feature does not suppress the other rows. In single-feature mode there are no other rows, and a report with a silently missing metric is worse than a refusal. |
 
+| D-7 | Does fleet human mode carry the same metric set as the JSON document, or a summary? | The same set, with exactly two reductions: malformed basenames as a count, halts as `{n} ({r} resolved)` (BR-18). | REQ-STATS-07 requires REQ-STATS-01's metric set per feature, so no metric may be dropped — but a row cannot carry a list. A count and a resolved-tally preserve the two signals an operator scans a fleet for (a round count that is *wrong* rather than absent; a halt still open) while staying one line. AT-06's fleet half pins the reduction as exactly these two. |
+| D-8 | A `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file, written by the pipeline's own Phase CR, is rejected by the driver's basename parse. Malformed, or its own bucket? | Malformed, named, counted in no row (BR-06). | REQ-STATS-03 disposes of every `CROSS-REVIEW-`-prefixed basename that fails the grammar as malformed, and C-5 binds this command to the driver's per-file rejection. A third bucket would be an independent rule and a divergence in one move. The cost — a pipeline-authored artifact reading as "malformed" — is a defect of the upstream criterion and is raised as an erratum (§7.3), not repaired downstream. |
+
 ### 7.2 Open — for TSPEC
 
 | # | Item | Owner |
@@ -851,6 +854,20 @@ FSPEC records which reading it derived from so the two documents can be reconcil
   binds it to** (software-engineer v3 F-03, Low). BR-11 follows the REQ literally; a foreign-feature
   `CODE_REVIEW-` file would suppress the harvested state under both documents, so this FSPEC
   introduces no divergence, and the erratum stays with the REQ.
+Two further errata are raised by this round's cross-reviews:
+
+- **REQ-STATS-05 requires a post-mortem-listing classification that C-5 says the REQ defines
+  nowhere** (software-engineer FSPEC v1 F-03, High). "One entry per distinct phase with a
+  post-mortem file present" requires phases be discovered from basenames, while C-5 enumerates only
+  three re-read rules, none of them a `POSTMORTEM-*` listing — and the driver has no such rule to
+  inherit, since it constructs the path from a phase it already holds. BR-12 and §1 state the match
+  and say why it is not a divergence; the REQ's own C-5 enumeration is what needs the carve-out.
+- **REQ-STATS-03's malformed disposition swallows pipeline-authored artifacts** (test-engineer FSPEC
+  v1 F-01, High). Four `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files written by Phase CR sit in
+  `docs/completed/pdlc-advisory-wave-gate/` and are, under the criterion as written, reported to an
+  operator as malformed. D-8 follows the REQ literally rather than diverging; whether that is the
+  intended operator-facing wording is the REQ's to decide.
+
 - **REQ-STATS-02's state enumeration over-distributes across the ACs it names** (test-engineer v3
   F-03, Low) and **REQ-STATS-08's conjunct (b) lost its list separator** (both reviewers, Low).
   BR-22 and §3.4 state the intended readings; no FSPEC behavior turns on either.
@@ -861,6 +878,9 @@ FSPEC records which reading it derived from so the two documents can be reconcil
   operator-vetoable, not silent defaults.
 - **A-2** Metrics are computed fresh at invocation time; no cache and no persisted stats file
   exists, consistent with REQ G-4, C-1 and A-2.
-- **A-3** The reviewer role catalogue and the document-type catalogue that BR-05 and BR-09 depend on
-  are the pipeline's own, not a set this feature defines. A role or document type added to the
-  pipeline appears here without an FSPEC change.
+- **A-3** The reviewer **role** catalogue that BR-05 depends on is the pipeline's own, not a set this
+  feature defines: a role added to the pipeline is inherited here without an FSPEC change. The
+  document-type catalogue is not inherited that way. BR-09 enumerates its six types literally and in
+  order, because D-4 fixes the row set and ordering as observable output; a seventh type reaching the
+  driver's catalogue therefore requires an FSPEC edit, and D-8's `REVIEW` case shows that is not
+  hypothetical.
