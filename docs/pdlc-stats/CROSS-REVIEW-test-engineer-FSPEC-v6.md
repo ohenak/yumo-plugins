@@ -227,6 +227,62 @@ product-manager and test-engineer). AT-18's loose-file literal is correct and no
 
 ## Open Questions
 
+### §7.3 holds five errata that upstream already closed (F-01)
+
+This is the section the round rewrote, and the rewrite is where the finding sits. It now opens
+"Wording findings left open in the REQ text are raised as errata against it", correctly reports the
+three harvested-predicate errata as **closed**, and then says "Two errata remain" plus "Three more
+follow". All five of those were closed by REQ v1.3 in the same commit that closed the three
+(`50dffe8c8`, whose message enumerates all nine fixes). Concretely:
+
+- *REQ-STATS-05's post-mortem-listing classification (High)* — C-5 now carries the carve-out
+  explicitly, in the FSPEC's own words: "That listing is this REQ's own (REQ-STATS-05); fidelity binds
+  the `RESOLVED:` marker, not the discovery."
+- *REQ-STATS-03's malformed disposition (High)* — REQ-STATS-03 now decides it: "one label stands: a
+  third bucket would be an independent rule C-5 forbids", naming the `-REVIEW-v{N}` form.
+- *REQ-STATS-09's Given (Medium)* — carved out; see §Edge Cases.
+- *REQ-STATS-07's "missing/malformed" wording (Medium)* — rewritten to the zero-state-row disposition.
+- *REQ-STATS-02's state enumeration and REQ-STATS-08's separators (Low)* — both repaired.
+
+Why this is worth a finding rather than a nit: two of the five are labelled **High** and sit in the
+erratum channel, which is fail-closed machinery here, and harvest reads §7.3. Leaving two phantom High
+errata pointed upstream costs a downstream reader a re-derivation each, and invites a TSPEC author to
+design around a "disagreement on a P1 path" that no longer exists. The fix is a deletion, not a
+rewrite: absorb the five the same way the three harvested ones were absorbed, and if none remains, say
+so — "§7.3: no errata remain open" is a perfectly good section.
+
+### D-9's rationale, and D-8's (F-05, F-06)
+
+D-9's Rationale column argues at length that "the criterion's wording needs a carve-out, so it is
+raised as an erratum rather than left as an unexplained contradiction on a P1 criterion". The carve-out
+landed. The *Decision* column is untouched by this and remains right; only the argument for it is
+obsolete, and it should now read as a citation ("REQ-STATS-09 as amended in v1.3 carves this out; BR-30's
+`reason` values keep both answers machine-distinguishable") rather than as a dissent. D-8's rationale
+has the same shape against REQ-STATS-03 and the same fix.
+
+Related and smaller (F-06): §1's fidelity anchor and BR-12 both *argue* that selecting post-mortem
+files is not a C-5 divergence. C-5 now says so itself. The argument is still true and still useful to a
+reader, but it should cite C-5's carve-out rather than reason around C-5's silence — as written it
+implies the REQ is silent where it is not.
+
+### Questions
+
+| ID | Question |
+|---|---|
+| Q-01 | Is there any reason to keep §7.3's five closed bullets as a record (a "closed errata" ledger) rather than delete them? If yes, say `closed` on each, as the harvested three now do — the current text says `remain`, which is the load-bearing word. |
+| Q-02 | Should BR-14 state the doc-type closure directly ("`{doc-type}` is BR-09's six-type catalogue"), rather than leaving BR-16 to assert it on BR-14's behalf? That would make F-03's missing oracle unnecessary at the rule level as well as the test level. |
+
+### Positive observations
+
+- BR-16's "It is evaluated over exactly the file set BR-14's numerator sums" is the right kind of fix:
+  it replaces two predicates that happened to agree with one predicate that cannot disagree. Three of
+  the nine routed items collapse into that one sentence.
+- AT-12 and AT-17 both grew fixtures rather than assertions-about-fixtures. Every new leg can fail.
+- The changelog's "No other change." is accurate as to the *body*: I diffed the round and found no
+  incidental edit riding along outside the four rules and two tests named.
+- BR-25's rewrite generalised the rule ("whatever its basename claims") instead of only appending the
+  missing filename — the enumeration is now an illustration of a rule rather than the rule itself.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
