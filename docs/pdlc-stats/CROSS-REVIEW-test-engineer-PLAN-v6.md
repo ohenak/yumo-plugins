@@ -225,4 +225,32 @@ the PLAN.
 FINDING: Medium | inherited | nonlocal | `## Batches` task table, `Status` column | The `Status` ledger is ~15 rows behind the branch: eighteen tasks have landed `feat(pdlc-stats): T-NN` commits reachable from HEAD, but only T-01, T-08 and T-16 read `✅`. The delta's T-16 flip is factually correct and undocumented in the v1.3 changelog; the residual risk is that a partially-updated column misreads as authoritative to a DoD reviewer. No task definition or expected value is affected. Fix: reconcile the column in one pass, or state that it is not maintained during implementation.
 FINDING: Low | inherited | nonlocal | Branch history / PLAN `## Batches` task table | Commit subjects do not track task completion either, so F-01 has no cheap cross-check: T-12's `lib/stats.mjs` first appears under `308afef94 docs(…): se PROPERTIES v3 scope section`, and `05315533e docs(…): PM TSPEC cross-review v11` carries T-21/T-22/T-24/T-25-shaped source edits. A branch-hygiene observation, not a PLAN defect; recorded because it is why this round's pre-change-baseline anchor qualifier is load-bearing.
 
+## Positive Observations
+
+- **The anchor fix chose the right axis.** Three findings asked for citation accuracy; the author
+  answered by naming the baseline the citation was taken against, rather than by re-pinning to a
+  moving HEAD. That is the durable form, and it is the only form that survives this feature's own
+  tasks editing the cited files — which they already have.
+- **The batch-10 scoping note is falsifiable.** It names four enumerations, they are exactly the four
+  `assertAdditiveOnly` reads, and it states the negative case (T-24 leaves the suite green) so an
+  implementer can tell correct sequencing from a broken oracle.
+- **The discharged erratum row is carried, not dropped.** TSPEC removed the bullet at v1.8; the PLAN's
+  row is what stops a DoD reviewer rediscovering a settled question, and it is labelled so it cannot
+  be mistaken for live work.
+- **te F-03 was answered by declining it, in writing.** Recording a finding as not-to-be-fixed with
+  its rationale is a better outcome than a silent no-op, and it kept the round small.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Every routed item is resolved, and resolved with the right mechanism rather than the minimum edit. No
+High finding is open. The two findings recorded are inherited and nonlocal: a stale `Status` column
+(Medium) and the branch-hygiene observation that explains why it has no cheap cross-check (Low).
+Neither touches a task definition, a dependency edge, an expected value or a coverage claim, so
+neither gates implementation. The PLAN is testable as written and the batch DAG is sound.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
