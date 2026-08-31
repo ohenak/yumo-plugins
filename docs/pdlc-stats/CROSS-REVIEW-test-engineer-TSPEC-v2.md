@@ -39,20 +39,40 @@ oracle conjunct can actually be written in the runner it will live in; none is g
 
 ## Findings
 
-<!-- pending -->
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | §6.4's parser-identity oracle gains a second conjunct this round — "the object `cmdStats` passes to `runStats` **is that same bundle**" — and as specified it cannot be written. §3.4's sketch has `cmdStats` call the `runStats` binding it imports from `stats.mjs`; nothing observes that call. The CLI-level tests live in `pdlc/engine/__tests__` under `node __tests__/_run-suite.mjs` (`pdlc/engine/package.json` `scripts.test`) on `node >= 20` (`engines`), where there is no module-mocking facility: no file in `pdlc/engine/__tests__` uses `jest.mock`/`unstable_mockModule`, and `node:test`'s `mock.module` is not available on Node 20. The first conjunct (identity against the exported `statsParsers`) is writable and discharges REQ C-5; the second needs a seam. Either give `cmdStats` an injectable second argument (`cmdStats(argv, { runStats = realRunStats } = {})`, asserted by passing a recording `runStats` and comparing `parsers === await statsParsers()`), or drop the conjunct and say the single construction site is what carries the guarantee — but do not leave an unwritable conjunct in an oracle table an implementer will TDD from. | §6.4 row 1 (Parser identity) |
+| F-02 | Medium | Local | §6.4's repaired vendoring oracle asserts "`tspecPackedCount`'s vendored class size **equals `MODULE_NAMES.length + 1`**", but that inner term is not a readable value: `tspecPackedCount({licence})` returns the single sum `4 + 15 + 5 + 1 + (licence ? 1 : 0)` (`pdlc/engine/__tests__/_tspec-packed-set.mjs`), and the `5` is a literal inside the expression. Exposing it means widening a completed sibling's frozen module surface — precisely the move §6.4 declines two paragraphs later for `REVIEW_DOC_TYPES`. The readable equivalent already exists and is already a named co-change site: `WORKFLOW_MEMBERS.length === MODULE_NAMES.length + 1` (verified 5 === 4 + 1, the extra being `vendor/workflows/VENDOR-MANIFEST.json`). Restate the oracle over `WORKFLOW_MEMBERS.length`, and if `tspecPackedCount`'s hand-written `5` is also to be pinned, say explicitly that `_tspec-packed-set.mjs` must hoist it into an exported constant as part of this feature's five-site edit — §2.1's table currently lists that file's edit as "`WORKFLOW_MEMBERS`, `tspecPackedCount`" only. | §6.4 row 4 (Vendoring co-change); §2.1 |
+| F-03 | Medium | Local | §4.3's new `[^-]+` phase capture is the right engineering answer to v1's F-11, and its safety at HEAD is verified — but it *does* narrow FSPEC BR-12, which says the phase is "the segment between" and that this command "holds no catalogue of valid phase ids and **rejects none**". Under `[^-]+` a basename `POSTMORTEM-A-B-{feature}.md` is rejected outright rather than reported with phase `A-B`; §4.3 argues this is a shape constraint and not a catalogue, which is defensible, but it is still an observable the FSPEC decides the other way. The two sibling divergences this revision found (BR-11, BR-16) are both routed as errata in §8.3; this one is not. Either route it as a third erratum line in §8.3 for the same reason, or state in §4.3 why a shape constraint needs no FSPEC ratification while a membership one does. | §4.3 (halts); §8.3 |
+| F-04 | Low | Local | §6.4's doc-type oracle is called "set-equality" but is set-equality **over a candidate set** — the eight all-caps tokens named in §6.4. A seventh accepted type outside that list (`SPIKE`, `RFC`) is still invisible, which is the same class of blind spot v1's F-03 raised, narrowed rather than closed. §6.4 says so honestly and prices the alternative (exporting `REVIEW_DOC_TYPES`), so this is recorded, not contested: it earns a Low only because §8.2 RK-3 now describes the mitigation as "set-equality" without the candidate-set qualifier, which overstates it. Qualify RK-3's cell to match §6.4's own honest wording. | §6.4 (Doc-type catalogue agreement); §8.2 RK-3 |
+| F-05 | Low | Local | §6.5's guard conjunct — "no path under [the excluded prefix] existed *before* the run that `stats` could have been asked to read" — is stated as an assertion but has no named mechanism, and it is the conjunct doing the work of stopping the exclusion becoming a hole. Say how it is evaluated: the natural form is that the pre-run snapshot pass records the excluded-prefix hits it skipped and the test asserts that set is empty *at the moment stats is invoked*, which is falsifiable; "existed before the run" alone reads as prose. One sentence in §6.5's second measure closes it. | §6.5 (guard conjunct) |
 
 ## Questions
 
-<!-- pending -->
+| ID | Question |
+|----|---------|
+| Q-01 | §6.4's exclusion-set oracle asserts over `docs/`'s **immediate children**. Its subset half is green at HEAD for all 13 feature directories (re-derived: each carries at least one `*-{dirname}.md`), but `docs/orchestrate-dev-workflow/` is the only one whose witness comes from seven files rather than one. If a future feature directory is created empty *and* then given only a `CROSS-REVIEW-…` file before its `REQ-…`, it satisfies neither witness half and the oracle goes red for a reason unrelated to a ninth non-feature directory. Is a transient red during authoring acceptable, or should the witness also accept "carries only files matching a documented pdlc artifact grammar"? |
+| Q-02 | §6.6's mutation table pins two `- 1` drops against AT-09/AT-10/AT-11's real-path literals. Those three literals are re-measured correct today. Does the intended mutation run execute the *real-path* tests, or only the fixture-backed unit suite? If the latter, the two arithmetic mutants are not actually killed by anything in the mutation run, and the table's claim would need a fixture with the same numeric shape. |
 
 ## Positive Observations
 
-<!-- pending -->
+- **Every repair was checked in code, and every one holds.** The role-slug fix, the `+ 1` vendoring invariant, the candidate-set set-equality, the `.tmp-*` scratch exclusion, the `[^-]+` safety argument, `captureRun`'s existence and shape, and all six of §6.1's newly recorded literals were re-derived from HEAD rather than trusted from prose. Four Highs closed in one round with no regression in the sections they touched.
+- **§6.1's asserted-value table is the strongest addition.** It converts RK-4 from a risk with a slogan into a risk with a baseline: each literal now carries its measured value, so a future red names whether the archive moved or the implementation broke. AT-18's deliberate statement as invariants ("exactly once", "never `completed`") rather than a feature count is the right call — a literal that every archival falsifies buys nothing.
+- **§4.2.1 states the projection, not the serialisation, and that is the finding v1 was reaching for.** Naming `feature`/`dir` as the two keys that could plausibly leak, and asserting their **absence** alongside the positive exact-key-set conjunct, is a paired oracle rather than an absence-only one. The `schemaVersion === 1` conjunct pinned to the literal rather than to `SCHEMA_VERSION` is exactly the no-implementation-echo rule applied without being told.
+- **PROP-3's restatement is a textbook falsifiability repair.** Two identical calls over one input agree by construction; a generated permutation plus an order-equality conjunct against `REVIEW_DOC_TYPE_ROWS` can fail, and can fail for a stably-wrong order too.
+- **The upstream ambiguities are routed rather than absorbed.** §4.3 takes the REQ-faithful reading on both BR-11 and BR-16, names the archive shape on which the readings disagree, pins a fixture at the boundary, and sends the wording upstream. That is the correct handling of a spec conflict at TSPEC altitude.
 
 ## Recommendation
 
-<!-- pending -->
+**Approved with minor changes**
+
+All four v1 High findings are resolved and verified against HEAD; no High finding is open. The three
+Mediums are implementability repairs to oracle conjuncts added this round — F-01 and F-02 each name
+the concrete restatement that fixes them, F-03 asks for one erratum line or one sentence — and the
+two Lows are wording. None blocks the PLAN phase.
 
 ## Verdict
 
-<!-- pending -->
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 2}
+
