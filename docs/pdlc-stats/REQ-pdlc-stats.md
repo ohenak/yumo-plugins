@@ -15,7 +15,12 @@ depends-on:
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.3 | 2026-08-31 |
+| Draft | pm-author | 1.4 | 2026-08-31 |
+
+Erratum round 3 (v1.4): REQ-STATS-06's harvested predicate now names the two process families by
+C-4's documented basename grammars rather than bare `CROSS-REVIEW-*` / `CODE_REVIEW-*` globs, so a
+foreign-feature file cannot suppress the harvested state — the same scoping REQ-STATS-04 already
+carries. No other change.
 
 ## 1. Problem / Context
 
@@ -183,8 +188,9 @@ decided in one place; no post-mortem file is zero halts, never an error.
 ratio. **Then:** it reports process bytes (C-4 set, present files only) divided
 by spec bytes (C-3 set, present files only); when spec bytes total zero, it reports the ratio as
 not-available rather than dividing by zero or crashing. Where `LEARNINGS-{feature}.md` is present and at least one of the two
-process families is entirely absent (no `CROSS-REVIEW-*` remains, or no `CODE_REVIEW-*` does, or
-neither), the ratio is **harvested**, not measured: harvest
+harvest-deleted process families is entirely absent — no file matching C-4's
+`CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains, or no file matching its
+`CODE_REVIEW-{feature}-v{N}.md` grammar does, or neither — the ratio is **harvested**, not measured: harvest
 deletes cross-reviews and DoD reviews while post-mortems survive, so the numerator is only
 *partially* deleted and a computed value would silently undercount rather than be absent. The rendering precision
 and the exact not-available / harvested tokens per mode are FSPEC material (O-1).
