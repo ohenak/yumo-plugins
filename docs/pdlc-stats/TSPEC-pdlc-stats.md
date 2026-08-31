@@ -1113,18 +1113,20 @@ claim:
 
 No requirement in this feature is infeasible with the current architecture, and none needs a new
 platform capability. One cost is out of proportion to the code it enables and is surfaced rather
-than absorbed: **adding one 300-line module to `pdlc/workflows/lib/` requires editing nine in-repo
+than absorbed: **adding one 300-line module to `pdlc/workflows/lib/` requires editing ten in-repo
 sites — five enumerations, holding six symbols across five files, plus four test files that pin
 those enumerations' membership or size (`loop-distribution.test.js`,
-`coverageInstrumentation.test.js`, `run.test.js`, `learningsPremises.test.js`) — and amending a
+`coverageInstrumentation.test.js`, `run.test.js`, `learningsPremises.test.js`) and `pdlc/README.md`'s
+prose enumeration — and amending a
 completed sibling feature's approved, frozen packed-set table and its FSPEC's per-class count**
-(§2.1). The nine is sweep-derived by a repo-scoped `git grep -l`, not hand-counted. That is roughly
+(§2.1). The ten is derived by a repo-scoped, source-restricted `git grep -l` (24 candidates) and the
+one stated filter that drops the 14 pure consumers, not hand-counted. That is roughly
 as much co-change surface as the feature's own logic. It is taken knowingly
 because the alternatives trade it for no coverage gate (option C) or for the same cost plus no
 coverage gate (option B), and because the vendored class has already grown once by this exact route.
 The re-evaluation trigger belongs in DECISIONS: if a future feature makes `pdlc/workflows/lib/` a
 routinely-growing directory, the enumerations should be derived from a directory listing at pack
-time rather than transcribed across nine sites.
+time rather than transcribed across ten sites.
 
 ## 8. Open Questions
 
@@ -1142,7 +1144,7 @@ time rather than transcribed across nine sites.
 
 | # | Risk | Mitigation |
 |---|---|---|
-| RK-1 | The nine-site vendoring co-change (§2.1) is done partially — including the two sibling-feature document edits, and including `publish-preflight.mjs`, whose production-side copy a `__tests__/`-scoped sweep does not reach; the packed engine ships without `lib/stats.mjs` and `pdlc stats` fails only for installed users, never in a checkout — where `resolveWorkflowRoot` falls back to the checkout tree and finds the module anyway. | §6.4's vendoring oracle, deriving from `MODULE_NAMES` rather than transcribing — behind `loop-distribution.test.js`'s `assertAdditiveOnly`, which is at HEAD already and reds first, and beside `run.test.js` and `learningsPremises.test.js`, which sit in the two different required checks either side of the package boundary. The fixture machine's install leg exercises the packed tarball, so the failure surfaces in CI, not in the field. Residue: `PK-26`'s existence row in the sibling TSPEC's table has no mechanical falsifier — the *count* half does, via `loop-distribution.test.js`'s P7-02 document oracle — and is discharged by `DEC-STATS-01`'s `K-7` single owning task. |
+| RK-1 | The ten-site vendoring co-change (§2.1) is done partially — including the two sibling-feature document edits, and including `publish-preflight.mjs`, whose production-side copy a `__tests__/`-scoped sweep does not reach; the packed engine ships without `lib/stats.mjs` and `pdlc stats` fails only for installed users, never in a checkout — where `resolveWorkflowRoot` falls back to the checkout tree and finds the module anyway. | §6.4's vendoring oracle, deriving from `MODULE_NAMES` rather than transcribing — behind `loop-distribution.test.js`'s `assertAdditiveOnly`, which is at HEAD already and reds first, and beside `run.test.js` and `learningsPremises.test.js`, which sit in the two different required checks either side of the package boundary. The fixture machine's install leg exercises the packed tarball, so the failure surfaces in CI, not in the field. Residue, two items, both un-oracled and both therefore task-owned rather than test-owned: (i) `PK-26`'s existence row in the sibling TSPEC's table has no mechanical falsifier — the *count* half does, via `loop-distribution.test.js`'s P7-02 document oracle — and is discharged by `DEC-STATS-01`'s `K-7` single owning task; (ii) `pdlc/README.md`'s prose enumeration and its count word, the tenth site, which no oracle pins and which goes stale in silence if missed. It is carried by the same task that edits `prepack.mjs`, since it names that same copied-module class; a documentation-drift oracle over it is out of scope here and is named as accepted residue instead of implied coverage. |
 | RK-2 | The parser bundle is injected, so a suite of stubs could pass while production diverges from REQ C-5. | §6.4's identity oracle: `===` against the real exports, plus real-parser-by-default doubles (§6.1). |
 | RK-3 | `REVIEW_DOC_TYPE_ROWS` is a local copy of a module-private driver catalogue. | §6.4's catalogue-agreement oracle, as a **set-equality over a probed candidate set with a real role slug** — a fixed containment probe could not have detected a seventh accepted type, which is the drift this row exists for. Residue: a seventh type outside the candidate set, bounded by FSPEC §7.4 A-3, which already makes a new driver doc type an FSPEC edit. |
 | RK-4 | Real-path tests bind to the live `docs/completed/` archive; a future feature archiving or harvesting a directory turns them red for a reason unrelated to this code. | Literals are declared as measurements of the archive and re-measured when it changes (§6.1); the failure is loud and its cause is named in the test's own comment. This is the `doc-moves-break-pinned-tests` pattern, accepted because FSPEC §6 explicitly requires literal, non-derived expectations on real paths. |
@@ -1178,7 +1180,7 @@ Three load-bearing alternatives were weighed and rejected and belong in `DECISIO
    parsers the correctness-relevant property. Reversibility: hard — the vendoring enumerations and
    the sibling feature's frozen packed-set table would have to be amended a second time.
    Re-evaluation trigger: `pdlc/workflows/lib/` becoming a routinely-growing directory, at which
-   point the enumerations should be derived rather than transcribed across nine sites.
+   point the enumerations should be derived rather than transcribed across ten sites.
 2. **`schemaVersion` as a renderer obligation, not a report field** (§4.2.1, added in v1.1). The
    alternative — carrying it on `StatsReport` or `FeatureStats` — was rejected because it puts a
    JSON-only concern into the value the human renderer also reads and forces §6.3's cross-mode
