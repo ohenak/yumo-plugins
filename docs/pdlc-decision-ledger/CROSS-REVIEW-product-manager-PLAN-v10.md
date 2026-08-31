@@ -91,7 +91,36 @@ resolutions I offered, and matches how §7.3 v1.2 restated its own single-siting
 
 ## Dependencies
 
-_pending_
+**Unchanged, and mechanically confirmed.** The round's own changelog claims "no batch, dependency,
+ownership, task-id or count assignment changes in this round." I did not take that on trust: I
+diffed the trailing columns of both moved rows across the round's base commit and HEAD.
+
+| Row | Test file / owner | Prod file | Batch | Depends on | Pre-round | At HEAD |
+|---|---|---|---|---|---|---|
+| T-10a | `decisionLedgerMain.test.js` `[new]` | — | 2 | T-01, T-02, T-03 | as shown | identical |
+| T-11 | `decisionLedgerCensus.test.js` `[new]` | — | 2 | T-00, T-01 | as shown | identical |
+
+The two structural edges the census contract rests on are also intact at HEAD:
+
+- **T-11 red until batch 8.** T-11 is committed skipped in batch 2 and un-skipped by T-18 in batch 8,
+  because the fourteen owned members it resolves against are written across batches 3–8. The row
+  still says so, and T-18's row still lists T-11 among the tests it un-skips. This is the ordinary
+  red-before-green edge, unchanged.
+- **T-18 writes no census constant.** The reversal landed in v0.8 holds at HEAD: T-18's row states
+  the task "writes **no** census constant … there is no production declaration to add here," and its
+  production column is the wiring run and loop/prompt parameters only. The file-ownership manifest
+  agrees — `decisionLedgerCensus.test.js` is named "the sole home of **all three** frozen census
+  lists," owned by T-11 at batch 2, and no `orchestrate-dev.js` row claims any of the three.
+
+Because the moved bytes are confined to task *prose* and the §Definition of Done checklist, the
+phasing question a PM has to ask — does P0 work still precede P1 work, and does every P0/P1
+requirement still own a task — is unaffected by this round, and I did not re-litigate it. It was
+settled in the rounds that approved the batch structure.
+
+One ordering property worth restating because this round depends on it: T-10a is the **only** live
+execution of the composition root, and the flag-off arm is where REQ-DECLEDGER-02 (P0) is proved.
+Its dependency on T-02 (the committed merge-base recording) is therefore load-bearing for a P0, not
+a convenience — and that dependency is unchanged.
 
 ## Verification
 
