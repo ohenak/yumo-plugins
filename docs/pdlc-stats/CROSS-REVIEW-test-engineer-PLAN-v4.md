@@ -151,6 +151,73 @@ exists, is owned, and has a defined expectation today. **F-05, Low, inherited, n
 
 ## Verification
 
+**The delta touched the coverage tables, so I re-read both.** The anti-drift table gains two things:
+T-10's `lstat` row is rewritten to carry the boundary-anchored matcher and the "never the naive
+substring, which `lstatSync` satisfies" gloss, and a **new row** is added — "AT-15/EC-19
+behaviourally on the **shipped** seam — `main()` over the production `statsIo` with `--cwd` on a temp
+root containing a symlink | T-09 | engine". Both edits are faithful to the task rows they summarise.
+
+**The acceptance-test coverage table was not updated to match.** Its AT-15 row still reads
+`T-04 (size arithmetic, removal probe), T-18 (symbolic-link leg, real fs)` — T-09 is absent, even
+though the anti-drift table two subsections later attributes AT-15/EC-19's shipped-seam leg to T-09
+and T-09's own task row now carries it. The two tables disagree about who owns AT-15. This does not
+lose coverage and does not mislead the implementer, who reads the task row: the table's own preamble
+says every AT is owned by "**at least one** task", so naming T-04 and T-18 is not false. But the
+delta created the divergence, in a section the delta edited, and the fix is one cell. **F-01, Low,
+delta, local.**
+
+**Claims-verified-at-HEAD block: re-measured, all five enumerations still true.** These predate the
+delta, but the delta's premise sentence leans on them, so I measured rather than inherited:
+
+| Claim in PLAN | Measured at HEAD | Verdict |
+|---|---|---|
+| `prepack.mjs` `MODULE_NAMES` — four entries, ending `lib/escalation-view.mjs` | `:20-25`, four entries, last is `"lib/escalation-view.mjs"` | exact |
+| `publish-preflight.mjs` `WORKFLOW_MEMBERS` — five `vendor/workflows/…` entries | `:220-226`, five | exact |
+| `fixture-machine.mjs` `WORKFLOW_MODULE_NAMES` — four entries | `:426-431`, four | exact |
+| `_tspec-packed-set.mjs` `tspecPackedCount` — `4 + 15 + 5 + 1` | `:99`, `return 4 + 15 + 5 + 1 + (licence ? 1 : 0)` | exact |
+| `package.json` `c8.include` — seven `**/`-anchored entries | `json.load(...)` → **7** | exact |
+| `document-oracles.mjs` in **none** of the four enumerations | absent from all four above | exact |
+| `pdlc/workflows/lib/` holds three modules; `stats.mjs` **does not exist** | `git cat-file -e HEAD:…/lib/stats.mjs` → *exists on disk, but not in HEAD* | exact **as written** — the claim is HEAD-scoped, and at HEAD it holds |
+
+That last row is worth a sentence. `pdlc/workflows/lib/stats.mjs` is now present in the working tree
+as an untracked file, produced by the in-flight implementation wave. The PLAN's claim is explicitly
+scoped "at HEAD" and every manifest row still declares the file `new`, so nothing in the document is
+false — but a later reader running `ls` rather than `git cat-file` will think it is. Recording as
+`DEFERRED:`, not as a finding: the document says what it means, and the divergence is the wave's
+state, not the PLAN's error.
+
+**Oracle quality of the one new test the delta specifies.** I applied the three bars this round asks
+for to T-09's symlink leg:
+
+- *Implementation echo?* Borderline but acceptable at PLAN altitude. "The reported byte total counts
+  the link's own size" would become an echo if the implementer wrote
+  `expect(total).toBe(small + lstatSync(link).size)` — deriving the expectation from the same syscall
+  the seam under test uses. The safe form takes the link's size as a literal fixture constant. The
+  PLAN does not specify the assertion's shape, and assertion-shape is TSPEC/PROPERTIES altitude, so
+  this is not a PLAN defect; I flag it as a `DEFERRED:` note for whoever writes the test.
+- *Absence-only oracle?* No. The row asserts a positive quantity (the total equals the link's own
+  size contribution), not `total != targetSize`. It also names its falsifier explicitly.
+- *Set-equality where an enumeration is at stake?* Not applicable — this is a scalar arithmetic
+  oracle, and the enumerations in this PLAN (doc-type catalogue, exclusion set, construction-site
+  count, `c8.include` `toEqual`, read-only snapshot) already carry set-equality, unchanged by the
+  delta.
+
+**Downstream trace now under-names the evidence.** `PROPERTIES-pdlc-stats.md:169`'s PROP-RATIO-04
+traces EC-19/AT-15 to "PLAN T-18" alone and argues the property must be "falsified against a real
+filesystem, not a fake". T-09's new leg satisfies that argument at least as strongly — it is the
+production CLI over a real temp filesystem. PROPERTIES is downstream of PLAN, so this is not an
+erratum against a document this one derives from; it is a trace row the next PROPERTIES touch should
+widen. `DEFERRED:`.
+
+**Coverage floor and the green gate are unmoved.** T-24 still carries the per-file obligation
+(`lib/stats.mjs` branches ≥ 85) and the `c8.include` pair oracle (declared literal + resolved c8
+run) is still T-24's in the anti-drift table. The delta corrects T-24's quoted title without
+touching either. T-26's four mutants and their named killing tests are byte-unchanged.
+
+DEFERRED: T-09's symlink leg should pin the link's own size as a literal fixture constant rather than re-reading it via `lstatSync` in the expectation — TSPEC/PROPERTIES altitude, not a PLAN defect.
+DEFERRED: `PROPERTIES-pdlc-stats.md:169` PROP-RATIO-04 traces EC-19/AT-15 to PLAN T-18 only; T-09 now carries the same evidence on the shipped seam.
+DEFERRED: `pdlc/workflows/lib/stats.mjs` now exists untracked in the working tree while the PLAN's (correct, HEAD-scoped) claim says it does not exist.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
