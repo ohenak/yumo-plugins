@@ -171,4 +171,13 @@ by deleting the sibling-state recital and keeping only the route record (see Q-0
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | The new v1.3 changelog paragraph asserts that `PLAN` v0.7 "carries the retired fifteen-member owned list and a production home for `DECISION_LEDGER_CENSUS_TOKENS`" and that the item "remains routed to PLAN". PLAN is at **v0.9** at HEAD: its v0.8 round homed all three census constants in `decisionLedgerCensus.test.js`, restated the owned list as fourteen, and recorded that T-18 writes no census constant (`PLAN:25`, `PLAN:162`, `PLAN:168`, `PLAN:217`). The route was correct to take; the recital of the sibling's state is stale. Bookkeeping only — no operand, count, budget, oracle, AT or traceability row reads it. This is my v13 F-01 recurring in new bytes. Fix: drop the version/list-size recital, keep the bare route record. | Changelog, v1.3 entry — "PM F-01 (High, `inherited`/`nonlocal`) remains routed to PLAN" paragraph |
+
+FINDING: Medium | delta | local | Changelog v1.3 entry, "PM F-01 remains routed to PLAN" paragraph | The paragraph recites PLAN as v0.7 carrying a fifteen-member owned list and a production home for DECISION_LEDGER_CENSUS_TOKENS; PLAN is at v0.9 at HEAD and resolved both in its v0.8 round (fourteen members, all three census constants homed in decisionLedgerCensus.test.js, T-18 writes no census constant). The route itself is correct and §7.3 is untouched, so this is bookkeeping-only staleness — recurrence of v13 F-01 in new bytes; drop the sibling-state recital and keep the bare route record.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
