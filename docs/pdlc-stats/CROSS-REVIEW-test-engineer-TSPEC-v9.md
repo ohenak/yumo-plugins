@@ -78,16 +78,35 @@ The document's own §4.2 surface (`lib/stats.mjs` exporting six functions and tw
 
 ## Test Strategy
 
-_pending_
+From the testing lens, the corrected row now describes a co-change an implementer can execute without re-deriving anything:
+
+- **The assertion-carrying edit is unambiguous.** `c8.include` gains one `**/`-anchored entry at a stated position; omission or misordering reds through `toEqual`. That was already true at v1.6 and is unchanged.
+- **The non-assertion edits are now correctly scoped.** The title and the arithmetic comment carry no assertion, so neither can red — which is exactly why a stale narration here is dangerous rather than harmless. Nothing would have caught an implementer who "corrected" `six` → `seven` per the old row and left the shipped set at eight. The row now names the endpoint (`eight`) instead of the delta from a stale word, so the edit is checkable by reading the file after the change.
+- **The stale-comment risk is now explicit.** The comment at `:260-262` says "REQUIRED_INCLUDES' three entries" while the constant holds four. The row's restatement to "four entries, `CAPTURE_SCRIPT_INCLUDE` and the three `lib/` modules" fixes both halves of the staleness in one pass, rather than leaving the comment one revision behind the title.
+
+**One residual observation, not a finding.** Neither the title nor the arithmetic comment is pinned by any oracle, so this class of drift — a printed count word diverging from the literal beneath it — can recur silently. §2.1 already names `pdlc/README.md`'s prose enumeration as RK-1's unpinned residue; this row is a second instance of the same shape. That is a known, documented residue rather than a new gap, and pinning comment text is not something I would ask this feature to take on. I raise it here so harvest can see the pattern recurring across two sites.
+
+**The routed REQ-STATS-06 / BR-16 disagreement remains open**, and §4.3 plus §8.3 continue to state it accurately: the sketch is written against BR-16 as the immediate upstream, AT-17's fourth leg is named as the single place the contested scoping becomes an assertion, and the three re-stamp sites are enumerated. That item is inherited, was raised and routed in an earlier round, is untouched by this edit, and is already tracked by the document itself — I do not re-raise it here.
 
 ## Positive Observations
 
-_pending_
+- **The correction is grounded in measurement, not in the previous text.** The row states four `REQUIRED_INCLUDES` entries, the literal `4 + 1 + 2`, and the shipped seven, and every one of those is verifiable by opening the file. This is the difference between fixing a number and fixing the reason the number was wrong.
+- **It distinguishes the printed word from the measured count.** "The title and comment are already stale at HEAD and this feature moves them by one, not from the number they print" is the sentence that prevents the defect recurring; the title moves `six` → `eight` while the *set* moves seven → eight, and both facts are stated without conflating them.
+- **The v1.3 changelog row is neutralised rather than rewritten.** Removing the live number while preserving the record of what v1.3 wrote, explicitly labelled wrong, is the correct handling of a superseded row — history intact, no readable stale claim.
+- **The no-upstream-movement attestation is honest this time.** After v1.6 existed to correct a false attestation in v1.5, v1.7 re-grounds and its hashes match REQ and FSPEC at HEAD to the digit. I checked; it holds.
+- **Adjacent counts were left alone.** The packed class (5 → 6), the copied class (4 → 5) and `loop-distribution.test.js`'s vendored-class size were all untouched, and the standing warning that these counts must not be synchronised to one another survives.
+
+## Recommendation
+
+**Approved**
+
+The delta resolves both routed items and breaks nothing previously approved. TSPEC remains a faithful compression of REQ v1.6 / FSPEC v1.7 at their current HEAD bytes.
 
 ## Delta-Confirmation Findings
 
-_pending_
+No findings.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
