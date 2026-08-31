@@ -227,7 +227,63 @@ consistent with the four-check gate this repo's CI table documents.
 
 ## Open Questions
 
-_pending_
+**§8.3 is down to one open erratum, correctly.** The surviving bullet — FSPEC BR-26/EC-10 name an
+"unclassified" outcome but state no positive feature-recognition predicate — is genuinely still open
+upstream, and it is the right one to keep. It is a *product* gap, not a technical one: "in neither
+the exclusion set nor recognizable as a feature" is circular as written, EC-03/AT-26 rule out
+artifact-presence as the discriminant by making a readable-but-empty directory a normal measured row,
+and §4.4's leading-underscore predicate is explicitly marked provisional in consequence. The FSPEC
+owes the predicate it intends. I am content for this to remain routed rather than resolved here.
+
+**RK-1 is now the strongest row in §8.** It went from a vague "five-site vendoring co-change done
+partially" to a row that names the nine sites, the two sibling-feature edits, the production-side
+`publish-preflight.mjs` copy the `__tests__/`-scoped view misses, which test reds first, which two
+required checks straddle the package boundary, and an explicit **Residue** clause separating the
+mechanically-falsified count half from the unguarded `PK-26` existence half, with `K-7` named as the
+single owning task. A risk row that says what is *not* covered is doing its job.
+
+**Positive observations.**
+
+- **The round over-delivered on its mandate, in the right direction.** Items 3 and 4 asked for a
+  sixth site; the author re-derived the set and found nine. Treating a routed correction as evidence
+  the method was wrong, rather than patching the one instance named, is what stops a document
+  needing a fourth erratum round for a seventh site.
+- **The cost correction runs against the document's own interest.** Option A is the chosen option,
+  and this round nearly doubles its stated co-change cost while also sharpening rejected option B's.
+  Making your preferred option look more expensive because that is what the evidence says is the
+  behaviour that makes an options table trustworthy.
+- **Two hidden sibling-feature document edits became visible work.** Before this round, amending a
+  completed, frozen feature's approved artifacts was implied by a note; now it is two table rows, an
+  owning decision (`K-7`), and a named single task. That is the difference between a surprise during
+  implementation and a planned one.
+- **`_tspec-packed-set.mjs`'s two symbols are no longer collapsed into one row.** The old
+  four-plus-a-fifth phrasing hid a symbol edit; six-symbols-across-five-files is what an implementer
+  actually has to do.
+- **The carve-out is stated once and cited everywhere**, with `pdlc-engineering-loop`'s LEARNINGS
+  cited for *why* — verbatim restatement across sites is a defect generator. The round adds four new
+  places that could have restated it and none of them do.
+- **My four v3 findings are all closed**, and none by argument — each by re-grounding on upstream
+  text that has since landed.
+
+**Questions.** None. I raised two at v3; both were about upstream drift that this round resolved.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves all seven routed items and breaks nothing I previously approved. The TSPEC remains
+a faithful compression of REQ v1.4 and FSPEC v1.4 at the pinned hashes: every clause it cites,
+upstream still says, and says the same way. Specified behaviour is unchanged; the changes are to
+cost, coverage and provenance claims, all of which moved toward accuracy.
+
+One **Low**, non-gating: §2.1 describes the nine-site figure as "sweep-derived, not hand-counted",
+but the query it names returns 24 tracked files, and reaching nine requires a judgement filter
+(sites that *enumerate or pin* the member class, versus sites that merely consume it). The number is
+sweep-*seeded* and hand-filtered. That is a perfectly sound method — and I verified all nine named
+sites do appear in the sweep's output — but "sweep-derived" reads as mechanically complete, which is
+load-bearing precisely where completeness is the claim: RK-1's residue argument and `DEC-STATS-03`'s
+re-evaluation trigger both rest on the set being exhaustive. Suggested fix: say the sweep produced
+the *candidate* set and name the filter applied to it. No round needed; fold into the next edit.
 
 ## Delta-Confirmation Findings
 
