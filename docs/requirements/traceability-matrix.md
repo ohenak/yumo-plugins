@@ -206,13 +206,14 @@ M4, §3/§4(c) R3-2). FSPEC not yet authored.
 
 Upstream: `docs/pdlc-stats/REQ-pdlc-stats.md` (design source:
 `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §4, §5.2; proposal source:
-`docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §5). FSPEC not yet authored.
+`docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §5).
+FSPEC: `docs/pdlc-stats/FSPEC-pdlc-stats.md` (`FSPEC-STATS-01`); per-AC mapping in its §2.1.
 
 | User story | Requirements | FSPEC |
 |---|---|---|
-| US-01 | REQ-STATS-01, REQ-STATS-03, REQ-STATS-04, REQ-STATS-05, REQ-STATS-06, REQ-STATS-09 | — (pending) |
-| US-02 | REQ-STATS-02 | — (pending) |
-| US-03 | REQ-STATS-07, REQ-STATS-08 | — (pending) |
+| US-01 | REQ-STATS-01, REQ-STATS-03, REQ-STATS-04, REQ-STATS-05, REQ-STATS-06, REQ-STATS-09 | FSPEC-STATS-01 §3.1, §4.1, §4.2, §4.3, §5 |
+| US-02 | REQ-STATS-02 | FSPEC-STATS-01 §3.3, §4.4 |
+| US-03 | REQ-STATS-07, REQ-STATS-08 | FSPEC-STATS-01 §3.2, §3.4, §4.5 |
 
 ## pdlc-review-tightenings (2026-08-30)
 
