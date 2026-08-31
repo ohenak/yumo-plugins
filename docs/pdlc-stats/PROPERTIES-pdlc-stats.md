@@ -322,6 +322,7 @@ lands in `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` (PLAN T-26).
 | `F-PHASES-P-PR` | post-mortems for phases `P` and `PR` on one feature | PROP-HALT-08's collation leg |
 | `F-UNCLASSIFIED` | a `docs/` root carrying a directory in neither the exclusion set nor recognisable as a feature | PROP-DISC-07 |
 | `F-FLEET-GAP` | a fleet root where one feature's `listDir` throws, and a second where the metric computation throws after a clean read | PROP-ERR-05, PROP-ERR-06 |
+| `F-EXCLUDED-ONLY` | a `docs/` root that is present and readable and holds exactly `NON_FEATURE_DIRS`' eight names as directories — `_queue`, `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded`, `completed` — and nothing else: no feature directory, no loose file, and an empty `completed/` | PROP-DISC-10 (AT-18's empty-root leg, EC-20) |
 | `F-NO-ROOT` | {`docs/` absent} and {`docs/` unreadable} roots | PROP-ERR-03, PROP-ERR-04 |
 
 Fixture strings are the normative spellings verbatim: `harvested`, `unmeasurable`, `n/a`,
@@ -347,7 +348,7 @@ a derivation in its place would agree with a wrong implementation.
 | `docs/completed/pdlc-loop-economics/` | exactly `CODE_REVIEW-pdlc-loop-economics-v1.md` and `-v2.md`; carries `_evidence/` subdirectory | DoD rounds `2` (not `3`, not a count) | PROP-DOD-01 |
 | `docs/completed/pdlc-wave-resume/`, **copied into a temp root** with `POSTMORTEM-P-some-other-feature.md` added to the copy | `POSTMORTEM-PR-pdlc-wave-resume.md` carries the line-leading `RESOLVED: yes` on its third line | halt set exactly `[{phase:"PR", resolution:"resolved"}]`; the foreign-feature file contributes nothing | PROP-HALT-01, PROP-HALT-04 |
 | the same copy with the marker rewritten `RESOLVED: no` | — | `[{phase:"PR", resolution:"open"}]` | PROP-HALT-02 |
-| this repository's `docs/` root | twenty directories: the eight excluded (`_constraints`, `_decisions`, `_queue`, `completed`, `design`, `discarded`, `ideas`, `requirements`) and twelve feature directories; one loose file `docs/PLAN-pdlc-integration-boundary-gates.md`; `docs/completed/` carries loose `REQ-completed.md` and `QUEUE-HISTORY-rows-0-1.md`; `docs/pdlc-halt-hardening/` holds only `PLAN-pdlc-halt-hardening.md` | **invariants, not counts**: every feature directory appears exactly once; `docs/pdlc-halt-hardening/` among them; no row named `completed`; the three loose files yield no row | PROP-DISC-04, PROP-DISC-05, PROP-DISC-06, PROP-DISC-08 |
+| this repository's `docs/` root | twenty-one directories: the eight excluded (`_constraints`, `_decisions`, `_queue`, `completed`, `design`, `discarded`, `ideas`, `requirements`) and thirteen feature directories (this feature's own `docs/pdlc-stats/` among them); one loose file `docs/PLAN-pdlc-integration-boundary-gates.md`; `docs/completed/` carries loose `REQ-completed.md` and `QUEUE-HISTORY-rows-0-1.md`; `docs/pdlc-halt-hardening/` holds only `PLAN-pdlc-halt-hardening.md` | **invariants, not counts**: every feature directory appears exactly once; `docs/pdlc-halt-hardening/` among them; no row named `completed`; the three loose files yield no row | PROP-DISC-04, PROP-DISC-05, PROP-DISC-06, PROP-DISC-08 |
 
 The fleet fixture is deliberately stated as invariants: a feature-count literal is falsified by every
 routine archival and buys nothing this feature needs, while "exactly once" and "never `completed`"
