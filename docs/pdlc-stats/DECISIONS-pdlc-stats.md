@@ -225,8 +225,15 @@ each reversal costs what the original cost.
   set rather than a literal. **Which enumerations are still literal transcriptions at HEAD, and
   therefore what this trigger would change:** `prepack.mjs`'s `MODULE_NAMES`,
   `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`,
-  `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`, `pdlc/workflows/package.json`'s `c8.include`, and
-  `coverageInstrumentation.test.js`'s expected include literal — six hand-written lists. K-1's
+  `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`, `pdlc/workflows/package.json`'s `c8.include`,
+  `coverageInstrumentation.test.js`'s expected include literal, and — in the sixth co-change site —
+  `loop-distribution.test.js`'s `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, `D1_BASELINE`,
+  `D2_D3_BASELINE` and `D5_BASELINE`: **eleven hand-written lists across seven files** (ten distinct
+  member facts; `D1_BASELINE` and `D5_BASELINE` hold identical content). The last five are
+  transcriptions of the same membership facts as the first four, and their own comment says so —
+  *"transcribed once, here … never derived from a directory listing"* — so they are precisely what a
+  derive-at-pack-time change would stop transcribing, and understating them by five understates the
+  payoff that decides whether anyone acts on this trigger. K-1's
   "derived rather than transcribed" describes only TSPEC §6.4's *count* conjunct
   (`vendoredClassSize === MODULE_NAMES.length + 1`), which ties one transcribed number to its
   source; the member arrays themselves are all still literals.
