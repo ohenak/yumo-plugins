@@ -44,6 +44,73 @@ HEAD), so the assertion needs no seam boundary anybody could argue about.
 
 ## Batches
 
+**te F-01 (EC-19 has behavioural evidence on the shipped seam) — landed, and landed correctly.**
+This was my strongest v2 finding: EC-19's "the link's own size, never the target's" was proven only
+over T-02's `realStatsIo()` helper (a helper *this PLAN asks the implementer to write*, so the
+oracle and the thing it guards could drift together) and over T-10's source-level `lstatSync`
+conjunct (which proves a spelling, not a byte count). T-09's row now carries the third leg on the
+production path: `main()` under `--cwd` over a temp root, one small regular file plus a symlink
+whose target is "very much larger", asserting the reported byte total counts the link's own size.
+The row states its own falsifier — "A `statSync` implementation of `statsIo().fileSize` reds here" —
+and it states *why* the other two legs do not substitute. That is the production-path-≠-unit-path
+distinction written down, which is what I asked for.
+
+Two things I checked before accepting it. First, the leg is genuinely behavioural: it runs
+`main([...])` over the production `statsIo`, not over a double, so it is not a fourth restatement of
+the source-level conjunct. Second, it does not collide with T-18: T-18's leg runs the workflows-side
+`realStatsIo()` over a real fs (`integration-fs`, PROPERTIES PROP-RATIO-04), T-09's runs the engine
+CLI end-to-end. Different suites, different seams, both real filesystems — additive, not duplicated.
+
+**te F-02 (boundary-anchored matcher) — landed.** T-10's `lstat`-not-`stat` conjunct is now
+whole-file, boundary-anchored, and self-justifying. Verified above that the regex behaves as claimed
+and that HEAD's `cli.mjs` gives it zero matches, so the conjunct is red-on-day-one in the honest
+sense: it passes at HEAD vacuously and becomes load-bearing the moment T-17 writes `lstatSync`.
+
+**te F-03 (sole consumer) — landed, and the citation is exact.** Both the Overview premise and
+T-21's promoted-constraint text now say `documentOracles.test.js` is the **sole importer** and that
+`advisoryWaveGate.test.js` "merely mentions it in a comment and is **not** a consumer". Measured:
+one import at `documentOracles.test.js:27`, one comment at `advisoryWaveGate.test.js:140`. This
+matters beyond tidiness — the worked exclusion is the whole argument for scoping the promoted
+DOMAIN-CONSTRAINT to *runtime reachability* rather than to `pdlc/workflows/lib/` membership, so an
+overstated consumer list would have weakened the constraint T-21 promotes.
+
+**te F-04 (verbatim quoted strings) — landed for both strings; one line anchor is off by a line.**
+The quoted text is exact in both cases (see the Overview table). T-24's anchor, `:278`, is exact.
+T-23's anchor, `loop-distribution.test.js:73-77`, is not: the message literal sits at **`:77`** and
+the `assert.equal(` that carries it spans **`:74-78`**, so the cited range starts on a closing brace
+(`:73`) and stops one line short of the call's close. The implementer reading `:73-77` still lands
+on the right five lines and the quote itself disambiguates, so this costs nothing operationally —
+but a line anchor is a claim, and this one is wrong by a line at each end. **F-02, Low, delta,
+local.**
+
+**te F-05 (manifest column) — landed, and I re-derived the whole column rather than spot-checking.**
+Every `File` cell is now a bare path; the batch lives in its own `Batch(es)` column; and the reading
+note explains the rule for the next feature ("add a column, never decorate a path"). I extracted the
+task table's `Batch` column mechanically and compared it row-for-row against the manifest:
+T-01/T-02 → 1; T-03…T-11 → 2; T-12 → 3; T-13 → 4; T-14 → 5; T-15 → 6; T-16 → 7; T-17 → 8;
+T-18/T-19/T-20 → 9; T-21…T-25 → 10; T-26/T-27 → 11. **All 36 manifest rows agree with the task
+table.** T-11's two files both carry `2`, T-21's five all carry `10`, T-26 and T-27 both carry `11`.
+No divergence.
+
+**Same-new-file guard, re-run because the manifest was restructured.** The restructuring is exactly
+the kind of edit that can silently create a same-batch/same-file collision, so I re-derived it
+rather than inheriting v1's clearance. `pdlc/workflows/lib/stats.mjs` is the only multi-row file and
+its five rows sit in five **distinct** batches (3, 4, 5, 6, 7), serialized by the T-12 → T-13 →
+T-14 → T-15 → T-16 chain. Every other path appears once. Batch 2's eleven rows are eleven distinct
+files; batch 10's thirteen rows are thirteen distinct files. **No collision.** The new column makes
+this checkable by a grouping pass instead of by eye, which is the point of the fix.
+
+**T-08's status cell `⬚ → ✅` — checked against the tree, and it is honest.** A red-test task marked
+Done while its declared dependency T-02 is still `⬚` is exactly the shape that hides a false green,
+so I read the artifact. `pdlc/workflows/__tests__/statsAntiDrift.test.js` exists and is **tracked**
+(135 lines), imports `parseReviewFilename` from the real `../orchestrate-dev.js` at top level, and
+imports nothing from T-02's `helpers/statsDoubles.js` — so T-08 genuinely does not depend on T-02's
+artifact and the ledger is not claiming work that could not have happened. The file's header states
+that the `lib/stats.mjs` halves load by dynamic `import()` inside `.skip`-wrapped bodies "until T-12
+lands, at which point the owning task un-skips this exact block (never writes a new test beside
+it)". That is the right arrangement — the skip is scoped to the deferred half, the file still loads,
+and the un-skip has a named owner. No finding.
+
 ## Dependencies
 
 ## Verification
