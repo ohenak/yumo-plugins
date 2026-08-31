@@ -159,3 +159,58 @@ example of the mild kind: a place the fact is written down, outside both swept d
 silently say *four* after this feature ships six. One clause in *Standing costs accepted* —
 *"plus `pdlc/README.md`'s prose count, which no oracle pins; it drifts silently and is corrected by
 review, not by a red"* — records it honestly without inflating the site count.
+
+## Positive Observations
+
+- **The round changed instrument instead of adding a row.** v3 asked for a seventh site. The revision
+  could have added it and closed the finding. Instead it asked why two rounds of reading had missed
+  sites, replaced reading with a query, and found two more — `run.test.js` and
+  `learningsPremises.test.js`, both of which I verified are live and both of which I had missed. That
+  is the strongest possible answer to a review finding: fix the method, not the instance. F-01 above
+  is about the query's scope, not about the decision to use one.
+- **The new sites are correctly characterised down to the failure mode.** `run.test.js`'s copy list
+  (`:249-256`) really does make the real `runPrepack` miss `lib/stats.mjs` and red the process-entry
+  leg's `assert.equal(result.status, 0, …)` (`:265`) rather than a name assertion — a different red
+  from the two `deepEqual`s, correctly separated. `learningsPremises.test.js:78-91` really does parse
+  `MODULE_NAMES` out of `prepack.mjs`'s *source text* with a regex and array-equal it, which is why
+  it fences a constant it never imports. Neither claim is generic.
+- **K-8's importability catch is the best thing in the document.** Re-baselining `NEW_LIB_MEMBERS_BARE`
+  to this feature's single member would have quietly narrowed conjunct (a)'s `await import()` loop
+  (`loop-distribution.test.js:108`) from three `lib/` members to one, with no oracle reporting the
+  loss — a coverage deletion disguised as a constant update. The document caught it, named the
+  post-state set to iterate instead, and pointed at conjunct (d) (`:227-229`, `postFixMembers` derived
+  from the live `WORKFLOW_MEMBERS`) as the shape to copy. Deriving from the live constant instead of
+  transcribing is exactly the direction this whole co-change class should move.
+- **K-9 names the check each half lands in.** `run.test.js` under `Engine tests (ubuntu-latest)`,
+  `learningsPremises.test.js` under `Unit tests (ubuntu-latest, node 20)` — so a partial edit reds on
+  either side of the package boundary. Stating *which required check carries the falsifier*, not just
+  that a falsifier exists, is what makes a PLAN row checkable by someone who did not write it.
+- **PM Q-02 answered with a naming rule rather than an assertion.** Keeping `NEW_LIB_MEMBERS_*` as the
+  delta it is named for and giving the post-state its own name leaves the next feature two unambiguous
+  constants instead of one overloaded one. That is the kind of decision that stops the third
+  re-baselining from being a puzzle.
+
+## Recommendation
+
+**Needs revision**
+
+One High is open. It is narrow and it does not touch the chosen option: A's nine sites, the site
+table, K-1's partition and K-3/K-8/K-9's ownership are all confirmed correct against HEAD, and I
+re-derived A's membership by an independent query to be sure. The High is in the *rejected* option's
+re-priced cost — `publish-preflight.mjs` holds a second, production-side copy of the engine `lib/`
+class B moves, so B pays it, while the document lists that file among the sites B does not pay — and,
+more durably, in the scope of the query K-9 promotes to `DOMAIN-CONSTRAINTS.md`, which cannot reach
+production-side copies of an enumeration at all. The rule's prose says *wherever it lives*; the
+command it ships beside says *two `__tests__/` directories*, and the gap between them is exactly the
+file this round got wrong.
+
+Both fixes are local edits with no consequence for the decision: move `publish-preflight.mjs` into
+B's cost line (B: four sites, still no coverage gate, still rejected for the same reason), and state
+the sweep over tracked sources with `publish-preflight.mjs` as the worked example of why the
+test-directory scope is too narrow. F-02 is the printed count of the sweep (14, not fifteen; eight
+importers, not ten) and F-03 is one honest clause about `pdlc/README.md`'s unpinned prose count.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
