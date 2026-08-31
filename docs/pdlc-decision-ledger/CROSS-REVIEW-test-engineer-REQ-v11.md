@@ -138,8 +138,53 @@ the two should not be able to be read against each other by the next consumer wh
 
 ## Positive Observations
 
+- **The routing is the correct disposition, and it is falsifiable.** The easy move on a routed
+  item is to edit *something* so the round looks discharged. This REQ instead asserts a checkable
+  negative — "which names no TSPEC version anywhere" — and that negative survives a grep over the
+  whole file. A claim that a defect is not yours is only worth writing if it can be shown false,
+  and this one can.
+- **C-5's fix chose the harder reading over the flattering one.** Restating the slack as covering
+  per-line *and* block framing gives the document *less* apparent headroom than the sentence it
+  replaced. It would have been easy to reword defensively and keep the 50-bytes-per-record figure;
+  instead the clause now matches what `maxBytes` actually bounds two paragraphs later, and leaves
+  the allowance where `M-7d` says a consumer's allowance belongs.
+- **The `§1` → `§2 G-1` correction closed a latent trap, not a typo.** A future Baseline bump
+  sweeps by the sites the changelog names. Pointing at a section that contains no pin would have
+  sent that sweep to the wrong place; the propagation list in `baseline:6` now names the same
+  anchor, so the two documents agree on where the pin lives.
+- **Scope discipline held.** Three routed items, four edited lines, no opportunistic revision of
+  any acceptance criterion or threshold under a decision freeze — and the two items belonging to
+  other documents were named and routed rather than silently restated here.
+
 ## Recommendation
+
+**Approved with minor changes.** The routed item is correctly dispositioned — the stale literals
+are genuinely not in this REQ, TSPEC really is at v1.2 so the item is real, and the figures the
+stale label sits beside are unmoved at HEAD. The other two routed items landed and I verified both
+against the tree. Nothing previously approved regressed: no AC, threshold, type, `M-*` id or
+`Verified at` commit changed. The four findings below are all non-gating — two Medium about the
+completeness of the sweep instruction handed to se-author, two Low about provenance bookkeeping.
+No High finding is open.
+
+The concrete change that would close the two Mediums is one sentence: extend `REQ:30-31` to name
+`DECISIONS:35-36`'s v1.4 changelog note as a third locus, and to say that the sweep covers the
+`REQ v1.9` member of those HEAD tuples as well as `TSPEC v0.7`.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | The routing pointer names two loci for the stale `TSPEC v0.7` literals — `§ Context` and the DEC-DECLEDGER-10/-12 row — but there are three. `DECISIONS:35-36` is the v1.4 changelog note, above `## Context` (`:51`), and reads "`TSPEC-pdlc-decision-ledger.md` **is now v0.7**" in the present tense: a live claim, not a tensed record. A sweep of exactly the two named sites leaves it stale | `REQ:29-31` v1.10 changelog |
+| F-02 | Medium | delta | local | `DECISIONS:98` and `:398` pin a tuple, `(TSPEC v0.7, REQ v1.9 / FSPEC v1.3 / Baseline v1.2)`. FSPEC v1.3 and Baseline v1.2 are current; `REQ v1.9` was current when the item was raised and went stale when this commit minted v1.10. The routing note describes the defect as "the stale `TSPEC v0.7` literals", understating the sweep by a literal this edit itself created | `REQ:29-31` v1.10 changelog |
+| F-03 | Low | delta | local | Header *Cross-Reviews* row moved v1–v6 → v1–v9, but `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v10.md` both exist on the branch and predate this edit by two days. The enumeration intended to fix this stops one round short; carried from v10 F-02 | `REQ:13` header table |
+| F-04 | Low | inherited | nonlocal | The Baseline declares "a content change that is not accompanied by a version bump is itself a defect" (`baseline:26-27`), yet its bytes changed at `4f03479e1` and `5af3ebe82` with `Version` held at 1.2. The *Cited by* row's own sentence licenses those edits, so two clauses in one header can be read against each other. No measured value moved and no oracle ranges over this file's markup, so nothing a fixture transcribes is ambiguous | `pdlc-decision-corpus-baseline.md:6, :26-27` |
+
+FINDING: Medium | delta | local | REQ:29-31 v1.10 changelog routing pointer | Names two loci for the stale `TSPEC v0.7` literals but there are three: `DECISIONS:35-36`'s v1.4 changelog note sits above `## Context` (`:51`) and reads "is now v0.7" in the present tense, so a sweep of the two named sites leaves it stale
+FINDING: Medium | delta | local | REQ:29-31 v1.10 changelog routing pointer | `DECISIONS:98`/`:398` pin the tuple `(TSPEC v0.7, REQ v1.9 / FSPEC v1.3 / Baseline v1.2)`; minting v1.10 in this commit staled the `REQ v1.9` member too, but the routed defect is still characterised as TSPEC-only
+FINDING: Low | delta | local | REQ:13 header Cross-Reviews row | Updated v1–v6 to v1–v9 while both reviewers' REQ-v10 cross-reviews exist on the branch and predate this edit; the enumeration stops one round short
+FINDING: Low | inherited | nonlocal | pdlc-decision-corpus-baseline.md:6 and :26-27 | The file's change-control clause ("a content change not accompanied by a version bump is itself a defect") and the *Cited by* row's self-licensing sentence contradict each other; bytes changed twice at Version 1.2, with no measured value or oracle affected
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
