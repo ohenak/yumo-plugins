@@ -45,6 +45,44 @@ One imprecision in how the change is *described* is carried below as F-02.
 
 ## 2. Upstream fidelity re-read (DEC-ERR-03)
 
+The routed item landing is necessary but not sufficient. REQ-STATS-06's harvested predicate is not a
+free choice — it is a compression of a shipped-behaviour fact about `harvest-learnings`, stated in
+the very sentence the erratum edit ends on:
+
+> harvest deletes cross-reviews and DoD reviews while post-mortems survive, so the numerator is only
+> *partially* deleted and a computed value would silently undercount rather than be absent.
+
+That premise is doing more work than any other sentence in §5. It is why REQ-STATS-06 needs a
+harvested state at all (a *partially* deleted numerator), why the predicate is per-family rather
+than "any C-4 file missing", and — by omission — why REQ-STATS-05 has **no** harvested state: line
+185 ends "no post-mortem file is zero halts, never an error." So I re-read the upstream at HEAD.
+The two upstream documents disagree:
+
+- **`pdlc/skills/harvest-learnings/SKILL.md` supports the REQ.** Step 3 of its Git Workflow (`:28`)
+  scopes deletion to "the `CROSS-REVIEW-*` and `CODE_REVIEW-*` files"; the Quality Checklist repeats
+  it twice (`:128` LEARNINGS committed "before any `CROSS-REVIEW-*` / `CODE_REVIEW-*` deletion";
+  `:129` "All harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` files deleted"). `POSTMORTEM-*` appears
+  in the *inventory* step (`:34`) and the *read* checklist item (`:122`), never in a deletion clause.
+- **`pdlc/OPERATIONS.md:296` contradicts it.** The `LEARNINGS` contract there defines the required
+  `Harvested from` row as "the record of which `CROSS-REVIEW-*` / `CODE_REVIEW-*` / `POSTMORTEM-*`
+  files harvest deleted" — post-mortems named inside the deleted set, not beside it.
+- **The guard hook is silent either way.** `guard-harvest-before-delete.sh` matches no `POSTMORTEM`
+  token at all, so it neither permits nor blocks such a deletion; it is not the tie-breaker.
+
+I cannot resolve this from the artifacts, and it is not mine to resolve — but the REQ currently
+compresses one side of a live contradiction into an unhedged shipped-behaviour claim, and two ACs
+lean on it in opposite directions. That is F-01, tagged `inherited` because the sentence predates
+this round's edit: the erratum touched the predicate above it and left this clause byte-identical.
+It is `local` because it sits inside the section the edit changed — I would not have re-read it this
+round if the edit had landed elsewhere.
+
+**Everything else in the delta's blast radius is faithful.** C-3/C-4's document-type enumerations
+still match `CLAUDE.md:93`'s artifact convention; C-5's deferral targets (round derivation, the
+`CODE_REVIEW-*-v{N}` version grammar, the POSTMORTEM `RESOLVED:` lifecycle) still exist at
+`pdlc/OPERATIONS.md:9`, `:295` and the post-mortem lifecycle section; NG-6's example
+("cross-reviews removed by `harvest-learnings`") remains accurate whatever the post-mortem answer
+turns out to be. The v4 approval's other anchors are unmoved.
+
 ## Delta-Confirmation Findings
 
 ## Questions
