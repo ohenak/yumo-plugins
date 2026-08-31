@@ -137,3 +137,65 @@ deliberately does not distinguish deletion from never-written — cross-referenc
 baseline consumer is warned — makes the trade-off explicit and pins the two archives as intended
 behavior rather than as an unnoticed edge. FSPEC can then choose the token under O-1 knowing the
 state is a union.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried, now narrower. REQ-STATS-05 reserves plain `0` for "no post-mortem **and** no LEARNINGS". That branch is unreachable over `docs/completed/` and reachable only for in-flight features. Is that intended — i.e. is the archive permanently a not-measured surface for halts — or should a later feature revisit it? A sentence either way would tell the test author whether the archive fixture set is expected to stay all-harvested. |
+| Q-02 | Closed by this round. NG-6 (`:74-76`) now answers it in the document: LEARNINGS is only ever the discriminator and its `Harvested from` row is never parsed to reconstruct a count. No response needed. |
+
+## Positive Observations
+
+- **The fix landed as an idiom, not a patch.** REQ-STATS-05's harvested state is keyed the same way
+  REQ-STATS-03's and REQ-STATS-04's already were — LEARNINGS-present plus this metric's own evidence
+  absent, with the file family named by its grammar rather than a bare glob. Four metrics now share
+  one predicate shape, which means one fixture design covers all four and a reviewer can check them
+  by symmetry instead of one at a time.
+- **The propagation was complete and I checked it mechanically.** REQ-STATS-02's harvested
+  enumeration went `03/04/06` → `03/04/05/06`, R-6 moved with it, O-1 widened from "the ratio's …
+  tokens" to "every metric's not-available / harvested tokens", and NG-6 widened from cross-reviews
+  to all three deleted families. `grep -n "harvest"` over the document finds no site left behind.
+  Round-6 edits that touch one AC usually leave a stale cross-reference; this one did not.
+- **REQ-STATS-06's rationale was weakened rather than re-argued.** The tempting response to a
+  falsified premise is to defend it with a narrower claim about which files harvest deletes. The
+  author instead deleted the quantification outright and said so: "How much of the numerator harvest
+  removes is not asserted here." That sentence is why the AC no longer depends on an upstream
+  question (`pdlc/skills/harvest-learnings/SKILL.md:28` vs `:77` and `pdlc/OPERATIONS.md:296`) that
+  is still self-contradictory at HEAD. The REQ stopped needing the upstream to be settled.
+- **The evidence citation went into the document.** REQ-STATS-05 now cites
+  `docs/completed/pdlc-advisory-tier/` by name as the observed case. A downstream TSPEC reviewer
+  reading the AC is handed the fixture and the reason it exists, rather than having to rediscover
+  the corpus fact that motivated the rule.
+- **No test-design material leaked upward.** The rendering tokens for the new harvested halt state
+  stayed under O-1, where REQ-STATS-06's already were. The REQ gained a state, not a serialisation.
+
+## Recommendation
+
+**Approved with minor changes**
+
+All three v6 findings are resolved, and I verified the High against the corpus rather than against
+the document: `docs/completed/pdlc-advisory-tier/` and `docs/completed/pdlc-consolidation-agent/`
+both now report harvested instead of a zero that contradicted their own LEARNINGS, and the partial-
+deletion case that would have defeated the new rule does not occur at HEAD. The document is
+testable: every harvested state carries a positive presence conjunct, expected values are literal
+transcriptions of the ACs, and both branches of REQ-STATS-05 are reachable against real fixtures.
+
+One Medium remains (F-01, new this round): `harvested` is the union of "deleted" and "never
+written", and two real archives fall in the second case. It is a precision cost, not a correctness
+defect — the metric declines to answer rather than answering wrongly — and one acknowledging clause
+in REQ-STATS-05, cross-referenced from R-6, discharges it. It can ride along with FSPEC authoring or
+land as a targeted erratum; it does not gate.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | Medium | delta | local | §5 REQ-STATS-05 harvested halt state (`REQ-pdlc-stats.md:184-188`) | The harvested predicate (LEARNINGS present + post-mortem family absent) is satisfied both by harvest deletion and by "no post-mortem was ever written". `docs/completed/pdlc-merge-phase/` (`LEARNINGS-…:12`, `:16` — "no POSTMORTEM was written") and `docs/completed/pdlc-loop-economics/` (`LEARNINGS-…:16`) are genuine zeros that now report harvested; the plain-`0` branch is keyed on absent LEARNINGS and so is unreachable over `docs/completed/`. Safe (never a wrong number) but costs R-6's baseline its discriminator. Fix: one clause stating `harvested` deliberately unions the two causes, cross-referenced from R-6. Not a request to parse LEARNINGS prose — NG-6 correctly forbids that. |
+
+FINDING: Medium | delta | local | §5 REQ-STATS-05 harvested halt state | The harvested predicate unions "harvest deleted the post-mortems" with "no post-mortem was ever written": docs/completed/pdlc-merge-phase and docs/completed/pdlc-loop-economics are genuine zero-halt features whose own LEARNINGS say no POSTMORTEM was written, yet both now report harvested, and the plain-0 branch is keyed on absent LEARNINGS so it is unreachable over docs/completed/. Safe but costs R-6's baseline its discriminator; one acknowledging clause in REQ-STATS-05 discharges it.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
