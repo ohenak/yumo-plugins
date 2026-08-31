@@ -166,15 +166,53 @@ manifest row needs to move for PROPERTIES to agree with PLAN at HEAD.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | TSPEC §7.3 now forbids a downstream document from restating "six ∪ eight = fourteen" as its own assertion. Once F-03 is addressed, should PROPERTIES cite the paragraph **by title** (`TSPEC §7.3, *The size of the owned list, stated once*`) the way PLAN v0.9 does, so the two downstream documents cite it identically? I would prefer yes — a shared citation form is what keeps the next single-siting edit a one-place edit. |
+| Q-02 | PROPERTIES' in-body citations still carry version labels (`TSPEC v1.0 §7.3`), while PLAN adopted the `pdlc-wave-resume` lesson at v0.8 and moved version pins to the header row alone. Is the te-author willing to adopt the same convention here? This cascade round is itself the evidence for it: every in-body `v1.0` label went stale in one upstream edit. |
 
 ## Positive Observations
 
-_(pending)_
+- **PROPERTIES was right first, and upstream came to it.** At round 3 this document re-pinned the
+  census to TSPEC v1.0's fourteen-member owned list and three test-file constants, and — rather than
+  adjudicating PLAN v0.7's contradicting fifteen-member form — routed it in §Gaps as an
+  upstream-vs-upstream divergence for the owning phase. PLAN v0.9 has now landed exactly that
+  correction, and named the downstream-to-upstream direction the same way. Routing rather than
+  adjudicating is what made this cascade a no-substance-change round instead of a re-litigation.
+- **The FX-BASELINE non-referent note has now paid for itself twice.** PROPERTIES stated the limit
+  (the recording holds prompt bytes only — no `report` key set, no notices array) before PLAN did;
+  my round-4 F-07 routed the gap; PLAN v0.9 closes it in T-10a *and* in the Definition of Done
+  bullet. That closes F-07 with no PROPERTIES edit.
+- **PROP-WIRE-12's both-directions symmetric difference is stronger than what it replaced**, and
+  PLAN adopted the stronger form verbatim: a key spuriously added *or* dropped on *either* arm now
+  fails. A tautological flag-off key-set equality could never have failed.
+- **PROP-INV-08 and PROP-INV-11 pre-empted a defect they were not written for.** TSPEC v1.1 names
+  those two conjuncts as the thing that catches a declaration regex that cannot see a `const`. They
+  were already in this document. F-04 is therefore a citation gap, not an escaped defect — which is
+  a good outcome for a falsifier set.
+- **No requirement lost a property and no acceptance criterion was narrowed across two upstream
+  version bumps.** REQ v1.9 and FSPEC v1.3 are unmoved, and the Coverage Matrix maps to them
+  unchanged.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+PROPERTIES still holds as approved against PLAN v0.9 and TSPEC v1.2. No property is falsified, no
+requirement is uncovered, no acceptance criterion is narrowed, and the one substantive divergence
+this document routed has been closed upstream in PROPERTIES' favour. Nothing here gates Phase P.
+
+Four Medium and two Low items are bookkeeping against upstream that moved after my approval, and are
+best folded into the next ordinary revision of PROPERTIES rather than an erratum round of their own:
+
+1. **F-01** — retire the §Gaps routed item; PLAN v0.9 landed it.
+2. **F-02 / F-03** — re-measure the header Upstream pins to PLAN v0.9 and TSPEC v1.2, and replace
+   the three restatements of "six ∪ eight = fourteen" with a citation of §7.3's
+   *The size of the owned list, stated once*.
+3. **F-04** — add §7.3's widened-declaration-regex requirement (top-level `const`/`let` alongside
+   `function`) to PROP-INV-06's slicing clause.
+4. **F-05 / F-06** — drop the retired "roughly a dozen" quotation, and correct PROP-INV-09's
+   `FSPEC` §7.6 to `TSPEC` §7.6 (still open from round 4).
 
 ## Delta-Confirmation Findings
 
