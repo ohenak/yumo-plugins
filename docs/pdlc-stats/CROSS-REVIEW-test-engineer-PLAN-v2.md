@@ -161,6 +161,61 @@ deliberately-red gate still precedes all five clusters.
 
 ## Verification
 
+**AT coverage — still set-equal, and the preamble is now true.** The revision changed
+the ownership claim from "exactly one task" to "at least one task, and where ownership
+is split the split is named in the row". That is the honest statement: AT-04, AT-18,
+AT-24, AT-26 and now AT-15 are split across suites for real reasons. The AT-15 row now
+reads `T-04 (size arithmetic, removal probe), T-18 (symbolic-link leg, real fs)`, which
+matches both task rows. The id set is untouched — 29 ids, AT-01…AT-28 plus AT-14b,
+each named at least once, none named that FSPEC does not define. Set-equality holds in
+both directions, as in round 1.
+
+**Anti-drift oracle table gained two rows, both real oracles.** The parser-identity row
+now names both conjuncts rather than one, and two rows were added: the `lstat`-not-`stat`
+seam (T-10, engine) and AT-15's symbolic-link leg over a real filesystem (T-18,
+workflows). Each is falsifiable at HEAD — the first because `bin/cli.mjs` contains no
+`lstatSync` yet, the second because a `statSync`-shaped `fileSize` returns the target's
+size and reds the assertion. Neither is absence-only: both assert what the value *is*
+(the link's own size; the named call present), not merely what it is not.
+
+**Corrected measurements — both re-measured, both now right.** `pdlc/workflows/lib/`
+holds three modules at HEAD (`document-oracles.mjs`, `escalation-view.mjs`,
+`loop-session.mjs`), and `pdlc/workflows/__tests__/helpers/` holds 20 `.js` modules
+(`adapterHarness.js` … `skipSinkTeardown.js`). Round 1 flagged "two" and "21"; the
+document now states three and 20. `stats.mjs` still does not exist, so every row naming
+it correctly declares it new.
+
+**The co-change premise is now stated as a testable discriminant.** This is the most
+valuable non-finding change in the revision. "Any module in `pdlc/workflows/lib/` owes
+the vendoring co-change" was false at HEAD and the counterexample was already on disk;
+"any module the shipped engine loads at runtime owes it" is true, and the document now
+carries the counterexample as its worked exclusion in both the Overview and T-21. I
+re-measured the exclusion in all five enumerations plus the built artifact and it holds
+everywhere. Because T-21 promotes this text into `docs/_constraints/DOMAIN-CONSTRAINTS.md`,
+its accuracy outlives this feature — which is why F-03's one-word overstatement inside
+it is worth correcting before it is promoted.
+
+**Coverage floor — unchanged and still verified at the gate command.** T-24 still
+carries the per-file obligation (`lib/stats.mjs` clears branches ≥ 85) and the floor is
+still enforced by `c8 report --check-coverage --per-file --branches 85` over a
+membership the task actually edits, not by source-list membership. The addition of the
+second P9-02 test to T-24's instruction closes round-1 F-07: the resolution oracle at
+`coverageInstrumentation.test.js:278` is now named as an artifact to edit, so a glob
+that is declared but does not resolve is caught rather than assumed.
+
+**Mutation evidence — the ownership hole is closed.** Round-1 F-03 was that the
+`unmeasurable`/`harvested` mutant's killing test was described nowhere and owned by no
+one. T-04 now names the fixture and T-26 states in terms that it authors no test file,
+naming T-04 and T-18 as the owners of the suites it runs and stating that a surviving
+mutant is remediated inside the owning task's file. That converts a predictable
+batch-11 stall into a pre-declared route.
+
+**What the revision did not have to touch, and correctly did not.** The 27-row batch
+arithmetic, the TDD pairing (every 🟢 row preceded by a 🔴 row against the same test
+file and named ATs), the `[Fake first]` labelling of T-02, T-20's deliberately-red
+co-change gate, the four-check CI enumeration and the real-path literals-as-measurements
+convention are all unchanged. None was a round-1 finding and none is re-opened.
+
 ## Findings
 
 ## Questions
