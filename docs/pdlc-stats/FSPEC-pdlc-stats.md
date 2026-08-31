@@ -88,11 +88,11 @@ under-specifies the command.
 | REQ-STATS-02 machine-readable `--json` | §3.3 Flow C; §4.4 JSON document | BR-20, BR-21, BR-22, BR-24 | AT-04, AT-05, AT-06 |
 | REQ-STATS-03 review rounds by document type | §3.1 step 5; §4.2 | BR-05, BR-06, BR-07, BR-08, BR-09 | AT-07, AT-08, AT-09, AT-10, AT-25 |
 | REQ-STATS-04 DoD-round count | §3.1 step 6; §4.2 | BR-10, BR-11 | AT-11, AT-12, AT-28 |
-| REQ-STATS-05 halts by phase and resolution | §3.1 step 7; §4.2 | BR-12, BR-13 | AT-13, AT-14 |
+| REQ-STATS-05 halts by phase and resolution | §3.1 step 7; §4.2 | BR-12, BR-13 | AT-13, AT-14, AT-14b |
 | REQ-STATS-06 process-to-spec byte ratio | §3.1 step 8; §4.2 | BR-14, BR-15, BR-16 | AT-15, AT-16, AT-17 |
 | REQ-STATS-07 fleet mode, gaps explicit | §3.2 Flow B | BR-18, BR-23, BR-25, BR-26, BR-27 | AT-18, AT-19, AT-20, AT-26, AT-27 |
 | REQ-STATS-08 read-only, no network, no git writes | §3.4; §4.5 | BR-28, BR-29 | AT-21, AT-22 |
-| REQ-STATS-09 unknown feature reported | §3.1 step 3; §5 EC-01 | BR-04, BR-30 | AT-23, AT-24 |
+| REQ-STATS-09 unknown feature reported | §3.1 step 3; §5 EC-01 | BR-04, BR-30 | AT-23, AT-24, AT-27 (root leg, per D-9) |
 
 ### 2.2 Constraint coverage
 
@@ -668,8 +668,8 @@ is the literal `D, F, I, T`, in that order, in the human table and in the JSON a
 sequence is the assertion, not the set: BR-13's collation is this rule's only falsifiable content,
 and an implementation ordering by directory-listing or insertion order passes any set-shaped oracle.
 *And:* over a constructed fixture carrying phases `P` and `PR`, the rendered sequence is the literal
-`P, PR` — the two-character identifier BR-13 names as the case where a byte-wise comparison and a
-locale-sensitive one can part company (BR-13).
+`P, PR` — the two-character identifier BR-13 names as the case whose position depends on the
+collation, so the rule's stated reason for naming one is itself asserted (BR-13).
 
 ### 6.6 Byte ratio
 
