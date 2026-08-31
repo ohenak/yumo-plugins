@@ -139,3 +139,9 @@ implementation-ready once the three test-strategy edits land.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 3, "low": 0}
+
+APPROVAL-HASH: sha256:db285ea2f1eb0267f2a49392979eade2e78ead59a1f243ec7e0438aeb3c4b5be
+APPROVAL-HASH-NORMALIZED: sha256:9cacb8e90736834554649f30fcafcae8a79c7d62150d31215686374cefcf2d16
+REVIEWED-COMMIT: 66c4049ac93d74f8226284dea745a16cdb70a30b
+UPSTREAM-STATE: REQ sha256:c4588c8b08d3138b1d2498adda75aa9896f5cd3dee9eb8ed4d1b7c5d92376126
+UPSTREAM-STATE: FSPEC sha256:c142bfa852edaecb088d72a93de0ab58c39be5d53a2735e7bd27c621ca5558c4
