@@ -197,10 +197,11 @@ tests (round 4 corrected both the scope and the tool; see the two notes below):
 — **25 files at HEAD**, of which the ones that **transcribe a member list** (rather than importing a
 module, which is what the other fifteen do) are exactly the ten in the table above: the five
 enumeration holders — `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs`,
-`_tspec-packed-set.mjs`, `pdlc/workflows/package.json` — plus `loop-distribution.test.js`,
-`coverageInstrumentation.test.js`, `run.test.js` and `learningsPremises.test.js`. Three rounds of
-per-file reading found five, then six; this one command finds all ten, and finds them without
-knowing in advance which package they live in.
+`_tspec-packed-set.mjs`, `pdlc/workflows/package.json` — the four test files that pin their
+membership or size — `loop-distribution.test.js`, `coverageInstrumentation.test.js`, `run.test.js`
+and `learningsPremises.test.js` — and `pdlc/README.md`'s prose member list, the one site the sweep
+finds that no oracle pins. Three rounds of per-file reading found five, then six; this one command
+finds all ten, and finds them without knowing in advance which package they live in.
 
 Two hits survive the grep and fail the predicate. `loop-cli.test.js` has **six** references on six
 lines — `:122`, `:637`, `:652`, `:681` for `loop-session.mjs` and `:827`, `:852` for
@@ -407,10 +408,10 @@ that attracts it. The growth path is precedented rather than novel: the same cla
 three members to five when `lib/loop-session.mjs` and `lib/escalation-view.mjs` were added, recorded
 as `PK-24`/`PK-25` in that helper's own comments.
 
-**Reversibility: hard.** Undoing it means amending all ten sites — the five enumerations and the
-four test files that pin their membership or size — and the sibling feature's frozen table a second
-time. Not a one-way door — no data or published contract is committed — but
-each reversal costs what the original cost.
+**Reversibility: hard.** Undoing it means amending all ten sites — the five enumerations, the
+four test files that pin their membership or size, and `pdlc/README.md`'s prose member list — and
+the sibling feature's frozen table a second time. Not a one-way door — no data or published
+contract is committed — but each reversal costs what the original cost.
 
 **Re-evaluation triggers.**
 - `pdlc/workflows/lib/` becomes a routinely-growing directory — a **fourth** runtime-reachable
