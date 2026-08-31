@@ -249,7 +249,48 @@ TSPEC §6.2's six (`unit-pure`, `unit-seamed`, `unit-render`, `integration-fake`
 
 ## Oracles
 
-*(pending)*
+Where a property could be satisfied by a wrong implementation, the oracle is specified here rather
+than left to the implementer. Each row names the failure mode it closes.
+
+### Falsifiability rules applied to this feature
+
+| Rule | Where it binds | The oracle it forces |
+|---|---|---|
+| **Absence checks are unfalsifiable alone** | every non-numeric state | PROP-RR-07, PROP-DOD-03, PROP-RATIO-08 each assert three positive conjuncts — the exact `state` string, the accompanying `rounds`/`ratio` `null`, and the retained explanatory field (`collidingRole`, `processBytes`/`specBytes`). `state !== "measured"` is never the assertion. |
+| **Preservation oracles need positive presence** | PROP-DISC-01, PROP-DISC-03, PROP-RATIO-03 | each asserts the ignored content is **in the fixture** (the archived directory / the subdirectory / the extra file is listed) **and** that the output is byte-identical to the run without it. A byte-identity check alone is vacuous on a fixture that never carried the content. |
+| **Every regex-alternation branch needs a positive control** | PROP-RR-04, PROP-DOD-04, PROP-HALT-04 | the driver's `parseReviewFilename` failure reasons (`bad_role`, `bad_doc_type`, `bad_round`, `trailing_junk`, `not_cross_review`) each get a fixture basename, and each of `bad_*` must appear in the malformed list while `not_cross_review` must not. `count <= 1`-shaped checks are paired with a fixture proving the pattern *can* match. |
+| **Identical-envelope behaviours need call-count oracles** | PROP-DISC-01, PROP-CLI-07 | "the archive was not read" and "no ambient state was read" produce the same report either way, so the oracle is `fakeStatsIo`'s recorded call list — the archived path must appear in **no** `listDir`/`exists`/`fileSize` argument — not a shape assertion on the output. Applied symmetrically: the same call-list assertion covers `readFile`, which must be called on `POSTMORTEM-*` paths and nothing else. |
+| **Exact-value oracles over a real corpus need a derived count** | PROP-DRIFT-05 | the vendored class size is asserted as `MODULE_NAMES.length + 1`, derived from the enumeration, not hand-transcribed — the `EXPECTED_TEST_COMMAND` lesson from `pdlc-loop-economics`'s LEARNINGS F-4, applied before it recurs. |
+| **Derived and absence-shaped conjuncts belong at the seam that can falsify them** | PROP-RATIO-04/05, PROP-RO-01…06, PROP-CLI-02/03 | `lstat`-vs-`stat`, "no write anywhere" and "stdout is empty" are structurally invisible below the real filesystem and the real CLI edge, so they sit at `integration-fs` and `process`, never at `unit-seamed` over `fakeStatsIo`. |
+| **A new blocking cause behind a precedence chain needs a defeating fixture** | PROP-RR-11, PROP-RATIO-09 | the branch orders `unmeasurable`-before-`harvested` and `harvested`-before-zero-denominator are each falsifiable only on the single configuration where the two orders disagree; a fixture reaching only the earlier branch passes with the feature unimplemented. |
+| **Bounded generators** | PROP-PBT-04 | `fast-check` strategies bound list length and file-size magnitude and `assume` finiteness on any computed quotient. |
+
+### Oracle specifications
+
+| Oracle | Construction | Fails when |
+|---|---|---|
+| **Parser identity** | assert `Object.values(await statsParsers())` members are `===` the corresponding named exports of a freshly-imported `orchestrate-dev.js`, against the **exported** `statsParsers` from `bin/cli.mjs`; second conjunct captures the bundle `cmdStats` hands `runStats` and asserts the same identities | a grammar is re-implemented locally, or a wrapper is slipped between the construction site and production (PROP-DRIFT-01, PROP-DRIFT-02) |
+| **Doc-type catalogue agreement** | probe `parseReviewFilename("CROSS-REVIEW-software-engineer-{T}-v1.md")` over a candidate set — the six rows plus every other all-caps token the pipeline's vocabulary carries (`REVIEW`, `IMPLEMENTATION`, `LEARNINGS`, `POSTMORTEM`, `CODE_REVIEW`, `QUEUE`, `DOD`, `HANDOFF`) — collect the `ok:true` results and assert **set-equality** with `REVIEW_DOC_TYPE_ROWS`, in both directions and in order | the driver's private catalogue grows or shrinks without the FSPEC edit §7.4 A-3 requires. A fixed six-accepted/one-rejected probe cannot detect a *seventh* accepted type, which is the drift this oracle is the sole mitigation for. The role slug is load-bearing: `se-review` is a key of the role map, not a value, so a probe built from it returns `bad_role` for every doc type and both halves pass for the wrong reason (PROP-RR-13) |
+| **Exclusion-set equality** | list `docs/` at the real repository root, keep directories only, assert (1) every name in `NON_FEATURE_DIRS` is present as a directory, and (2) every directory *not* in it satisfies an **independent artifact-naming witness** — it carries at least one file whose basename ends `-{dirname}.md`, or it carries no files at all | a ninth non-feature directory appears. Verified green at HEAD: the eight excluded names are exactly the non-feature directories present, and all twelve live feature directories satisfy the witness. The witness is deliberately **not** §4.4's leading-underscore predicate — an oracle partitioning with the predicate under test agrees with any predicate, including a wrong one (DC-14) (PROP-DISC-05) |
+| **Construction-site count** | read `bin/cli.mjs`'s own source and assert the four-classifier object literal occurs exactly once | a second construction site appears (PROP-DRIFT-03) |
+| **No-write capability** | assert `Object.keys(statsIo())` is set-equal to `["listDir","fileSize","readFile","exists"]` | a fifth seam is added (PROP-RO-05) |
+| **Classifier purity** | in a freshly-imported module instance: two calls per object-returning classifier, `deepEqual` **and** `!==`; A-B-A for `deriveDodRoundIndex` | a driver export acquires a memo table, an accumulating high-water mark or any retained `let` — the one `DEC-STATS-03` trigger every other conjunct here is blind to, since reference identity survives a cache untouched and the recording double inherits shared state rather than exposing it (PROP-DRIFT-04) |
+| **Cross-mode correspondence** | over a corpus of `StatsReport` values reaching every state of every metric: extract the metric set from `renderHuman` and from `renderJson` and assert correspondence, with the two D-7 fleet reductions enumerated as an allow-list | a third reduction appears, or a metric renders in one mode only. Necessary but **not** sufficient — it compares two renderings of one report and cannot see a key the projection leaks — so it is paired with PROP-JSON-03/06/09's key-set, leakage and version conjuncts (PROP-JSON-10) |
+| **Read-only snapshot pair** | walk the repository root recording path + mtime, excluding `.git/`, `node_modules/` and the declared scratch prefixes; run; re-walk; assert set-equality of the two snapshots **and** the liveness conjunct (metric set on stdout with exit 0, or the refusal with exit 1) | a write lands, or the command does nothing. Comparing two snapshots of the same tree, never a fixed literal, is what keeps an untracked cache from flaking it (DC-15) (PROP-RO-01…04) |
+| **Real-path literals** | every real-path expectation is written as a literal with a comment carrying the measurement date and the command that re-measures it | the archive moves and a red test cannot say whether the implementation or the corpus changed. A derivation in place of a literal would agree with a wrong implementation (DC-14) |
+
+### Mutation kill map
+
+Each mutation must turn a **named** test red; "some test goes red" is not a checkable claim. Evidence
+lands in `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` (PLAN T-26).
+
+| Mutation | Killed by | Why that test and not another |
+|---|---|---|
+| drop `- 1` from `deriveDodRoundIndex(...) - 1` | PROP-DOD-01's real-path literal over `docs/completed/pdlc-loop-economics/` — reads `2`, mutant reads `3` | `3` is the value the property names explicitly as the one it must not be; the driver's `return max + 1` makes this the default wrong answer |
+| drop `- 1` from `deriveRoundWindow(...).startIndex - 1` | PROP-RR-03's literals — `6` over `docs/completed/pdlc-advisory-wave-gate/` (mutant `7`) and `13` over `docs/completed/pdlc-headless-engine/` (mutant `14`) | both directories verified at HEAD; two independent corpora, so a single archival change cannot silently disarm the mutant |
+| swap `unmeasurable` before/after `harvested` | PROP-RR-11's dedicated unit fixture — AT-25's round-1 collision **plus** `LEARNINGS-{feature}.md` in the same directory | AT-25's own *Given* names no `LEARNINGS` file, so the conjunct is added at the unit level rather than claimed from the AT; that fixture is the only configuration on which the two orders disagree |
+| swap BR-16's harvested test before/after BR-15's zero-denominator test | PROP-RATIO-09, over AT-17's third fixture — harvested *and* zero spec bytes | the only fixture distinguishing the two orders; every other AT-17 leg passes under either |
+
 
 ## Fixtures
 
