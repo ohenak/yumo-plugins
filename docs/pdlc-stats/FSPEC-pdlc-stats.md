@@ -477,7 +477,11 @@ joining the feature list with meaningless metrics or silently vanishing from it.
 **BR-27 (gap rows are rows).** A feature whose directory **cannot be read** is reported
 by name with a reason. Missing artifacts are not a gap: a readable but empty directory is a normal
 row whose every metric reports its zero state (EC-03), because emptiness is a measurement and a gap
-row is the admission that no measurement was possible. A gap row does not affect the exit code. Fleet mode exits 0 whenever it produced its
+row is the admission that no measurement was possible. This narrows REQ-STATS-07's "missing or fail
+to parse … reports it by name as missing/malformed": missing artifacts are reported by name as a
+**measured row**, and only unreadability is a gap. Nothing the criterion protects is lost — no
+feature is omitted, which is what it forbids — but "as missing" is not what a zero-state row says,
+so the wording is raised as an erratum (§7.3). A gap row does not affect the exit code. Fleet mode exits 0 whenever it produced its
 report; the only non-zero fleet exit is failure to read the `docs/` root itself.
 
 **BR-28 (read-only, on every path).** No filesystem write, no deletion, no directory creation, no
@@ -520,7 +524,7 @@ non-numeric states exist precisely so that none of these has to be a crash.
 | EC-06 | One role has two files claiming round 1 for the same document type (the un-suffixed form and `-v1` together). | That document type reports `unmeasurable`, naming the colliding role. Other document types in the same feature still report their measured values (BR-07). | 0 |
 | EC-07 | `LEARNINGS-{feature}.md` present, some cross-reviews deleted and others surviving (an interrupted or partial harvest). | Per-document-type split: `harvested` for the types with no file, a measured index for the types with one (BR-08). The DoD metric and the ratio are evaluated on their own evidence, independently (BR-11, BR-16). | 0 |
 | EC-08 | An unknown flag, or a value flag with no value, or a second positional argument. | Usage error naming the offending token on stderr. Nothing on stdout in either mode — a JSON-mode caller must not receive half a document (BR-01). | 1 |
-| EC-09 | The `docs/` root is missing or unreadable. | Reported as such on stderr, in both modes and in both conditions — one message, naming the root and whether it was absent or unreadable. This is fleet mode's only non-zero exit (BR-27). Single-feature mode does **not** re-spell a merely-absent root as EC-01's not-found: the operator asked about a feature, and "there is no `docs/` root here" is the true and more useful answer. | 1 |
+| EC-09 | The `docs/` root is missing or unreadable. | Reported as such on stderr, in both modes and in both conditions — one message, naming the root and whether it was absent or unreadable. In `--json` mode stdout additionally carries BR-30's error object with `reason` `no_docs_root`. This is fleet mode's only non-zero exit (BR-27). Single-feature mode does **not** re-spell a merely-absent root as EC-01's not-found: the operator asked about a feature, and "there is no `docs/` root here" is the true and more useful answer. That departs from REQ-STATS-09's *Given*, which sweeps this case in; the departure is decided at D-9 and raised as an erratum (§7.3), not left implicit. | 1 |
 | EC-10 | A directory appears at the `docs/` root that is in neither the exclusion set nor recognizable as a feature. | The report still prints, and the directory is reported as an unclassified entry naming it (BR-26): in human mode a marked row in the feature list (BR-18), in JSON mode a member of the top-level `unclassified` array (BR-23). It is neither silently excluded nor silently counted as a feature. | 0 |
 | EC-11 | A feature directory exists but cannot be read (permissions). | Fleet mode: a gap row naming the feature and the reason (BR-27), exit unchanged. Single-feature mode: reported on stderr, exit 1 — a caller that asked about one feature gets no report at all rather than a report with a silently missing metric. | 0 / 1 |
 | EC-12 | Spec-side byte total is zero while process-side files exist (mid-authoring, or a harvested tree with the spec documents archived elsewhere). | Ratio is `n/a` (JSON `unavailable`), with both byte totals still reported (BR-15). Never a division by zero, an infinity or `NaN`. | 0 |
