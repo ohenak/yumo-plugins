@@ -2599,6 +2599,64 @@ function recogniseDecisionRecords(text, sourcePath) {
   return Array.from(byId.values());
 }
 
+// ─── TSPEC §4.3 — Decision-ledger rendering (pure) ──────────────────────────────────────────
+
+/** TSPEC §4.3, D-9, DEC-DECLEDGER-12. Frozen preamble text. Kept short so the framing —
+ *  header + preamble + rule text + trailer + separating blank lines — stays inside the
+ *  ≤1,200-byte budget alongside DECISION_LEDGER_RULE_TEXT. */
+const DECISION_LEDGER_PREAMBLE =
+  "The decisions below are closed. Re-opening one requires new evidence, not a restatement " +
+  "of the original finding.";
+
+/** TSPEC §4.3, BR-5, BR-6, BR-6/REQ-DECLEDGER-06, D-9/DEC-DECLEDGER-12. Frozen rule text,
+ *  drafted to fit T-06's ≤1,200-byte framing budget alongside DECISION_LEDGER_PREAMBLE and the
+ *  header/trailer sentinel lines (an acceptance condition of this task, not a hope). */
+const DECISION_LEDGER_RULE_TEXT =
+  "A finding may re-open a closed decision only when it is High severity and cites evidence " +
+  "not part of the decision's own record. In-scope: a behavior that changed after the " +
+  "decision was recorded, cited at the changed source. Not-in-scope: a source the decision " +
+  "already cites, re-cited at a different line or later commit with no behavioral change. " +
+  "Decide against the cited record, not the index line. Key a repeat on the decision id, " +
+  "not as a fresh finding.";
+
+/** TSPEC §4.3. This file's own escape contract for a statement carrying an embedded newline or
+ *  carriage return: a `\r\n` pair becomes the two-character literal `\n`, any remaining `\n`
+ *  becomes the two-character literal `\n`, any remaining `\r` becomes the two-character literal
+ *  `\r` — never a real line break, so "one physical line per decision" holds for any input. */
+function escapeDecisionStatement(raw) {
+  return raw.replace(/\r\n/g, "\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+}
+
+function renderDecisionIndexLine(record) {
+  return (
+    `${record.id} — ${escapeDecisionStatement(record.statement)}  ` +
+    `[${record.sourcePath} § ${record.id}]`
+  );
+}
+
+/**
+ * TSPEC §4.3, BR-1/E-6, DEC-DECLEDGER-10/-12. Pure, total. Returns exactly `""` when `selected`
+ * is empty — no header, no preamble, no rule text, no trailer, no whitespace. Otherwise renders
+ * the framed block, prefixed with "\n\n" and closed with the trailer sentinel with no trailing
+ * newline. Order-preserving: `selectDecisions` (§3.6) owns the drop/precedence order, this
+ * function only renders whatever order it is given.
+ *
+ * @param {{selected: Array<{id: string, statement: string, sourcePath: string}>}} args
+ * @returns {string}
+ */
+function renderDecisionLedgerBlock({ selected }) {
+  if (!Array.isArray(selected) || selected.length === 0) return "";
+
+  const indexLines = selected.map(renderDecisionIndexLine).join("\n");
+  return (
+    `\n\n--- CLOSED DECISIONS (do not re-open without new evidence) ---\n` +
+    `${DECISION_LEDGER_PREAMBLE}\n\n` +
+    `${indexLines}\n\n` +
+    `${DECISION_LEDGER_RULE_TEXT}\n` +
+    `--- END CLOSED DECISIONS ---`
+  );
+}
+
 // ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
 
 const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
