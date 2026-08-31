@@ -63,6 +63,37 @@ on either.
 
 ## Did the delta break anything previously approved?
 
+No. The edit is four lines across two commits: one header row, one changelog paragraph, one word
+inside the v1.9 note, one clause inside C-5's `maxBytes` rationale. I checked the three that could
+carry weight.
+
+**The `§1` → `§2 G-1` correction is exact, and I confirmed it in both directions.** `grep -in
+baseline` over the whole REQ returns the pin at `:105`, which sits between `## 2. Goals` (`:86`)
+and `## 3. Non-Goals` (`:133`) — inside G-1, as the corrected note now says. `## 1. Problem /
+Context` (`:57`–`:85`) carries no Baseline version literal at all, so the old pointer named a
+section with nothing to sweep. The v1.9 note's other named site, `§5` REQ-DECLEDGER-01, reads
+"at **v1.2**'s `Verified at` commit" at `:216-217` — my earlier grep missed it only because the
+literal is possessive (`v1.2's`). Both swept sites are real and both read v1.2.
+
+**C-5's re-worded clause is more faithful to upstream than what it replaced, not less.** Before:
+"3,204 — 50 bytes per record of framing allowance". After: "3,204 — the allowance covering the
+rendered index's per-line *and* block framing, which is the form C-5 bounds". The Baseline's
+`M-7c` does say "50 bytes per record of **per-line** framing allowance", so the old wording was a
+verbatim transcription — but of a figure that C-5 then applies to a wider object. C-5's own next
+paragraph (`:196-197`) scopes the bound to "the rendered index text alone — the index block **as
+it appears in the prompt**", which includes block framing, not per-line framing only. The old
+sentence therefore promised 50 bytes/record of headroom against a bound that has to pay for the
+block as well. `M-7d` settles who may say this: substance bytes are "a floor, not a rendering ...
+a consumer sizes against `M-7b` and **declares its own framing allowance on top**". The REQ is
+that consumer, and the attribution is placed correctly — "the Baseline's `M-7c` records that
+12,500 clears ... by 3,204" is M-7c's claim, and the clause after the em-dash is the REQ's own.
+The number a fixture would transcribe (`12500`) is untouched.
+
+**Nothing testable moved.** `12500`, `70`, both `non-negative integer` types, the fail-open
+cascade, REQ-DECLEDGER-01's set-equality-of-rendered-lines oracle, -02's byte-identity fixture,
+-07's `0` and over-long cases, -08's two-run oracle are all byte-identical to the version I
+approved. No AC, no threshold, no `M-*` id, no `Verified at` commit changed.
+
 ## Disposition of my v10 findings
 
 ## What I found by re-reading upstream at HEAD
