@@ -293,8 +293,10 @@ each reversal costs what the original cost.
   The five inside `loop-distribution.test.js` are
   transcriptions of the same membership facts as the first four, and their own comment says so —
   *"transcribed once, here … never derived from a directory listing"* — so they are precisely what a
-  derive-at-pack-time change would stop transcribing, and understating them by five understates the
-  payoff that decides whether anyone acts on this trigger. K-1's
+  derive-at-pack-time change would stop transcribing — as are the four in `run.test.js` and
+  `learningsPremises.test.js`, which transcribe `MODULE_NAMES`' contents a fourth, fifth and sixth
+  time. Understating the count understates the payoff that decides whether anyone acts on this
+  trigger, which is why it is now sweep-derived rather than hand-counted. K-1's
   "derived rather than transcribed" describes only TSPEC §6.4's *count* conjunct
   (`vendoredClassSize === MODULE_NAMES.length + 1`), which ties one transcribed number to its
   source; the member arrays themselves are all still literals.
