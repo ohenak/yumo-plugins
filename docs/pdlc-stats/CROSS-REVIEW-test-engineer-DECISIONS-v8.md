@@ -151,4 +151,17 @@ touch, F-02 rides the TSPEC erratum K-3 already owes.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | Partition sentence above the site table still reads "Four hold the enumerations; five pin them from two other packages" (4 + 5 + 1). Totals ten, so no count word is wrong, but it contradicts both breakdowns this erratum repaired and upstream TSPEC 7.3, which count `pdlc/workflows/package.json` as the fifth enumeration holder against four pinning test files (5 + 4 + 1). `c8.include` is a transcribed member list; it pins nothing. Presentation only — membership, total, K-1 numbering and all falsifiers unaffected | Options Considered / DEC-STATS-01, paragraph introducing "Option A's ten sites" |
+| F-02 | Low | inherited | nonlocal | The shipped sweep re-run at HEAD returns 25 files (ten transcribers, fifteen importers); DECISIONS states 25 / "the other fifteen" and is correct, while upstream TSPEC 7.3 states "24 candidates" and "the 14 pure consumers" — stale by one on both terms, derived ten unaffected. Same shape as the six-to-seven divergence K-3 records, but this second divergence is not recorded, so the erratum owed to TSPEC reads as covering one stale count when it covers two | Context / What the sweep found, and TSPEC 7.3 |
+| F-03 | Low | inherited | nonlocal | TSPEC 2.1's `coverageInstrumentation.test.js` row still describes P9-02's title as moving six to seven; re-measured at HEAD `REQUIRED_INCLUDES` is four, so the literal is 4 + 1 + 2 = seven today and eight after this feature. DECISIONS carries the correct arithmetic and records the divergence in K-3 rather than matching it. Correctly carried unresolved by design; restated so the upstream erratum is not lost | K-3, Upstream divergence clause |
+
+FINDING: Low | inherited | nonlocal | Options Considered / DEC-STATS-01 site-table preamble | "Four hold the enumerations; five pin them" contradicts the repaired 5 + 4 + 1 breakdowns and TSPEC 7.3; totals still ten, no oracle affected
+FINDING: Low | inherited | nonlocal | Context / What the sweep found; TSPEC 7.3 | TSPEC 7.3's "24 candidates / 14 pure consumers" is stale against the 25 / 15 measured at HEAD; DECISIONS is correct and the divergence is unrecorded
+FINDING: Low | inherited | nonlocal | K-3 Upstream divergence clause | TSPEC 2.1's six-to-seven title count remains stale at HEAD (seven to eight is correct); carried unresolved by design and owed upstream
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
