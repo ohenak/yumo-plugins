@@ -55,3 +55,73 @@ document's, and the revision corrected it in writing rather than inheriting it.
 |----|---------|
 | Q-01 | On F-01: once the sweep is repo-scoped, does the predicate itself need stating? `escalation-view` works as a probe only because every current enumeration happens to contain that member. An enumeration listing only `orchestrate-dev.js`/`orchestrate-queue.js` would survive the grep unseen. Naming the probe's assumption in the constraint text ("grep a member that appears in every enumeration, and re-pick it when the class changes") costs a sentence now and is the kind of thing that is invisible until it fails. |
 | Q-02 | On F-02: is `loopProperties.test.js:370`'s NUL literal worth an issue in its own right, outside this feature? It makes the file opaque to `grep -r`, `git diff` heuristics and any future sweep, for a separator that `\x1f` would serve equally well. Not this feature's problem to fix — but this feature is the one that discovered it. |
+
+## Positive Observations
+
+- **The revision changed the instrument, not just the number — which is the only move that ends this
+  class of round.** I raised one missing site. The honest minimum was to add one row. Instead the
+  document replaced per-file reading with a query, ran it, and let it find three sites rather than
+  the one I named — including `coverageInstrumentation.test.js`, which had been sitting inside this
+  very document (named in K-3 and in the trigger, absent from the table) and was the reason the
+  table's six rows and the trigger's seven files had silently disagreed for two rounds. Diagnosing
+  an internal inconsistency as a symptom of the wrong instrument, rather than patching the
+  arithmetic, is what makes the count stop moving.
+- **It corrected a cost claim I made in review rather than inheriting it.** My v3 F-01 asserted that
+  options B and C pay the seventh site too. The revision measured it and found the opposite — both
+  new sites fence `MODULE_NAMES`, which B never moves — and said so in a dedicated paragraph that
+  names the review as the source of the error. I verified it: `LIB_MODULES_AT_HEAD`
+  (`_tspec-packed-set.mjs:29`, `publish-preflight.mjs:205`) is a different class from `MODULE_NAMES`,
+  and neither new test reads it. The correction makes the chosen option look *worse* in the
+  comparison it publishes (nine against three, where the old record implied a narrower gap) and the
+  document made it anyway, with the disqualifier restated. A reviewer's finding is not evidence, and
+  this is the right way to say so.
+- **The document now records why it was wrong twice, not just that it is right now.** *"That is the
+  wrong instrument"* and *"it grew from five to six to nine over three review rounds, and the reason
+  it stopped growing is that it is now produced by a query"* — the Consequences bullet keeps the
+  history rather than presenting nine as if it had always been nine. The next reader can tell
+  completeness was established by a command, which is exactly the property the v1.3 changelog claims
+  for itself and delivers.
+- **PM Q-01 was answered with a decision, and the decision has a reason with a date on it.** Promoting
+  the constraint *in this feature* rather than at harvest, because *"a constraint that arrives at
+  harvest does not protect this feature's own PLAN, which is where the next miss would cost
+  something"* — that is the right product framing, and it puts the promotion inside K-9's owning task
+  where it will actually happen instead of on a list.
+- **K-9 justifies its own task boundary by where the reds land.** *"They sit in different required
+  checks — `run.test.js` in `Engine tests (ubuntu-latest)`, `learningsPremises.test.js` in `Unit
+  tests (ubuntu-latest, node 20)` — so a partial edit reds a check on either side of the package
+  boundary"*, plus the note that K-8's task and K-9's red on the same commit and may be one task.
+  That is a PLAN-ready statement: it tells the author both what may be merged and what must not be
+  split, and I verified both files sit in the suites claimed.
+- **K-3's split answers TE Q-01 without blurring the row.** Separating the include literal (a live
+  oracle that reds at HEAD) from the c8-run driver (new work with no assertion behind it today) is a
+  distinction an implementer needs to sequence the work, and it is stated in the falsifier column
+  where it will be read.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High findings. The three decisions are unchanged and remain the right calls, and the gating
+finding from v3 is closed by a stronger mechanism than the one I asked for — the cost record is now
+derived rather than accumulated, and the one factual error in the exchange was mine and has been
+corrected against the tree. The three findings below are accuracy and durability items on the new
+sweep material; none blocks Phase D, and none would change which option is chosen.
+
+Suggested for the next touch of this document, in priority order:
+
+1. **F-01 (Medium).** Add `pdlc/README.md:231` as a tenth site under a K-row, move option A's cell to
+   ten, and restate the sweep as repo-scoped rather than `__tests__`-scoped — the directory
+   restriction is what hid it.
+2. **F-02 (Medium).** Cite `git grep -l` (or `grep -ral`) in the document and in the promoted
+   constraint text; the quoted `grep -rln` silently drops `loopProperties.test.js`.
+3. **F-03 (Low).** Give K-3 the same message-string clause K-8 already has, covering P9-02's title
+   count word and the stale `REQUIRED_INCLUDES' three entries` comment.
+
+Unchanged and not re-reviewed: DEC-STATS-01's Context section and chosen option, DEC-STATS-03 in
+full, K-2, K-4, K-5, K-6, K-7, the *decisions not to decide* section, and the project-level
+decisions.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
