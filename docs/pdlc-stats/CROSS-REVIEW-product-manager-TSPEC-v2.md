@@ -103,3 +103,39 @@ erratum, raised through the erratum channel rather than folded in here), and non
   passes `--runInBand`. Weighing and rejecting serialisation on cost, in writing, is the right call
   and the right record of it. My F-01 and F-02 are about how the resulting decision is *governed*,
   not about whether it is correct.
+
+## Recommendation
+
+**Approved with minor changes.**
+
+All four v1 High findings are closed, and closed properly rather than acknowledged: the JSON key
+sets are a stated contract transcribed from the FSPEC's own sentences and asserted by set-equality
+against literals (§4.2.1, §6.3); `schemaVersion` exists, is hoisted into all three documents, and is
+pinned to the literal `1` rather than to the module constant; the exclusion set has an oracle that I
+ran by hand against the real `docs/` root and found green-today, red-on-a-ninth; and the doc-type
+probe now uses a role slug that `parseReviewFilename` actually accepts, upgraded from containment to
+set-equality in the same edit. The four Medium/Low findings are closed too. REQ-STATS-02's two
+observable guarantees — top-level key-set equality and a schema-version field — are now each named,
+each typed, each oracled, and each given their own traceability row.
+
+The three remaining Mediums are all in §6.5/§4.3's test *governance*, not in the product surface:
+
+1. **F-01** — route the `.tmp-*` snapshot exclusion as an FSPEC erratum against AT-21/AT-22's
+   *Given* (raised below) and have §6.5 cite it, rather than deciding a P0 oracle's scope locally.
+2. **F-02** — make §6.5's guard a set-equality against the literal prefix list, and add the positive
+   conjunct that an injected production write under an excluded prefix still fails the oracle.
+3. **F-03** — pair §4.3's halt negative test with a positive on the same invocation: one directory,
+   `POSTMORTEM-D-pdlc-stats.md` and `POSTMORTEM-D-stats.md`, feature `stats`, **exactly one** halt
+   entry with phase `D`.
+
+None of these blocks. Each is a small, local edit to a test-strategy paragraph, and the product
+guarantees they concern are independently defended — REQ-STATS-08 by §6.4's four-key no-write
+capability oracle, REQ-STATS-05 by AT-13's and AT-14b's real-path literals, which I verified.
+
+Nothing in §1, §2, §3, §4.1, §4.2, §5, §7 or §8 needs further change. The document is
+implementation-ready once the three test-strategy edits land.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 0}
