@@ -13,7 +13,7 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.0 | 2026-08-31 |
+| Draft | pm-author | 1.1 | 2026-08-31 |
 
 **ID:** `FSPEC-STATS-01`
 
@@ -86,11 +86,11 @@ under-specifies the command.
 |---|---|---|---|
 | REQ-STATS-01 single-feature human-readable stats | §3.1 Flow A; §4.3 human rendering | BR-01, BR-02, BR-03, BR-17 | AT-01, AT-02, AT-03 |
 | REQ-STATS-02 machine-readable `--json` | §3.3 Flow C; §4.4 JSON document | BR-20, BR-21, BR-22, BR-24 | AT-04, AT-05, AT-06 |
-| REQ-STATS-03 review rounds by document type | §3.1 step 5; §4.2 | BR-05, BR-06, BR-07, BR-08, BR-09 | AT-07, AT-08, AT-09, AT-10 |
-| REQ-STATS-04 DoD-round count | §3.1 step 6; §4.2 | BR-10, BR-11 | AT-11, AT-12 |
+| REQ-STATS-03 review rounds by document type | §3.1 step 5; §4.2 | BR-05, BR-06, BR-07, BR-08, BR-09 | AT-07, AT-08, AT-09, AT-10, AT-25 |
+| REQ-STATS-04 DoD-round count | §3.1 step 6; §4.2 | BR-10, BR-11 | AT-11, AT-12, AT-28 |
 | REQ-STATS-05 halts by phase and resolution | §3.1 step 7; §4.2 | BR-12, BR-13 | AT-13, AT-14 |
 | REQ-STATS-06 process-to-spec byte ratio | §3.1 step 8; §4.2 | BR-14, BR-15, BR-16 | AT-15, AT-16, AT-17 |
-| REQ-STATS-07 fleet mode, gaps explicit | §3.2 Flow B | BR-18, BR-23, BR-25, BR-26, BR-27 | AT-18, AT-19, AT-20 |
+| REQ-STATS-07 fleet mode, gaps explicit | §3.2 Flow B | BR-18, BR-23, BR-25, BR-26, BR-27 | AT-18, AT-19, AT-20, AT-26, AT-27 |
 | REQ-STATS-08 read-only, no network, no git writes | §3.4; §4.5 | BR-28, BR-29 | AT-21, AT-22 |
 | REQ-STATS-09 unknown feature reported | §3.1 step 3; §5 EC-01 | BR-04, BR-30 | AT-23, AT-24 |
 
@@ -171,7 +171,7 @@ A feature that appears under both `docs/` and `docs/completed/` is reported **on
 |---|---|---|---|
 | C1 | Choose a mode. | Was `--json` supplied? | Yes → C3. No → C2. |
 | C2 | Human mode: render §4.3's table(s) to stdout. | Single feature or fleet? | One feature block, or one row per feature plus the gap rows. |
-| C3 | JSON mode: serialize §4.4's document to stdout. | Single feature or fleet? | The 5-key single-feature document, or the 2-key fleet document. |
+| C3 | JSON mode: serialize §4.4's document to stdout. | Single feature or fleet? | The 5-key single-feature document, or the 3-key fleet document. |
 | C4 | Emit. | Is there any diagnostic to say? | Diagnostics go to stderr in **both** modes; in JSON mode stdout carries the JSON document and nothing else (BR-20). |
 
 The two renderings consume the same computed metric set. That is what makes REQ-STATS-02's
