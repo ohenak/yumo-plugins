@@ -155,7 +155,49 @@ copied forward from §4.3's stale paragraph into test source.
 
 ## Test Strategy
 
-_pending_
+**Does any test TSPEC specifies now assert the wrong value?** No. This is the question that decides
+whether this confirmation halts, and the answer is clean.
+
+The dispute had exactly one assertion-bearing site: FSPEC AT-17's fourth leg. TSPEC carries it as
+`harvested` (`TSPEC:802-806`). REQ v1.7 says `harvested`. FSPEC BR-16 v1.7 says `harvested`. Three
+sources, one token. Before the erratum, an implementer could have justified either value from a
+straight-faced reading of an upstream document; now they cannot. The test surface got strictly more
+determined, and no expected value flips.
+
+**Falsifiability of the leg, re-verified.** AT-17 leg 4 is not an absence-only oracle: it asserts the
+positive state token `harvested` on a fixture whose `LEARNINGS-{feature}.md` is present, whose
+`CODE_REVIEW` files are **intact**, and whose only `CROSS-REVIEW-` basenames are the out-of-catalogue
+form. The intact-DoD conjunct is what forces the `crossReviews.length === 0` disjunct to be the one
+that fires — without it the leg would pass through `dodReviews.length === 0` and prove nothing about
+REQ-STATS-06. That is a properly discriminating fixture and it needs no change.
+
+**Mutation check on the settled rule.** The obvious mutation is to relax `crossReviews` from
+`parseReviewFilename(...).ok` to a bare `startsWith("CROSS-REVIEW-")` glob — the withdrawn REQ
+clause was, in effect, an argument for that mutation. Under the current text that mutation must go
+RED on AT-17 leg 4 (the fixture would report `measured`). It is worth stating in PROPERTIES/PLAN
+that this is a guarded behaviour, because the repository has now argued both sides of it across two
+REQ versions and a future editor could re-introduce the loosening in good faith.
+
+**Real-path coverage still correct.** §7.2's AT-09 row and §6.1's baselines measure
+`docs/completed/pdlc-advisory-wave-gate/` as **measured** (58 grammatical survivors). REQ v1.7 does
+not turn that directory harvested — the survivor clause it withdrew concerned a directory carrying
+*only* out-of-catalogue basenames, which this one is not. So the real-path baseline and the
+constructed fixture continue to prove different things, as §7.2 intends, and neither expectation
+moves.
+
+**Property-based coverage.** `parseReviewFilename` remains the parameterisable component under this
+rule, and the strategy TSPEC records for it is unaffected by the REQ edit: the round-trip and
+rejection properties are stated over the grammar, and REQ v1.7 changes only what a *rejection* means
+downstream (no bytes, no surviving file), which is the ratio layer's concern, not the parser's. No
+new property is owed by this delta.
+
+**The one testing-relevant risk left.** It is documentary, not behavioural. §4.3's stale paragraph
+and §8.3's stale open item tell a downstream reader — te-author writing PROPERTIES, or an
+implementer writing the fixture — that this expectation is contested and may re-stamp. A test author
+who believes that may soften the oracle (assert "one of harvested|measured", or skip the leg pending
+resolution). That is precisely the failure mode this feature's own review history warns about, and
+it is why I file the §4.3 and §8.3 staleness as Medium rather than Low: they sit upstream of test
+authoring, in the two places a test author looks to decide how hard to pin an expectation.
 
 ## Open Questions
 
