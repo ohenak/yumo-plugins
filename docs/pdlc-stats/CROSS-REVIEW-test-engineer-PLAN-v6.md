@@ -143,6 +143,86 @@ batch is one landing, and a mid-batch red is expected by `K-1`.
 
 ## Verification
 
+**AT-15 coverage row (answers my v4 F-01).** The row now reads
+`AT-15 | T-04 (size arithmetic, removal probe), T-18 (symbolic-link leg, real fs), T-09 (shipped seam,
+end-to-end)`. My v4 finding was that the coverage table and the anti-drift narrative disagreed: T-09's
+row had carried AT-15/EC-19 on the shipped seam since v1.2, but the coverage table did not list it, so
+a reader auditing AT-15 could conclude the shipped seam was unproven. The delta makes the two agree,
+and the claim is true against the PLAN's own T-09 row, which explicitly carries "**and the
+symbolic-link leg on the same production path** … asserting the reported byte total counts the
+*link's own* size (EC-19)" and states it is the only *behavioural* evidence on the shipped seam.
+
+This matters more than a table tidy-up, and it is worth saying why it is the correct resolution rather
+than a cosmetic one. AT-15/EC-19 is a production-path obligation: T-04's leg runs over a fake that
+"cannot distinguish `lstatSync` from `statSync`", T-18's leg runs over T-02's `realStatsIo()` helper,
+and T-10's conjunct is source-level only. Under DC-07's reading, a helper-level real-fs test is still
+not the shipped seam — only T-09 drives `main()`. Listing all three, with each one's role parenthesised,
+is exactly the traceability that lets a DoD reviewer see that the falsifying evidence sits on the
+production path and not only on a helper. The three legs are complementary, not redundant, and the row
+now says so.
+
+**Residual risks — the discharged row (answers pm F-01, and closes my own v5 F-01).** Two rows moved.
+The leading-underscore row gains "BR-26/EC-10's missing positive feature-recognition predicate, which
+is the **only** erratum TSPEC §8.3 still carries open", and a new row carries the REQ-STATS-06-versus-
+BR-16 item marked **Discharged**, "carried here only to close it, so the DoD reviewer does not re-open
+it".
+
+Both claims measured against `TSPEC-pdlc-stats.md` §8.3 at HEAD, which opens: "**One remains open** —
+BR-26/EC-10's unclassified predicate, below. Four others this section carried are **closed** …" and
+then carries exactly one bullet, the BR-26/EC-10 one. So "only erratum still open" is exactly true,
+and the count is verifiable by bullet enumeration rather than by trusting the prose. The discharged
+row's provenance cell — "TSPEC §8.3 (second bullet at TSPEC v1.7, removed at v1.8)" — is likewise
+correct: TSPEC's v1.8 changelog records "(d) §8.3's second bullet closes as discharged and its count
+word moves". Citing a bullet by the version at which it existed, and naming the version that removed
+it, is the right way to cite a deleted anchor; a bare `§8.3` pointer would dangle.
+
+Carrying a *discharged* item in Residual risks is a deliberate and correct choice, not clutter. TSPEC
+removed the bullet, so a DoD reviewer reading only HEAD sees no trace of a question that consumed
+several rounds; the PLAN's row is what stops it being rediscovered and re-opened. It is explicitly
+labelled as carried-only-to-close, so it cannot be mistaken for live work.
+
+**Falsification attempts that failed to find a defect.** I tried three ways to make the delta wrong:
+
+1. *Is any anchor false against the baseline it names?* No — all four checked verbatim, byte for byte
+   (Overview table). I specifically checked the failure mode where an author "fixes" a citation by
+   qualifying it while the underlying value was wrong to begin with; the values are right.
+2. *Does the batch-10 scoping claim overcount or undercount?* No — exactly four `assertAdditiveOnly`
+   call sites, exactly the four named, and `c8.include` provably outside that suite.
+3. *Did any expected value silently move under the erratum discharge?* No. `grep -n "survivor"` over
+   the PLAN returns nothing; the settlement's direction (out-of-catalogue basename → counts as no file
+   remaining) is the direction TSPEC §4.3 and AT-17 already carried, so no PLAN expectation flips. The
+   only leg the dispute could have decided is AT-17's fourth, and T-04 now names it while still
+   delegating the expected value to TSPEC.
+
+**Test-quality bar over the delta.** Nothing the delta adds is an implementation echo — every expected
+value is a literal transcription from a spec or a measured source string, and the two count words
+(`two`, `five`/`six`) are transcribed rather than derived from the code under test. The batch-10 note
+is a positive claim about which enumerations red, paired with the positive claim that T-24's edit
+leaves the suite green, so it is not an absence-only oracle. The AT-15 row is a completeness claim
+over the AT enumeration and the coverage table remains a full-enumeration mapping.
+
+**Rigour bar.** No High finding is open, delta or inherited. One Medium and one Low, both inherited
+and both nonlocal — neither is damage this round's edit caused, and the round's edit strictly improved
+the document on every site it touched. Five of five v4 te findings are now resolved or explicitly
+recorded-not-fixed.
+
+DEFERRED: the `Status` ledger and the branch's commit subjects have drifted apart far enough that task
+completion cannot be audited from either alone — worth one reconciliation pass before DoD, but not a
+planning decision to take in a frozen round.
+
 ## Delta-Confirmation Findings
+
+The delta resolves all four routed items (my v4 F-01, F-02, F-04, F-05, plus pm F-01, F-02, F-03) and
+breaks nothing that was approved. No High finding is open, delta or inherited. Two findings below,
+both **inherited** and both **nonlocal** — neither was caused by this round's edit, and neither gates
+the PLAN.
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Medium | inherited | nonlocal | The `Status` ledger no longer describes the branch. Eighteen tasks have landed `feat(pdlc-stats): T-NN` commits that are ancestors of HEAD (T-02…T-11, T-13…T-20), and T-12's `lib/stats.mjs` landed too, yet only three rows read `✅` (T-01, T-08, T-16). The delta's T-16 flip is itself **correct** — `c3acd694d` is an ancestor and `stats.mjs:451` exports `runStats` — but it is the third partial update to a ledger that is otherwise ~15 rows behind, and it is the one delta site the v1.3 changelog does not mention. A partially-updated ledger reads as authoritative in a way a uniformly-stale one does not: a DoD reviewer scanning the column concludes T-04…T-07 and T-09…T-15 are not started, when their tests and module are on disk. Not gating — every cell is individually true or conservatively stale, no expected value or task definition is affected, and the fix is a mechanical reconciliation. Suggested: reconcile the whole column in one pass and note it in the changelog, or state once that the column is not maintained during implementation and let the wave ledger own completion. | `## Batches` task table, `Status` column; `Status key` line |
+| F-02 | Low | inherited | nonlocal | Task completion cannot be audited from commit subjects either, so F-01 has no cheap cross-check. Most tasks landed under `feat(pdlc-stats): T-NN — …` subjects, but T-12's work (create `lib/stats.mjs`) has no `T-12` subject — the file is first added by `308afef94 docs(pdlc-stats): se PROPERTIES v3 scope section` — and `05315533e docs(pdlc-stats): PM TSPEC cross-review v11 — Architecture` carries substantive T-21/T-22/T-24/T-25-shaped edits to `prepack.mjs`, `fixture-machine.mjs`, `_tspec-packed-set.mjs`, `loop-distribution.test.js` and `coverageInstrumentation.test.js`. This is a commit-hygiene observation about the branch, not a defect in the PLAN, and it changes no task. It is worth recording because it is *why* the anchor-baseline qualifier this round added is load-bearing: implementation is landing under review-shaped subjects, so cited line numbers move without an obvious signal. | Branch history; PLAN `## Batches` task table |
+
+FINDING: Medium | inherited | nonlocal | `## Batches` task table, `Status` column | The `Status` ledger is ~15 rows behind the branch: eighteen tasks have landed `feat(pdlc-stats): T-NN` commits reachable from HEAD, but only T-01, T-08 and T-16 read `✅`. The delta's T-16 flip is factually correct and undocumented in the v1.3 changelog; the residual risk is that a partially-updated column misreads as authoritative to a DoD reviewer. No task definition or expected value is affected. Fix: reconcile the column in one pass, or state that it is not maintained during implementation.
+FINDING: Low | inherited | nonlocal | Branch history / PLAN `## Batches` task table | Commit subjects do not track task completion either, so F-01 has no cheap cross-check: T-12's `lib/stats.mjs` first appears under `308afef94 docs(…): se PROPERTIES v3 scope section`, and `05315533e docs(…): PM TSPEC cross-review v11` carries T-21/T-22/T-24/T-25-shaped source edits. A branch-hygiene observation, not a PLAN defect; recorded because it is why this round's pre-change-baseline anchor qualifier is load-bearing.
 
 ## Verdict

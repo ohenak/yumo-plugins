@@ -196,20 +196,69 @@ coverage table's other 26 assignments are byte-identical.
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **Status ledger advances unevenly.** The delta flips T-16's cell to `✅` (`PLAN:110`) with no changelog entry explaining it. The cell is truthful — `runStats` exists at `pdlc/workflows/lib/stats.mjs:451` and `statsOutcome.test.js` passes 21/21 — but equally-landed rows still read `⬚`: T-15's renderers exist (`stats.mjs:561`, `:585`) and T-21…T-25's vendoring cluster has landed (`package.json:27` carries `"**/pdlc/workflows/lib/stats.mjs"`). Advance the other landed rows, or state in the changelog that the ledger is updated per wave, so a reader does not take `⬚` as "not started". | Status key, `PLAN:88` |
+
+**Resolved from v5** — both recorded closed, neither carried forward:
+
+- v5 F-01 (Low, T-24's backtick-adding "verbatim" transcription) — **fixed**, and verified against
+  `main:coverageInstrumentation.test.js:278`.
+- v5 F-02 (Low, T-23's off-by-one `assertAdditiveOnly` anchor) — **fixed**, and verified against
+  `main:loop-distribution.test.js:74-78`.
+
+v5 Q-01 (TSPEC §8.3's stale "Two remain open" header) is also discharged upstream:
+`TSPEC-pdlc-stats.md:1311` now reads "One remains open". Nothing was routed to me to re-check that
+was not, in fact, corrected.
 
 ## Deferred Items
 
-_pending_
+Under DECISION FREEZE these are recorded, not raised. None is a defect this delta introduced and none
+contradicts the repository.
+
+DEFERRED: T-24's "verbatim at the pre-change baseline" P9-02 title reads `two new lib/ modules`, but at HEAD that test title already reads `three new lib/ modules` (`coverageInstrumentation.test.js:279`) — the baseline hedge makes the claim true, though an implementer reading it at HEAD sees a mismatch; a one-clause "already landed at HEAD" note would remove the double-take.
+DEFERRED: T-23's citation is likewise baseline-anchored while HEAD's `loop-distribution.test.js` has already been rewritten by commit `05315533e`; same hedge, same optional note.
+DEFERRED: Substantial implementation (the T-21…T-25 cluster, `prepack.mjs`/`publish-preflight.mjs`/`fixture-machine.mjs`/`_tspec-packed-set.mjs`/`c8.include`) landed inside commit `05315533e`, whose message reads `docs(pdlc-stats): PM TSPEC cross-review v11 — Architecture`; production edits under a docs-scoped message make the branch history hard to audit. Process observation for harvest, not a PLAN defect.
+DEFERRED: The v1.3 changelog paragraph is now a single ~250-word block (`PLAN:16`); splitting per-finding would read better, but the content is complete and accurate as written.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Is the `Status` column intended as a live implementation ledger updated wave-by-wave, or as the plan's static starting state? T-16's flip implies the former; the `⬚` on other landed rows implies neither is being applied consistently. An answer in the status key (`PLAN:88`) would settle how a DoD reviewer should read the column. |
 
 ## Positive Observations
 
-_pending_
+- **Both of my v5 findings were fixed at the level of the source, not the prose.** The revision did
+  not merely reword the citations — it added a *baseline qualifier* ("at the pre-change baseline")
+  that makes each transcription independently checkable against a named commit. That is a strictly
+  better artifact than the one I asked for, and it is why this review could verify them in two
+  commands.
+- **The erratum was closed on its decided form rather than re-raised.** T-04 and the Residual risks
+  table now carry the REQ-STATS-06-versus-BR-16 item as *discharged*, with its blast radius stated and
+  measured to be empty. Carrying a closed erratum explicitly "so the DoD reviewer does not re-open it"
+  is exactly the right instinct — the alternative, deleting it silently, invites the next reader to
+  rediscover the question.
+- **Batch 10's gate got more falsifiable.** Naming the four enumerations and explicitly excluding
+  T-24's `c8.include` edit converts a vague "reds first" expectation into a claim that can be wrong,
+  and pre-empts the false-drift reading of a legitimately green mid-batch suite.
+- **te F-03 was answered by declining it, with a reason.** Recording a finding as
+  "recorded-not-to-be-fixed — the PLAN is the superset and already names the ninth with its rationale"
+  is a healthier outcome than a cosmetic edit that would have made the PLAN agree with TSPEC by losing
+  information.
+- **The AC coverage fix added no work.** AT-15's third owner was already doing the job in its own row;
+  the table was made to tell the truth rather than the plan being grown to fit the table.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+No High findings. Both v5 findings are resolved and verified against source; every load-bearing claim
+the delta introduced is confirmed by the repository at HEAD; no acceptance criterion was narrowed,
+broadened, reinterpreted or dropped; no dependency edge moved. The single Low finding (an unevenly
+advanced status ledger) and four deferred items are recorded for the next time this document is
+touched, and none of them gates implementation.
+
+
+
+
