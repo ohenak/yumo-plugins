@@ -101,6 +101,33 @@ erratum count moves) is already carried by the cascade-confirmation protocol its
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried forward from v2, still open and still not gating: v1's Q-01 (the precedent set by amending an archived feature's frozen specs, T-22) and Q-02 (REQ-STATS-07's unqualified "fails" versus FSPEC EC-10/BR-26's `unclassified` runtime reporting — the *first* of TSPEC §8.3's two open errata). Neither is a PLAN defect; both should reach harvest rather than evaporate when the PLAN converges. |
+| Q-02 | When the REQ-STATS-06-versus-BR-16 reconciliation is taken at the owning phase, does it come back through this PLAN at all, or is the re-stamp expected to land directly in the implementation? F-01's residual row is written on the assumption that the PLAN records it and the DoD reviewer checks it; if the pipeline intends to re-open the PLAN instead, the row is cheap insurance either way. |
+
+## Positive Observations
+
+- **The PLAN was measured, and the measurement is what survived.** D-1 is the clearest case: the
+  TSPEC printed `six → seven` for P9-02's title move; the PLAN, written from the tree, recorded
+  `c8.include`'s **seven** entries and told T-24 to correct "the stale count words" without
+  transcribing a number. Four erratum rounds later the TSPEC has moved onto the PLAN's number. A plan
+  that cites its upstream's arithmetic would have had to be re-opened; this one did not, because it
+  cited the artifact instead. That is the habit worth keeping.
+- **The ten-versus-carve-out boundary was drawn correctly before the TSPEC fixed it.** D-2 corrected
+  §1 and RK-1 for placing the sibling-feature edits *inside* the ten. The PLAN's site table has
+  exactly ten in-repo rows, T-22 carries the two sibling documents as the `K-7` cluster, and the DoD
+  says "all ten in-repo sites **and both sibling-feature documents**". The PLAN never inherited the
+  error, so the correction is a no-op for it.
+- **T-24's number-free instruction aged well.** "Correcting the stale count words in P9-02's title
+  and comment" is exactly the instruction that stays true when the count moves underneath it. The
+  same is true of T-20's naming the four enumeration files rather than a collective label, which is
+  why D-3's rename touches nothing here.
+- **The AT-09 citation was scoped to what it proves.** The PLAN cites `pdlc-advisory-wave-gate` for a
+  review-round count and for the existence of four malformed basenames — never for a `harvested`
+  verdict. D-4's rewrite, which is precisely a correction of that over-reading in the TSPEC, leaves
+  T-18's leg intact.
+
 ## Positive Observations
 
 ## Recommendation
