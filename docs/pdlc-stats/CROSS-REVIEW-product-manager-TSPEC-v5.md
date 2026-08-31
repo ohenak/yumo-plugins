@@ -89,12 +89,43 @@ FINDING: Low | inherited | local | §2.1, `learningsPremises.test.js` row's P-1 
 
 ## Positive Observations
 
-_pending_
+- **The fix went past the finding, in the right direction.** My v4 finding asked for a wording
+  change; the author delivered a reproducible derivation (24 candidates, one stated filter, 14
+  dropped, `24 − 14 = 10`) and, in doing so, found a site the nine-count had missed. A correction
+  that makes the underlying claim re-runnable is worth more than one that makes it better-hedged.
+- **The new site is carried honestly.** `pdlc/README.md` is added *and* named in RK-1 as pinned by no
+  oracle, with an owning task and an explicit "a documentation-drift oracle over it is out of scope
+  here and is named as accepted residue instead of implied coverage". Naming un-covered residue is
+  precisely how RK-1 stays a truthful risk row.
+- **The two count-classes are kept apart deliberately.** `MODULE_NAMES` (copied, 4 → 5) versus the
+  packed class (5 → 6) is called out as "different numbers [that] must not be synchronised to each
+  other" — I verified both against source. That is the exact mistake an implementer would otherwise
+  make while working a ten-row checklist.
+- **Scope discipline held.** Four commits, one section per commit, and nothing outside the routed
+  items plus the two sibling corrections they forced. No requirement, acceptance criterion or
+  behavioural claim moved.
 
 ## Open Questions
 
-_pending_
+None blocking. One note for the implementation phase rather than for this document:
+
+| ID | Question |
+|----|---------|
+| Q-01 | The ten-site co-change is now enumerated precisely, but two of the ten (`pdlc/README.md`'s prose and the sibling TSPEC's `PK-26` existence row) are un-oracled by design and are held together only by `DEC-STATS-01` `K-7`'s single-owning-task convention. That is acceptable here; the durable question is whether PLAN makes those two edits visible as checklist items in the *same* task body rather than leaving them to the task's prose — a PLAN-phase concern, not a TSPEC gap. |
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes.**
+
+Both routed items landed and both were verified against the code they describe, not merely read. The
+upstream (REQ v1.4 / FSPEC v1.4) is unchanged at HEAD and I re-derived its hashes; the TSPEC's own
+statement of that is accurate. Nothing previously approved was narrowed, broadened or dropped, and no
+acceptance criterion changed meaning. Document remains faithful to this REQ/FSPEC.
+
+The single Low finding (F-01) is inherited, non-gating, and can be folded into whatever the next
+versioned edit is — or left, at the author's discretion. It does not warrant a round of its own.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}

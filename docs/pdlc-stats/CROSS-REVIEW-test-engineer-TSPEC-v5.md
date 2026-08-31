@@ -86,6 +86,59 @@ array-equality and hence entry *position* still matters, and that is still state
 
 ## Collateral Check on Untouched Approved Material
 
+Three collateral corrections rode this erratum. Each is checked for whether it breaks something
+already approved.
+
+**(b) The tenth site, `pdlc/README.md`.** Verified at `pdlc/README.md:231`: "The four workflow
+modules it dispatches (`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`,
+`lib/escalation-view.mjs`) are vendored…". The prose enumeration and the count word both exist, so
+the row is real, not speculative. The row's most important sentence is the one that says this is
+`MODULE_NAMES`'s **copied-module** class (4 → 5) and *not* the packed class (5 → 6), and that the
+two must not be synchronised. I confirmed both at HEAD: `prepack.mjs:20` `MODULE_NAMES` has four
+members; `_tspec-packed-set.mjs:51` `WORKFLOW_MEMBERS` has five, because it also carries
+`vendor/workflows/VENDOR-MANIFEST.json`. An implementer who "fixed" the README to five-and-six
+would red `tspecPackedCount`. The warning is load-bearing and correct.
+
+The row is honestly marked **pinned by no oracle**, and RK-1 now carries it as named residue (item
+ii) with an owning task rather than implying coverage. That is the right disposition: I would
+rather see an un-oracled site named in the risk table than quietly counted as covered. §6.4's
+vendoring row was correspondingly re-stated as covering "four of the ten directly and a fifth
+(`c8.include`) by way of `coverageInstrumentation.test.js`" — the coverage claim did not silently
+inflate with the count.
+
+**(c) P7-02's `vendoredClassWord` arm.** Verified at `pdlc/engine/__tests__/loop-distribution.test.js:187`:
+`const vendoredClassWord = vendoredClassSize === 5 ? "five" : String(vendoredClassSize);`, consumed
+at lines 194 and 200 by regexes over the sibling FSPEC's count **word**. Left un-edited, a `6`
+would stringify to `"6"` and the document oracle would red against an otherwise complete co-change
+— exactly as the row now says. The row's assertion tally moves seven → **eight**, which is the
+correct arithmetic over its own enumerated edits (two `added` lists, three baselines, the length
+equality, the class-size assertion, plus this ternary).
+
+**(e) The §6.4 purity split.** This is the one change that could have weakened an approved oracle,
+so I checked it hardest, and it does the opposite.
+
+- `deriveDodRoundIndex` is typed `(basenames: unknown, feature: string) => number` at §3.2 line 308,
+  transcribed from the HEAD export. A non-aliasing assertion over a `number` return is not merely
+  weak, it is **wrong**: two equal numbers are `===`, so the old blanket conjunct would have red-lined
+  a correct, wholly pure implementation. The split removes a false-red, not a detector.
+- Deleting the conjunct instead would have removed `DEC-STATS-03`'s only mechanical detector for
+  that export. The A-B-A replacement keeps one, and the document states precisely what it does and
+  does not falsify: a memo is invisible to it, but a high-water mark, a carried-forward maximum or
+  any retained `let` makes the third call differ from the first. That honesty is worth more than an
+  overclaimed conjunct, and it is exactly the "a test that can only pass is not a test" bar.
+- The three object-returning classifiers keep the full `deepEqual` **and** non-aliased conjunct. I
+  checked that this cannot false-red at HEAD either: `parseResolvedMarker` (lines 7608–7614) and
+  `parseReviewFilename` (lines 10137–10162) construct a **fresh object literal at every return
+  site**, including the failure paths — no shared module-level sentinel is returned. So a correct
+  implementation is non-aliased today, and the conjunct reds only on a memo.
+- The fresh-module-instance requirement is retained and now explicitly scoped to *both* shapes, so
+  neither conjunct can pass vacuously off a cache warmed by an earlier test in the same worker.
+
+Nothing else in the document moved. The diff touches only the changelog header, §2.1, the §2.1
+table's two amended rows plus one added row, §6.4's two rows, §6.4's narrative, §7.3, RK-1 and §9's
+trigger sentence. No behavioural claim, type, signature or code sketch changed — I diffed to confirm
+that claim rather than accept it.
+
 ## Positive Observations
 
 ## Open Questions
