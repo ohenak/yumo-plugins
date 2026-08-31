@@ -128,14 +128,15 @@ Every cost below was measured against the tree at HEAD, not estimated.
 
 | Option | Location | Enumeration co-change (verified) | Coverage gate (verified) |
 |---|---|---|---|
-| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | **nine** edit sites (sweep-derived, see below); vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass — **contingent on K-3's two conjuncts**: c8 opens only what `include` matches (`all` is not set), so an unincluded module produces no per-file entry and the second stage has nothing to check |
+| **A (chosen)** | `pdlc/workflows/lib/stats.mjs`, thin `cmdStats` in `pdlc/engine/bin/cli.mjs` | **ten** edit sites (sweep-derived, see below; nine falsified, one not); vendored class 5 → 6 | in `pdlc/workflows/package.json`'s `c8.include`, subject to `test:coverage`'s second `--per-file --branches 85` pass — **contingent on K-3's two conjuncts**: c8 opens only what `include` matches (`all` is not set), so an unincluded module produces no per-file entry and the second stage has nothing to check |
 | B | `pdlc/engine/lib/stats.mjs` | **four** edit sites: `_tspec-packed-set.mjs`'s engine `lib/*.mjs` class 15 → 16 (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3) and the same file's `tspecPackedCount` term, `publish-preflight.mjs`'s **second, production-side copy of that same class** (`LIB_MODULES_AT_HEAD` 12 + `LIB_MODULES_FROM_THIS_FEATURE` 3 again, feeding `expectedPackedSet()`, which PF-4 compares to the packed file list in both directions at publish time), and `loop-distribution.test.js` — whose `4 + 15 + 5 + 1` arithmetic pins the engine `lib/` class as `15` in the same expression, so B moves that literal too. B does **not** pay A's `MODULE_NAMES`-fencing sites (`run.test.js`, `learningsPremises.test.js`, `prepack.mjs`, `fixture-machine.mjs`) or either `c8.include` site: an engine `lib/` module is not vendored from `pdlc/workflows/` and is measured by nothing. `publish-preflight.mjs` is on *both* bills — A moves its `WORKFLOW_MEMBERS`, B moves its `LIB_MODULES_*` pair | **none** — `pdlc/engine/package.json`'s only test script is `node __tests__/_run-suite.mjs`; the package declares no `c8` block and no coverage dependency at all |
 | C | inline in `pdlc/engine/bin/cli.mjs` | none | **none**, same reason as B |
 | D | `pdlc/workflows/lib/stats.mjs`, **not vendored** | none | same as A |
 
-**Option A's nine sites**, each confirmed at HEAD to contain the member list it is claimed to contain.
+**Option A's ten sites**, each confirmed at HEAD to contain the member list it is claimed to contain.
 Four *hold* the enumerations; five *pin* them from two other packages, which is why a per-file scan of
-the holders reaches none of the five (see *What the sweep found*):
+the holders reaches none of the five (see *What the sweep found*); the tenth transcribes the class in
+prose and is pinned by nothing, which its own row says in place of a falsifier:
 
 | Site | Symbol | Members at HEAD |
 |---|---|---|
@@ -148,6 +149,7 @@ the holders reaches none of the five (see *What the sweep found*):
 | `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | P9-02's expected include literal (`REQUIRED_INCLUDES` + `CAPTURE_SCRIPT_INCLUDE` + the two `lib/` modules) | mirrors `c8.include`'s seven entries; asserted `expect(include).toEqual([…])`, so it reds in both directions and is position-sensitive. Its test title also names the count (*"exactly the six modules the feature owns"*) |
 | `pdlc/engine/__tests__/run.test.js` | two `assert.deepEqual` manifest name lists plus the `scratchWorkflows` copy list | the same bare four, transcribed three times. The first `deepEqual`'s own comment states the intent as *"a prepack that … vendored a third file, must still fail this assertion"*, so a fifth member reds it by design; the copy list left at four makes the real `runPrepack` miss `lib/stats.mjs` and reds the process-entry leg's `assert.equal(result.status, 0, …)` |
 | `pdlc/workflows/__tests__/learningsPremises.test.js` | P-1's `expect(names).toEqual([…])` over the `MODULE_NAMES` array it parses out of `prepack.mjs`'s **source text** | the same bare four; the test's title pins the count too (*"exactly the four canonical workflow modules"*) |
+| `pdlc/README.md` (the `pdlc` CLI section's vendoring sentence) | prose enumeration — *"The four workflow modules it dispatches (…) are vendored into the package at pack time"* | the same bare four, plus a count word. **Pinned by no oracle**: `documentOracles.test.js` reads this file (for `workflows/dist/` and for the absence of seam-count prose) but never its member list, so this row is the one site where a partial edit stays green. Both the count word *four* → *five* and the member list move. Note the class mismatch this row makes visible: `MODULE_NAMES` is the **copied** class (4 → 5), where `_tspec-packed-set.mjs`'s vendored class is 5 → 6 — two counts one apart, never to be synchronised |
 
 **What the sweep found, and why two rounds of per-file reading kept missing sites.** The first
 measurement scanned the files that *hold* the enumerations and found five; round 2 added
@@ -160,18 +162,18 @@ tests (round 4 corrected both the scope and the tool; see the two notes below):
     git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'
 
 — **25 files at HEAD**, of which the ones that **transcribe a member list** (rather than importing a
-module, which is what the other fifteen do) are exactly the nine in the table above: the five
+module, which is what the other fifteen do) are exactly the ten in the table above: the five
 enumeration holders — `prepack.mjs`, `publish-preflight.mjs`, `fixture-machine.mjs`,
 `_tspec-packed-set.mjs`, `pdlc/workflows/package.json` — plus `loop-distribution.test.js`,
 `coverageInstrumentation.test.js`, `run.test.js` and `learningsPremises.test.js`. Three rounds of
-per-file reading found five, then six; this one command finds all nine, and finds them without
+per-file reading found five, then six; this one command finds all ten, and finds them without
 knowing in advance which package they live in.
 
 Two hits survive the grep and fail the predicate. `loop-cli.test.js` has **six** references on six
 lines — `:122`, `:637`, `:652`, `:681` for `loop-session.mjs` and `:827`, `:852` for
 `escalation-view.mjs` (the pair that makes it a hit at all) — all of them `path.join(…)` /
 `pathToFileURL(…)` import paths and comments, never a list. `pdlc/engine/bin/cli.mjs` (`:114`,
-`:117`) is the same shape, a dynamic `import()` path. So the co-change set is **nine sites**, and the
+`:117`) is the same shape, a dynamic `import()` path. So the co-change set is **ten sites**, and the
 number is now reproducible rather than accumulated.
 
 **Note on scope — why not `__tests__/` (TE F-01).** The first form of this sweep read two test
@@ -190,7 +192,7 @@ now says the same thing.
 `pdlc/workflows/__tests__/loopProperties.test.js:370` contains two (`` `${n.code}\0${n.subject}\0${n.text}` ``,
 a deliberate field separator), as does `pdlc/workflows/lib/escalation-view.mjs`. Repo-scoped,
 `git grep -l` returns 25 and `grep -rln` returns 23; over the earlier two test directories they
-returned 15 and 14. Both dropped files are importers here, so the nine-site set survives either way —
+returned 15 and 14. Both dropped files are importers here, so the ten-site set survives either way —
 but the omission is unannounced, and a dropped *transcriber* would have been the exact miss this
 sweep exists to end. Use `git grep -l` (or `grep -ral`), and state the divergence wherever the rule is
 copied.
@@ -201,17 +203,42 @@ this class currently contains that member. An enumeration listing only `orchestr
 *grep a member that appears in every enumeration of the class, and re-pick the probe when the class
 changes.*
 
-**A tenth transcription, outside every oracle (PM F-01, TE F-03).** The repo-scoped sweep also returns
-`pdlc/README.md:231`, which states the class in prose — *"The four workflow modules it dispatches
-(`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`) are
-vendored into the package at pack time"*. Under option A that sentence's count **and** its list go
-stale on this feature's commit. It is not a tenth row of the site table, and the two reviewers agree
-on the reason from opposite directions: the table is a table of *falsifiers*, every row of which reds
-on a partial edit, and nothing pins this line — `documentOracles.test.js` reads `pdlc/README.md`
-(`:316`, `:672`) but pins `workflows/dist/` and the absence of seam-count prose, never the member
-list. So the site count stays **nine** and the edit is still owed: it is an explicit,
-non-falsifying co-change obligation under K-9, and it is recorded again under *Standing costs
-accepted* as a place the number drifts silently and is corrected by review rather than by a red.
+**The tenth site, pinned by no oracle (PM F-01, TE F-01/F-03; re-grounded on TSPEC v1.4).** The
+repo-scoped sweep also returns `pdlc/README.md`, whose `pdlc` CLI section states the class in prose —
+*"The four workflow modules it dispatches (`orchestrate-dev.js`, `orchestrate-queue.js`,
+`lib/loop-session.mjs`, `lib/escalation-view.mjs`) are vendored into the package at pack time"*. Under
+option A that sentence's count **and** its member list go stale on this feature's commit.
+
+Through v1.4 this document held that line *outside* the table on the ground that the table admits only
+falsifiers, while TSPEC §2.1 carried it as the tenth row. That divergence is settled here in TSPEC's
+favour, and the reason is not deference: **PLAN reads both documents**, and a co-change set that is
+nine in one and ten in the other partitions into K-rows that do not cover it. The table's membership
+rule is therefore restated — it enumerates every site that *transcribes* the class, and a row whose
+membership nothing pins says so **in place of** naming a falsifier. A table of falsifiers silently
+drops exactly the obligations most likely to be forgotten, which is the defect this row exists to
+name.
+
+So the co-change set is **ten sites**. The edit is owed under K-9, and the absence of a falsifier is
+recorded twice more: in the site table's own falsifier cell and under *Standing costs accepted*.
+`documentOracles.test.js` does read `pdlc/README.md`, but pins `workflows/dist/` and the absence of
+seam-count prose — never the member list.
+
+**Why ten is probe-invariant, and why the two candidate totals differ (TE F-04).** This document's
+query and TSPEC §2.1's reach the same ten by different routes, and neither total reproduces the
+other's:
+
+| Sweep | Candidates at HEAD | Consumers dropped | Transcribers |
+|---|---|---|---|
+| `git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'` (this document) | 25 | 15 | **10** |
+| `git grep -l "lib/loop-session.mjs" -- . ':!docs/'` (TSPEC §2.1) | 24 | 14 | **10** |
+
+The totals differ for two independent reasons: `escalation-view` matches two files
+`lib/loop-session.mjs` does not, and TSPEC's form admits the generated
+`pdlc/workflows/dist/pdlc-cli.mjs` as a candidate it then filters as a consumer, where this document's
+`':!*/dist/*'` excludes it before the predicate runs. Both are defensible; what is *not* defensible is
+citing one total under the other's query, so K-9 promotes the query **with its scope**, and the
+arithmetic `24 − 14` is TSPEC's to reproduce, not this document's. The conclusion each reaches — ten
+transcribers, the same ten — is what PLAN consumes, and it survives the choice of probe.
 
 Two of the three were already visible in this document and simply not in the table.
 `coverageInstrumentation.test.js` is named in K-3 as an obligation and in the re-evaluation trigger's
@@ -240,7 +267,7 @@ publish time rather than in CI. The v1.3 miss is instructive rather than inciden
 produced the number was scoped to two `__tests__/` directories, so no run of it could have surfaced a
 production script — which is why the scope, not just the number, is corrected above.
 
-The corrected comparison is nine sites (A) against **four** (B) — still a wide gap, and still not
+The corrected comparison is ten sites (A) against **four** (B) — still a wide gap, and still not
 enough to move the verdict, because those four sites buy **no coverage gate**, which is the
 disqualifier. The verdict was never carried by the site count.
 C pays none of them and puts the whole feature outside every gate; D is still a broken A.
@@ -255,7 +282,7 @@ which a per-file reading missed a fencing test, so the rule is promoted to
 than at harvest: a constraint that arrives at harvest does not protect this feature's own PLAN, which
 is where the next miss would cost something.
 
-This raises option A's measured cost from six sites to nine. It does not move the verdict, for the
+This raises option A's measured cost from six sites to ten. It does not move the verdict, for the
 reason the corrected comparison gives above.
 
 **B rejected.** It pays a co-change of the same order — `_tspec-packed-set.mjs`'s count conjunct has
@@ -347,7 +374,7 @@ that attracts it. The growth path is precedented rather than novel: the same cla
 three members to five when `lib/loop-session.mjs` and `lib/escalation-view.mjs` were added, recorded
 as `PK-24`/`PK-25` in that helper's own comments.
 
-**Reversibility: hard.** Undoing it means amending all nine sites — the five enumerations and the
+**Reversibility: hard.** Undoing it means amending all ten sites — the five enumerations and the
 four test files that pin their membership or size — and the sibling feature's frozen table a second
 time. Not a one-way door — no data or published contract is committed — but
 each reversal costs what the original cost.
