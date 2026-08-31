@@ -483,10 +483,13 @@ required not to:
 - [ ] Flag off ⇒ reviewer-prompt stream byte-identical to T-02's committed merge-base recording
       (AT-04), and all four not-enabled spellings collapse to it (AT-05).
 - [ ] Flag off ⇒ the report object carries **no** `decisionLedger` field and **no** notice — each
-      absence **paired with its positive** on the same `main()`-driven path (TE F-05): the report's
-      key set is **set-equal** to the flag-off key set, and `notices` is **set-equal** to the
-      baseline notices array. Set equality is what makes a spuriously-added key or notice fail;
-      "contains no `NTC-DECLEDGER-*`" alone does not.
+      absence **paired with its positive** on the same `main()`-driven path (TE F-05, TSPEC §7.2):
+      the **symmetric difference** between the flag-off and flag-on runs' `report` key sets is
+      exactly `{decisionLedger}`, asserted as a set equality in **both** directions, and the emitted
+      `NTC-DECLEDGER-*` notice set is **set-equal to empty**. Set equality in both directions is what
+      makes a key spuriously added *or* dropped on either arm fail; "contains no `NTC-DECLEDGER-*`"
+      alone does not. The referent is the arm's own paired runs, not a stored artefact — §7.4's
+      recording holds reviewer-prompt bytes only.
 - [ ] Every row of TSPEC §6.1 and every FSPEC AT has a passing test, per the two tables above.
 - [ ] Every named mutation applied, observed red, reverted, and the observed failure transcribed into
       the respective test file's header: T-07's four, T-02's three, and — under TSPEC §7.5's O-8
@@ -497,10 +500,12 @@ required not to:
 - [ ] The census (T-11) is green with every slice asserted non-empty; its scanned source is
       `orchestrate-dev.js` minus the body of **every** member of `DECISION_LEDGER_OWNED_DECLS` plus
       the sentinel-bounded wiring run, and its companion assertion is the partition
-      `DECISION_LEDGER_CENSUS_TOKENS` (**six** members) ∪ `DECISION_LEDGER_CENSUS_EXEMPT` (**eight**)
-      = `DECISION_LEDGER_OWNED_DECLS` (**fourteen**), the two sub-sets disjoint, with each owned member
-      resolving to exactly one top-level declaration at HEAD (TSPEC §7.3, which is the sole home of
-      that arithmetic; this bullet cites it and does not restate it). All fourteen owned
+      `DECISION_LEDGER_CENSUS_TOKENS` (**six data-carrying names**) ∪ `DECISION_LEDGER_CENSUS_EXEMPT`
+      (**eight plumbing declarations**) = `DECISION_LEDGER_OWNED_DECLS` (**fourteen**), the two
+      sub-sets disjoint, with each owned member resolving to exactly one top-level declaration at
+      HEAD (TSPEC §7.3's *The size of the owned list, stated once*, the authority for the count;
+      the operands are named inline because §7.3 states a second, numerically identical but
+      membership-different partition — the owned list's own six functions ∪ eight constants). All fourteen owned
       members are declarations in `orchestrate-dev.js` written by a `[green]` task of batches 3–8;
       all three of `DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT` and
       `DECISION_LEDGER_OWNED_DECLS` are test-file constants of `decisionLedgerCensus.test.js`, and
