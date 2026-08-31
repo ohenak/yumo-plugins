@@ -134,6 +134,45 @@ explicitly rather than in tension.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | PROP-RATIO-03's transcription of AT-15's neither-list, and the §Traceability AT-15 / BR-16 rows, are stale against FSPEC v1.7 — carried unresolved from my v3 F-01, untouched by this round's REQ edit. PROP-RATIO-03 lists `LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`, `HANDOFF-PROMPT.md`, but not the `CROSS-REVIEW-{role}-REVIEW-v{N}.md` member FSPEC added to AT-15's list; §Traceability's AT-15 row stops at PROP-RATIO-01…04 without naming PROP-RATIO-06, which does cover the new member; BR-16's row predates FSPEC routing BR-16 to AT-15. Bookkeeping only — no behaviour is unasserted, since PROP-RATIO-06 pins the added member at the same level and in the same task. | §Properties → PROP-RATIO-03, PROP-RATIO-06; §Traceability → AT-15, BR-16 |
+
+FINDING: Medium | inherited | nonlocal | §Properties → PROP-RATIO-03; §Traceability → AT-15 / BR-16 rows | AT-15 neither-list transcription and the AT-15/BR-16 trace rows are stale against FSPEC v1.7; carried from v3 F-01, untouched by this round's edit, non-gating bookkeeping.
+
+**Provenance `inherited`, not `delta`:** F-01 sits in pre-round PROPERTIES bytes and was raised in v3;
+this round's edit is confined to REQ-STATS-06 and neither introduced it nor left it unlanded.
+**Locality `nonlocal`:** it sits nowhere near the edited section — the edit touched REQ's harvested
+predicate, F-01 touches AT-15's neither-list bookkeeping. Tagging it `inherited` is deliberate and
+material: it routes the item back to the owning revision loop rather than treating it as this
+erratum's residue.
+
+**v3's F-02 is resolved and is not re-raised.** It was an upstream defect — REQ-STATS-06 v1.6
+contradicting FSPEC BR-16 on `CROSS-REVIEW-{role}-REVIEW-v{N}.md` while PROP-RATIO-08 leg 4 cited
+REQ-STATS-06 as authority — and commit `e12b78fd8` withdrew the contradicting clause. The citation is
+now accurate, and the §Gaps row I proposed for it is correctly absent (see §Properties). Nothing in
+PROPERTIES needs to change to close it.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+PROPERTIES still holds against REQ as it now stands. The erratum moved REQ **toward** this document:
+REQ-STATS-06 v1.7 states the harvested predicate in the same terms PROP-RATIO-08 already used ("over
+exactly the file set the numerator sums"), and reaches the same verdict on the same file that leg 4
+asserts. Every property tracing REQ-STATS-06 was re-read against the current sentence, not against my
+v3 record; none became false, and two (PROP-RATIO-08 leg 4, PROP-RATIO-06) went from being asserted
+against a dissenting upstream to being positively supported by it.
+
+No High finding, none inherited and none new. One inherited Medium (F-01) remains, unchanged in
+substance from v3: three line edits to AT-15/BR-16 bookkeeping that assert no new behaviour. It did
+not gate v3 and does not gate here.
+
+I opened no new question and re-litigated no settled section. The confirmation is narrow by design:
+the upstream delta was one clause, and its whole reach into this document was the leg my own prior
+round had already flagged as contested.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
