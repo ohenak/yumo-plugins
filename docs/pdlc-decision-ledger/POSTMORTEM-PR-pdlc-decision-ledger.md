@@ -322,3 +322,11 @@ falsifiability bar it does not meet itself.
 - Channel: engine
 - Mode: latest (pin: n/a)
 - Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
+
+**Provenance**
+- Engine version: 0.2.4
+- Plugin version: 0.23.4
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
