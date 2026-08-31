@@ -83,7 +83,37 @@ DEFERRED: PROP-RATIO-03's `HANDOFF-PROMPT.md` is a PROPERTIES-local addition to 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | PROP-HALT-07 came through REQ's halt withdrawal needing no edit because it was already written as "empty halt set, exit 0, explicit `none` line, `[]` in JSON" rather than as a state name. Was that deliberate — pinning the observable rather than REQ's label — or luck? If deliberate, it is worth a sentence in §Gaps or the quality checklist, because it is the reason a P0 metric's REQ rewrite cost this document nothing. |
+| Q-02 | PROP-NEG-04 excludes halts from the "never a measured `0`" negative property, which is now exactly right under REQ R-6's accepted residual. Should it say so explicitly — "halts are excluded: R-6 accepts the `0` conflation" — so a future reader does not helpfully "complete" the list by adding halts and contradict REQ? |
+| Q-03 | G-6 lists the real-path literals that will go stale and names their re-measurement command. Now that the archive claims have survived one upstream round unchanged (the 62/4/58 measurement re-derived clean this round), is G-6's disposition worth extending with "re-verified at {date}" so the next reviewer knows when the literals were last confirmed rather than last written? |
+
 ## Positive Observations
+
+- **The document absorbed a P0 acceptance-criterion rewrite with zero edits, correctly.** REQ withdrew REQ-STATS-05's harvested halt state and restored a measured `0` — the kind of upstream move that usually invalidates a block of properties. PROP-HALT-01…08 survive intact because they were written against observables (`[{phase:"PR", resolution:"resolved"}]`, the `D, F, I, T` sequence, the empty set) and never against the state vocabulary REQ was still settling. PROP-NEG-04 survives for the same reason: it enumerates the three metrics it means instead of saying "harvested metrics".
+- **The archive measurements were right before FSPEC corrected itself.** FSPEC v1.7's BR-16 correction was "two → four" out-of-catalogue cross-reviews. PROPERTIES has said "exactly **four**" since v1, in both PROP-RR-05 and the real-path fixture table, and never attributed a `harvested` verdict to `pdlc-advisory-wave-gate/` — which is precisely the misreading FSPEC v1.7 and TSPEC v1.6 had to walk back. `git ls-tree` at HEAD confirms 62 and 4. The document measured rather than inherited, and that is why the upstream correction landed *toward* it.
+- **The contested leg was already the right choice.** Faced with a REQ/FSPEC disagreement it had no authority to settle, PROPERTIES asserted its immediate upstream (BR-16) — independently the same call TSPEC §4.3 argues for at length. My F-02 asks only that the choice be *labelled*; the choice itself needs no defence.
+- **PROP-RATIO-06 covering AT-15's new leg before AT-15 named it** is the strongest signal in this round. FSPEC added the clause to close "the BR-16 half no test reached"; PROPERTIES had already pinned that half, at the right level, in the right task, with the mutant named ("BR-06 and BR-14 land in different metrics"). Properties written from the mechanism rather than from the AT list are what make an upstream addition a bookkeeping edit instead of a coverage hole.
+- **PLAN's v1.2 rewrite did not dangle a single trace.** T-04, T-05, T-06, T-07, T-10, T-18 and T-26 all changed contents this round (T-09 gained the symbolic-link production leg, T-10 gained the boundary-anchored matcher, T-23 gained a ninth site); every id PROPERTIES cites still resolves, and `statsRealPaths.test.js` is still manifest-declared new for wave 9. The level distribution and file ownership rows need no edit.
+- **The first implementation waves landed against these properties without amending them.** Seven workflow suites and three engine suites exist at HEAD under the names PROPERTIES and PLAN agreed on. A properties document that survives contact with its own implementation waves untouched is the outcome this phase is for.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The document did not change; its upstream did, in four places, and I re-derived each against HEAD rather than trusting the v2 record. Nothing PROPERTIES pins became false. The halt-metric rewrite, the BR-16 count correction and the PLAN renumber all pass clean, and the one FSPEC addition that looked like a coverage hole turned out to be already covered by PROP-RATIO-06.
+
+Two Medium findings remain, both bookkeeping and neither gating:
+
+- **F-01** — three line edits so the AT-15 / BR-16 matrix rows and PROP-RATIO-03's transcription show the coverage that already exists. Worth doing before T-04 is written, since T-04 is where AT-15's legs become tests.
+- **F-02** — a §Gaps row marking PROP-RATIO-08 leg 4 provisional on the REQ/FSPEC reconciliation, and a Traces correction. Pure record-keeping on a dispute TSPEC §8.3 already owns.
+
+No High finding, old or new. Under this round's decision freeze I opened no new decision; the one item I would otherwise have raised is recorded as `DEFERRED:` above.
+
+**Upstream defect raised, not folded into this verdict.** REQ-STATS-06 v1.6's "survivor" rule and FSPEC BR-16 v1.7's "reports `harvested`" are in direct contradiction on the `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file. TSPEC §8.3 already routes it; it is repeated here because it has now reached a third document as a live assertion (PROP-RATIO-08 leg 4), and the phase should not converge PROPERTIES while believing that leg is settled.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
