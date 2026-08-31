@@ -161,10 +161,6 @@ None arising from this delta. O-1 (token spellings and precision) and O-3 (how b
 obtained) remain open to the TSPEC as they were at my v11 approval, and neither was narrowed or
 widened by this edit.
 
-## Acceptance Tests
-
-## Open Questions
-
 ## Positive Observations
 
 ## Recommendation
