@@ -453,6 +453,63 @@ by way of the value the other mode also reads. It is also what makes REQ-STATS-0
 checkable — §6.3 specifies the oracle that derives the human table's metric set and the JSON key set
 from the same `StatsReport` and asserts they correspond.
 
+#### 4.2.1 The emitted JSON key sets (BR-21, BR-23, BR-24, BR-30)
+
+`StatsReport` is an internal value, not the wire format. `renderJson` is a **projection**, not a
+serialisation of the report: `FeatureStats.feature` and `FeatureStats.dir` exist for the human
+header (BR-17) and for BR-02's live-versus-archived preference, and neither reaches the document.
+BR-21 says so explicitly ("the feature name is not echoed as a top-level key"), and BR-23's fleet
+entry is "BR-21's document minus its hoisted `schemaVersion`", so `dir` is excluded there too.
+Serialising `FeatureStats` directly would therefore break REQ-STATS-02's set-equality on day one;
+this contract exists so that no implementer reaches for `JSON.stringify(report.result)`.
+
+```ts
+const SCHEMA_VERSION = 1;                     // BR-24: an integer, 1 at first release
+
+type MetricObject = {                         // shared by both success shapes
+  reviewRounds: ReviewRounds; dodRounds: DodRounds;
+  halts: HaltEntry[];        byteRatio: ByteRatio;
+};
+
+/** BR-21 — exactly five top-level keys, set-equal and no longer. */
+type SingleDocument = { schemaVersion: number } & MetricObject;
+
+/** BR-23 — exactly three. A `features` value is a MetricObject or `{gap}`. */
+type FleetDocument = {
+  schemaVersion: number;
+  features: Record<string, MetricObject | { gap: string }>;
+  unclassified: string[];                     // BR-26's entries; [] when there are none
+};
+
+/** BR-30 — exactly three; `error` has exactly `reason` and `message`. */
+type ErrorDocument = {
+  schemaVersion: number;
+  error: { reason: "not_found" | "no_docs_root" | "unreadable_feature"; message: string };
+  feature: string | null;                     // null only on a fleet-mode root failure (D-9)
+};
+```
+
+The emitted key sets, stated once here and asserted in §6.3 against a **literal transcription** of
+the FSPEC's own words — never derived from the type under test, which would agree with a wrong
+implementation:
+
+| Document | Top-level keys | Count | Source |
+|---|---|---|---|
+| single-feature success | `schemaVersion`, `reviewRounds`, `dodRounds`, `halts`, `byteRatio` | 5 | BR-21, BR-24 |
+| fleet success | `schemaVersion`, `features`, `unclassified` | 3 | BR-23, BR-24 |
+| refusal, either mode | `schemaVersion`, `error`, `feature` | 3 | BR-30 |
+| one fleet `features` entry | the four metric keys, **or** the single key `gap` | 4 or 1 | BR-23 |
+
+`schemaVersion` is a `renderJson` obligation, not a `StatsReport` or `FeatureStats` field. Putting
+it on the report would move a JSON-only concern into the value the human renderer also reads, and
+would force §6.3's "both modes carry the same metric set" oracle to carry a permanent exception for
+it. It is hoisted identically in all three documents (BR-30: "hoisted exactly as BR-21 hoists it"),
+so a consumer reads the version before it branches on shape. Its value is the module constant
+`SCHEMA_VERSION`; BR-24's increment rule — removing a released field or changing its meaning
+increments it, adding a field inside a metric's value does not — is what REQ R-5's stability
+guarantee rests on. Key order inside each document is this table's order, fixed by object-literal
+construction rather than by iterating a set (BR-18, and PROP-3 in §6.6).
+
 ### 4.3 How each metric is computed
 
 Given `listing = io.listDir(dir).filter(e => !e.isDirectory)` — one call, reused by all four
