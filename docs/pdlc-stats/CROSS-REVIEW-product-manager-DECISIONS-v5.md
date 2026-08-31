@@ -57,3 +57,40 @@ Thirteen claims checked; eleven hold, two do not, both of them counts rather tha
 |----|---------|
 | Q-01 | On F-01: is `escalation-view` still the right probe for the *engine* `lib/` class at all? It probes the vendored workflow class; B's cost lives in `LIB_MODULES_AT_HEAD`, a different class that the probe reaches only incidentally, through files that happen to hold both. That is why B's price has been derived by reading rather than by query in all five rounds, and it is a live question for K-9's promoted rule, not for this feature's chosen option. |
 | Q-02 | On F-02: does the tenth transcription deserve a name in the constraint, not just in K-9's task? *Non-falsifying co-change obligation* is a useful category — an edit that is owed, drifts silently, and is caught by review or not at all — and this feature is the second to hit one. Naming the category in `DOMAIN-CONSTRAINTS.md` would let the next PLAN author ask for the list rather than rediscover it. |
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor |
+|----|----------|------------|----------|----------------|
+| F-01 | Medium | delta | local | *Corrected cost claim* / option table row B — B priced at four sites, omitting `loop-distribution.test.js:186`'s second `15` |
+| F-02 | Medium | delta | local | *What the sweep found* — nine transcribers plus "the other fifteen" does not close over 25 hits |
+
+FINDING: Medium | delta | local | Corrected cost claim / option table row B | Option B is priced at four sites; `loop-distribution.test.js:186`'s `- (4 + 15 + 1)` is a fifth occurrence of the engine `lib/` class size, so under B `vendoredClassSize` computes 6 and P7-02's `assert.equal(…, 5)` plus both document oracles red. Verdict unaffected — B's disqualifier is the absent coverage gate — and the chosen option A needs no edit at that line.
+FINDING: Medium | delta | local | What the sweep found | The stated partition of the 25 sweep hits is nine transcribers plus "the other fifteen", which sums to 24; the complement is sixteen, and two of those (`pdlc/README.md`, `lib/escalation-view.mjs`) are prose and the probed module itself, not importers.
+
+## Positive Observations
+
+- **The round fixed the instrument, not just the number it produced — for the second round running.** I raised a missing tenth transcription and a tool that drops NUL-containing files. The revision could have added a row and swapped a command. Instead it identified that both of my findings had a *single* cause — a sweep scoped to two `__tests__/` directories — and restated the sweep over tracked sources, which then independently surfaced the mispricing of option B that no reviewer had asked about. That is the difference between closing findings and closing the class they came from.
+- **It published a correction that makes its own chosen option look worse, and said whose error it was.** Option B moves three → four sites, narrowing the gap the document uses to justify A, and the paragraph names v1.3's own claim as the wrong one (*"the last of which this document itself got wrong in v1.3"*) rather than quietly restating. It then explains why the miss was structural rather than careless — a test-directory query could not have surfaced a production script — which is the part a reader can learn from. Verified at HEAD: `publish-preflight.mjs:200-219` is a deliberate second copy, and PF-4 runs it at publish time, so the correction is materially right and not merely conservative.
+- **The `__tests__/`-scope note picks the strongest possible worked example.** Of the files a narrow query missed, `publish-preflight.mjs` is the one that runs at publish time rather than in CI — so the miss's cost is a red *after* the tag is cut. Choosing that file as the example K-9's constraint carries forward means the next reader inherits the argument, not just the rule.
+- **K-9's falsifier cell answers TE Q-02 with an asymmetry rather than a preference.** *"K-3's pair is under `Unit tests (ubuntu-latest, node 20)` on both sides, so a partial edit reds one check twice rather than two checks once"* — a task-boundary rule an implementer can apply to the next pair without asking. I verified both halves of K-3 sit in that one suite and that `run.test.js` and `learningsPremises.test.js` straddle two.
+- **The README obligation is placed where it will actually be done, and honestly labelled.** Declining to make it a tenth site-table row keeps the table's meaning intact (every row reds on a partial edit) while still putting the edit in K-9's task and in *Standing costs accepted*, flagged as corrected by review rather than by a red. Both reviewers reached the same placement from opposite directions and the document records that, which is the right way to close a two-reviewer disagreement.
+- **v1.4's changelog is a genuine reading aid.** It separates *scope*, *tool* and *the one cost claim that depended on both*, and states what did **not** move (option A's nine sites, the site table, K-1's partition, DEC-STATS-01/02/03). A reviewer arriving at iteration 5 can find the delta without diffing.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High findings. The three decisions are unchanged and remain the right calls, and both of my v4 Mediums plus the Low are closed by a mechanism rather than by a patch. The two findings above are accuracy items on material this round introduced: neither changes the option chosen, neither changes a K-row, and neither affects the chosen option's implementation obligations — under A, `loop-distribution.test.js:186` derives correctly with no edit and K-8 already owns the assertion beneath it. Phase D is not blocked.
+
+Suggested next touch of the document, in priority order:
+
+1. **F-01 (Medium).** Price option B at **five** sites, naming `loop-distribution.test.js:186`'s `- (4 + 15 + 1)` and the P7-02 assertions it reds; add the *occurrence, not file* clause to K-9's promoted constraint text.
+2. **F-02 (Medium).** Restate *What the sweep found*'s partition so it closes over 25 rather than 24, with `pdlc/README.md` and `lib/escalation-view.mjs` explicitly placed.
+
+Unchanged and not re-reviewed: DEC-STATS-01's Context and chosen option, DEC-STATS-02, DEC-STATS-03, the site table, K-1, K-2, K-4, K-5, K-6, K-7, K-8, the *What these decisions do not decide* section, and the project-level decisions.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
