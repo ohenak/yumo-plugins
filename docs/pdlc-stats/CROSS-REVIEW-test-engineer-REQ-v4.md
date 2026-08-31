@@ -29,7 +29,48 @@ All four of my v3 findings (F-01 Medium, F-02/F-03/F-04 Low) are resolved by thi
 
 ## Independent re-read
 
-_(filled below)_
+The REQ at HEAD is necessary but not sufficient: I re-read the whole document as a compression of
+its upstream sources and re-checked every existing-behaviour claim the edit relies on.
+
+**Claims verified against source and disk (all hold):**
+
+- *"The driver builds that path from a phase it already holds and classifies no `POSTMORTEM-*`
+  basename"* — true of the driver: `orchestrate-dev.js:8618` / `:9402` construct the path; the only
+  `POSTMORTEM-*` **classification** anywhere in the workflows is
+  `consolidate-learnings.js:1684`, a different component and outside C-5's stated fidelity target.
+  Accurate as written; see F-02 for the precision note this leaves for FSPEC.
+- *"the grammatical-but-out-of-catalogue names the pipeline writes"* — `REVIEW` passes
+  `CROSS_REVIEW_RE` (`:10095`) and is then rejected against `REVIEW_DOC_TYPES` (`:10102-10110`),
+  reason `bad_doc_type`. Four such files exist under `docs/completed/pdlc-advisory-wave-gate/`.
+- *"harvest deletes cross-reviews and DoD reviews while post-mortems survive"* (REQ-STATS-06's
+  rationale, load-bearing for the harvested predicate and for REQ-STATS-05 having no harvested
+  state) — confirmed both in the skill (`harvest-learnings/SKILL.md` steps 3, 8 and checklist line
+  129 delete only `CROSS-REVIEW-*` and `CODE_REVIEW-*`) and on disk: nine of thirteen harvested
+  features under `docs/completed/` still carry `POSTMORTEM-*` files (e.g.
+  `pdlc-engine-distribution` 4, `pdlc-headless-engine` 4, `pdlc-learnings-injection` 3). So
+  REQ-STATS-05 legitimately needs no harvested state, and R-6's mitigation is complete as scoped.
+- **REQ-STATS-07's exclusion set is set-equal-assertable at HEAD.** The named eight
+  (`_queue`, `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded`,
+  `completed`) are exactly the non-feature directories under `docs/` today; the remaining thirteen
+  are feature directories. The "directories only" rule is also fixture-backed — `docs/` currently
+  holds one loose file (`PLAN-pdlc-integration-boundary-gates.md`) that the rule must not report as
+  a feature, and `docs/completed/REQ-completed.md` is the phantom-`completed` case the AC names.
+- **The `RESOLVED:` narrowings still hold** (re-checked from v3): literal token matched
+  case-sensitively (`:7604`), only the captured value lowercased (`:7611`).
+
+**Testability of the edited ACs.** Each edited criterion still yields one expected output per
+input, and each new clause is a fixture I can name in this repo:
+REQ-STATS-03 → the four `-REVIEW-v{N}` files (malformed, counted in no row);
+REQ-STATS-04 → `deriveDodRoundIndex`'s grammar (`pdlc-headless-engine`: no surviving `CODE_REVIEW-*`
++ LEARNINGS ⇒ `harvested`);
+REQ-STATS-06 → `pdlc-headless-engine` and `pdlc-loop-economics` now agree on `harvested` under one
+reading rather than two;
+REQ-STATS-07 → a readable-but-empty directory is a normal zero row, an unreadable one is a gap row,
+exit 0 either way;
+REQ-STATS-09 → root-absent is no longer this AC's case, so its not-found test and EC-09's root test
+cannot both claim the same fixture.
+No clarifying question is needed to write a black-box acceptance test for any of them, which is the
+altitude bar for a REQ.
 
 ## Positive Observations
 
