@@ -103,7 +103,66 @@ the same shape on the `CODE_REVIEW-` side.
 
 ## Edge Cases and Error Scenarios
 
+§7.3's settled-record table (E-1…E-5) is the section most exposed to a REQ version moving, because
+every row asserts *"closed at REQ v1.4"*. I re-checked each row's claim against REQ v1.7 bytes, since
+a row is only settled while the upstream sentence it credits still exists:
+
+- **E-1** — REQ-STATS-04/06 harvested predicates scoped to the documented basename grammars. Still
+  true, and the erratum strengthens it: REQ-STATS-06 now states the file-set identity explicitly.
+- **E-2** — C-5 carves out post-mortem discovery. C-5 (§4) is byte-identical; REQ-STATS-05's marker
+  fidelity clause is byte-identical.
+- **E-3** — REQ-STATS-03 decides the `-REVIEW-v{N}` label as malformed, one label standing. Still
+  present verbatim upstream, and the erratum's rationale cites this row's logic as one of its three
+  grounds, so the two now agree rather than merely coexist.
+- **E-4** — REQ-STATS-09's *Given* scoped to a present, readable `docs/` root. Untouched.
+- **E-5** — REQ-STATS-07's readable-but-empty directory is a normal row, not a gap. Present verbatim
+  in REQ-STATS-07 at HEAD.
+
+No row of §7.3 became stale, and none should have been reopened: the erratum resolved a
+REQ-internal contradiction, not a REQ-vs-FSPEC one.
+
+EC-13 (LEARNINGS present **and** spec bytes zero → `harvested`, not `n/a`) depends on BR-16 winning
+the precedence race against BR-15. The erratum widens the set of inputs that reach BR-16's true
+branch; it does not touch the precedence, and EC-13's stated expected value is unchanged. EC-07
+(LEARNINGS present, no cross-reviews) is likewise unaffected — that input class was already
+harvested on both sides.
+
 ## Acceptance Tests
+
+No acceptance test needs to change, and — more usefully for the next phase — **the test that would
+have caught the old REQ/FSPEC disagreement already exists and now has upstream backing.**
+
+**AT-17 leg 4** is that test. Its fourth directory holds `LEARNINGS-{feature}.md` and intact
+`CODE_REVIEW` files, and its only `CROSS-REVIEW-` basenames are out-of-catalogue
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md`; the *Then* asserts that directory reports `harvested`, "not a
+measured ratio, because files whose bytes BR-14 refuses are equally files BR-16 does not count as
+remaining". Read against REQ v1.6 that leg pinned a behaviour the REQ's survivor clause denied — a
+test asserting the opposite of its own upstream criterion. Read against REQ v1.7 it is a direct
+transcription. The oracle is positive-presence (the exact token `harvested`), not an absence-only
+`!= measured`, so it is falsifiable in the direction that matters: an implementation that globbed
+`CROSS-REVIEW-*` would compute a ratio and go red here.
+
+**AT-15** remains the byte-agreement oracle and is unaffected in substance: its neither-list includes
+the out-of-catalogue cross-review "whose bytes reach neither side, so an implementation that globs
+`CROSS-REVIEW-*` into the process total fails here (BR-14, BR-16)". REQ v1.7's "contributes no
+process bytes" is now the upstream sentence AT-15 transcribes; before the erratum, AT-15 was
+consistent with REQ-STATS-06's *first* half and contradicted by its *last* sentence.
+
+**AT-09** pins the malformed disposition on the real
+`docs/completed/pdlc-advisory-wave-gate/` directory, naming all four basenames. Its fixture is a
+live repository directory, so I re-verified the count at HEAD rather than trusting the document: four
+files, exactly the names AT-09 lists. The erratum does not move AT-09's expected values because
+malformed classification (REQ-STATS-03) was never the clause in dispute.
+
+**AT-16 / AT-12** (measured ratio, DoD harvested) are untouched: neither exercises the
+out-of-catalogue input class.
+
+One consequence worth naming for the downstream reader, since it is a coverage fact rather than a
+defect: with REQ v1.7 landed, AT-17 leg 4 and AT-15's neither-list are now the **only** two oracles
+standing between the implementation and a `CROSS-REVIEW-*` glob, and they attack it from opposite
+sides — one on the verdict, one on the byte total. Both are unit-reachable from fixture directories.
+That is adequate coverage; PROPERTIES already carries PROP-RATIO-08 leg 4 as the property-level
+counterpart, so no new test is owed by this cascade.
 
 ## Open Questions
 
