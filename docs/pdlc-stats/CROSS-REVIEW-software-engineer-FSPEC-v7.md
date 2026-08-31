@@ -55,15 +55,57 @@ edit nothing. None is High. Nothing here gates the phase.
 
 ## Linked Requirements
 
-_pending_
+The DEC-ERR-03 obligation is to re-read the upstream *as it stands now*, not as the item list
+describes it. Method and result:
+
+| Check | Command / anchor | Result |
+|---|---|---|
+| Upstream REQ identity | `sha256sum docs/pdlc-stats/REQ-pdlc-stats.md` | `60a516fb2ede…f1c9` |
+| v6 `UPSTREAM-STATE` anchor | `CROSS-REVIEW-…-FSPEC-v6.md` trailer | `60a516fb2ede…f1c9` — **match** |
+| REQ moved since v6? | `git diff 7ca956d0e HEAD -- REQ-pdlc-stats.md` | empty |
+| FSPEC moved this round? | `git diff 7ca956d0e HEAD -- FSPEC-pdlc-stats.md` | empty |
+| FSPEC tip | `git log -1 -- FSPEC-pdlc-stats.md` | `6e7985d14` = v6's `REVIEWED-COMMIT` |
+
+Both sides of the pin are frozen. There is no upstream drift for this confirmation to catch, and no
+delta edit to audit — a materially different situation from v6, where I had a nine-item, three-defect
+edit to verify.
+
+§2.1's coverage matrix — the section the routed item names — was therefore re-read on its own terms,
+as traceability. All nine REQ criteria (`REQ-STATS-01` … `REQ-STATS-09`) carry a non-empty surface,
+rules and acceptance-test cell; no row is empty, which is the property §2.1 declares about itself
+("no row is empty; a criterion with no surface would mean the FSPEC under-specifies the command").
+`REQ-STATS-09`'s row still carries its `D-9` marker. §2.2's constraint coverage still discharges
+`C-1`…`C-5`, and §2.3 still maps `G-1`…`G-4`. Nothing in §2 needs the site list the item asks for,
+and nothing in §2 is stale against REQ v1.4.
 
 ## Behavioral Flow
 
-_pending_
+Re-read §3.1–§3.4 against REQ v1.4. Flow A (`pdlc stats {feature}`), Flow B (fleet mode), Flow C
+(`--json`) and §3.4's read-only flows are unchanged and remain faithful to the criteria they
+discharge. The v6 confirmation walked these in detail after a substantive edit; with the bytes
+frozen and the upstream frozen, that verification stands unchanged and I do not re-litigate it.
+
+One point worth re-affirming because the routed item brushes against it: nothing in §3 describes how
+`lib/stats.mjs` is packaged, vendored or enumerated. That is correct. The flows describe what an
+operator observes; the module's placement and its co-change set are DEC-STATS-01's subject and the
+PLAN's obligation. The absence the item reports is not an absence in this layer.
 
 ## Business Rules
 
-_pending_
+§4.1–§4.5 re-read against REQ v1.4. The three defects closed in the v6 round remain correctly
+closed:
+
+- **BR-11** still states the harvested predicate over `CODE_REVIEW-{feature}-v{N}.md`'s *version
+  grammar*, matching REQ-STATS-04 at HEAD, and still decides the non-matching leftovers explicitly.
+- **BR-16** still states its predicate over the documented basename grammar, agreeing with BR-14's
+  numerator and REQ-STATS-06.
+- **BR-25** still names both the directory and the loose-file illustration.
+
+Two inherited defects still sit in this section and are carried forward as findings below: **BR-27**
+(§4.5) attributes a quoted string to `REQ-STATS-07` when it lives at `G-3`, a goal, and frames its
+narrowing as a live erratum that REQ-STATS-07 at HEAD no longer disputes; and **BR-06** (§4.2)
+still calls the `-REVIEW-` malformed disposition "a wording defect of the upstream criterion" after
+REQ-STATS-03 decided that case in `D-8`'s direction.
 
 ## Edge Cases and Error Scenarios
 
