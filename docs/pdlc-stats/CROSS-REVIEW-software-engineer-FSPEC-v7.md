@@ -245,3 +245,8 @@ record of upstream disagreement was not updated when the upstream agreed.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 3, "low": 2}
+
+APPROVAL-HASH: sha256:0b8864d624cad46274ccb98a80e5da2672370bead258311446f6b482918017b0
+APPROVAL-HASH-NORMALIZED: sha256:0b8864d624cad46274ccb98a80e5da2672370bead258311446f6b482918017b0
+REVIEWED-COMMIT: 43e51cf131bb69cbf42eccb983c23e042282124c
+UPSTREAM-STATE: REQ sha256:60a516fb2ede925b2428dca1bc8e4e61587c52827ea55b9e4965ea57b9a8f1c9
