@@ -61,6 +61,24 @@ have.
 
 ## Verification
 
+What I re-measured at HEAD rather than taking from either document.
+
+- `shasum -a 256` on the three upstreams matches the dispatch pins: REQ `5f3e8051…`, FSPEC
+  `c7d2c832…`. My v2 approval pinned `TSPEC 512a9fcf…`; HEAD's TSPEC is `a06a6032…`, confirming the
+  cascade is real and single-upstream (REQ and FSPEC also moved since `628cf244`, but they moved
+  *before* the pins this dispatch carries, and v1.6/v1.7 absorbed them — the TSPEC is the only
+  upstream whose absorbed state changed relative to my PLAN approval).
+- `git diff --stat 628cf244..HEAD` on the TSPEC: 153 insertions, 22 deletions across §1, §2.1, §4.3,
+  §6.4, §7.3/RK-1 and §8.3 — the six passages walked in `## Batches`. No other section moved, so
+  no PLAN claim outside those six could have been invalidated by this cascade.
+- PLAN v1.1 is byte-identical to the version I approved apart from a one-line change (`git diff`
+  shows `1 insertion, 1 deletion` on the PLAN across the same range), so this is a genuine
+  own-bytes-unchanged confirmation and the delta re-review protocol's "scan only changed sections"
+  rule applies to the *upstream* diff, which is what I scanned.
+- The PLAN's seven-entry `c8.include` measurement, its ten-row site table and its "three `lib/`
+  modules at HEAD" claim were all re-confirmed against the tree in my v2 review and none of them is
+  disturbed by the TSPEC delta; D-1 in fact retires the last disagreement between the two documents.
+
 ## Delta-Confirmation Findings
 
 ## Questions
