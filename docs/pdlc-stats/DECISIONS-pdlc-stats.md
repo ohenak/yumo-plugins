@@ -468,13 +468,35 @@ state, not the function.
 The identity oracle is structurally blind to this trigger's arrival: adding a module-level cache
 inside `deriveRoundWindow` changes no reference, so `===` stays true while the property it stands
 for is gone — and the recording double of TSPEC §6.1 wraps the real parsers, so it inherits the
-shared state rather than exposing it. The trigger therefore carries a **named detector**: a purity
-conjunct on the four exports — call each classifier twice with the same input in a fresh module
-instance and assert deep-equal, non-aliased results, so a cache or a mutable that makes call *n*
-depend on call *n−1* goes red. That conjunct belongs with the identity oracle in TSPEC §6.4 and is
-routed there as an erratum rather than being restated as a rule of this document (K-6). Until it
-lands, the residual is explicit and is listed under Standing costs accepted: the trigger is
-observable only by review of `orchestrate-dev.js`.
+shared state rather than exposing it. The trigger therefore carries a **named detector**, and the
+erratum routing it to TSPEC §6.4 **has landed**: §6.4 at TSPEC v1.4 carries the conjunct, so this is
+a settled shape, not an outstanding request.
+
+**The detector is split on return type, and this document follows §6.4 rather than restating it
+(K-6).** Through v1.4 this document specified one shape for all four exports — twice-called in a fresh
+module instance, results `deepEqual` **and non-aliased**. That is right for the three
+**object-returning** classifiers (`parseReviewFilename`, `deriveRoundWindow`, `parseResolvedMarker`),
+where a memoised return is distinguishable from a recomputed one by reference. It is **wrong for
+`deriveDodRoundIndex`**, which is typed `=> number`: two equal numbers are `===`, so a non-aliasing
+assertion over it reds against a *correct, wholly pure* implementation. Specified as this document
+had it, the named detector would have failed the implementation it exists to protect.
+
+§6.4's repair is the one to adopt — and note it is a repair, not a deletion, because deleting the
+conjunct would have removed `DEC-STATS-03`'s only mechanical detector. `deriveDodRoundIndex` gets an
+**A-B-A** conjunct in the same fresh instance: call on input *A*, then on a different input *B* whose
+correct answer differs, then on *A* again, asserting the third result equals the first.
+
+**What A-B-A does and does not falsify, stated rather than overclaimed.** A memo table is invisible
+to it — a correct memo returns the right number. What it *does* catch are the state shapes the trigger
+actually names for a round-index derivation: an accumulating high-water mark, a ledger carrying the
+previous call's maximum forward, or any `let` retained across calls, each of which makes the third
+result differ from the first. That is the falsifiable half available for a primitive return. The
+consequence for this document is a **narrower residual, not a closed one**: the memo-shaped half of
+the trigger remains undetected on `deriveDodRoundIndex` and stays under *Standing costs accepted* and
+*Residuals*, observable only by review of `orchestrate-dev.js`.
+
+The fresh instance matters for both shapes: a module-level cache populated by an earlier test in the
+same worker would make the first call itself a cache hit and both conjuncts would pass vacuously.
 
 ## Consequences
 
@@ -533,7 +555,7 @@ one does not.
 | Residual | Why it is not closed today | Disposition |
 |---|---|---|
 | **A second `StatsParsers` construction site** voids DEC-STATS-03's identity oracle without failing it (K-4). REQ C-5's enforcement would degrade to human vigilance at exactly the seam the decision exists to protect | TSPEC §6.4's identity oracle ranges over `statsParsers()` and the bundle `cmdStats` hands `runStats`; a construction elsewhere is outside both conjuncts | **Closed by erratum**: the construction-site count conjunct in K-4, routed to TSPEC §6.4. Open only until that row lands |
-| **The driver exports gaining state** is invisible to every conjunct in the design — reference identity survives a cache, and the recording double inherits the shared state rather than exposing it | Reference identity is chosen because it is total over inputs; totality is what makes it blind to the guard's own precondition | **Closed by erratum**: the purity conjunct named in DEC-STATS-03's trigger, routed to TSPEC §6.4. Until it lands, the trigger is observable only by review of `orchestrate-dev.js` |
+| **The driver exports gaining state** is invisible to every conjunct in the design — reference identity survives a cache, and the recording double inherits the shared state rather than exposing it | Reference identity is chosen because it is total over inputs; totality is what makes it blind to the guard's own precondition | **Closed for three of four exports, narrowed for the fourth.** The purity conjunct has landed in TSPEC §6.4 (v1.4) and closes this for the object-returning classifiers by non-aliasing. `deriveDodRoundIndex` returns a `number`, where non-aliasing is meaningless, so it carries an **A-B-A** conjunct instead: accumulating state (high-water mark, carried-forward ledger, retained `let`) reds, a **memo table does not**. The memo-shaped half of the trigger on that one export stays open, observable only by review of `orchestrate-dev.js` |
 | **`PK-26`'s existence as a row in the sibling TSPEC §5.4 table (K-7)** has no mechanical falsifier. The count half **does**: `loop-distribution.test.js`'s P7-02 document-oracle reads both completed-feature documents off disk and matches their member-count sentences against the class size it derives from `tspecPackedCount` at test time (*"derived from the live constant, never compared against a literal transcribed here"*), so a helper amended without the documents is red. What that oracle greps is the two **sentences**, not the `PK-*` rows above them, so a counts-only edit that never adds the `PK-26` row is green | The oracle was built to close the count window (`pdlc-engineering-loop`'s PLAN records it as *"now closed by an oracle, not by argument"*); row-level structure was outside its brief | **Accepted, and narrower than the first draft of this row claimed** — that draft asserted the document half had no falsifier at all, which is false at HEAD and would have sent a DoD reviewer past the one guard that exists. What remains is one missing row, discharged by K-7's single owning task and by review. Note the coupling K-8 carries: the oracle greps the word the ternary derives, so K-7's prose and K-8's word map are one change or the check is red |
 
 ### Relationship to project-level decisions
