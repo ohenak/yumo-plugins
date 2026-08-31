@@ -203,7 +203,10 @@ error, and a value flag with no value is a usage error — the same closed-flag-
 existing commands have (`FLAGS_BY_COMMAND` / `validateFlags`, `pdlc/engine/bin/cli.mjs`), so
 `pdlc stats --dry-run` is refused rather than ignored. A second positional is a usage error: two
 feature names have no defined meaning, and silently taking the first would report on a feature the
-operator did not ask about.
+operator did not ask about. `stats` takes the closed-flag *mechanism* the existing commands use, not
+their flag *lists*: it deliberately does not join the `--plugin-root` / `--allow-api-key-billing`
+common set those commands carry, because neither has meaning for a read-only report, so
+`pdlc stats foo --dev` is a usage error even though `pdlc doctor --dev` is not.
 
 **BR-02 (directory resolution, preference not union).** A feature's artifact directory is
 `docs/{feature}/` when that directory exists, otherwise `docs/completed/{feature}/`. The two are
@@ -230,7 +233,10 @@ across every role. A type whose test-engineer review reached round 5 and whose p
 review reached round 3 reports `5` — not `8`, not a per-role breakdown, not a range. The
 un-suffixed basename form `CROSS-REVIEW-{role}-{DOCTYPE}.md` denotes round 1, identically to
 `-v1.md`; that equivalence is the driver's (REQ C-5), and it matters because historical branches in
-this repository carry the un-suffixed form.
+this repository carry the un-suffixed form. As in BR-10, the near-miss is named so an implementer
+does not rediscover it: the driver's round-window derivation answers "which round runs next" and so
+returns highest-plus-one, and `1` for a type with no files at all; this metric reports the highest
+round **present**, so a never-reviewed document type reads `0` or `harvested` (BR-08), never `1`.
 
 **BR-06 (malformed cross-reviews are excluded and reported, never folded in).** A basename that
 begins `CROSS-REVIEW-` but fails the grammar is excluded from every round count and reported
@@ -239,6 +245,17 @@ classification, not a rule this document restates. A file that does not claim th
 prefix — the feature's own REQ, LEARNINGS, POSTMORTEM, a `HANDOFF-PROMPT.md`, a
 `MUTATION-EVIDENCE-*.md` — is neither counted nor called malformed; it is simply not a cross-review
 (REQ R-1).
+
+Grammatical-but-out-of-catalogue basenames are included in "fails the grammar", and one of them
+occurs in this repository today: Phase CR writes `CROSS-REVIEW-{role}-REVIEW-v{N}.md` when its
+target has no document type, and the driver's own basename parse rejects that doc type as outside
+its six-type catalogue. Four such files sit in `docs/completed/pdlc-advisory-wave-gate/`. They are
+reported as malformed, by name, and contribute to no row — the driver's classification of those
+bytes, taken unchanged (REQ C-5), and REQ-STATS-03's disposition for it applied literally. That a
+pipeline-authored artifact lands in a list an operator reads as "malformed" is a wording defect of
+the upstream criterion, not a divergence introduced here; it is raised as an erratum against the REQ
+(§7.3) rather than resolved by inventing a third bucket, which would be an independent rule. AT-09
+pins the disposition on that real directory.
 
 **BR-07 (unmeasurable).** Where the artifact convention refuses a round for a document type — one
 role carrying two files that both claim round 1 — that document type reports `unmeasurable` and
@@ -255,7 +272,9 @@ of unreviewed ones, which is exactly the baseline REQ R-6 protects.
 
 **BR-09 (row set and order).** The review-rounds metric always carries one row per document type in
 the pipeline's cross-review doc-type catalogue — `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`,
-`DECISIONS` — in that order, in both modes. A fixed row set is what makes `harvested` and `0`
+`DECISIONS` — in that order, in both modes. That catalogue is the closed set the driver *validates a
+cross-review basename against*, which is what makes a row's round index the driver's own; it is not
+the set of spellings the pipeline can *write* (BR-06's `REVIEW` case). A fixed row set is what makes `harvested` and `0`
 expressible at all: a row set derived from the files present could not report a type whose files
 were deleted. Ordering is fixed so two runs over an unchanged tree produce byte-identical output.
 
@@ -278,12 +297,22 @@ reported per distinct phase that has a `POSTMORTEM-{phase}-{feature}.md` file, e
 `resolved` or `open` exactly as the pipeline's `RESOLVED:` marker rule classifies that file. This
 document states no marker-matching rule: case, duplicate markers and fenced-block placement are
 decided in one place (REQ C-5), and an unreadable or absent marker classifies as `open`, because
-that is what the driver's fail-closed reading yields. The basename grammar admits one post-mortem
-per phase per feature, so a phase never carries two conflicting entries.
+that is what the driver's fail-closed reading yields.
+
+Which files are post-mortems **is** this command's own match, and §1 says why that is not a C-5
+divergence: the driver constructs the path from a phase it already knows and never parses a
+listing, so there is no classification to inherit. The match is the artifact convention's documented
+form — a basename `POSTMORTEM-{phase}-{feature}.md` whose `{feature}` is exactly the feature being
+reported, its `{phase}` the segment between. The phase is taken as it appears; this command holds no
+catalogue of valid phase ids and rejects none (the driver's force-phase token list omits `I`, yet
+`POSTMORTEM-I-pdlc-headless-engine.md` exists on disk). Because that form admits at most one file
+per phase per feature, a phase never carries two conflicting entries.
 
 **BR-13 (no halts is zero halts).** A feature with no post-mortem file reports an empty halt set —
-never an error, never a missing metric, never a gap row. Halt entries are ordered by phase
-identifier, ascending, so output is stable across runs.
+never an error, never a missing metric, never a gap row. Halt entries are ordered
+lexicographically by phase identifier, ascending — stated because the phase ids on disk include a
+two-character id (`PR`) whose position depends on the choice, and BR-13's stability claim is
+checkable only once the collation is named.
 
 **BR-14 (ratio: which files are on each side).** The **spec** side is the byte total of whichever of
 `REQ-{feature}.md`, `FSPEC-{feature}.md`, `TSPEC-{feature}.md`, `PLAN-{feature}.md`,
@@ -344,7 +373,13 @@ The block above is illustrative of layout and token spelling, not a fixture: the
 measurement of that directory.
 
 **BR-18 (fleet layout).** Fleet mode prints one row per feature: the feature name, one column per
-BR-09 document type, then DoD rounds, halt count, and the ratio. Features are ordered
+BR-09 document type, then DoD rounds, halts, the ratio, and a malformed count. Two reductions
+against the single-feature block are deliberate and are the only ones (D-7): the malformed
+*basenames* become a count, because a fleet row cannot carry a list, and the halt entries render as
+`{n} ({r} resolved)` rather than one line per phase. Both preserve the signal an operator scans for
+— that a round count is wrong rather than merely absent, and that a halt is still open — and neither
+drops a metric. Unclassified entries (BR-26) print in the same list, in the same order, marked as
+such in place of the metric columns, exactly as gap rows do. Features are ordered
 lexicographically by name so two runs over an unchanged tree agree byte for byte. Gap features are
 printed in the same list, in the same order, with the reason in place of the metric columns and a
 visible marker — never in a separate section an operator could skim past, and never omitted
@@ -359,8 +394,11 @@ without either re-deriving the vocabulary; REQ O-1 assigns that choice to this d
 
 ### 4.4 JSON rendering
 
-**BR-20 (stdout carries the document and nothing else).** In `--json` mode, stdout is exactly one
-well-formed JSON document. Progress notes, warnings and error text go to stderr in both modes, so a
+**BR-20 (stdout carries the document and nothing else).** In `--json` mode, on every path that
+produces a report or a not-found result, stdout is exactly one well-formed JSON document. The one
+path that produces neither is a usage error, where stdout is empty (EC-08, BR-01): the command has
+not accepted the invocation, so there is nothing it could be a report *of*, and a caller that
+mis-spelled a flag learns it from exit 1 and stderr rather than from a document body. Progress notes, warnings and error text go to stderr in both modes, so a
 caller can parse stdout unconditionally. The human table never appears in JSON mode, and the JSON
 document never appears in human mode.
 
@@ -373,8 +411,11 @@ with the printed metric set.
 
 **BR-22 (states ride inside their metric's value).** `harvested`, `unmeasurable`, `n/a` and the
 malformed list are all carried **within** the value of the metric they belong to — never as sibling
-top-level keys, which would widen the schema silently as states are added. Each metric's value is
-an object carrying a `state` field alongside its measurement:
+top-level keys, which would widen the schema silently as states are added. Each metric that can hold
+a non-numeric state — `reviewRounds` per document type, `dodRounds`, `byteRatio` — has an object
+value carrying a `state` field alongside its measurement. `halts` is the exception and needs no
+state: BR-13 makes emptiness expressible as the empty array, so its value is an array of per-phase
+entries, as the example below renders it.
 
 ```json
 {
@@ -400,8 +441,11 @@ consumer reads a fixed shape and distinguishes states by the `state` field alone
 the `n/a` token, with `ratio` `null`; `processBytes` and `specBytes` are still reported in the
 `unavailable` state, since they are what explains it.
 
-**BR-23 (fleet document, and the gap discriminant).** The fleet JSON document has exactly two
-top-level keys: `schemaVersion` and `features`. `features` maps each discovered feature name to
+**BR-23 (fleet document, and the gap discriminant).** The fleet JSON document has exactly three
+top-level keys: `schemaVersion`, `features` and `unclassified`. `unclassified` is an array of
+directory names — BR-26's entries, empty when there are none. It is a sibling of `features` rather
+than an entry inside it precisely because an unclassified directory is *not* a discovered feature:
+giving it a `features` entry would assert the thing BR-26 exists to deny. `features` maps each discovered feature name to
 either the four-metric object (BR-21's document minus its hoisted `schemaVersion`) or, for a gap
 feature, an object whose single key is `gap`, a string naming the reason. Key presence is the
 discriminant, so a consumer never has to distinguish a gap by a sentinel value inside a metric.
@@ -426,8 +470,10 @@ against the non-feature directories present at the `docs/` root. A directory add
 belongs on neither list surfaces as an unclassified entry in the report rather than silently
 joining the feature list with meaningless metrics or silently vanishing from it.
 
-**BR-27 (gap rows are rows).** A feature whose artifacts are missing or cannot be read is reported
-by name with a reason and does not affect the exit code. Fleet mode exits 0 whenever it produced its
+**BR-27 (gap rows are rows).** A feature whose directory **cannot be read** is reported
+by name with a reason. Missing artifacts are not a gap: a readable but empty directory is a normal
+row whose every metric reports its zero state (EC-03), because emptiness is a measurement and a gap
+row is the admission that no measurement was possible. A gap row does not affect the exit code. Fleet mode exits 0 whenever it produced its
 report; the only non-zero fleet exit is failure to read the `docs/` root itself.
 
 **BR-28 (read-only, on every path).** No filesystem write, no deletion, no directory creation, no
