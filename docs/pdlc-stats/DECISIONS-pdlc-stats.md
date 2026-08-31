@@ -319,8 +319,9 @@ not what BR-24's increment rule is. DEC-STATS-01 decides a file path, not any me
 
 ### Standing costs accepted
 
-- **Co-change surface roughly the size of the feature's own logic.** One ~300-line module costs five
-  enumeration edits and an amendment to a completed feature's frozen table. Accepted because every
+- **Co-change surface roughly the size of the feature's own logic.** One ~300-line module costs six
+  edit sites — five enumerations plus the test file that pins four of their sizes — and an amendment
+  to a completed feature's frozen table. Accepted because every
   alternative trades it for no coverage gate (B, C) or for a command that is broken on installed
   engines (D), and because the vendored class has already grown once by this exact route.
 - **A second consumer of four driver exports.** `parseReviewFilename`, `deriveRoundWindow`,
@@ -345,7 +346,7 @@ one does not.
 |---|---|---|
 | **A second `StatsParsers` construction site** voids DEC-STATS-03's identity oracle without failing it (K-4). REQ C-5's enforcement would degrade to human vigilance at exactly the seam the decision exists to protect | TSPEC §6.4's identity oracle ranges over `statsParsers()` and the bundle `cmdStats` hands `runStats`; a construction elsewhere is outside both conjuncts | **Closed by erratum**: the construction-site count conjunct in K-4, routed to TSPEC §6.4. Open only until that row lands |
 | **The driver exports gaining state** is invisible to every conjunct in the design — reference identity survives a cache, and the recording double inherits the shared state rather than exposing it | Reference identity is chosen because it is total over inputs; totality is what makes it blind to the guard's own precondition | **Closed by erratum**: the purity conjunct named in DEC-STATS-03's trigger, routed to TSPEC §6.4. Until it lands, the trigger is observable only by review of `orchestrate-dev.js` |
-| **The sibling feature's document edits (K-7)** have no mechanical falsifier: `_tspec-packed-set.mjs` and the packed tarball can agree while `docs/completed/pdlc-engine-distribution/`'s TSPEC §5.4 and FSPEC §5.2 stay at five | The co-change rule lives in a source header comment; nothing compares a shipped enumeration to a completed feature's prose table | **Accepted.** Building that oracle is a repo-wide mechanism, not this feature's scope. Mitigated by K-7's single owning task and by the mitigation in Standing costs accepted below: every literal bound to `docs/completed/` is declared as a *measurement*, re-measured when the archive changes, never path-rewritten — the same discipline the carve-out inherits |
+| **`PK-26`'s existence as a row in the sibling TSPEC §5.4 table (K-7)** has no mechanical falsifier. The count half **does**: `loop-distribution.test.js`'s P7-02 document-oracle reads both completed-feature documents off disk and matches their member-count sentences against the class size it derives from `tspecPackedCount` at test time (*"derived from the live constant, never compared against a literal transcribed here"*), so a helper amended without the documents is red. What that oracle greps is the two **sentences**, not the `PK-*` rows above them, so a counts-only edit that never adds the `PK-26` row is green | The oracle was built to close the count window (`pdlc-engineering-loop`'s PLAN records it as *"now closed by an oracle, not by argument"*); row-level structure was outside its brief | **Accepted, and narrower than the first draft of this row claimed** — that draft asserted the document half had no falsifier at all, which is false at HEAD and would have sent a DoD reviewer past the one guard that exists. What remains is one missing row, discharged by K-7's single owning task and by review. Note the coupling K-8 carries: the oracle greps the word the ternary derives, so K-7's prose and K-8's word map are one change or the check is red |
 
 ### Relationship to project-level decisions
 
