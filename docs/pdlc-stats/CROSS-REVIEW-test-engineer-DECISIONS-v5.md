@@ -71,3 +71,61 @@ v4's F-02 was Medium because the printed number could not be reproduced by the p
 completeness could not be established at all. Here completeness *can* be established: the total is
 right, both sub-counts are right, and the unlisted file is named and dispositioned in the same
 section under a heading that says so. The cost is a re-read, not a re-derivation.
+
+## Positive Observations
+
+- **The round fixed the instrument's scope, not just the number it produced.** v4's High was that
+  `publish-preflight.mjs` was on the wrong side of B's bill *because* the sweep could not see
+  production code. The revision moves the file, re-prices B three → four, and then does the thing
+  that actually prevents recurrence: restates the sweep over tracked sources, promotes the scope
+  into K-9's constraint text, and carries `publish-preflight.mjs` as the worked example of why a
+  `__tests__/`-scoped query is the wrong shape. That is two consecutive rounds where the answer to a
+  finding was a better instrument rather than one more row.
+- **The NUL-byte note is a finding the review did not ask for, and it is real.** `grep -rln`
+  classifies `loopProperties.test.js` and `lib/escalation-view.mjs` as binary and drops them
+  silently; I reproduced the 25-vs-23 and 15-vs-14 divergence and diffed the sets to confirm the two
+  dropped files are exactly those named. The reasoning attached to it is the valuable part: both
+  dropped files happen to be importers, so nothing is wrong today, *and a dropped transcriber would
+  have been the exact miss this sweep exists to end*. Recording a near-miss that changed no number
+  is the harder discipline.
+- **K-3's new clause catches a message string that is already wrong at HEAD, by two.**
+  `coverageInstrumentation.test.js:264`'s title says "the include set is exactly the six modules the
+  feature owns" and `:261`'s comment says "REQUIRED_INCLUDES' three entries". `REQUIRED_INCLUDES`
+  holds **four** (`:37-42`, the fourth added by a CODE_REVIEW finding), so the literal is seven
+  today and eight after this feature. An implementer following that row literally would ship a
+  passing test whose title misstates its own assertion — precisely the stale-restatement generator
+  K-8's clause exists for, now applied consistently to K-3.
+- **The tenth transcription is refused a table row for the right reason.** The site table is a table
+  of falsifiers; `pdlc/README.md:231` has none, and the document says so instead of padding the
+  count to ten. I checked the claim rather than taking it: `documentOracles.test.js` does read
+  `pdlc/README.md`, but it is not among the sweep's 25 hits, so it cannot be pinning this member
+  list. Keeping the count at nine while still owing the edit under K-9 is the honest arrangement.
+- **K-9's answer to Q-02 is a real asymmetry, not a restatement.** K-3's pair sits inside one
+  required check (`pdlc/workflows/package.json` and `coverageInstrumentation.test.js` are both under
+  *Unit tests (ubuntu-latest, node 20)*), so a partial edit reds one check twice; K-9's pair straddles
+  the package boundary and reds two checks once. Using check-membership to decide task boundaries is
+  the right test-engineering criterion for that question.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High finding is open. v4's High is resolved on both halves — the corrected cost and the corrected
+scope — and I verified the correction independently rather than reading it: `publish-preflight.mjs`
+holds the second copy of the engine `lib/` class at `:205`/`:219`, B's four sites are the two
+constants in `_tspec-packed-set.mjs`, that second copy, and `loop-distribution.test.js:161`, and no
+fifth transcriber of that class exists — a `resolve-version` probe over tracked sources returns only
+the two enumeration holders, every other hit being an import path. Option A's nine sites, K-1's
+partition over them, and K-3/K-8/K-9's ownership all re-confirm at HEAD, as do the 25/23 and 15/14
+sweep divergences and every line number the new notes cite.
+
+The one open item is a Low: the sweep's partition sentence accounts for 24 of its 25 hits because
+`pdlc/README.md` is carved out three paragraphs later rather than in the sentence itself. One clause
+closes it. Q-01 asks whether the promoted rule should also warn that a size assertion may name no
+member — `loop-distribution.test.js` pins the class as a bare `15` and no probe would find it — but
+that is a question, not a finding, and the answer may reasonably be "leave it".
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
