@@ -381,7 +381,8 @@ Named so the DoD reviewer inherits them rather than discovering them. None is cl
 | `PK-26`'s existence row in the sibling TSPEC's `PK-*` table has no mechanical falsifier (the *count* half does) | `DEC-STATS-01` `K-7` | discharged by T-22 as a single owning task + review |
 | `pdlc/README.md`'s prose enumeration is pinned by no oracle | `K-9`, RK-1 | discharged by T-21 + review; drift here is silent |
 | A second `StatsParsers` construction site would void the identity oracle | `K-4` | T-10's construction-site count is the detector; it is why T-17 depends on T-10 |
-| The leading-underscore discovery predicate is **provisional** on an open FSPEC erratum | TSPEC §4.4, RK-5 | T-14 implements the provisional predicate; the blast radius of every possible answer is `discoverFeatures` plus AT-26's fixture |
+| The leading-underscore discovery predicate is **provisional** on an open FSPEC erratum — BR-26/EC-10's missing positive feature-recognition predicate, which is the **only** erratum TSPEC §8.3 still carries open | TSPEC §4.4, §8.3, RK-5 | T-14 implements the provisional predicate; the blast radius of every possible answer is `discoverFeatures` plus AT-26's fixture |
+| The REQ-STATS-06-versus-FSPEC-BR-16 disagreement over the out-of-catalogue cross-review basename — **carried here only to close it**, so the DoD reviewer does not re-open it | TSPEC §8.3 (second bullet at TSPEC v1.7, removed at v1.8) | **Discharged**: settled at REQ v1.7, absorbed by FSPEC v1.8 in BR-16's favour. Its whole blast radius was the harvested disjunct and T-04's AT-17 fourth-leg expected value; both already carried the winning reading, so no task changes and nothing re-stamps |
 | Real-path literals bind to the live archive | RK-4 | T-18 declares each literal a measurement in its own comment |
 
 ## Definition of Done
