@@ -144,10 +144,61 @@ transcribed 63, so a deleted case fails. All three held at v10 and are byte-iden
 
 ## Delta-Confirmation Findings
 
+No findings.
+
+The delta lands the DECISIONS re-grounding it set out to land: the pin is re-measured and correct at
+HEAD, the version label agrees with the hash, the summary of what v1.4 and v1.5 changed is a faithful
+compression of those entries, and the self-conformance sweep against the corrected
+`DEC-DECLEDGER-16` predicate reaches the right conclusion on this document's actual bytes. Nothing I
+previously approved was broken, no task row moved, and nothing the document cites moved out from
+under it.
+
+For the record, the two items my v9 review opened and my v10 review closed (F-01 High, F-02 Low)
+remain closed at HEAD — the delta does not touch T-10a, T-11 or the §Definition of Done bullets that
+carried them.
+
+Two non-gating observations, recorded rather than routed:
+
+DEFERRED: The sweep sentence names `10,859 ≤ maxBytes − 1200` as "the only bound assertion it carries", but T-09 also carries `6,305 ≤ maxBytes − 1200` — the same admitted subtraction form, so the conformance conclusion is unaffected; the enumeration, not the contract, is incomplete.
+
+DEFERRED: `PROPERTIES-pdlc-decision-ledger.md`'s header still pins `PLAN` v0.7 and `TSPEC` v1.0, both now stale; that is a downstream re-grounding for the PROPERTIES phase to make, not a defect in the document under review.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The v0.9 entry now covers two byte states of "v0.9" — the one my v10 review approved and this re-grounded one — because an erratum bookkeeping tail landed without a version bump. That is normal for this pipeline's erratum channel (the approval anchors carry the byte identity, not the label), and the baseline's "a content change without a version bump is itself a defect" rule is scoped by its own text to the baseline file. So this is not a finding. It is worth knowing whether the round history keyed on version labels will read two distinct approvals of "v0.9" cleanly at harvest. Not a change I would hold the phase for. |
 
 ## Positive Observations
 
+- **The re-grounding was done before the entry was closed, not after.** DECISIONS moved after both
+  reviewers wrote, and the entry says so, re-derives against v1.5, and re-measures the pin
+  mechanically. This is the fourth consecutive round where DEC-ERR-03 was executed in the right
+  order on this feature; it now reads as habit rather than as a reaction to being caught.
+- **The sweep concluded "no edit" and then made no edit.** The tempting failure here is to
+  demonstrate diligence by touching an assertion — which is exactly how a P0's expected value gets
+  quietly weakened under cover of a conformance pass. The round resisted that: it states the
+  predicate, states the evidence, and stops.
+- **The evidence given for conformance is the falsifiable kind.** "No addition form is asserted
+  anywhere" and "`12,059` is explicitly not asserted as an equality" are claims a reviewer can check
+  with `grep` in under a minute, and I did. Compare a sweep that says only "reviewed and conformant".
+- **The pin bump carries its version label, not just its hash.** `**v1.5**` alongside
+  `sha256:52580962…584ca0` means a future reader who finds the hash stale can still tell which
+  edition this document was compressed from. Several stale-pin incidents in this project's learnings
+  were hash-only pins.
+
 ## Recommendation
 
+**Approved**
+
+The delta is a two-line re-grounding that lands correctly: four pins re-measured at HEAD, a faithful
+summary of DECISIONS v1.4/v1.5, and a self-conformance sweep whose conclusion holds against this
+document's bytes. No batch, dependency, ownership, task-id or count assignment moved; no requirement
+was lost and no acceptance criterion was narrowed. Zero findings, and nothing is required of the
+author before batches 3–8 proceed. The two `DEFERRED` items above can ride along with any later
+touch of those sections — neither warrants opening this document again on its own.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
