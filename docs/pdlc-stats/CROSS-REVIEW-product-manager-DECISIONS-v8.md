@@ -145,6 +145,50 @@ Still a pipeline observation rather than a document defect, so it stays a questi
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | Low | inherited | nonlocal | K-3 / `DEC-STATS-01` site table, `coverageInstrumentation.test.js` row | TSPEC §2.1's row still states P9-02's title moves *"six → seven"*. Re-measured at HEAD: `REQUIRED_INCLUDES` holds four entries, so the literal is `4 + 1 + 2` and `c8.include` is seven today; this feature makes it eight. DECISIONS carries the correct arithmetic and books the difference as an erratum owed upstream in **TSPEC**. Not correctable here and not to be matched into agreement. Carried from v6 F-05 / v7 F-02. |
+
+FINDING: Low | inherited | nonlocal | K-3 / DEC-STATS-01 site table, coverageInstrumentation.test.js row | TSPEC section 2.1 still states P9-02's title moves six to seven; re-measured at HEAD, REQUIRED_INCLUDES holds four entries so c8.include is seven today and this feature makes it eight. DECISIONS carries the correct arithmetic and records the divergence; the repair belongs upstream in TSPEC and the document must not be corrected into agreement with a number known to be wrong. Carried from v6 F-05 and v7 F-02.
+
+## Positive Observations
+
+- **The structural repair was verified, not asserted.** I reconstructed the commit's removed and added
+  bytes and compared them whitespace-normalised: identical. An edit that rejoins a 2,000-character
+  table row is exactly where text quietly goes missing, and this one lost nothing.
+
+- **The paragraph went back where it belonged, not merely inside the row.** The *Upstream divergence*
+  text now sits in K-3's obligation cell — it qualifies the obligation. The cheaper fix (drop it below
+  the table as a note) would also have rendered, and would have detached a live caveat from the row
+  PLAN reads.
+
+- **The count fix reused the copy that was already right.** Both breakdowns now read in the same form
+  *Standing costs accepted* had used since v1.5 — five enumerations, four test files, `pdlc/README.md`'s
+  prose member list — instead of inventing a third phrasing. Three decompositions of the same number,
+  one wording.
+
+- **The changelog was marked, not rewritten.** The v1.4 entry keeps its text and its `file:line` forms
+  and gains a superseded-in-part marker with the reason stated: a changelog records the document at
+  its own version, and `DEC-DOC-01` governs body citations, not historical entries. That reasoning also
+  disposes of my own v7 F-03, and I accept it — rewriting past entries is the bookkeeping churn that
+  decision exists to prevent.
+
+- **The carried item is carried honestly.** The v1.6 changelog says in plain terms that the TSPEC
+  divergence is *not* matched into agreement, why TSPEC is not edited from this dispatch (approved,
+  with an approved PLAN beneath it), and where the repair is owed. Naming an unresolved item and its
+  owner is stronger than closing it locally would have been.
+
+- **Upstream was re-grounded before the delta was written.** The document hashed TSPEC and FSPEC at
+  HEAD, found the dispatch's TSPEC pin resolving to nothing for the second round running, said so, and
+  proceeded under `DEC-ERR-03` rather than failing silently or trusting a dead hash.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Second round running, the dispatch's TSPEC pin (`sha256:512a9fcf…`, and this round no hash at all) matches no revision of TSPEC on this branch, while HEAD is `cb351bb3…`. Where is that hash produced? If an approval anchor can name a version that never existed — rather than an older one that did — the staleness check is not lagging but unresolvable, and the next cascade cannot distinguish "upstream moved" from "pin corrupt". Process question, not a defect in these bytes. |
+| Q-02 | K-9 now owns three sites, two with falsifiers and one without. Should PLAN's task for it carry an explicit review checkpoint for the `pdlc/README.md` edit? A green `run.test.js` and `learningsPremises.test.js` reads as "K-9 done" — the partial-co-change shape `RK-1` exists to prevent. Carried unanswered from v7. |
+
 ## Positive Observations
 
 ## Questions
