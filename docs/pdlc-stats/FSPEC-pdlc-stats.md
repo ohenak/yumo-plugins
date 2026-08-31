@@ -75,7 +75,7 @@ under-specifies the command.
 
 | REQ criterion | Behavioral surface | Business rules | Acceptance tests |
 |---|---|---|---|
-| REQ-STATS-01 single-feature human-readable stats | §3.1 Flow A; §4.3 human rendering | BR-01, BR-02, BR-03, BR-16, BR-17 | AT-01, AT-02, AT-03 |
+| REQ-STATS-01 single-feature human-readable stats | §3.1 Flow A; §4.3 human rendering | BR-01, BR-02, BR-03, BR-17 | AT-01, AT-02, AT-03 |
 | REQ-STATS-02 machine-readable `--json` | §3.3 Flow C; §4.4 JSON document | BR-18, BR-19, BR-20, BR-21 | AT-04, AT-05, AT-06 |
 | REQ-STATS-03 review rounds by document type | §3.1 step 5; §4.2 | BR-05, BR-06, BR-07, BR-08, BR-09 | AT-07, AT-08, AT-09, AT-10 |
 | REQ-STATS-04 DoD-round count | §3.1 step 6; §4.2 | BR-10, BR-11 | AT-11, AT-12 |
@@ -185,7 +185,121 @@ read-only half and fail the criterion. AT-21 and AT-22 assert both halves agains
 
 ## 4. Business Rules
 
-*(pending)*
+### 4.1 Command surface
+
+**BR-01 (surface and closed flag set).** The command is `pdlc stats [feature] [--json] [--cwd <path>]`.
+It takes at most one positional argument. `--json` is a boolean flag; `--cwd` is a value flag naming
+the repository to report on, defaulting to the process working directory. Any other flag is a usage
+error, and a value flag with no value is a usage error — the same closed-flag-surface behavior the
+existing commands have (`FLAGS_BY_COMMAND` / `validateFlags`, `pdlc/engine/bin/cli.mjs`), so
+`pdlc stats --dry-run` is refused rather than ignored. A second positional is a usage error: two
+feature names have no defined meaning, and silently taking the first would report on a feature the
+operator did not ask about.
+
+**BR-02 (directory resolution, preference not union).** A feature's artifact directory is
+`docs/{feature}/` when that directory exists, otherwise `docs/completed/{feature}/`. The two are
+never summed and never both scanned for one feature. When `docs/{feature}/` exists the archived copy
+is not consulted at all, even if it holds artifacts the live directory lacks — a mid-archival tree
+reports the live location's truth, not a merge of two snapshots (REQ C-2, REQ R-2).
+
+**BR-03 (scan depth: the directory itself, not its subtree).** Only files directly in the resolved
+directory are considered. Subdirectories are not traversed. This is load-bearing rather than
+incidental: feature directories in this repository do carry subdirectories — `docs/completed/pdlc-loop-economics/_evidence/`
+is one — and a recursive scan would fold evidence files into the byte ratio's numerator or
+denominator depending on their names.
+
+**BR-04 (the feature argument is a literal directory basename).** The argument is matched exactly
+against directory names, with no fuzzy, prefix or case-insensitive matching (REQ A-1). A name that
+matches no directory under either root is not-found (BR-28), never a near-miss suggestion that the
+command then reports on.
+
+### 4.2 Metric rules
+
+**BR-05 (review rounds: highest index across roles, one number per document type).** For a document
+type, the reported round count is the highest round index present on disk for that type, taken
+across every role. A type whose test-engineer review reached round 5 and whose product-manager
+review reached round 3 reports `5` — not `8`, not a per-role breakdown, not a range. The
+un-suffixed basename form `CROSS-REVIEW-{role}-{DOCTYPE}.md` denotes round 1, identically to
+`-v1.md`; that equivalence is the driver's (REQ C-5), and it matters because historical branches in
+this repository carry the un-suffixed form.
+
+**BR-06 (malformed cross-reviews are excluded and reported, never folded in).** A basename that
+begins `CROSS-REVIEW-` but fails the grammar is excluded from every round count and reported
+separately as malformed, naming the basename. Whether a given basename fails is the driver's
+classification, not a rule this document restates. A file that does not claim the `CROSS-REVIEW-`
+prefix — the feature's own REQ, LEARNINGS, POSTMORTEM, a `HANDOFF-PROMPT.md`, a
+`MUTATION-EVIDENCE-*.md` — is neither counted nor called malformed; it is simply not a cross-review
+(REQ R-1).
+
+**BR-07 (unmeasurable).** Where the artifact convention refuses a round for a document type — one
+role carrying two files that both claim round 1 — that document type reports `unmeasurable` and
+names the colliding role. `unmeasurable` is not `0` and not an error: the rest of the report is
+computed and printed normally, and the command still exits 0.
+
+**BR-08 (zero versus harvested, per document type).** A document type with no cross-review file on
+disk reports `0` when no `LEARNINGS-{feature}.md` is present, and `harvested` when one is. The test
+is applied **per document type, not per feature**: a partially harvested directory reports
+`harvested` for the types whose files are gone and a measured index for the types whose files
+survive, in the same table. Harvested is distinct from a measured `0` because harvest deleted the
+evidence (REQ NG-6); collapsing them would make an archive of harvested features read as an archive
+of unreviewed ones, which is exactly the baseline REQ R-6 protects.
+
+**BR-09 (row set and order).** The review-rounds metric always carries one row per document type in
+the pipeline's cross-review doc-type catalogue — `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`,
+`DECISIONS` — in that order, in both modes. A fixed row set is what makes `harvested` and `0`
+expressible at all: a row set derived from the files present could not report a type whose files
+were deleted. Ordering is fixed so two runs over an unchanged tree produce byte-identical output.
+
+**BR-10 (DoD rounds: highest version, deliberately not a count and not the next index).** The
+reported value is the highest version `N` among the feature's `CODE_REVIEW-{feature}-v{N}.md`
+files, or `0` when none is present. Two near-misses are ruled out explicitly. It is **not a file
+count**, because harvest deletes DoD reviews and a count would understate a partially harvested
+feature (REQ NG-6). And it is **not the next round index**: the pipeline's own derivation answers
+"which DoD round runs next" and therefore returns highest-plus-one (`deriveDodRoundIndex`,
+`pdlc/workflows/orchestrate-dev.js`), whereas this metric reports the last round that happened.
+An implementation that reports the driver's return value unchanged is off by one on every feature,
+including reporting `1` for a feature that never ran DoD.
+
+**BR-11 (DoD harvested).** The DoD metric reports `harvested` when `LEARNINGS-{feature}.md` is
+present **and** no `CODE_REVIEW-*` file remains in the directory. Where any survives, the measured
+highest version wins — the harvested state never displaces evidence this metric can actually read.
+
+**BR-12 (halts: one entry per phase, resolution as the driver classifies it).** One entry is
+reported per distinct phase that has a `POSTMORTEM-{phase}-{feature}.md` file, each tagged
+`resolved` or `open` exactly as the pipeline's `RESOLVED:` marker rule classifies that file. This
+document states no marker-matching rule: case, duplicate markers and fenced-block placement are
+decided in one place (REQ C-5), and an unreadable or absent marker classifies as `open`, because
+that is what the driver's fail-closed reading yields. The basename grammar admits one post-mortem
+per phase per feature, so a phase never carries two conflicting entries.
+
+**BR-13 (no halts is zero halts).** A feature with no post-mortem file reports an empty halt set —
+never an error, never a missing metric, never a gap row. Halt entries are ordered by phase
+identifier, ascending, so output is stable across runs.
+
+**BR-14 (ratio: which files are on each side).** The **spec** side is the byte total of whichever of
+`REQ-{feature}.md`, `FSPEC-{feature}.md`, `TSPEC-{feature}.md`, `PLAN-{feature}.md`,
+`PROPERTIES-{feature}.md`, `DECISIONS-{feature}.md` are present. The **process** side is the byte
+total of every file matching the cross-review, post-mortem and DoD-review basename grammars:
+`CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, `POSTMORTEM-{phase}-{feature}.md`,
+`CODE_REVIEW-{feature}-v{N}.md`. Both sets are fixed by the REQ and are not operator-configurable
+(REQ C-3, C-4); no configuration key widens or narrows either side. Files present in the directory
+but on neither list — `LEARNINGS-*.md`, `HANDOFF-PROMPT.md`, `MUTATION-EVIDENCE-*.md`, anything
+else — contribute to neither side. Bytes are file sizes on disk, not character counts.
+
+**BR-15 (rendering and the zero denominator).** The ratio is process bytes divided by spec bytes,
+rendered to **two decimal places** in both modes' human-facing form; in JSON it is a number rounded
+to the same two decimal places, so the two modes never disagree on a displayed value. When the spec
+total is zero — legitimately reachable mid-authoring (REQ R-4) — the ratio is reported as the token
+`n/a`, never a division by zero, an infinity, or a crash.
+
+**BR-16 (ratio harvested, and its precedence).** The ratio reports `harvested` when
+`LEARNINGS-{feature}.md` is present **and at least one of the two process families is entirely
+absent** — that is, either no `CROSS-REVIEW-*` file remains, or no `CODE_REVIEW-*` file remains, or
+neither remains. Post-mortems survive harvest while cross-reviews and DoD reviews do not, so a
+numerator computed over a partially deleted process set would silently undercount rather than be
+visibly absent. This test is evaluated **before** BR-15's zero-denominator test: a harvested feature
+whose spec documents are also gone reports `harvested`, not `n/a`, because the more specific
+explanation is the true one.
 
 ## 5. Edge Cases and Error Scenarios
 
