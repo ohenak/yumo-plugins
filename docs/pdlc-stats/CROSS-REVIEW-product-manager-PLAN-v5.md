@@ -137,16 +137,70 @@ FINDING: Low | inherited | nonlocal | T-23, `assertAdditiveOnly` message citatio
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | **TSPEC §8.3 is now stale in the direction of over-reporting.** Its header reads "**Two remain open**" and it still carries the REQ-STATS-06-versus-BR-16 bullet that REQ v1.7 has just decided. §8.3's own stated policy is that a settled bullet must be removed, not left standing — "an erratum bullet whose upstream answer has landed re-routes a settled question, which is `DEC-ERR-01`'s anti-pattern" (`TSPEC-pdlc-stats.md:1296-1298`). By its own rule the count word and that bullet now need re-stamping, along with TSPEC §4.3's "contested upstream and is not decided here" paragraph (`:790-800`). This is TSPEC's bookkeeping, not the PLAN's, so I have not raised it as a finding against the document under review — but it should reach TSPEC's own cascade confirmation rather than be discovered at DoD. |
+| Q-02 | Carried from v4, still non-gating and still owed nothing this round: T-08's Status `✅` while the PLAN is itself under review — whether status ticks belong in a spec document or a live ledger is an operator decision for harvest, not a fidelity defect. |
 
 ## Positive Observations
 
-_(pending)_
+- **The erratum was decided, not reconciled — and that was the right product call.** REQ v1.6's
+  survivor clause dissented from three things at once: REQ-STATS-06's own preceding rationale (a family
+  gone from the numerator must be visibly absent, not silently undercounted), REQ-STATS-03's malformed
+  classification of the identical basename, and C-5's no-independent-parsing-rule constraint. A clause
+  at odds with its own paragraph's reasoning is not a position to be split the difference with. The new
+  text (`REQ:208-215`) makes the argument the old one had already made and then contradicted, and it
+  names the reason in user terms — "not a measured ratio that would **silently undercount**." That is
+  the sentence a pipeline operator needs, and it now appears in the REQ rather than only in the FSPEC.
+
+- **The blast radius TSPEC predicted was the blast radius that materialised.** §4.3 committed in advance
+  to exactly three re-stamp sites and asserted that no type, signature, exit code or oracle depended on
+  the outcome. Measured at HEAD, that holds: the PLAN needed no edit, no task changed owner, no expected
+  value moved, no dependency edge shifted. Writing down the blast radius *before* the answer arrived is
+  what made this confirmation a read rather than a rewrite, and it is a practice worth harvesting.
+
+- **The PLAN's indirection is why the cascade was cheap.** The PLAN cites zero REQ sections and pins
+  zero upstream versions in prose; it derives from FSPEC business rules and TSPEC oracles, and names
+  REQ only in its lineage row. A REQ erratum therefore cannot strand a PLAN citation. Contrast this with
+  the residual-risk table, whose one genuinely REQ-coupled entry (RK-5) is precisely the one still open.
+  Loose coupling to upstream prose is doing real work here.
+
+- **My v4 Medium died the right way.** I asked for a second open-erratum row in the Residual-risks
+  table so the DoD reviewer would inherit it. The pipeline instead closed the erratum. Both outcomes
+  protect the reviewer; the one that landed protects the implementer too, because there is now one fewer
+  provisional predicate to code against.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes.**
+
+The PLAN still holds against the REQ as it now stands. This cascade moved REQ-STATS-06 **onto** the
+reading the PLAN was already built for: FSPEC BR-16 v1.7 and TSPEC §4.3's sketch both already classed
+the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` basename as no file remaining and its
+directory as `harvested`, and TSPEC had explicitly declined to decide the REQ-versus-FSPEC conflict at
+its own layer, routing it upstream instead. REQ v1.7 answers it in FSPEC's favour. Every PLAN row that
+leans on the ratio — T-04's AT-17 four directories, T-04's `unmeasurable`/`harvested` mutant fixture,
+T-18's AT-09 and AT-10 legs, T-26's mutant, T-08's doc-type set-equality — reads correctly against the
+new text without a byte changing.
+
+On my only lens, product fidelity: **no acceptance criterion is narrowed, broadened, reinterpreted or
+dropped by this cascade.** The AC coverage table's assignments are unchanged and remain correct;
+AT-17's fourth-leg expectation the PLAN owns is now decided rather than contested, which strengthens
+traceability rather than weakening it. There is no scope creep — the PLAN gained no behaviour — and no
+scope gap, because no task was ever written to the withdrawn clause and so none needs restoring.
+
+Nothing gates. The two Low findings are inherited from v4 and unaddressed only because the PLAN was
+not edited this round; neither changes what an implementer does. Changes to make at the next PLAN
+touch, in priority order:
+
+1. Drop the added backticks from T-24's "verbatim" P9-02 title (F-01).
+2. Re-anchor T-23's `assertAdditiveOnly` citation from `:73-77` to `:77` (F-02).
+
+And one item that is **not** the PLAN's to fix but should not be lost: TSPEC §8.3's "Two remain open"
+header and its now-decided REQ-STATS-06 bullet need re-stamping under §8.3's own DEC-ERR-01 policy
+(Q-01). Route it to TSPEC's cascade confirmation.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
