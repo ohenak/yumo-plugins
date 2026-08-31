@@ -74,11 +74,41 @@ altitude bar for a REQ.
 
 ## Positive Observations
 
-_(filled below)_
+- **The C-5 carve-out is drawn at the seam that actually exists in code, not a convenient one.** It
+  separates *classification of bytes* (deferred to the driver: the `RESOLVED:` marker, the
+  cross-review grammar, the `CODE_REVIEW-` version grammar) from *discovery of which files exist*
+  (owned here, because the driver never discovers — it constructs a path from a phase it holds).
+  That is checkable in one grep, and it makes REQ-STATS-05 writable as a test without inventing a
+  fidelity oracle that has no counterpart.
+- **REQ-STATS-03 takes the unflattering answer rather than the comfortable one.** Disposing of
+  pipeline-authored `-REVIEW-v{N}` files as *malformed* reads badly in a report, and the edit says so
+  in the AC instead of inventing a third bucket that would have been an independent parsing rule.
+  The result is that one existing directory in this repo now has exactly one defensible expected
+  output, and the discomfort is routed to FSPEC §7.3 as an erratum rather than papered over.
+- **REQ-STATS-06's predicate is now stated at the scope its own rationale argued for.** The
+  explicit "(no `CROSS-REVIEW-*` remains, or no `CODE_REVIEW-*` does, or neither)" closes the
+  negation-scope ambiguity my v3 F-01 raised without changing behaviour — a test author reads the
+  predicate rather than inferring intent from the adjacent paragraph.
+- **REQ-STATS-09's carve-out preserves falsifiability on both sides.** By excluding the
+  no-`docs/`-root case, the AC keeps its not-found oracle positive and specific, and leaves the root
+  failure a distinct, separately assertable outcome (FSPEC's `no_docs_root` reason code) instead of
+  two criteria claiming one fixture.
+- **All four v3 findings closed with single-clause edits**, and none of them enlarged the REQ's
+  scope or pulled FSPEC material upward.
 
 ## Recommendation
 
-_(filled below)_
+**Approved with minor changes**
+
+The delta resolves all ten routed items — nine fully, one (item 5) in the acceptance criterion that
+governs tests, leaving the identical stale phrase in the **G-3** goal statement one section up. No
+approved section was broken by the edit, and every existing-behaviour claim it added checks out
+against source or disk. There is no open High finding, old or new, so this confirmation approves.
+
+The two findings below are both non-gating and single-clause: F-01 aligns G-3's summary with the
+REQ-STATS-07 text this round corrected, so a reader of the Goals section does not derive an
+expectation the ACs contradict; F-02 is a precision note so that FSPEC's post-mortem listing rule is
+chosen deliberately against the one adjacent grammar that already exists, rather than by accident.
 
 ## Delta-Confirmation Findings
 
