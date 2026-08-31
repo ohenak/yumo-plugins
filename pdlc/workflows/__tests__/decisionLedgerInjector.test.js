@@ -64,7 +64,7 @@ afterEach(() => {
 // ─── gatherDecisionCorpus — F-6: RSN-UNLISTABLE, both the graceful and ungraceful legs (AT-08) ──
 
 describe("gatherDecisionCorpus — F-6 fail-open, both `_git` legs collapse onto {unlistable: true}", () => {
-  test.skip("T-17: `_git` returns { ok: false } (graceful) yields { unlistable: true }, no _readFile call", async () => {
+  test("T-17: `_git` returns { ok: false } (graceful) yields { unlistable: true }, no _readFile call", async () => {
     const { gatherDecisionCorpus } = await import("../orchestrate-dev.js");
 
     const _git = makeGitDouble({ "ls-files": { ok: false } });
@@ -78,7 +78,7 @@ describe("gatherDecisionCorpus — F-6 fail-open, both `_git` legs collapse onto
     expect(_git.calls.length).toBe(1);
   });
 
-  test.skip("T-17: `_git` throws (ungraceful) yields { unlistable: true } — the SAME shape as the graceful leg", async () => {
+  test("T-17: `_git` throws (ungraceful) yields { unlistable: true } — the SAME shape as the graceful leg", async () => {
     const { gatherDecisionCorpus } = await import("../orchestrate-dev.js");
 
     const _git = makeGitDouble({ "ls-files": new Error("simulated git fault: not a graceful reply") });
@@ -95,7 +95,7 @@ describe("gatherDecisionCorpus — F-6 fail-open, both `_git` legs collapse onto
 // ─── gatherDecisionCorpus — F-7: enumeration succeeds, zero paths ⇒ RSN-EMPTY's precondition ────
 
 describe("gatherDecisionCorpus — F-7 zero-path enumeration", () => {
-  test.skip("T-17: `_git` succeeds with empty stdout yields { unlistable: false, entries: [] }", async () => {
+  test("T-17: `_git` succeeds with empty stdout yields { unlistable: false, entries: [] }", async () => {
     const { gatherDecisionCorpus } = await import("../orchestrate-dev.js");
 
     const _git = makeGitDouble({ "ls-files": { ok: true, stdout: "" } });
@@ -113,7 +113,7 @@ describe("gatherDecisionCorpus — F-7 zero-path enumeration", () => {
 // ─── gatherDecisionCorpus — F-8: the per-path try/catch, `null` AND throw, both degrade ONE entry ─
 
 describe("gatherDecisionCorpus — F-8 per-path try/catch (P-8: null-return and throw both degrade one entry)", () => {
-  test.skip("T-17: a `_readFile` null return and a throw each yield readOk: false for THAT entry only; the good entry reads fine", async () => {
+  test("T-17: a `_readFile` null return and a throw each yield readOk: false for THAT entry only; the good entry reads fine", async () => {
     const { gatherDecisionCorpus } = await import("../orchestrate-dev.js");
 
     const goodPath = PROJECT_PATH;
@@ -142,7 +142,7 @@ describe("gatherDecisionCorpus — F-8 per-path try/catch (P-8: null-return and 
     expect(new Set(_readFile.calls)).toEqual(new Set([goodPath, nullPath, throwPath]));
   });
 
-  test.skip("T-17: never throws past gatherDecisionCorpus even when EVERY path throws", async () => {
+  test("T-17: never throws past gatherDecisionCorpus even when EVERY path throws", async () => {
     const { gatherDecisionCorpus } = await import("../orchestrate-dev.js");
 
     const throwPathA = "docs/_decisions/DECISIONS-a.md";
@@ -167,7 +167,7 @@ describe("gatherDecisionCorpus — F-8 per-path try/catch (P-8: null-return and 
 // Same bytes ("") whichever of F-6/F-7 produced it — §6.2's predicate reads only `selected`.
 
 describe("buildDecisionLedgerInjector — F-6/F-7 total leg: block \"\", corpusOutcome set, AT-08", () => {
-  test.skip("T-17: RSN-UNLISTABLE (F-6) — block is \"\", dispatch.corpusOutcome is RSN-UNLISTABLE, rows/failedSources/emptySources all empty", async () => {
+  test("T-17: RSN-UNLISTABLE (F-6) — block is \"\", dispatch.corpusOutcome is RSN-UNLISTABLE, rows/failedSources/emptySources all empty", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const sink = [];
@@ -188,7 +188,7 @@ describe("buildDecisionLedgerInjector — F-6/F-7 total leg: block \"\", corpusO
     });
   });
 
-  test.skip("T-17: RSN-EMPTY (F-7) — block is \"\", dispatch.corpusOutcome is RSN-EMPTY — same bytes as RSN-UNLISTABLE", async () => {
+  test("T-17: RSN-EMPTY (F-7) — block is \"\", dispatch.corpusOutcome is RSN-EMPTY — same bytes as RSN-UNLISTABLE", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const sink = [];
@@ -208,7 +208,7 @@ describe("buildDecisionLedgerInjector — F-6/F-7 total leg: block \"\", corpusO
     });
   });
 
-  test.skip("T-17: RSN-UNLISTABLE and RSN-EMPTY dispatches render the IDENTICAL block bytes (\"\")", async () => {
+  test("T-17: RSN-UNLISTABLE and RSN-EMPTY dispatches render the IDENTICAL block bytes (\"\")", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const unlistableSink = [];
@@ -237,7 +237,7 @@ describe("buildDecisionLedgerInjector — F-6/F-7 total leg: block \"\", corpusO
 // ─── buildDecisionLedgerInjector — F-8 partial leg: one failed source degrades ALONE, AT-09 ─────
 
 describe("buildDecisionLedgerInjector — F-8 partial leg, every other source still renders (AT-09)", () => {
-  test.skip("T-17: `_readFile` null-return degrades that source alone; the other source renders and is counted in failedSources", async () => {
+  test("T-17: `_readFile` null-return degrades that source alone; the other source renders and is counted in failedSources", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const goodText = decisionText(["DEC-FOO-01", "the surviving statement"]);
@@ -260,7 +260,7 @@ describe("buildDecisionLedgerInjector — F-8 partial leg, every other source st
     expect(sink[0].corpusOutcome).toBeNull();
   });
 
-  test.skip("T-17: `_readFile` throw degrades that source alone; the other source renders and is counted in failedSources", async () => {
+  test("T-17: `_readFile` throw degrades that source alone; the other source renders and is counted in failedSources", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const goodText = decisionText(["DEC-FOO-02", "another surviving statement"]);
@@ -283,7 +283,7 @@ describe("buildDecisionLedgerInjector — F-8 partial leg, every other source st
 // (AT-10 + O-7's classification conjunct) ────────────────────────────────────────────────────────
 
 describe("buildDecisionLedgerInjector — F-9 classification: emptySources, never failedSources (AT-10, O-7)", () => {
-  test.skip("T-17: a source that reads and parses to zero records lands in emptySources, failedSources stays empty, the other source still renders", async () => {
+  test("T-17: a source that reads and parses to zero records lands in emptySources, failedSources stays empty, the other source still renders", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const goodText = decisionText(["DEC-FOO-03", "a rendered statement"]);
@@ -307,7 +307,7 @@ describe("buildDecisionLedgerInjector — F-9 classification: emptySources, neve
 // AT the enumeration level (§6.2: the total leg is decided by what survives, never by what failed).
 
 describe("buildDecisionLedgerInjector — F-10: nothing survives (a failed + an empty source), total leg", () => {
-  test.skip("T-17: one failedSource and one emptySource, no source renders ⇒ block \"\", corpusOutcome null (not RSN-UNLISTABLE/RSN-EMPTY)", async () => {
+  test("T-17: one failedSource and one emptySource, no source renders ⇒ block \"\", corpusOutcome null (not RSN-UNLISTABLE/RSN-EMPTY)", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const nullPath = "docs/_decisions/DECISIONS-unreadable.md";
@@ -332,7 +332,7 @@ describe("buildDecisionLedgerInjector — F-10: nothing survives (a failed + an 
 // directory, BOTH resolve to the project-level set alone (§3.1's union taken over one operand) ──
 
 describe("buildDecisionLedgerInjector — F-14 / Q-2: project-level set alone", () => {
-  test.skip("T-17: no directory among the three feature globs for THIS feature ⇒ project-level records render, nothing feature-level", async () => {
+  test("T-17: no directory among the three feature globs for THIS feature ⇒ project-level records render, nothing feature-level", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const projectText = decisionText(["DEC-BAR-01", "a project-level statement"]);
@@ -350,7 +350,7 @@ describe("buildDecisionLedgerInjector — F-14 / Q-2: project-level set alone", 
     expect(sink[0].rows).toEqual([{ id: "DEC-BAR-01", sourcePath: PROJECT_PATH, origin: "project" }]);
   });
 
-  test.skip("T-17: a directory exists for the feature but yields zero records ⇒ project-level records still render alone", async () => {
+  test("T-17: a directory exists for the feature but yields zero records ⇒ project-level records still render alone", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const projectText = decisionText(["DEC-BAR-02", "a project-level statement, alone again"]);
@@ -375,7 +375,7 @@ describe("buildDecisionLedgerInjector — F-14 / Q-2: project-level set alone", 
 // never written; the scripted double's own returned value changes between calls) ────────────────
 
 describe("buildDecisionLedgerInjector — AT-03 freshness: every call re-gathers, nothing is cached (§2.6, BR-9)", () => {
-  test.skip("T-17: `_readFile` returns a mutated text on the SECOND call for the same path; the second dispatch's block reflects the change — a snapshot fails", async () => {
+  test("T-17: `_readFile` returns a mutated text on the SECOND call for the same path; the second dispatch's block reflects the change — a snapshot fails", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     let readCallCount = 0;
@@ -421,7 +421,7 @@ describe("buildDecisionLedgerInjector — AT-03 freshness: every call re-gathers
 // `decisionLedgerMain.test.js`) is what proves the call survives outside a test double entirely.
 
 describe("buildDecisionLedgerInjector — _log receives one line per dispatch", () => {
-  test.skip("T-17: two injector calls produce exactly two _log entries, one per dispatch", async () => {
+  test("T-17: two injector calls produce exactly two _log entries, one per dispatch", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const text = decisionText(["DEC-LOG-01", "a logged statement"]);
@@ -439,7 +439,7 @@ describe("buildDecisionLedgerInjector — _log receives one line per dispatch", 
     expect(_log.calls.length).toBe(2);
   });
 
-  test.skip("T-17: buildDecisionLedgerInjector returns null when the flag is not true — the gate (§4.4)", async () => {
+  test("T-17: buildDecisionLedgerInjector returns null when the flag is not true — the gate (§4.4)", async () => {
     const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
 
     const disabledConfig = { ...ENABLED_CONFIG, enabled: false };

@@ -256,7 +256,7 @@ const DEFAULT_MAX_BYTES = 12500;
 const FRAMING_CEILING = 1200; // §4.3's pinned framing ceiling
 const M6B_MARGIN = 441; // (12500 - 1200) - 10859
 
-describe.skip("T-17: AT-01 — corpus oracle over T-03's frozen fixture (TSPEC §3.5/§7.6)", () => {
+describe("T-17: AT-01 — corpus oracle over T-03's frozen fixture (TSPEC §3.5/§7.6)", () => {
   test("pdlc-advisory-wave-gate dispatch renders exactly 45 lines: 41 project-level then its own 4 (bounds non-binding)", async () => {
     const { gatherDecisionCorpus, selectDecisions, DECISION_LEDGER_DEFAULTS } = await import(
       DEV_MODULE_PATH
@@ -327,7 +327,7 @@ describe.skip("T-17: AT-01 — corpus oracle over T-03's frozen fixture (TSPEC �
   });
 });
 
-describe.skip("T-17: AT-02 — citation round-trip resolves back at its own source (TSPEC §4.3)", () => {
+describe("T-17: AT-02 — citation round-trip resolves back at its own source (TSPEC §4.3)", () => {
   test("every rendered line's [sourcePath § id] citation resolves, via the SAME _readFile double, to a heading whose captured statement matches the rendered statement — no DecisionRecord field read", async () => {
     const { gatherDecisionCorpus, selectDecisions, renderDecisionLedgerBlock, DECISION_LEDGER_DEFAULTS } =
       await import(DEV_MODULE_PATH);
@@ -380,7 +380,7 @@ describe.skip("T-17: AT-02 — citation round-trip resolves back at its own sour
   });
 });
 
-describe.skip("T-17: AT-18 — cross-file precedence over a synthetic two-file corpus (TSPEC §3.4, FSPEC O-5)", () => {
+describe("T-17: AT-18 — cross-file precedence over a synthetic two-file corpus (TSPEC §3.4, FSPEC O-5)", () => {
   // A synthetic (never disk-fixture) two-file corpus: the SAME id recorded once in a
   // project-level file and once in a feature-level file, with DIFFERENT statements, so the two
   // origins are distinguishable in the assertion.
@@ -433,7 +433,7 @@ describe.skip("T-17: AT-18 — cross-file precedence over a synthetic two-file c
   });
 });
 
-describe.skip("T-17: DEC-DECLEDGER-13 — shipped-default assertions at maxEntries: 70, maxBytes: 12500 (TSPEC §3.6)", () => {
+describe("T-17: DEC-DECLEDGER-13 — shipped-default assertions at maxEntries: 70, maxBytes: 12500 (TSPEC §3.6)", () => {
   test("over the whole 141-record fixture: project-level ids survive in full, their lines total 6,305 bytes, well under maxBytes - 1,200, and omitted[] never names a project-level id", async () => {
     const { selectDecisions, DECISION_LEDGER_DEFAULTS } = await import(DEV_MODULE_PATH);
     expect(DECISION_LEDGER_DEFAULTS.maxEntries).toBe(DEFAULT_MAX_ENTRIES);

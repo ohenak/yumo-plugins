@@ -2661,52 +2661,51 @@ function decisionLedgerFeatureDirs(feature) {
 }
 
 /**
- * TSPEC §4.2, §3.1, §3.4, §3.6. Pure, total. Partitions `entries` by origin (§3.1: project-level
- * always in scope; feature-level resolved to the single directory belonging to `feature`, priority
- * `docs/{feature}/` then `docs/completed/{feature}/` then `docs/discarded/{feature}/` — no other
- * feature's directory is ever in scope), applies §3.4's project-level-wins precedence keyed on
- * origin (never on path order), then §3.6's drop loop: feature-level before project-level, reverse
- * enumeration order within an origin — equivalently, drop from the tail of the
- * `[...projectRecords, ...featureRecords]` concatenation one whole line at a time, so the survivors
- * are always a front-anchored prefix of it. `renderedBytes` is obtained by calling
- * `renderDecisionLedgerBlock` on the candidate set at each step (`DEC-DECLEDGER-11`) —
- * `selectDecisions` never concatenates a line itself. Framing is charged to `maxBytes` (D-5) because
- * the renderer produces it as part of the same string. `failedSources` counts entries with
- * `readOk === false`; `emptySources` counts entries that read but yielded zero records — the two are
- * kept separate (O-7, §6.3).
+ * TSPEC §4.2, §3.1, §3.4, §3.6. Pure, total. Partitions `entries` by origin — §3.1's BOOLEAN
+ * partition alone: an entry under `docs/_decisions/` is project-level, every other entry handed
+ * to this function is feature-level, unconditionally. `selectDecisions` never re-derives the
+ * single in-scope feature directory itself — that narrowing (§3.1's Q-2/F-14 "no directory ⇒
+ * project-level alone" resolution, priority `docs/{feature}/` → `docs/completed/{feature}/` →
+ * `docs/discarded/{feature}/`) is `gatherDecisionCorpus`'s job (T-17), applied to the raw
+ * enumeration before `entries` ever reaches here; a caller that hands this function a corpus
+ * spanning many features' directories at once (as `DEC-DECLEDGER-13`'s whole-fixture assertion
+ * deliberately does) gets every one of them classified "feature", not silently dropped. Applies
+ * §3.4's project-level-wins precedence keyed on origin (never on path order), then §3.6's drop
+ * loop: feature-level before project-level, reverse enumeration order within an origin —
+ * equivalently, drop from the tail of the `[...projectRecords, ...featureRecords]` concatenation
+ * one whole line at a time, so the survivors are always a front-anchored prefix of it.
+ * `renderedBytes` is obtained by calling `renderDecisionLedgerBlock` on the candidate set at each
+ * step (`DEC-DECLEDGER-11`) — `selectDecisions` never concatenates a line itself. Framing is
+ * charged to `maxBytes` (D-5) because the renderer produces it as part of the same string.
+ * `failedSources` counts entries with `readOk === false`; `emptySources` counts entries that read
+ * but yielded zero records — the two are kept separate (O-7, §6.3).
  *
  * @param {{entries: Array<{path: string, text: string|null, readOk: boolean}>, feature: string, thresholds: {maxEntries: number, maxBytes: number}}} args
  * @returns {{selected: object[], omitted: Array<{id: string, reason: string}>, failedSources: string[], emptySources: string[], renderedBytes: number}}
  */
-export function selectDecisions({ entries, feature, thresholds }) {
+// TSPEC §4.2's `CorpusEntry` is keyed `sourcePath` (the shape `gatherDecisionCorpus`, T-17,
+// produces); the earlier bounds/corpus test fixtures (T-07/T-09) key the same shape `path`. Both
+// are accepted here rather than forcing every caller onto one name.
+function entryPathOf(entry) {
+  return entry.path ?? entry.sourcePath;
+}
+
+export function selectDecisions({ entries, thresholds }) {
   const failedSources = [];
   const emptySources = [];
-
-  let featureDir = null;
-  for (const dir of decisionLedgerFeatureDirs(feature)) {
-    if (entries.some((entry) => entry.path.startsWith(dir))) {
-      featureDir = dir;
-      break;
-    }
-  }
-
-  const inScope = entries.filter(
-    (entry) =>
-      entry.path.startsWith(DECISION_LEDGER_PROJECT_PREFIX) ||
-      (featureDir !== null && entry.path.startsWith(featureDir))
-  );
 
   const projectById = new Map();
   const featureById = new Map();
 
-  for (const entry of inScope) {
+  for (const entry of entries) {
+    const path = entryPathOf(entry);
     if (!entry.readOk) {
-      failedSources.push(entry.path);
+      failedSources.push(path);
       continue;
     }
-    const records = recogniseDecisionRecords(entry.text, entry.path);
+    const records = recogniseDecisionRecords(entry.text, path);
     if (records.length === 0) {
-      emptySources.push(entry.path);
+      emptySources.push(path);
       continue;
     }
     for (const record of records) {
@@ -2739,6 +2738,130 @@ export function selectDecisions({ entries, feature, thresholds }) {
   }
 
   return { selected: candidates, omitted, failedSources, emptySources, renderedBytes };
+}
+
+// ─── TSPEC §4.4 — the decision-ledger IO shell and injector (PLAN T-17) ────────────────────
+
+/** TSPEC §4.4, §6.1/§6.2 (F-6…F-10, F-14). One `_git` call on `DECISION_CORPUS_ARGV`; the
+ *  enumeration is then narrowed to §3.1's in-scope set — every project-level path
+ *  (`docs/_decisions/`), plus the single feature directory belonging to `feature`, priority
+ *  `docs/{feature}/` → `docs/completed/{feature}/` → `docs/discarded/{feature}/`; when none of
+ *  the three exist in the enumeration, the feature-level operand of the union is simply empty and
+ *  project-level records render alone (F-14/Q-2) — an entry belonging to any OTHER feature's
+ *  directory is never carried past this point. Each in-scope path then gets exactly one
+ *  `_readFile` call inside its OWN `try/catch` — a `null`/`undefined` return and a thrown fault
+ *  both degrade that entry alone to `readOk: false` (P-8), never the whole corpus. The outer
+ *  `try/catch` collapses BOTH a graceful `!reply.ok` enumeration reply and an ungraceful thrown
+ *  fault from `_git` itself onto the identical `{unlistable: true}` shape (F-6, AT-08) — this
+ *  function never throws past its own boundary.
+ *  @param {{feature: string, _git: Function, _readFile: Function}} args
+ *  @returns {Promise<{unlistable: true} | {unlistable: false, entries: Array<{sourcePath: string, text: string|null, readOk: boolean}>}>} never throws */
+export async function gatherDecisionCorpus({ feature, _git, _readFile }) {
+  try {
+    const reply = await _git(DECISION_CORPUS_ARGV);
+    if (!reply || !reply.ok) return { unlistable: true };
+
+    const allPaths = String(reply.stdout || "")
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    let featureDir = null;
+    for (const dir of decisionLedgerFeatureDirs(feature)) {
+      if (allPaths.some((p) => p.startsWith(dir))) {
+        featureDir = dir;
+        break;
+      }
+    }
+    const paths = allPaths.filter(
+      (p) =>
+        p.startsWith(DECISION_LEDGER_PROJECT_PREFIX) || (featureDir !== null && p.startsWith(featureDir))
+    );
+
+    const entries = [];
+    for (const sourcePath of paths) {
+      let text = null;
+      let readOk = true;
+      try {
+        text = await _readFile(sourcePath);
+        if (text === null || text === undefined) readOk = false;
+      } catch {
+        readOk = false;
+      }
+      entries.push({ sourcePath, text: readOk ? text : null, readOk });
+    }
+
+    return { unlistable: false, entries };
+  } catch {
+    return { unlistable: true };
+  }
+}
+
+/** TSPEC §4.4: `null` iff `config.enabled` is not exactly `true` — no other conjunct gates it.
+ *  Otherwise returns an async closure that, on EVERY call, re-gathers the corpus fresh (AT-03/
+ *  `DEC-DECLEDGER-14`: no in-process memoisation, no snapshot — §2.6/BR-9), selects, renders, and
+ *  pushes exactly one `DecisionLedgerDispatchRecord` (§5.1) onto `sink` — either a plain array
+ *  (pushed onto directly) or a `{dispatches: []}`-shaped object (pushed onto `.dispatches`).
+ *  `corpusOutcome` is set from enumeration failure alone (`RSN-UNLISTABLE`/`RSN-EMPTY`, F-6/F-7)
+ *  and stays `null` whenever enumeration itself succeeded, even when nothing survives to render
+ *  (F-10) — §6.2's "survives, never failed" predicate.
+ *  @param {{config: object, sink: object|Array, _git: Function, _readFile: Function, _log?: Function}} args
+ *  @returns {null | ((args: {feature: string, phaseId?: string, docType?: string, round?: number}) => Promise<string>)} */
+export function buildDecisionLedgerInjector({ config, sink, _git, _readFile, _log }) {
+  if (!config || config.enabled !== true) return null;
+
+  const thresholds = { maxEntries: config.maxEntries, maxBytes: config.maxBytes };
+
+  return async function injectDecisionLedger({ feature, phaseId, docType, round } = {}) {
+    const gathered = await gatherDecisionCorpus({ feature, _git, _readFile });
+
+    let selection = {
+      selected: [],
+      omitted: [],
+      failedSources: [],
+      emptySources: [],
+      renderedBytes: 0,
+    };
+    let corpusOutcome = null;
+    if (gathered.unlistable) {
+      corpusOutcome = "RSN-UNLISTABLE";
+    } else if (gathered.entries.length === 0) {
+      corpusOutcome = "RSN-EMPTY";
+    } else {
+      selection = selectDecisions({ entries: gathered.entries, feature, thresholds });
+    }
+
+    const rows = selection.selected.map((r) => ({
+      id: r.id,
+      sourcePath: r.sourcePath,
+      origin: r.origin,
+    }));
+    const block = renderDecisionLedgerBlock({ selected: selection.selected });
+
+    const record = {
+      feature,
+      phaseId,
+      docType,
+      round,
+      rows,
+      omitted: selection.omitted,
+      renderedBytes: selection.renderedBytes,
+      corpusOutcome,
+      failedSources: selection.failedSources,
+      emptySources: selection.emptySources,
+    };
+
+    if (Array.isArray(sink)) {
+      sink.push(record);
+    } else if (sink && typeof sink === "object") {
+      if (!Array.isArray(sink.dispatches)) sink.dispatches = [];
+      sink.dispatches.push(record);
+    }
+
+    if (typeof _log === "function") _log({ feature, phaseId, docType, corpusOutcome });
+
+    return block;
+  };
 }
 
 // ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
