@@ -121,3 +121,50 @@ FINDING: Low | inherited | nonlocal | Metadata block, v1.4 erratum note (:20-23)
 | Q-01 | (Carried, still open.) Which side is authoritative on post-mortem deletion at harvest? Note that `harvest-learnings/SKILL.md` now answers both ways internally — `:28`/`:59`/`:129` say survive, `:77` says deleted — so this cannot be closed by picking a document; it wants a decision plus an edit to whichever lines lose. |
 | Q-02 | (Carried, still open.) If post-mortems do survive, is REQ-STATS-05's "no post-mortem file is zero halts" right for a *harvested* feature — is a surviving post-mortem set complete evidence, or does harvest fold non-convergences into LEARNINGS §1 and drop originals? |
 | Q-03 | (New.) Should this REQ's harvested-state ACs depend on `harvest-learnings`' deletion scope at all, or should they key off `LEARNINGS-{feature}.md` presence plus per-family absence *without* asserting why the families are absent? The second shape is robust to Q-01 resolving either way and would let the REQ approve before the upstream decision lands. |
+
+## Positive Observations
+
+- Everything I approved through v4 is still approved and still verifies. C-3/C-4's document-type
+  enumerations match `CLAUDE.md:93`'s artifact convention; C-4's grammars remain faithful
+  quotations of `pdlc/OPERATIONS.md:292` and `:295`; C-5's deferral targets (round derivation, the
+  `CODE_REVIEW-*-v{N}` version grammar, the POSTMORTEM `RESOLVED:` lifecycle) all still exist
+  upstream. Zero bytes moved, so zero regressions — I diffed the whole file to say so rather than
+  assuming it.
+- The v1.4 erratum edit continues to look right on re-read: REQ-STATS-04 and REQ-STATS-06 express
+  the survivor predicate the same way, and REQ-STATS-06 cites C-4's grammar instead of restating a
+  match rule, which is what C-5 demands.
+- The one open High is genuinely not a REQ-authoring failure. The REQ compressed an upstream claim
+  that turned out to be unsettled *in the upstream itself*; no amount of care at this layer would
+  have produced a correct sentence. Q-03 offers a way to approve this REQ without waiting for the
+  upstream decision, if the operator prefers to unblock the pipeline first.
+
+## Recommendation
+
+**Needs revision**
+
+The document did not change this round, so the v5 High could not have been closed by an edit, and
+the off-document resolution F-01 asked for has not landed either: there is no `docs/_decisions/`
+entry on harvest deletion scope, `pdlc/OPERATIONS.md:296` is unchanged, and
+`harvest-learnings/SKILL.md` still contradicts itself between `:28`/`:59`/`:129` and `:77`. The
+verdict is therefore unchanged, and dispatching a seventh identical review round will not change it
+either — the blocker is an upstream contract decision, not REQ wording.
+
+Two concrete paths to Approved, either sufficient:
+
+1. **Settle it upstream.** Add a `docs/_decisions/` entry fixing whether `harvest-learnings` deletes
+   `POSTMORTEM-*`, correct whichever of `harvest-learnings/SKILL.md:77` or `:28`/`:59`/`:129` and
+   `OPERATIONS.md:296` loses, then cite that entry in REQ-STATS-06 in place of the bare assertion —
+   and add a harvested state to REQ-STATS-05 if the answer is "deleted".
+2. **Decouple the REQ from the question** (Q-03). Rewrite REQ-STATS-06's clause so the harvested
+   trigger states only the observable condition — `LEARNINGS-{feature}.md` present and at least one
+   C-4 family entirely absent — and drop the "post-mortems survive" causal rationale. Then give
+   REQ-STATS-05 the same treatment: report `harvested` when LEARNINGS is present and no post-mortem
+   file remains, `0` otherwise. That is correct under *both* resolutions of Q-01 and needs no
+   upstream change, at the cost of one extra harvested state.
+
+F-02 remains a Low nit in a changelog sentence and gates nothing.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
