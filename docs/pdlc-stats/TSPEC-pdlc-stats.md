@@ -123,8 +123,8 @@ of the four metrics:
 `escalationViewModule()` helpers already use. §2 argues that placement and §8 records the
 alternatives; the cost it carries — a co-change across the **ten** sites §2.1 derives (six symbol
 edits across five in-repo enumeration files, four further pinning sites, and `pdlc/README.md`'s
-un-oracled prose enumeration), including a carve-out against a completed sibling feature's frozen
-packed-set table — is named here rather than discovered during implementation. §2.1 owns the count
+un-oracled prose enumeration), and a carve-out against a completed sibling feature's frozen
+packed-set table that sits **outside** that ten — is named here rather than discovered during implementation. §2.1 owns the count
 and its derivation; this sentence cites it rather than restating a second number.
 
 **What this document decides.** Module boundaries and the seam design; the injected-parser bundle
