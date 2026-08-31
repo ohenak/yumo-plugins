@@ -160,3 +160,56 @@ At HEAD I count 62 `CROSS-REVIEW-*` basenames and exactly 4 matching
 `^CROSS-REVIEW-[a-z-]+-REVIEW-v[0-9]+\.md$`. The numbers are correct, and the directory's
 independence from the settled clause is real — it holds grammar-matching cross-reviews alongside the
 malformed shape, so it never depended on the disputed reading in either direction.
+
+## Open Questions
+
+**§8.3's ledger arithmetic is correct — I counted it rather than reading the count word.** The
+preamble now says "**One remains open**" and names four closed. The section body carries exactly one
+bullet (BR-26/EC-10). The four closed are BR-16's `CROSS-REVIEW-*`-versus-grammars ambiguity, BR-11's
+dropped version-grammar qualifier and BR-25's incomplete loose-file illustration (all at REQ v1.4 /
+FSPEC v1.4), plus the REQ-STATS-06-versus-BR-16 disagreement discharged at REQ v1.7. Three closed
+previously plus one this round is four; two open minus one closed is one. Both count words moved
+together with the thing they count, which is what my v10 Q-02 asked for. This is the failure mode
+that goes stale in silence, so I checked the bullets rather than the numeral.
+
+**The remaining open erratum is genuinely open.** BR-26/EC-10 still state no positive
+feature-recognition predicate; FSPEC v1.8 did not touch it, §4.4's leading-underscore discriminant
+remains marked provisional on its answer, and RK-5's mitigation stands. Correctly left standing.
+
+**The v1.8 entry's two carried-forward claims both verify at HEAD.** It asserts "§2.1 still derives
+**ten** co-change sites and the seven → eight `REQUIRED_INCLUDES` move stands." §2.1's table holds
+twelve rows, of which the last two are the sibling-feature document edits that RK-1 explicitly places
+*outside* the ten — so ten co-change sites plus two, exactly as RK-1 words it. And
+`pdlc/workflows/__tests__/coverageInstrumentation.test.js:37-46` holds four `REQUIRED_INCLUDES`
+entries; the shipped `toEqual` literal at lines 266-272 spreads those four plus
+`CAPTURE_SCRIPT_INCLUDE` plus three `lib/` modules. `4 + 1 + 2` = seven before `lib/stats.mjs`,
+eight after. TSPEC's arithmetic is right.
+
+**One implementation-side observation, not a TSPEC defect.** That same test's title now reads "the
+include set is exactly the **seven** modules the feature owns" while its literal already enumerates
+**eight** (`lib/stats.mjs` included). §2.1 line 272 prescribed the move as "seven → eight (printed
+`six` → `eight`)"; the implementation moved the printed word from `six` to `seven` rather than to
+`eight`, and the adjacent comment still calls the literal seven-member with `REQUIRED_INCLUDES`'
+three entries. Neither string carries an assertion, so nothing is red — which is exactly why it
+would go stale in silence. The TSPEC is correct here and prescribes the right end state; the gap is
+in code that landed after this document was written, so it belongs to the DoD sweep, not to a frozen
+TSPEC round. Recorded below rather than raised as a finding against this document.
+
+DEFERRED: coverageInstrumentation.test.js P9-02's title word reads "seven" and its arithmetic comment "three entries"/seven-member while the literal enumerates eight — apply §2.1's prescribed "printed six → eight" restatement during DoD.
+
+**A note I am carrying forward rather than re-raising.** REQ v1.7's phrasing binds the harvested
+predicate and the numerator to one file set. §4.3 satisfies it today because both derive from BR-14's
+grammars. It remains the case that a future edit decoupling those two sets would now violate REQ
+directly rather than merely diverge from BR-16 — a tightening, and one §4.3's current text reflects
+correctly ("REQ and FSPEC now read one file set").
+
+## Delta-Confirmation Findings
+
+No findings.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Answered by the revision, recorded for the trail: v10's Q-01 asked whether the withdrawn survivor reading would be kept as an in-place record. It was, in both §4.3 ("*Record of a withdrawn reading, so it is not re-raised*") and §0's v1.6 entry ("*Superseded — this row is history, not a live claim*"). Nothing further needed. |
+| Q-02 | Also answered: §8.3's count moved two → one alongside the bullet's removal, and the closed-count moved three → four. Verified by counting bullets, not by reading the numeral. |
