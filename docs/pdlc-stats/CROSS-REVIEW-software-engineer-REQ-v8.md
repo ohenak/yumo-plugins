@@ -132,3 +132,7 @@ artifact's metadata row.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:5f3e80519b982f29ab0b6dad30fa776b4be4b2d34085b235ad755890064ed9f8
+APPROVAL-HASH-NORMALIZED: sha256:5f3e80519b982f29ab0b6dad30fa776b4be4b2d34085b235ad755890064ed9f8
+REVIEWED-COMMIT: 1847dd9c0a6f5a07cac7b68b880aa60fef3f4942
