@@ -49,7 +49,52 @@ its presence:
 
 ## Architecture
 
-_pending_
+§2.1 is where five of the seven routed items landed. It is now correct, and materially more honest
+about cost than the version I approved.
+
+**The count is right, and I checked it rather than counting the table.** The set is nine in-repo
+sites plus two sibling-feature document edits. The internal breakdown the round introduces —
+*five enumerations, holding six symbols across five files, plus four test files that pin those
+enumerations* — reconciles exactly: `prepack.mjs`/`MODULE_NAMES`, `publish-preflight.mjs`/
+`WORKFLOW_MEMBERS`, `fixture-machine.mjs`/`WORKFLOW_MODULE_NAMES`, `package.json`/`c8.include` are
+one symbol each, `_tspec-packed-set.mjs` holds two (`WORKFLOW_MEMBERS` and `tspecPackedCount`) — 6
+symbols, 5 files — and `loop-distribution.test.js`, `coverageInstrumentation.test.js`, `run.test.js`,
+`learningsPremises.test.js` are the four pins. 5 + 4 = 9.
+
+This retires the specific defect item 6 named: the old text held **two different sets of five** (§2.1
+counted vendoring symbols, §7.3 counted co-change table rows including the non-vendoring
+`c8.include`, and collapsed `_tspec-packed-set.mjs`'s two symbols into one). Both are now stated in
+the same vocabulary, and I swept the document for stale counts — the only surviving "five"s are in
+the changelog describing the correction and in §7's accurate breakdown. No stale count remains.
+
+**Each of the four new test-file rows is accurate.** I opened all four; this is the part of a
+co-change claim most likely to be aspirational, and it is not:
+
+| Site | §2.1's claim | Verified |
+|---|---|---|
+| `loop-distribution.test.js` | `NEW_LIB_MEMBERS_BARE`, `NEW_LIB_MEMBERS_VENDORED`, three baselines, `assertAdditiveOnly` length equality | all present (lines 49–66); `assertAdditiveOnly` does assert length equality |
+| `learningsPremises.test.js` | P-1's parsed `MODULE_NAMES` array-equality, "exactly four workflow modules" in the title | present; `toEqual` over the regex-parsed list, and the title does carry the stale-able word "four" |
+| `run.test.js` | three `deepEqual` manifest-membership literals plus a process-entry `prepack` leg | present |
+| `coverageInstrumentation.test.js` | P9-02 pins the `c8.include` literal; `toEqual`, so position matters | present |
+
+**The sibling-feature rows are a scope decision, and they are properly owned.** Amending a
+*completed, approved, frozen* feature's artifacts is exactly the kind of move that should not be
+made inside an engineering document on its own authority — so I checked the authority. `DEC-STATS-01`
+`K-7` exists and owns it, the TSPEC cites rather than restates it (correctly invoking
+`pdlc-engineering-loop`'s verbatim-restatement lesson), and the pattern is precedented: the sibling
+TSPEC's own 0.15 changelog row records `pdlc-engineering-loop` making the identical amendment and
+frames it as "not a re-opening of this completed feature — a spec-first edit … that its own §5.4
+obligates for any `PK-*` addition". The edit described is also factually right: the sibling TSPEC
+§5.4 and FSPEC §5.2 both currently say **five**, so `5 → 6` plus `PK-26` is the correct delta. This
+is a scope expansion made visible and traceable, which is the outcome I want — the previous version
+hid two real document edits behind a five-row table.
+
+**Option B's row (item 5) is fixed and is the sharper claim.** "`lib/` class grows 15 → 16" now
+names that the class is held **twice**, the second copy being `publish-preflight.mjs`'s
+production-side `LIB_MODULES_AT_HEAD` / `LIB_MODULES_FROM_THIS_FEATURE` pair (12 + 3). That matters
+for the product decision the table exists to support: B was rejected partly on co-change cost, and
+understating B's cost while overstating precision would have made the rejection look better-founded
+than it was. Correcting it *against* the chosen option's interest is the right instinct.
 
 ## Interfaces
 
