@@ -35,9 +35,14 @@ and are already `export`ed in `pdlc/workflows/orchestrate-dev.js` — verified a
 injected as a bundle (`StatsParsers`) and pinned by a reference-identity oracle, per
 `DEC-STATS-03`.
 
-**The standing cost this PLAN has to carry.** Adding one module to `pdlc/workflows/lib/` obliges a
-co-change across the vendoring enumerations, stated once in `DEC-STATS-01`'s carve-out and cited
-here rather than restated (`K-6`). Every site named below was confirmed present at HEAD:
+**The standing cost this PLAN has to carry.** Adding a module the shipped engine **loads at
+runtime** obliges a co-change across the vendoring enumerations, stated once in `DEC-STATS-01`'s
+carve-out and cited here rather than restated (`K-6`). The trigger is runtime reachability, not
+membership in `pdlc/workflows/lib/`: HEAD already carries the counterexample — `lib/document-oracles.mjs`
+sits in that directory, is consumed only by `documentOracles.test.js` and `advisoryWaveGate.test.js`,
+and appears in none of the enumerations below. `stats.mjs` owes the co-change because `bin/cli.mjs`
+loads it for `pdlc stats`. T-21 promotes the sweep in exactly this scoped form, with
+`document-oracles.mjs` as its worked exclusion. Every site named below was confirmed present at HEAD:
 
 | Site | Symbol | Confirmed at HEAD |
 |---|---|---|
@@ -226,8 +231,13 @@ markers — so the parser reads them as the same tokens.
   and T-11's scratch-prefix constant both constrain how `bin/cli.mjs` may be written; landing the
   edit before its structural oracles exist would let a second `StatsParsers` construction site pass
   unnoticed, which is exactly `K-4`'s residual.
-- **T-18 depends on T-17, not on T-16**, because its end-to-end conjunct runs the shipped command
-  and therefore the production `statsIo` — the real-fs seam that no workflows-side double exercises.
+- **T-18 depends on T-17, not on T-16**, and the reason is the *seam*, not the command: T-18 runs
+  workflows-side over T-02's `realStatsIo()` (the CLI-driving tests live in the engine suite, per
+  the Overview's suite arrangement — T-09 is where the shipped command is exercised). `realStatsIo()`
+  is only trustworthy once the seam it mirrors exists and is pinned: T-17 authors `statsIo()`, and
+  T-10's equivalence plus `lstat`-not-`stat` conjuncts assert the helper and the shipped seam make
+  the identical four `fs` calls. Without that edge the helper could pass while the shipped seam
+  diverged — the exact mechanism by which an F-01-style `stat`/`lstat` substitution would hide.
 - **T-20 gates the whole co-change batch.** Its red is what makes batch 10's five tasks a single
   atomic obligation: `K-1`'s partial-edit failure mode is closed by the oracle being red *before*
   any enumeration moves, so a batch that lands four clusters and forgets the fifth cannot go green.
