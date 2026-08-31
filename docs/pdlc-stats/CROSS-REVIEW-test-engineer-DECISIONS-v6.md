@@ -80,6 +80,68 @@ and DECISIONS is the one carrying five now-unfaithful restatements of the number
 
 ## Decision
 
+**DECISIONS does not still hold as written against the TSPEC now at HEAD.** Non-approving
+confirmation. Two High findings, both `delta`, both local to what the erratum touched.
+
+### F-01 (High) — the site count, and the rule the site table runs on
+
+DECISIONS says **nine** in five load-bearing places: DEC-STATS-01's option-A cell ("**nine** edit
+sites (sweep-derived, see below)"), the site table's own heading ("**Option A's nine sites**"), the
+sweep paragraph ("So the co-change set is **nine sites**"), *Reversibility: hard* ("amending all
+nine sites"), K-1 ("The **nine** co-change sites in DEC-STATS-01's table"), and *Standing costs
+accepted* ("costs **nine** edit sites"). TSPEC §2.1, §7.3, RK-1 and §8.4 now all say **ten**.
+
+The number is the smaller half. DECISIONS resolves `pdlc/README.md:231` deliberately, and records
+the reasoning as jointly reached: *"It is not a tenth row of the site table, and the two reviewers
+agree on the reason from opposite directions: the table is a table of falsifiers, every row of
+which reds on a partial edit, and nothing pins this line."* I verified that premise at v5 and it
+still holds — `documentOracles.test.js` reads `pdlc/README.md` at `:316` and `:672` but pins
+`workflows/dist/` and the absence of seam-count prose, never the member list. TSPEC v1.3 has now
+added the row anyway, marking it "**Pinned by no oracle** — RK-1's residue".
+
+This is the finding, in testing terms. A site table whose rows are falsifiers is a table an
+implementer can *run*: every row reds on a partial edit, so the table is self-checking and a
+missed row is a red, not a review miss. Admitting one un-oracled row silently converts it into a
+checklist, where nine rows red and the tenth is caught only by a human. That is a real change to
+what the artifact is worth, and it is the distinction DECISIONS' *Residuals* section exists to
+preserve. Whichever way it is settled, both documents must settle it the same way — the two tables
+are cited interchangeably as "§2.1" and "DEC-STATS-01's table", and PLAN reads both.
+
+Repair, either direction, is cheap: TSPEC drops the row back to RK-1's residue where DECISIONS
+already carries it, or DECISIONS adopts ten and restates the table's membership rule as
+"falsifiers, plus named un-oracled residue" so the two un-oracled rows (`pdlc/README.md` and
+`PK-26`'s existence row) are visibly a different kind of row. I have no stake in which; I have a
+stake in the documents agreeing, and in the falsifier/checklist distinction surviving the merge.
+
+### F-02 (High) — DECISIONS names a purity detector that reds a correct implementation
+
+DEC-STATS-03's *Re-evaluation trigger, and its detector* specifies the detector as: *"a purity
+conjunct on the four exports — call each classifier twice with the same input in a fresh module
+instance and assert deep-equal, **non-aliased** results."* All four. TSPEC v1.3 has now split that
+conjunct by return type, and the reason it gives is correct — I confirmed it at the source rather
+than taking it: `pdlc/workflows/orchestrate-dev.js:12384`, `deriveDodRoundIndex` returns
+`max + 1`, a primitive `number`. Two equal numbers are `===`. A non-aliasing assertion over a
+`number` therefore reds against a *wholly correct, wholly pure* implementation.
+
+So DECISIONS, as written, prescribes a test that fails on green. That is the "a test that only
+passes is not yet a test" bar inverted — a test that only fails is worse, because an implementer
+who follows K-6's routing and writes the conjunct as DECISIONS specifies it gets a red they cannot
+fix without contradicting the document. TSPEC has fixed this upstream; DECISIONS still carries the
+unsound form, and it is DECISIONS that K-6 makes authoritative for the conjunct's shape.
+
+There is a second, quieter half. The *Residuals* table disposes of "The driver exports gaining
+state" as **"Closed by erratum**: the purity conjunct named in DEC-STATS-03's trigger, routed to
+TSPEC §6.4." Upstream now qualifies that closure explicitly: `deriveDodRoundIndex` gets A-B-A
+instead, and TSPEC states plainly that *"a memo table is invisible to this — a correct memo returns
+the right number"*. A memo is one of the three state shapes DEC-STATS-03's own trigger names ("a
+closure over configuration, **a cache**, a module-level mutable"). So for one of the four exports
+the trigger is now closed against accumulating state but **not** against a cache, which is exactly
+the residual's stated concern. "Closed by erratum" overclaims what upstream delivers. The honest
+restatement is that the residual is closed for the three object-returning classifiers and narrowed
+— not closed — for `deriveDodRoundIndex`, with the memo-shaped remainder named. A residual table
+exists so PLAN and the DoD reviewer inherit known gaps rather than discovering them; a gap recorded
+as closed is the one gap they will not look for.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
