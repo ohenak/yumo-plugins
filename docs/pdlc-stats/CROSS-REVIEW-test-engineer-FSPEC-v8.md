@@ -81,7 +81,33 @@ approved testability position is undisturbed.
 
 ## Positive Observations
 
+- The edit did the hard version of the job. The routed pair was two entries; re-grounding on REQ
+  v1.4 found the same staleness in the other three and in five sibling sites (§1, BR-06, BR-12,
+  BR-27, EC-09, D-8/D-9), so no site outlives the fix. That is the failure mode these confirmation
+  rounds usually catch — a §7.3 cleaned up while a business rule still argues the closed case.
+- Turning §7.3 from a list of live disputes into a settled-record table (E-1…E-5) is the right
+  shape: it keeps the provenance a harvest can read while making it unmistakable that nothing routes
+  upstream. Each row naming the FSPEC sites it backs is exactly what lets a later reader re-verify
+  a closure cheaply — which is how I found the one wrong citation, so the format is already earning
+  its keep.
+- The closures are quotes, not paraphrases, where it matters. BR-27 lifts REQ-STATS-07's sentence
+  verbatim and EC-09 tracks REQ-STATS-09's *Given* clause closely, so a future drift in the REQ
+  breaks the quote visibly rather than silently changing what the FSPEC means.
+- Zero oracle churn. Every AT body, every BR→AT row and every EC→AT row is untouched, and the exit
+  codes are byte-identical. A prose-only erratum that leaves the test surface alone is the cheapest
+  possible thing to confirm.
+- D-9 was rewritten to say the case "was, under REQ v1.3's *Given*" — dating the superseded reading
+  rather than deleting it. The decision stays auditable without reading as a live contradiction.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves both routed items, closes three more with upstream backing I verified line by
+line, and breaks nothing I previously approved. Two Low findings are recorded: E-5's oracle citation
+points at AT-19 where AT-26/AT-20 do the work, and §7.3's closing paragraph still describes two Low
+errata as open that REQ v1.4 appears to have repaired. Both are record-keeping corrections inside
+§7.3, neither gates the phase, and both can be folded into the next touch of this document.
 
 ## Delta-Confirmation Findings
 
