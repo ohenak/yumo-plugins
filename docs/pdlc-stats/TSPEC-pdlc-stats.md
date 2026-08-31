@@ -13,7 +13,24 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.7 | 2026-08-31 |
+| Draft | se-author | 1.8 | 2026-08-31 |
+
+**v1.8 — erratum round 8** (targeted versioned edit; no restructuring, no re-litigation).
+Re-grounded on upstream HEAD **first**, and upstream moved: REQ is `sha256:f75c348f…` (**v1.7**,
+commit `e12b78fd8`) where v1.7 grounded on `sha256:5f3e8051…` (v1.6), and FSPEC is
+`sha256:a493133f…` (**v1.8**) where v1.7 grounded on `sha256:c7d2c832…` (v1.7). One upstream
+decision is absorbed, and it is the one this document itself routed: **REQ v1.7 withdrew
+REQ-STATS-06's "a grammatical basename outside the driver's catalogue is a survivor" clause**, so an
+unrecognised basename contributes no process bytes and counts as no file of its family remaining —
+FSPEC BR-16's rule, absorbed unchanged by FSPEC v1.8. No new `BR-`, `E-` or `AC-` row and no
+vocabulary rename accompany it. Effect here is a re-stamp of exactly the sites §4.3 pre-declared:
+(a) §4.3's contested paragraph now states the settled rule and records the withdrawn "survivor"
+reading in place so it is not re-raised; (b) §4.3's BR-16 pin moves v1.7 → **v1.8** (rule unchanged
+since v1.7); (c) §4.3's AT-17 fourth-leg narration drops its withdrawn `measured` alternative and
+pins **`harvested`** hard; (d) §8.3's second bullet closes as discharged and its count word moves
+**two → one**. No expected value changed — §4.3 and AT-17 already carried `harvested` — and no
+type, signature, exit code, oracle, code sketch or count outside §8.3's own moves. §2.1 still
+derives **ten** co-change sites and the seven → eight `REQUIRED_INCLUDES` move stands.
 
 **v1.7 — erratum round 7** (targeted versioned edit; no restructuring, no re-litigation).
 Re-grounded on upstream HEAD first: REQ `sha256:5f3e8051…` and FSPEC `sha256:c7d2c832…` are the same
@@ -48,12 +65,11 @@ cross-reviews too and reports a measured ratio. §4.3 read it as naming a harves
 passage is rewritten to the shape-only reading, its pin moved from "BR-16 at v1.4" to v1.7, and the
 HEAD measurement (62 `CROSS-REVIEW-*`, 4 out-of-catalogue, 58 grammatical) recorded so a real-path
 test is not written to a wrong expectation. §7.2's AT-09 row and §6.1's baselines already carried
-the four-file count and needed no edit. (b) **REQ-STATS-06 v1.6** now calls a grammatical basename
-outside the driver's catalogue **a survivor**, which contradicts BR-16's "reports `harvested`" on
-the same file and contests AT-17's fourth-leg expectation. That is a REQ-versus-FSPEC conflict, not
-a TSPEC choice: §4.3 continues to implement BR-16, its immediate upstream, states the dispute and
-the three sites that re-stamp when it settles, and §8.3 carries it as the second open erratum
-(routed, not repaired). (c) §5's types survive REQ v1.6's halt withdrawal unchanged — `halts:
+the four-file count and needed no edit. (b) **REQ-STATS-06 v1.6** called a grammatical basename
+outside the driver's catalogue **a survivor**, contradicting BR-16's "reports `harvested`" on the
+same file. *Superseded — this row is history, not a live claim:* REQ v1.7 withdrew that clause and
+decided the case BR-16's way, and v1.8 above re-stamps the three sites §4.3 named and closes the
+§8.3 bullet. §4.3 implemented BR-16 throughout, so nothing it asserted was ever wrong. (c) §5's types survive REQ v1.6's halt withdrawal unchanged — `halts:
 HaltEntry[]` carries no state discriminator and an empty array is exactly the measured `0` REQ now
 mandates — and the five-key JSON literal still matches REQ-STATS-02. No type, signature, exit code,
 oracle, code sketch or count changed this round.
