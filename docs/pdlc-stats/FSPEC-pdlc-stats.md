@@ -210,7 +210,7 @@ denominator depending on their names.
 
 **BR-04 (the feature argument is a literal directory basename).** The argument is matched exactly
 against directory names, with no fuzzy, prefix or case-insensitive matching (REQ A-1). A name that
-matches no directory under either root is not-found (BR-28), never a near-miss suggestion that the
+matches no directory under either root is not-found (BR-30), never a near-miss suggestion that the
 command then reports on.
 
 ### 4.2 Metric rules
@@ -341,10 +341,12 @@ printed in the same list, in the same order, with the reason in place of the met
 visible marker — never in a separate section an operator could skim past, and never omitted
 (REQ-STATS-07).
 
-**BR-19 (the tokens are fixed).** The non-numeric states render as exactly `harvested`,
-`unmeasurable` and `n/a`, in both modes, in every metric. Fixing the spellings here is what lets a
-consumer and a test agree on them without either re-deriving the vocabulary; REQ O-1 assigns that
-choice to this document.
+**BR-19 (the tokens are fixed).** The non-numeric states render as exactly `harvested` and
+`unmeasurable` in both modes, in every metric. The zero-denominator state is the one token that
+differs by mode: `n/a` in human mode, `unavailable` as the JSON `state` value (BR-22), because the
+human token is an abbreviation no JSON consumer should have to special-case. No other state has a
+mode-specific spelling. Fixing the spellings here is what lets a consumer and a test agree on them
+without either re-deriving the vocabulary; REQ O-1 assigns that choice to this document.
 
 ### 4.4 JSON rendering
 
