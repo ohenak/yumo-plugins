@@ -173,7 +173,61 @@ not re-raise them here.
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+**EC-03 (empty feature directory).** "Every metric reports its zero state … Not a gap and not an
+error — an empty directory is a real, reportable state." REQ-STATS-07 now says the same in its own
+*Then*. This edge case went from being the FSPEC's contested narrowing to being upstream's own
+disposition. No change.
+
+**EC-05 (basename fails the grammar).** Includes "a document type outside BR-09's six — including the
+pipeline's own `CROSS-REVIEW-{role}-REVIEW-v{N}.md`". REQ-STATS-03 v1.3 now names that case and
+assigns it to malformed for the reason D-8 gave. Match confirmed; the pipeline-authored artifacts in
+`docs/completed/pdlc-advisory-wave-gate/` that AT-01 and A-3 lean on are unaffected.
+
+**EC-07 (partial harvest).** "The DoD metric and the ratio are evaluated on their own evidence,
+independently (BR-11, BR-16)." Independence is still right, and is now *more* clearly right given the
+REQ's deliberate granularity split. But the EC-07 row inherits BR-11's predicate by reference, so it
+inherits F-01's defect: on a partially harvested directory whose surviving `CODE_REVIEW-` file is
+off-grammar, EC-07 and the REQ report different DoD states. Fixing BR-11 fixes this row with it; no
+separate edit is needed.
+
+**EC-09 (`docs/` root missing or unreadable).** The behaviour clause is unchanged and correct. The
+trailing clause is not: "That departs from REQ-STATS-09's *Given*, which sweeps this case in; the
+departure is decided at D-9 and raised as an erratum (§7.3), not left implicit." REQ-STATS-09 v1.3
+now reads "in a repository whose `docs/` root is present and readable — a missing or unreadable
+`docs/` root is not this criterion's case but a root failure." There is no departure left to
+disclose. Leaving the sentence in place tells a TSPEC author that a P1 criterion and this FSPEC
+disagree, which would be a reason to go and re-check the REQ before transcribing AT-27 — wasted work
+at best, and at worst an invitation to "reconcile" AT-27 toward a not-found report that neither
+document now wants. F-04.
+
+**EC-11 (feature directory exists but cannot be read).** Unaffected: it is the unreadability case,
+which is exactly what REQ-STATS-07 now reserves the gap row for, and D-10's `unreadable_feature`
+enum value stands.
+
+**EC-13, EC-14, EC-15.** Re-read against the amended C-5 and REQ-STATS-06. EC-15's argument ("Halts
+have no malformed bucket — REQ-STATS-05 defines none") is strengthened by the carve-out: REQ-STATS-05
+now explicitly owns the listing, so the absence of a malformed bucket is its choice to have made. No
+change.
+
+**EC-21 (unexpected failure computing one feature's metrics).** "Degrades to that feature's gap row;
+the remaining features are still reported (BR-27)." Before the erratum, EC-21's authority could be
+traced to REQ-STATS-07's "for any feature whose artifacts are missing **or fail to parse**". That
+phrase is deleted. The criterion now authorises a gap row on one condition only — the directory
+cannot be read — and BR-27 and §3.2 B5 both say so.
+
+That leaves EC-21 specifying a third disposition with no upstream sentence behind it, and AT-20's
+second leg asserting it. Two defensible resolutions, and they are not equivalent:
+
+1. **Robustness, not coverage.** EC-21 is a catch-all guard, deliberately below the criterion's
+   altitude; then EC-21 should say so and stop citing BR-27 as its authority, §2.1's REQ-STATS-07 row
+   should not credit AT-20's second leg to that criterion, and the reason string should be
+   distinguishable from a read failure (my v4 Q-01, still unanswered).
+2. **Real behaviour the criterion should carry.** Then it is a REQ erratum, not an FSPEC edit — and a
+   deliberate one, since the round that just closed narrowed this exact sentence.
+
+Either way the traceability claim as it stands is wrong: a criterion restricted to unreadability is
+credited with an AT whose whole point is that it fails an implementation guarding only the read.
+F-02, Medium — the behaviour is sound and tested, the trace is not.
 
 ## Acceptance Tests
 
