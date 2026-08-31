@@ -158,6 +158,33 @@ that has been discharged. The behavior is unchanged and AT-26 stays correct; the
 
 ## Edge Cases and Error Scenarios
 
+The delta touched no §5 row. Two rows were re-read against REQ v1.4 anyway, because the routed items
+run through them.
+
+**EC-13 and EC-16 still agree with the new predicates.** EC-13 ("`LEARNINGS` present and spec bytes
+zero → `harvested`, not `n/a`") depends only on BR-16's precedence, which the delta preserved. EC-16
+("a `CODE_REVIEW-` basename that does not match the version grammar contributes nothing and is **not**
+reported as malformed") is exactly the disposition BR-11's new leftovers clause now assumes, so the
+delta made EC-16 load-bearing where it was previously only asymmetry-explaining. That is an
+improvement: AT-28 already pins it and AT-12's third leg now pins the other side of the same file.
+
+**EC-09 asserts a departure from upstream that upstream removed (F-05).** EC-09's Behavior cell says
+the root-failure disposition "departs from REQ-STATS-09's *Given*, which sweeps this case in; the
+departure is decided in D-9 and raised as an erratum (§7.3), not left implicit." REQ v1.3 carved the
+case out: REQ-STATS-09's *Given* is now "in a repository whose `docs/` root is present and readable —
+a missing or unreadable `docs/` root is not this criterion's case but a root failure." There is no
+departure left to decide, and the two documents do not disagree on a P1 path. The observable behavior
+EC-09 specifies is unchanged and is what the REQ now mandates; AT-27's eight root-failure legs stay
+correct and stay valuable. Only the justification prose is stale.
+
+I checked whether the staleness could have leaked into an oracle, since a test written to prove a
+"departure" would be a test written to prove a disagreement: it did not. AT-27's root-failure legs
+assert positive conjuncts (`error.reason` exactly `no_docs_root`, the two messages not byte-identical,
+`feature` null in fleet runs) and never assert anything about REQ-STATS-09's *Given*. No test moves.
+
+No new edge case is needed by the delta. BR-16's new out-of-catalogue clause is already covered by
+EC-05's "or a document type outside BR-09's six" leg, which the delta correctly did not duplicate.
+
 ## Acceptance Tests
 
 ## Open Questions
