@@ -92,3 +92,22 @@
 - (none)
 
 **Pipeline state.** I — halted
+## 2026-08-31T20:32:45.946Z — pdlc-decision-ledger — A6
+
+**Decide:** whether to take the A6 proposal for pdlc-decision-ledger yourself (no well-formed proposal) — the advisory tier refused it as budget-exhausted and changed nothing
+
+| Field | Value |
+|---|---|
+| Feature | pdlc-decision-ledger |
+| Seam | A6 |
+| Refusal reason | budget-exhausted |
+| Root cause | unclassified |
+
+**Diagnosis.** no verdict was produced
+
+**Proposed action.** (none)
+
+**Evidence.**
+- (none)
+
+**Pipeline state.** I — halted
