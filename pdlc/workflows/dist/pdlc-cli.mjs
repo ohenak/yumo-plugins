@@ -2547,6 +2547,58 @@ function parseDecisionLedgerConfig(text) {
   };
 }
 
+// ─── pdlc-decision-ledger TSPEC §3.1 — corpus scope, a directory glob enumerated through `_git`
+// (T-14). Frozen literal, structurally mirroring `LEARNINGS_CORPUS_ARGV` above: one
+// `ls-files` invocation, `:(glob)` pathspecs, `DECISIONS-*.md` filenames only. Four pathspecs,
+// not one: project-level (`docs/_decisions/`) plus feature-level across `docs/`,
+// `docs/completed/`, and `docs/discarded/` (§3.1's two invented-scope corrections).
+const DECISION_CORPUS_ARGV = Object.freeze([
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "--",
+  ":(glob)docs/_decisions/DECISIONS-*.md",
+  ":(glob)docs/*/DECISIONS-*.md",
+  ":(glob)docs/completed/*/DECISIONS-*.md",
+  ":(glob)docs/discarded/*/DECISIONS-*.md",
+]);
+
+// TSPEC §3.2 — the decision-record heading grammar, five conjuncts: ATX heading levels 2–4,
+// an optional load-bearing ordinal prefix, a namespace-plus-numeric id
+// (`DEC(?:-[A-Z0-9]+)+-\d+`), the id opening the heading (excludes mid-heading
+// back-references), and a `:` / `—` separator followed by a non-empty statement (BR-3).
+const DECISION_HEADING_RE =
+  /^#{2,4}[ \t]+(?:\d+\.[ \t]+)?(DEC(?:-[A-Z0-9]+)+-\d+)[ \t]*[:—-][ \t]*(\S.*?)[ \t]*$/;
+
+/**
+ * TSPEC §4.2, §3.2, §3.3. Pure and total: applies `DECISION_HEADING_RE` line by line, then
+ * resolves duplicate ids within the file to the LAST matching heading (§3.3's last-record-wins
+ * law). Returns `[]` for `text` that is `null`, not a string, empty, or holds no qualifying
+ * heading — an ordinary empty result, never a failure (BR-8/F-9).
+ *
+ * `origin` is derived from `sourcePath` alone (§3.1's scope split): project-level files live
+ * under `docs/_decisions/`, everything else in the corpus is feature-level.
+ *
+ * @param {string|null} text - raw file contents, or null/non-string (never thrown on)
+ * @param {string} sourcePath - the file's repo-relative path (the citation)
+ * @returns {Array<{id: string, statement: string, sourcePath: string, heading: string, origin: "project"|"feature"}>}
+ */
+function recogniseDecisionRecords(text, sourcePath) {
+  if (typeof text !== "string" || text.length === 0) return [];
+
+  const origin = typeof sourcePath === "string" && sourcePath.startsWith("docs/_decisions/") ? "project" : "feature";
+
+  const byId = new Map();
+  for (const line of text.split("\n")) {
+    const match = DECISION_HEADING_RE.exec(line);
+    if (!match) continue;
+    const [, id, statement] = match;
+    byId.set(id, { id, statement, sourcePath, heading: line, origin });
+  }
+  return Array.from(byId.values());
+}
+
 // ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
 
 const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
