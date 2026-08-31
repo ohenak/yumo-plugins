@@ -38,3 +38,29 @@ on the round's dispatch list, per `DEC-ERR-03`. I did not re-review unchanged se
 handling of the newly surfaced REQ-versus-FSPEC conflict is correct in kind — implement the
 immediate upstream, route the reconciliation, do not guess — but it states the conflict's blast
 radius narrower than upstream HEAD supports.
+
+## Delta verification — each edit against HEAD
+
+| Edit | Claim | Verified at HEAD | Verdict |
+|---|---|---|---|
+| §4.3 re-scope | `BR-16` at v1.7 cites the directory for the malformed *shape* only; it carries the four out-of-catalogue files alongside grammar-matching cross-reviews and reports a measured ratio | `FSPEC-pdlc-stats.md` §4.2 `BR-16`: "That basename shape is cited from `docs/completed/pdlc-advisory-wave-gate/`, which carries four of them **alongside** grammar-matching cross-reviews and so reports a measured ratio itself; only the shape is borrowed, not the verdict" | **Correct**, and quoted faithfully |
+| §4.3 measurement | 62 / 4 / 58 | Measured: 62 `CROSS-REVIEW-*`; 4 matching `^CROSS-REVIEW-.*-REVIEW-v[0-9]+\.md$`; 58 remainder | **Correct** |
+| §4.3 pin | "`BR-16` at **v1.7**" replaces "at v1.4" | FSPEC header reads v1.7; `BR-16` was revised at v1.6 and v1.7 | **Correct** |
+| §4.3 rule statement | The rule itself — harvested evaluated over exactly `BR-14`'s numerator set; a basename failing the grammar contributes no bytes and counts as no file remaining | `BR-16` states this verbatim; unchanged across v1.6/v1.7 | **Unmoved**, correctly restated |
+| §4.3 / §8.3 conflict | REQ-STATS-06 v1.6 calls a grammatical out-of-catalogue basename **a survivor**, contradicting `BR-16` | `REQ-pdlc-stats.md`: "The predicate is set-membership over C-4's grammars, so a grammatical basename outside the driver's document-type catalogue is a survivor even where REQ-STATS-03 reports it malformed." C-4's grammar is `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` with `{doc-type}` unconstrained | **Real conflict**, not a reading artefact — see below |
+| AT-17 fourth leg | FSPEC-owned; expects `harvested` on `BR-16`'s reading | FSPEC AT-17: the fourth directory holds `CODE_REVIEW` intact plus, as its only `CROSS-REVIEW-` basenames, the out-of-catalogue form; "all four report `harvested` — … the fourth not a measured ratio" | **Correct** |
+| §8 trace | FSPEC §8 also maps `BR-16` to `AT-15` | FSPEC §8: `| BR-16 | AT-15, AT-17 |` | **Correct** |
+| §8.3 count | "**Two** remain open" | §8.3 lists exactly two bullets (BR-26/EC-10 unclassified predicate; the new REQ-versus-FSPEC item) and correctly distinguishes the live question from closed `E-1` | **Correct** |
+| Changelog (c) | §5's types survive REQ v1.6's halt withdrawal — `halts: HaltEntry[]`, no state discriminator, empty array is the measured `0` | REQ-STATS-05 at v1.6: "Where no `POSTMORTEM-{phase}-{feature}.md` file is present, halts report `0`"; REQ R-6 accepts the conflation as residual. TSPEC's type block: `halts: HaltEntry[]; // possibly empty — BR-13, no state needed` | **Correct** — but the block is §4.1, not §5 (`F-02` below) |
+| Changelog | REQ moves absorbed: NG-6 rescoped, REQ-STATS-06 predicate reworded | REQ v1.6 changelog and NG-6 text agree | **Correct** |
+| Unchanged pins | Other upstream pins re-checked against FSPEC v1.7 | §4.3's `BR-11 at v1.4` pin still accurate (FSPEC v1.5–v1.7 touched §1, BR-06, BR-12, BR-27, EC-09, D-8/D-9, BR-16, AT-15, §8, §7.3 E-5 — not BR-11) | **Still accurate** |
+
+**The conflict is genuine and correctly routed.** I checked it independently rather than taking
+§8.3's word: REQ C-4 defines the process side as "every file matching the documented cross-review,
+post-mortem and DoD-review basename grammars: `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` …", with no
+document-type catalogue in the grammar; REQ-STATS-06 v1.6 then makes an out-of-catalogue-but-
+grammatical basename a **survivor**. FSPEC `BR-16` v1.7 makes the same file "no file remaining" and
+`AT-17`'s fourth leg asserts `harvested` on it. Both cannot hold, the choice decides a named
+acceptance test's expected value, and it is a REQ-versus-FSPEC question no downstream layer may
+settle. Implementing `BR-16` (the immediate upstream), stating the dispute in the open and naming
+the re-stamp sites is the right handling — `DEC-ERR-01`'s anti-pattern would have been to guess.
