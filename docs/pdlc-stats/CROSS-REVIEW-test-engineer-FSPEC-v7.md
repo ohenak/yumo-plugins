@@ -69,23 +69,45 @@ undisturbed: no §2.1 row lost its cover, because no row moved.
 
 ## Behavioral Flow
 
-_pending_
+Unchanged. §3.1 (Flow A), §3.2 (Flow B), §3.3 (Flow C) and §3.4 (the read-only invariant) carry zero
+delta bytes this round, so every branch I walked in v6 is the branch that stands today. No new
+decision point appeared that would need a test, and none disappeared that would orphan one.
 
 ## Business Rules
 
-_pending_
+Unchanged: BR-01…BR-30 are byte-identical to the approved state. The two BR-level Mediums v6 raised
+against the *then*-new BR-16 text are still open verbatim, because the text was never revised:
+
+- BR-16's appositive still reads, on its nearest antecedent, as a claim that
+  `docs/completed/pdlc-advisory-wave-gate/` reports `harvested`, where measured at HEAD it reports a
+  **measured** ratio (v6 F-02).
+- BR-16's *"contributes no bytes to the process side"* half still has no falsifying oracle (v6 F-03) —
+  this remains the one carried finding that leaves real behavior unpinned, and it is the one I would
+  fix first.
+
+These are inherited, not delta, and stay non-gating.
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+Unchanged: the 32 `EC-*` rows in §5 carry no delta. EC-09's Behavior cell still frames the decided
+root-failure handling as a *departure* from REQ-STATS-09's *Given* — framing REQ v1.3 already
+obsoleted (v6 F-05). The behavior itself, and AT-27's eight root-failure legs, remain correct; only
+the dissent prose is stale.
 
 ## Acceptance Tests
 
-_pending_
+Unchanged: AT-01…AT-28 (including AT-14b) are all still present and all still referenced from §2.1's
+coverage table, so no criterion lost its acceptance cover this round. AT-15's neither-list still
+omits a `CROSS-REVIEW-`-prefixed non-matching basename, which is why v6 F-03's second claim stays
+unfalsifiable — an implementation that globs `CROSS-REVIEW-*` into `processBytes` while parsing the
+grammar for round counts still passes every test in §6.
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Was this confirmation meant for `TSPEC-pdlc-stats.md`? Its §2.1 is the five-row co-change table the routed item describes, and at HEAD it is the document out of step with DEC-STATS-01's post-v1.3 site set (K-1 now derives **nine** sites from a mechanical sweep; TSPEC §2.1 still lists five, and §8/RK-1 still say "five sites" / "five-site vendoring co-change"). If so, please re-dispatch against the TSPEC — the FSPEC cannot carry that edit. |
+| Q-02 | Should the six findings v6 recorded be re-routed into the FSPEC's ordinary revision loop rather than re-confirmed round after round? They are all still open and all non-gating, so nothing forces them to land; the byte-ratio one (v6 F-03 / this round's F-03) is a genuine test gap and will otherwise ship unpinned. |
 
 ## Positive Observations
 
