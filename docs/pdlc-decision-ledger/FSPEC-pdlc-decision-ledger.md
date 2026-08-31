@@ -6,7 +6,7 @@ feature: pdlc-decision-ledger
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` **v1.9** |
+| Upstream | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` **v1.10** |
 | Downstream | TSPEC, DECISIONS, PLAN, PROPERTIES |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2** — cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
@@ -14,7 +14,18 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.3 | 2026-08-28 |
+| Draft | pm-author | 1.4 | 2026-08-31 |
+
+**v1.4 erratum — the upstream pin, and nothing else.** The routed item names a stale `TSPEC
+v0.7` recital in the `§ Context` passage and the DEC-DECLEDGER-10/-12 re-evaluation-trigger row.
+Both loci are in `DECISIONS-pdlc-decision-ledger.md`; this spec names no TSPEC version anywhere, so
+there is nothing here to correct and the item is routed to se-author, unedited here — the same
+disposition REQ v1.10 recorded for the same item against its own body. Re-grounding at HEAD did move
+one thing: REQ advanced **v1.9 → v1.10**, whose changelog names no new `BR-`/`E-`/`AC-` or
+vocabulary row and moves no measured value (it reworded C-5's slack rationale, which this spec never
+recites, corrected the REQ's own *Cross-Reviews* row, and re-sited a v1.9 note). So the pin above
+advances and nothing else follows from it. `maxEntries` `70` and `maxBytes` `12500` stand, and §7
+A-1 still derives both by id from `M-6b`/`M-6c` and `M-7b`/`M-7c` at Baseline v1.2.
 
 **v1.3 — `maxBytes` `0`, and nothing else.** REQ v1.9 moved no measured value (it corrected two
 Baseline pins in the REQ's own body), so the pin above advances and nothing here follows from it.
