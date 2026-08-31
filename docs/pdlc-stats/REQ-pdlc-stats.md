@@ -17,12 +17,9 @@ depends-on:
 |---|---|---|---|
 | Draft | pm-author | 1.5 | 2026-08-31 |
 
-Round 6 (v1.5): REQ-STATS-05 gains a harvested state. A zero post-mortem count is ambiguous —
-`docs/completed/pdlc-advisory-tier/` retains its LEARNINGS and no `POSTMORTEM-*` file, yet that
-LEARNINGS' `Harvested from` row names two post-mortems "deleted by this harvest" — so absence alone
-can no longer read as a clean run. REQ-STATS-06's rationale drops the falsified premise that
-post-mortems survive harvest for the weaker claim that actually holds. G-3 restated to match
-REQ-STATS-07's gap rule. No other change.
+Round 6 (v1.5): REQ-STATS-05 gains a harvested state, so an absent post-mortem family can no longer
+read as a clean run; REQ-STATS-06's rationale drops the falsified premise that post-mortems survive
+harvest; G-3 restated to match REQ-STATS-07's gap rule. No other change.
 
 ## 1. Problem / Context
 
@@ -48,8 +45,8 @@ JSON document on stdout, so a skill or script can consume it without re-deriving
 
 **G-3 (fleet mode with explicit gaps).** Invoked with no feature argument, `pdlc stats` reports the
 same metrics across every discoverable feature; any feature whose directory cannot be read is
-reported by name with the reason, never silently dropped, while artifacts that are absent or fail to
-parse surface inside their own metric's value rather than as a feature-level label.
+reported by name with the reason, never silently dropped, while absent or unparseable artifacts
+surface inside their own metric's value, not as a feature-level label.
 
 **G-4 (read-only, always).** The command never writes, moves or deletes a file, never issues a
 network call and never runs a `git` write command, in either mode, on success or failure — a
@@ -75,9 +72,9 @@ fail-closed gate: `pdlc stats` never writes a `RESOLVED:` line or participates i
 
 **NG-6** No retroactive recovery of metrics for deleted artifacts (cross-reviews, DoD reviews or
 post-mortems removed by `harvest-learnings`). `pdlc stats` reports only what is on disk — but says so
-where it applies, per the harvested states. In particular it never reads `LEARNINGS-{feature}.md`'s
-`Harvested from` row to reconstruct a deleted count: LEARNINGS presence is used only as the
-discriminator that distinguishes harvested from a genuine zero, never as a data source.
+where it applies, per the harvested states. `LEARNINGS-{feature}.md` is only ever the discriminator
+separating harvested from a genuine zero — its `Harvested from` row is never parsed to reconstruct a
+deleted count.
 
 **NG-7** No new decision-ledger, glossary or size-tiering mechanism (proposal moves M4/R3-3/R3-5) is
 introduced or altered here.
@@ -143,10 +140,9 @@ under REQ-STATS-08's read-only stance.
 `consolidate-learnings`). **Given:** REQ-STATS-01's feature argument plus a `--json` flag.
 **When:** `pdlc stats {feature} --json` runs. **Then:** stdout is exactly one well-formed JSON
 document whose top-level key set is set-equal to REQ-STATS-01's printed metric set plus one
-schema-version field — REQ-STATS-03's malformed and unmeasurable states and
-REQ-STATS-03/04/05/06's harvested state ride in their own metric's value, never as extra top-level keys — so a metric added to human
-mode without a JSON field fails; nothing else is
-mixed into stdout in this mode.
+schema-version field — REQ-STATS-03's malformed and unmeasurable states and REQ-STATS-03/04/05/06's
+harvested state ride in their own metric's value, never as extra top-level keys — so a metric added
+to human mode without a JSON field fails; nothing else is mixed into stdout in this mode.
 
 ### REQ-STATS-03 Review rounds by document type (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** the feature directory contains
@@ -185,14 +181,13 @@ more `POSTMORTEM-{phase}-{feature}.md` files. **When:** the command computes hal
 reports one entry per distinct phase with a post-mortem file present, each tagged resolved or open
 **exactly as the pipeline's own `RESOLVED:` marker rule classifies that file (C-5)** — this REQ
 states no marker-matching rule of its own, so case, duplicate markers and fenced-block placement are
-decided in one place. Where the post-mortem family is entirely absent, absence alone does not decide
-the count: where `LEARNINGS-{feature}.md` is present **and** no `POSTMORTEM-{phase}-{feature}.md`
-file remains, halts report **harvested**, never `0`, because harvest is observed to delete
-post-mortems as well as reviews — `docs/completed/pdlc-advisory-tier/` retains its LEARNINGS and no
-post-mortem, and that LEARNINGS' `Harvested from` row names two it deleted. A plain `0` is reserved
-for the case where absence really does mean never halted: no post-mortem file **and** no
-`LEARNINGS-{feature}.md`. Neither state is an error. Where any post-mortem survives, the measured
-per-phase entries stand, harvested or not.
+decided in one place. Absence alone never decides the count, because harvest is observed to delete
+post-mortems as well as reviews: `docs/completed/pdlc-advisory-tier/` retains its LEARNINGS and no
+post-mortem, yet that LEARNINGS' `Harvested from` row names two it deleted. So where
+`LEARNINGS-{feature}.md` is present **and** no `POSTMORTEM-{phase}-{feature}.md` file remains, halts
+report **harvested**, never `0`; a plain `0` is reserved for absence that really does mean never
+halted — no post-mortem **and** no LEARNINGS. Neither is an error, and any surviving post-mortem
+yields measured per-phase entries as above.
 
 ### REQ-STATS-06 Process-to-spec byte ratio (P0)
 **Source:** US-01. **Who:** pipeline operator. **Given:** any subset of the spec document types
@@ -204,9 +199,9 @@ harvest-deleted process families is entirely absent — no file matching C-4's
 `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains, or no file matching its
 `CODE_REVIEW-{feature}-v{N}.md` grammar does, or neither — the ratio is **harvested**, not measured:
 at least one family harvest deletes is gone from the numerator, so a computed value would silently
-undercount rather than be absent. How much of the numerator harvest removes is not asserted here;
-the predicate is set-membership over C-4's grammars, so a grammatical basename outside the driver's
-document-type catalogue still counts as a survivor even where REQ-STATS-03 reports it malformed. The rendering precision
+undercount rather than be absent; how much of the numerator harvest removes is not asserted here.
+The predicate is set-membership over C-4's grammars, so a grammatical basename outside the driver's
+document-type catalogue is a survivor even where REQ-STATS-03 reports it malformed. The rendering precision
 and the exact not-available / harvested tokens per mode are FSPEC material (O-1).
 
 ### REQ-STATS-07 Fleet mode reports every feature, flags gaps explicitly (P1)
