@@ -15,7 +15,13 @@ depends-on:
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.6 | 2026-08-31 |
+| Draft | pm-author | 1.7 | 2026-08-31 |
+
+Erratum (v1.7): one clause decided, no rule added. REQ-STATS-06's "a grammatical basename outside
+the driver's catalogue is a survivor" contradicted its own preceding rationale and C-5's fidelity
+rule, and dissented from every downstream reading of the same file. It is withdrawn: a basename the
+catalogue does not recognise counts as no file of its family remaining, so a feature carrying only
+those reports **harvested**. No other change.
 
 Round 7 (v1.6): REQ-STATS-05's harvested halt state withdrawn and `0` restored. Both universal
 readings of what harvest does to post-mortems were falsified in turn, so the AC no longer rests on
@@ -202,8 +208,11 @@ review families named next is entirely absent — no file matching C-4's
 `CODE_REVIEW-{feature}-v{N}.md` grammar does, or neither — the ratio is **harvested**, not measured:
 a family harvest deletes is gone from the numerator, so a computed value would silently undercount
 rather than be absent. How much of the numerator harvest removes is not asserted here.
-The predicate is set-membership over C-4's grammars, so a grammatical basename outside the driver's
-document-type catalogue is a survivor even where REQ-STATS-03 reports it malformed. The rendering precision
+The predicate is evaluated over exactly the file set whose bytes the process side sums, so a
+basename the driver's document-type catalogue does not recognise — the same one REQ-STATS-03 reports
+malformed (C-5) — contributes no process bytes and counts as no file of its family remaining: a
+feature whose only `CROSS-REVIEW-` basenames are of that shape reports **harvested**, not a measured
+ratio that would silently undercount. The rendering precision
 and the exact not-available / harvested tokens per mode are FSPEC material (O-1).
 
 ### REQ-STATS-07 Fleet mode reports every feature, flags gaps explicitly (P1)
