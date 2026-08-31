@@ -44,3 +44,33 @@ The upstream deltas, and what each one asks of this document:
   shape-only BR-16 reading, and opens a second §8.3 erratum (REQ-STATS-06 v1.6 versus BR-16 v1.7).
   Every one of these is either agreed with this document already or outside its scope; §4.3's
   contested scoping touches no decision, oracle, type or count this document owns.
+
+## Options Considered
+
+Under freeze the only options open to me are dispositions of this round, not of the document.
+
+| Option | Shape | Why not / why |
+|---|---|---|
+| Approve on "no diff, nothing to check" | Treat an empty document delta as a null round | **Rejected.** Upstream moved three documents; a frozen compression can be falsified by its sources moving underneath it without a byte of it changing. DEC-ERR-03 asks the confirmation to measure the document against HEAD, not against the item list |
+| Re-open TSPEC's §4.3 / REQ-STATS-06 dispute here | Take a side on the out-of-catalogue basename | **Rejected.** It is a REQ-versus-FSPEC reconciliation TSPEC §8.3 already routes to the owning phase, and it reaches no decision, type or oracle this document owns. Opening it here would be a new decision in a frozen round |
+| Block on the stale grounding attestation | Read v1.6's "upstream did not move" as false at HEAD | **Rejected as blocking, recorded as Medium.** The sentence was true when written and is version-scoped; I verified independently that no upstream decision is owed absorption, so no load-bearing claim of this document is false. It is a freshness defect a future round could trip over, not a falsified claim |
+| Approve with the residual findings recorded | Confirm faithfulness, file what is stale, route what is upstream | **Chosen** |
+
+I also re-derived the repository claims themselves rather than trusting either document, because
+"cheaper / simpler" and "N sites" claims are exactly the kind that rot silently when a branch
+advances. Every measurement below is a fresh run at HEAD.
+
+**Sweep totals (both probes, both documents):**
+
+| Query | Measured at HEAD | Document claiming it |
+|---|---|---|
+| `git grep -l "escalation-view" -- . ':!docs/' ':!*/dist/*'` | **25** | DECISIONS (25 − 15 = 10) |
+| `git grep -l "lib/loop-session.mjs" -- . ':!docs/'` | **24** | TSPEC §2.1/§7.3 (24 − 14 = 10) |
+| `grep -rln "escalation-view"` (dist/docs/node_modules excluded) | **23** | DECISIONS' NUL-byte caveat |
+
+All three reproduce exactly. **This withdraws my own v8 F-02**, which read TSPEC §7.3's "24
+candidates / 14 pure consumers" as stale by one against a measured 25: the 25 is *this document's*
+probe, the 24 is TSPEC's (`TSPEC:211-222` states the `lib/loop-session.mjs` probe and the 24 − 14 = 10
+arithmetic explicitly), and DECISIONS' own probe-invariance table already reconciles them. The error
+was mine — comparing one document's total under the other's query, the exact thing this document
+warns is "not defensible". Nothing is owed to TSPEC on that count.
