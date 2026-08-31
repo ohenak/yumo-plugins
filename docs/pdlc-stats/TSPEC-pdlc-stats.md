@@ -569,16 +569,17 @@ else                -> { state: "measured",  rounds: 0 }
 ```
 
 `n > 0` implements **REQ-STATS-04**'s harvested clause — "no `CODE_REVIEW-{feature}-v{N}.md` file
-matching the version grammar remains". FSPEC BR-11's wording is looser ("no `CODE_REVIEW-*` file
-remains in the directory"), and the two readings disagree on a directory left holding a
-`CODE_REVIEW-{feature}-draft.md` or a foreign-feature `CODE_REVIEW-` file after harvest: the
-grammar-matching reading calls that `harvested`, the literal-`*` reading calls it `measured` with
-`0`. The REQ-faithful reading is taken, and it is the same one REQ-STATS-04's own "does not
-contribute, exactly as an unrelated file" sentence requires; the FSPEC's looser wording is routed as
-an erratum (§8.3) rather than silently reinterpreted here. The driver's matcher escapes the feature
-name before matching, so a foreign-feature
-`CODE_REVIEW-` file contributes nothing, and `CODE_REVIEW-{feature}-draft.md` does not match at all
-— EC-16/AT-28's "silent, not malformed", inherited rather than coded.
+matching the version grammar remains" — and FSPEC BR-11 at v1.4 states the same condition in the
+same terms, naming the leftovers it decides: a basename beginning `CODE_REVIEW-` that does not match
+the version grammar (the `-draft` suffix) or that carries another feature's name contributes
+nothing, and holds neither family open. There is no divergence left to reconcile and nothing routed
+upstream on this point (FSPEC §7.3 records the erratum as closed). The branch is unchanged: the
+driver's matcher escapes the feature name before matching, so a foreign-feature `CODE_REVIEW-` file
+contributes nothing, and `CODE_REVIEW-{feature}-draft.md` does not match at all — EC-16/AT-28's
+"silent, not malformed", inherited rather than coded. **AT-12's third directory** — `LEARNINGS` plus
+only `CODE_REVIEW-{feature}-draft.md` and a foreign `CODE_REVIEW-{other}-v2.md`, expected
+`harvested` — is the FSPEC-owned leg that pins this disposition; it is the FSPEC's fixture, not a
+local invention.
 
 **Halts (BR-12, BR-13).** Match `^POSTMORTEM-([^-]+)-{escapedFeature}\.md$` against each basename,
 with `{feature}` escaped by the same `replace(/[.*+?^${}()|[\]\\]/g, "\\$&")` idiom
@@ -629,21 +630,27 @@ contributes to **neither** side: `CROSS-REVIEW-{role}-REVIEW-v{N}.md` is listed 
 sized into nothing. That is BR-14's "matching the grammars" read literally, and it is stated here
 because it is the one consequence of BR-06 that lands in a different metric.
 
-**The harvested test reads "no `CROSS-REVIEW-*` remains" grammatically, and that is a choice.**
-`crossReviews` is grammatical membership (`parseReviewFilename(...).ok`), so the harvested condition
-below asks whether any *grammar-passing* cross-review remains, not whether any basename starting
-`CROSS-REVIEW-` remains. FSPEC BR-16 and REQ-STATS-06 both phrase the condition over
-`CROSS-REVIEW-*`, and the two readings genuinely disagree on a shape this archive produces: a
-harvested directory left holding only `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files — four of which
-exist in `docs/completed/pdlc-advisory-wave-gate/` — reports `harvested` under the grammatical
-reading and `measured` under the literal one. The grammatical reading is taken for one reason: REQ
-C-4 defines the process side as "every file matching the documented … grammars", so a basename that
-does not match contributes no bytes, and a condition asking whether the numerator's evidence is gone
-must be asked over the same membership that supplies the numerator. The alternative would make the
-ratio's state disagree with the bytes the ratio is computed from. A dedicated fixture pins the
-boundary: a directory with `LEARNINGS-*.md`, one `CROSS-REVIEW-{role}-REVIEW-v1.md`, and no
-grammar-passing cross-review, asserted `harvested`. The FSPEC's ambiguity is routed as an erratum
-(§8.3), not resolved by silence. Then, in this order:
+**The harvested test is asked over BR-14's grammars, as BR-16 specifies.** `crossReviews` is
+grammatical membership (`parseReviewFilename(...).ok`), so the harvested condition below asks
+whether any *grammar-passing* cross-review remains, not whether any basename starting
+`CROSS-REVIEW-` remains. That is not a TSPEC choice needing defence: FSPEC BR-16 at v1.4 phrases the
+condition over BR-14's `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar, states it is evaluated
+over exactly the file set BR-14's numerator sums, and names the
+`docs/completed/pdlc-advisory-wave-gate/` shape — a harvested directory whose only `CROSS-REVIEW-`
+basenames are the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form — as reporting
+`harvested`. REQ-STATS-06 at v1.4 carries the same scoping. The rule the two upstream documents
+encode is the one this layer implements: REQ C-4 defines the process side as "every file matching
+the documented … grammars", so a basename that does not match contributes no bytes, and a condition
+asking whether the numerator's evidence is gone is asked over the same membership that supplies the
+numerator. Nothing on this point is routed upstream (FSPEC §7.3 records it closed).
+
+**FSPEC AT-17's fourth leg** is the boundary fixture, and it is FSPEC-owned rather than invented
+here: `LEARNINGS-{feature}.md`, `CODE_REVIEW` files **intact**, and as its only `CROSS-REVIEW-`
+basenames the out-of-catalogue form — expected `harvested`. The "`CODE_REVIEW` files intact"
+conjunct is load-bearing for what the leg proves: the condition below is a *disjunction*, so a
+directory with no DoD reviews would read `harvested` through `dodReviews.length === 0` whatever the
+cross-review side said. Keeping the DoD family populated is what makes the grammatical cross-review
+test the disjunct that fires. Then, in this order:
 
 ```
 if (harvested && (crossReviews.length === 0 || dodReviews.length === 0))
