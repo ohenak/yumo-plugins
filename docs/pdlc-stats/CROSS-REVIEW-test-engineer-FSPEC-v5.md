@@ -107,7 +107,69 @@ each other and EC-21 sits outside both.
 
 ## Business Rules
 
-_pending_
+**BR-11 (DoD harvested) — the one rule the erratum broke.** BR-11 reads: "The DoD metric reports
+`harvested` when `LEARNINGS-{feature}.md` is present **and** no `CODE_REVIEW-*` file remains in the
+directory." REQ-STATS-04 v1.3 reads: "where `LEARNINGS-{feature}.md` is present **and** no
+`CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar remains, this metric reports
+**harvested**".
+
+The divergence is not academic, and it is decidable with one fixture. Take a harvested feature whose
+directory retains `CODE_REVIEW-notes.md`, or another feature's `CODE_REVIEW-other-feature-v1.md`:
+
+- **REQ v1.3:** no file matches the version grammar → `harvested`.
+- **BR-11 at HEAD:** a `CODE_REVIEW-*` file remains → not harvested → and since BR-10 derives the
+  index only from grammar-matching basenames, there is no highest version to report, so the metric
+  falls to `0` — the exact state BR-11's own closing sentence ("the harvested state never displaces
+  evidence this metric can actually read") exists to prevent, on a directory where there is no
+  readable evidence at all.
+
+So the two documents now disagree on the reported value, and they disagree in the direction that
+prints a measured-looking `0` where the truth is "the evidence was deleted" — the failure mode
+REQ-STATS-04 was written to stop. This is a High under my lens for the ordinary reason: a rule that
+contradicts its criterion, on a P-level metric, with no test that can tell the two readings apart.
+
+Two things make it worth fixing at the rule rather than waving through. First, §7.3's third bullet
+predicted this exact situation and bet against it: "BR-11 follows the REQ literally; a foreign-feature
+`CODE_REVIEW-` file would suppress the harvested state under both documents, so this FSPEC introduces
+no divergence, and the erratum stays with the REQ." That reasoning was sound while the REQ said
+`CODE_REVIEW-*`. The erratum has now moved the REQ, which is the event that inverts the bet — and it
+is precisely the kind of consequence a cascade confirmation exists to find, since the FSPEC's bytes
+are untouched and nothing else would have surfaced it.
+
+Second, the erratum deliberately did **not** make the same narrowing to REQ-STATS-06, which still
+reads `CROSS-REVIEW-*` / `CODE_REVIEW-*` at the bare prefix. So the REQ now uses two different
+granularities on purpose: the DoD *count* metric is grammar-scoped, the *ratio*'s harvested predicate
+is prefix-scoped. BR-16 matches the prefix reading and is correct as written; BR-11 matches the prefix
+reading and is now wrong. An editor who "fixes" both to the same granularity will break BR-16. The
+fix is one clause on BR-11 only, plus §3.1 A6's decision question, plus one AT leg (see below).
+
+**BR-16 (ratio harvested).** Verified word-for-word against the amended REQ-STATS-06, including the
+three-way disjunction and the BR-15 precedence. No change.
+
+**BR-12 (halts).** Verified against the amended C-5: BR-12 matches the basename form itself and
+defers only the `RESOLVED:` classification. The FSPEC's §1 anchor argued for this carve-out and the
+REQ granted it. No change.
+
+**BR-27 (gap rows are rows).** The rule's *scope* now matches REQ-STATS-07 exactly. Its
+*justification* does not: BR-27 still says "This narrows REQ-STATS-07's 'missing or fail to parse …
+reports it by name as missing/malformed'" and "'as missing' is not what a zero-state row says, so the
+wording is raised as an erratum (§7.3)". REQ-STATS-07 no longer contains the quoted phrase and no
+longer needs the erratum. Quoting upstream text that was deleted is the citation defect this
+confirmation is asked to catch — F-04.
+
+BR-27's scope also settles my own v4 F-02, in the opposite direction to the fix I proposed. I asked
+for BR-27's subject to be widened to cover computation failure so EC-21's citation would resolve. The
+REQ has since gone the other way and pinned gap ⇔ unreadable. That recommendation should be
+considered withdrawn: widening BR-27 now would create the divergence F-01 describes, in a second
+place. The reconciliation for EC-21 has to be either an upstream sentence or an explicit
+robustness framing — F-02 states both options and picks neither, because that choice is the author's.
+
+**BR-22, BR-21, BR-30, BR-29, BR-20.** Re-read against the amended REQ-STATS-02 and REQ-STATS-09.
+The state-inside-the-value discipline, the three-key error object, the closed `reason` enum and the
+exit-code table are all unaffected by the erratum: it changed which AC owns a state, never which key
+carries it. My v4 F-01, F-03 and F-04 (AT-27's key-set conjunct, BR-30's stale lead sentence,
+AT-27's stderr conjunct) remain open as recorded there; they are unrelated to this cascade and I do
+not re-raise them here.
 
 ## Edge Cases and Error Scenarios
 
