@@ -35,6 +35,31 @@ makes a normative claim of this document false. **Approved with minor changes.**
 
 ## Architecture
 
+**My v12 F-01 (High, `inherited`) is resolved at HEAD, by the document that owned it.** I re-measured
+all six sites I listed at v12 against `PLAN-pdlc-decision-ledger.md` at HEAD, and every one is
+corrected:
+
+| v12 site | State at HEAD |
+|---|---|
+| `PLAN`:19 (revision history) | Replaced by **v0.8**, which names both items still-raised, states "this document is the stale side", and quotes §7.3's correction direction verbatim (`PLAN`:19) |
+| v0.7's "rejected resolution" paragraph | Retained but explicitly demoted: "*superseded in part by v0.8: the count and home this entry records were corrected downstream-to-TSPEC-§7.3; retained as history*" (`PLAN`:25) — withdrawn as contract, kept as history, which is exactly the right disposition |
+| T-11 | Now reads "**All three are declarations of this task's own test file**", "the **eight** plumbing declarations", "the **fourteen** top-level declarations" (`PLAN`:158) |
+| T-18 | Now reads "This task writes **no census constant**… there is no production declaration to add here (v8 PM F-01 / TE F-01; this reverses the v0.7 instruction)" (`PLAN`:164) |
+| File-ownership manifest | The census test file is "the sole home of **all three** frozen census lists… never of `orchestrate-dev.js`" (`PLAN`:213); no `orchestrate-dev.js` row claims a census constant (`grep -n "CENSUS_TOKENS"` returns no manifest row for that file) |
+| §Definition of Done | six ∪ eight = fourteen, all three constants test-file constants, "none is production code or member of the owned list" (`PLAN`:496–505) |
+
+Three commits did it — `0c3c71d7c` (T-18 instruction removed), `2a13b74a7` (ownership re-assigned to
+T-11's test file), `cc386ebae` (DoD bullet). They landed 2026-08-29 09:58–09:59, four minutes after
+my v12 file was committed (`ee93f2a08`, 09:55). So the finding was accurate when written and is
+closed now; the cascade reached `PLAN` after all. **F-01 is resolved; it is not carried forward.**
+
+**Why I credit the structural shape of the fix.** The erratum was routed here at round 11 and this
+document answered it by installing a single-siting rule with a stated correction direction rather
+than by re-stating arithmetic. `PLAN` v0.8's revision history quotes that direction sentence back
+and uses it as the reason it is the stale side — which is the mechanism working end to end, not just
+a coincidence of both documents converging on fourteen. That is the outcome the round-11 edit was
+designed for, and it is worth recording that it produced the effect it claimed it would.
+
 ## Interfaces
 
 ## Data Model
