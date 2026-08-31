@@ -33,15 +33,57 @@ depend on. That is F-01, and it is why this confirmation does not approve.
 
 ## Architecture
 
-_TBD_
+No structural change. The edit is confined to the changelog block, §1's cost sentence, §2.1's table
+and surrounding prose, §6.4's subset naming and §7.3/RK-1's opening clause. Module boundaries, the
+seam design, the injected-parser bundle and the `lib/stats.mjs` / `cmdStats` split are byte-identical
+to the v1.4 bytes I approved at round 6.
+
+The one architectural claim worth re-checking is the scoping move in §1 and RK-1 — sibling-feature
+document edits now sit *outside* the ten rather than being folded into it with "including". That is
+the correct direction: the ten is the in-repo co-change set a PLAN task can be given and a CI check
+can red on, whereas the two sibling rows are amendments to a frozen completed feature's documents
+with no mechanical falsifier on the existence half. Collapsing them into one number would have
+handed PLAN a set whose members are discharged by different mechanisms. The correction restores the
+partition `DEC-STATS-01`'s `K-1`/`K-9`/`K-7` already encode.
 
 ## Interfaces
 
-_TBD_
+Unchanged and unaffected. `deriveRoundWindow`, `parseResolvedMarker`, `computeReviewRounds`, the
+`StatsIo` injection surface (`listDir` / `readFile` / `stat`) and the renderer signatures over
+`StatsReport` are untouched by the delta. I re-read §3.3's signatures against the diff to confirm no
+incidental edit reached them; none did.
+
+The `readFile` contract comment — "only ever called on `POSTMORTEM-*` files" — still holds against
+REQ v1.6, which did not add a read of any other body. The read-only stance (REQ-STATS-08, G-4) is
+also unmoved upstream.
 
 ## Data Model
 
-_TBD_
+The types in §5 are unchanged by the delta, so the question is whether they still match upstream
+after REQ moved v1.4 → v1.6. On the largest REQ change, they do — and by luck rather than by
+re-grounding.
+
+REQ v1.6 **withdrew** REQ-STATS-05's harvested halt state and restored a measured `0`, recording the
+conflation of "never halted" with "post-mortems deleted" as an accepted residual in R-6 rather than
+mitigating it. Had the TSPEC modelled halts with a `MetricState`, that withdrawal would have
+invalidated the type. It does not: §5 declares
+
+```
+halts: HaltEntry[];              // possibly empty — BR-13, no state needed
+```
+
+`HaltEntry[]` carries no `state` discriminator, and an empty array is exactly the measured `0` REQ
+v1.6 now mandates. `MetricState` is applied only to `reviewRounds`, `dodRounds` and `byteRatio` —
+the three metrics REQ-STATS-03/04/06 still attach a harvested state to. So the data model survives
+the REQ v1.6 reversal intact, and NG-6's narrowed scope ("the two families harvest removes") is
+satisfied rather than contradicted.
+
+I checked the JSON key-set literals for the same reason: `["schemaVersion","reviewRounds","dodRounds","halts","byteRatio"]`
+still matches REQ-STATS-02's "printed metric set plus one schema-version field", whose v1.6 rewording
+was compression, not a set change. The five-key count in §6.2's table is still right.
+
+This is worth stating explicitly because it is the near-miss: the TSPEC was not re-grounded this
+round, and on this axis it happened not to need it. On the axis below, it did.
 
 ## Test Strategy
 
