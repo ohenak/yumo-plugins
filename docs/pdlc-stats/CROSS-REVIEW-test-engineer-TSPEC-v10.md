@@ -258,8 +258,19 @@ re-opening.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §4.3's closing paragraph asserts a live REQ-versus-FSPEC conflict that the erratum dissolved, and quotes REQ-STATS-06 "at v1.6" for a survivor clause withdrawn at v1.7. Premise, quotation and "Both cannot hold" conclusion are all false at HEAD. Re-stamp to state the settled rule: REQ v1.7 and BR-16 v1.7 agree that an out-of-catalogue basename contributes no process bytes and counts as no file remaining. | TSPEC §4.3, "What the shape itself yields is contested upstream" |
+| F-02 | Medium | delta | nonlocal | §8.3 still carries the REQ-STATS-06 vs BR-16 disagreement as an open erratum item, in the section downstream phases read to decide what is unresolved. It is discharged. Close the bullet (retaining the BR-26/EC-10 bullet beside it, which is genuinely still open). | TSPEC §8.3, second bullet |
+| F-03 | Low | delta | nonlocal | §7.2's AT-17 leg-4 narration offers "expected harvested on BR-16's reading, and measured on REQ-STATS-06 v1.6's" and calls the row re-stampable "if the reconciliation lands the other way". There is no other way left. The asserted value is correct, so no test is at risk; drop the provisional framing so a test author pins the expectation hard. | TSPEC §7.2, AT-17 fourth-leg paragraph |
+| F-04 | Low | delta | nonlocal | The v1.7 changelog's grounding attestation cites REQ sha256:5f3e8051 as HEAD; HEAD is now sha256:f75c348f. Given this document's own history of a false no-movement attestation at v1.5, the next round's grounding block should re-pin to the current REQ hash rather than inherit this line. | TSPEC v1.7 changelog, grounding pin |
+
+FINDING: Medium | delta | local | TSPEC §4.3 contested paragraph | §4.3 asserts a live REQ-versus-FSPEC conflict and quotes REQ-STATS-06 v1.6's withdrawn survivor clause; the dispute is settled at REQ v1.7 in BR-16's favour, so the paragraph's premise, quotation and conclusion are false at HEAD and must re-stamp to the settled rule.
+FINDING: Medium | delta | nonlocal | TSPEC §8.3 second bullet | §8.3 still lists the REQ-STATS-06 vs BR-16 disagreement as an open erratum item; it is discharged by REQ v1.7 and should be closed, leaving the BR-26/EC-10 bullet intact.
+FINDING: Low | delta | nonlocal | TSPEC §7.2 AT-17 fourth-leg paragraph | The leg's expected value (harvested) is correct, but its narration still offers a withdrawn "measured on REQ-STATS-06 v1.6's reading" alternative and flags the row as re-stampable; drop the provisional framing so the expectation is pinned hard.
+FINDING: Low | delta | nonlocal | TSPEC v1.7 changelog grounding pin | The changelog attests grounding on REQ sha256:5f3e8051, but HEAD is sha256:f75c348f; the next round must re-pin to the current REQ hash rather than inherit the stale attestation.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
