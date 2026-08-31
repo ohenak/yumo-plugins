@@ -184,3 +184,14 @@ predicate semantics without owing a round, and this one did.
 delta at all because there is none. The document handled the earlier case correctly by re-grounding
 on HEAD under `DEC-ERR-03`. It remains a pipeline observation rather than a document defect, and
 stays a question.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | Low | inherited | nonlocal | K-3 / `DEC-STATS-01` site table, `coverageInstrumentation.test.js` row | TSPEC §2.1's row still states P9-02's title moves *"six → seven"*. Re-measured at HEAD: `REQUIRED_INCLUDES` holds four entries, so the literal `4 + 1 + 2` is seven and `c8.include` holds seven today; this feature makes it eight. DECISIONS carries the correct arithmetic and records the divergence. The repair belongs upstream in **TSPEC** and must not be matched into agreement. Carried from v6 F-05 / v7 F-02 / v8 F-01; untouched by TSPEC v1.5 and v1.6. |
+| F-02 | Low | inherited | nonlocal | v1.6 changelog, upstream grounding line | The grounding attestation reads in the present tense — "TSPEC HEAD **is** v1.4 … FSPEC HEAD **is** v1.5 … REQ HEAD (v1.4) matches its pin". Verified true at the commit where it was written (`7adc9666`), but all three upstreams have since moved (REQ v1.6, FSPEC v1.7, TSPEC v1.6), so the sentence is false as read at HEAD. Not a defect in any decided content and not gating — a changelog records the document at its own version, the convention this document has applied consistently since v1.4 — but the present tense invites a later reader to take a superseded pin as live. |
+
+FINDING: Low | inherited | nonlocal | K-3 / DEC-STATS-01 site table, coverageInstrumentation.test.js row | TSPEC section 2.1 still states P9-02's title moves six to seven; re-measured at HEAD, REQUIRED_INCLUDES holds four entries and c8.include holds seven today, so this feature moves it seven to eight. DECISIONS carries the correct arithmetic and records the divergence; the repair belongs upstream in TSPEC and must not be matched into agreement with a number known wrong. Carried from v6 F-05, v7 F-02 and v8 F-01, and untouched by TSPEC v1.5 and v1.6.
+
+FINDING: Low | inherited | nonlocal | v1.6 changelog upstream grounding line | The grounding attestation is written in the present tense and was true at the commit where it was written, but REQ, FSPEC and TSPEC have all moved since, so it reads false at HEAD; version-scoped past tense would prevent a superseded pin being misread as live. Not gating, since a changelog records the document at its own version.
