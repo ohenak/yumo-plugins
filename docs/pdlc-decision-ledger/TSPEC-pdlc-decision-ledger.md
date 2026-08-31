@@ -6,7 +6,7 @@ feature: pdlc-decision-ledger
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (`REQ-pdlc-decision-ledger.md` v1.9, `FSPEC-pdlc-decision-ledger.md` v1.3) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (`REQ-pdlc-decision-ledger.md` v1.10, `FSPEC-pdlc-decision-ledger.md` v1.4) |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-TSPEC-v{N}.md` |
@@ -14,7 +14,35 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.2 | 2026-08-30 |
+| Draft | se-author | 1.3 | 2026-08-31 |
+
+**v1.3 erratum — the upstream re-grounding, and the version numerals that went stale with it.**
+Round 12's raised items were already discharged in v1.2 (PM F-02, PM F-03, TE F-01); this edit adds
+nothing to them and re-opens none. What re-grounding at HEAD found is that **upstream moved** since
+v1.2 was written: REQ **v1.9 → v1.10** (`sha256:9bc8bc32…05f10d`) and FSPEC **v1.3 → v1.4**
+(`sha256:48691453…a11256`), Baseline unmoved at **v1.2**. Neither changelog names a new `BR-`, `E-`
+or `AC-` id or a new vocabulary row, and neither moves a measured value: REQ v1.10 reworded C-5's
+slack rationale (which this document never recites), corrected the REQ's own *Cross-Reviews* row and
+re-sited a v1.9 note; FSPEC v1.4 advances its own pin and states that nothing follows from it.
+`maxEntries` `70`, `maxBytes` `12500`, and the four corpus literals (6,305 / 10,859 / 12,059 / 441)
+are all unchanged, so **nothing is absorbed** — but the header pin above now names HEAD rather than
+the superseded pair.
+
+What does follow mechanically is that three body citations named FSPEC by *version numeral*
+(`FSPEC v1.3's E-7`, twice, and `FSPEC v1.3's cases` in AT-14). E-7 itself is unmoved at FSPEC v1.4,
+so every claim those sentences make still holds — only the numeral in the pointer went stale, which
+is precisely the churn `DEC-DOC-01` exists to stop. All three now cite **by id** (`FSPEC E-7`), so a
+future FSPEC bump cannot invalidate a pointer without changing the clause it names. Sections
+touched: the header, §4.1, §6.1's F-13 row, §7.6's AT-14 row and this changelog, nothing else.
+
+**PM F-01 (High, `inherited`/`nonlocal`) remains routed to PLAN and is not addressed here**, on the
+same reasoning v1.2 recorded: `PLAN` v0.7 carries the retired fifteen-member owned list and a
+production home for `DECISION_LEDGER_CENSUS_TOKENS`, §7.3 already states the correction direction as
+downstream-to-here, and both reviewers agree the route is PLAN's phase. The separate routed item
+naming stale `TSPEC v0.7` recitals — which REQ v1.10 and FSPEC v1.4 both declined and routed to
+se-author — has no locus in this document: its two sites are in
+`DECISIONS-pdlc-decision-ledger.md` (`§ Context` and the DEC-DECLEDGER-10/-12 re-evaluation-trigger
+row), corrected there in the same erratum, not here. No approved decision is re-litigated.
 
 **v1.2 — round 12's two document-local findings.** Upstream is unmoved and was re-measured at HEAD
 before this edit (REQ **v1.9** `sha256:ce6b133f…3c7b7c`, FSPEC **v1.3** `sha256:2bd5c3ef…5aed39`,
