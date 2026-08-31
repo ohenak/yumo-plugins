@@ -126,7 +126,53 @@ non-gating.
 
 ## Consequences
 
-_(pending)_
+**For Phase D / PLAN.** Not blocked, and not changed from v10. PLAN reads DECISIONS' ten-site
+co-change table, the K-row partition and the falsifier column. All three are intact, and none of
+them is downstream of the edited REQ clause: REQ-STATS-06's survivor-versus-harvested semantics
+settle what a *reported value* is, not where the module lives or how the parser seam is guarded. No
+PLAN task's boundary, ordering or falsifier moves because of this erratum.
+
+**For the implementer.** Unchanged from v8/v9/v10. The array-equality warning on `c8.include`
+(P9-02 asserts `toEqual`, so position matters, not just membership); the `MODULE_NAMES`
+copied-class (4 → 5) versus packed-class (5 → 6) distinction that must **not** be synchronised; and
+K-9's `pdlc/README.md` site having no red test behind it — all still matter, all still stated
+correctly.
+
+**For upstream (REQ).** Nothing owed by this document. I want to record the shape of this erratum
+approvingly, because it is the second time in this feature that the erratum channel has produced the
+outcome it exists for: a clause that contradicted its own preceding rationale, contradicted C-5, and
+dissented from every downstream reading of the same file was withdrawn at the source rather than
+being propagated into four downstream documents. The v1.7 changelog's *"one clause decided, no rule
+added… No other change"* is exactly the attestation a frozen downstream reviewer needs to bound the
+re-check, and it was accurate — I verified the diff is two hunks and +12/−3.
+
+**For upstream (FSPEC / TSPEC).** Nothing owed from this document. Neither moved this round. I note
+without raising it that FSPEC and TSPEC now carry the downstream renderings of REQ-STATS-06, and
+their own confirmation rounds — not this one — are where that propagation is checked; it is outside
+what DECISIONS decides.
+
+**On DEC-STATS-03, a positive observation worth preserving.** This round is the first time the
+parser-seam decision has been stress-tested by an upstream change rather than argued on its merits,
+and it held: because the decision was framed as *"never diverge from the driver's classification"*
+rather than as a list of the specific classifications in force at the time, a REQ erratum that
+changed what one classification *means* required no amendment to the decision at all. That is the
+property a good constraint-shaped decision has, and it is the reason the freeze is cheap here.
+
+**Third consecutive round of substantial upstream movement landing outside this document's subject
+matter.** v9 (TSPEC erratum), v10 (TSPEC v1.7) and now v11 (REQ v1.7) have each moved an upstream
+this document is pinned to, and none has required a byte of it to change. That is the healthy signal
+of a correctly-scoped DECISIONS — it compresses constraints, not the ACs those constraints govern —
+and it is worth carrying to harvest as corroboration of the co-change discipline in
+`DOMAIN-CONSTRAINTS.md`.
+
+DEFERRED (carried, unchanged from v10): nothing in the pipeline retires a downstream routing clause
+once the erratum it routes is discharged upstream — F-01 is discovered only by a cascade
+confirmation like this one. Worth a line in the erratum checklist: when an erratum lands upstream,
+name the downstream documents whose routing clauses it retires.
+
+DEFERRED (carried, now fourth consecutive round): the dispatch's TSPEC pin (`f2261510…`) does not
+resolve to the blob on the branch (`a06a6032…`). The *version* it names is unambiguous, so no round
+has been impeded, but four rounds is a pattern. Pipeline observation, not a document defect.
 
 ## Delta-Confirmation Findings
 
