@@ -1245,7 +1245,7 @@ time rather than transcribed across ten sites.
 
 Raised against the upstream document that owns each, per the erratum channel; none is repaired here.
 
-**One remains open.** Three others this section carried — FSPEC BR-16's `CROSS-REVIEW-*`-versus-
+**Two remain open.** Three others this section carried — FSPEC BR-16's `CROSS-REVIEW-*`-versus-
 grammars ambiguity, FSPEC BR-11's dropped "matching the version grammar" qualifier, and FSPEC BR-25's
 incomplete loose-file illustration — are **closed** at REQ v1.4 / FSPEC v1.4, and FSPEC §7.3 records
 them as closed. They are removed rather than left standing: an erratum bullet whose upstream answer
@@ -1259,6 +1259,21 @@ it is.
   directory a normal measured row. AT-19's *Given* inherits the circularity. §4.4 adopts a
   leading-underscore discriminant as the only one the repository's convention supplies and flags the
   bare-named residue; the FSPEC should state the predicate it intends.
+
+- **REQ-STATS-06 (v1.6) and FSPEC BR-16 (v1.7) now disagree on the out-of-catalogue cross-review
+  basename.** REQ v1.6 added "the predicate is set-membership over C-4's grammars, so a grammatical
+  basename outside the driver's document-type catalogue is a survivor even where REQ-STATS-03
+  reports it malformed", which makes `CROSS-REVIEW-{role}-REVIEW-v{N}.md` a surviving cross-review
+  and a directory holding only those **measured**. BR-16 at v1.7 states the same file counts as no
+  file remaining and the directory reports **harvested**, and AT-17's fourth leg asserts
+  `harvested`. Both readings are internally coherent; they are not jointly satisfiable, and the
+  choice decides a named acceptance test's expected value. §4.3 implements BR-16, its immediate
+  upstream, and does not guess the outcome. The reconciliation is REQ-versus-FSPEC and belongs at
+  the owning phase; when it settles, §4.3's contested paragraph, its BR-16 pin and AT-17's
+  fourth-leg expectation re-stamp together. Note this is *not* the closed E-1 item above: E-1 was
+  "bare glob versus grammar", settled at REQ v1.4 in favour of the grammar. The live question is
+  narrower — whether a basename that passes the grammar but carries a doc-type outside the driver's
+  catalogue is a survivor.
 
 ### 8.4 Questions for DECISIONS
 
