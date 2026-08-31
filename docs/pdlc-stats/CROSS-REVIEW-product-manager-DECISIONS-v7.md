@@ -92,7 +92,56 @@ table, the sweep paragraphs, K-1, K-3, K-8, K-9, *Reversibility*, *Standing cost
 
 ## Decision
 
-<!-- pending -->
+**The delta resolves the routed items and both v6 High findings, and breaks nothing I previously
+approved. Confirmed, with one Medium clean-up owed.**
+
+**The routed DEC-DOC-01 items are properly landed.** All three anchors are gone from `K-3` and `K-9`,
+replaced by verbatim quotes and a section reference that I checked against the source files and found
+exact. This is the stronger form of the fix, not the minimum one: a test title and a comment are
+citations the reader can resolve by grep, and they survive the very edit this feature makes to those
+files, which was the reason the anchors were wrong.
+
+**Both v6 Highs are cleared on their merits, not by assertion.** F-01's repair does not just change
+the digit. It restates the site table's membership rule — *"it enumerates every site that transcribes
+the class, and a row whose membership nothing pins says so in place of naming a falsifier"* — and
+gives the reason the falsifiers-only rule had to go: *"a table of falsifiers silently drops exactly
+the obligations most likely to be forgotten."* That is the right product answer, and it is a better
+answer than the one I asked for. F-02's repair adopts TSPEC §6.4's split, names why deletion was not
+the alternative (*"deleting the conjunct would have removed `DEC-STATS-03`'s only mechanical
+detector"*), and states A-B-A's limits — a memo table is invisible to it — instead of overclaiming.
+The *Residuals* row is narrowed rather than closed, which is the honest bookkeeping.
+
+**The one thing the edit left behind (F-01 below, Medium).** The load-bearing number moved to ten
+everywhere, but two prose breakdowns still decompose "ten" into **nine named items** — they were
+updated in their count word and not in their list:
+
+| Site | Text | Names |
+|---|---|---|
+| *What the sweep found* | *"are exactly the ten in the table above: the five enumeration holders — … — plus `loop-distribution.test.js`, `coverageInstrumentation.test.js`, `run.test.js` and `learningsPremises.test.js`"* | 5 + 4 = **9** |
+| *Reversibility: hard* | *"amending all ten sites — the five enumerations and the four test files that pin their membership or size"* | 5 + 4 = **9** |
+
+`pdlc/README.md` is missing from both. The fix is one clause in each, and the document already
+contains the correct form to copy — *Standing costs accepted* reads *"five enumerations, the four
+test files …, and `pdlc/README.md`'s prose member list"*, which enumerates ten and names the tenth.
+
+**Why this is Medium and not a repeat of v6's High.** The contract PLAN partitions is complete: ten
+rows in the site table, K-1's partition covering site 10, K-9 owning the README edit, and the
+un-falsified site called out twice more. A PLAN author cannot reach a nine-item task list from those.
+The two sentences above are derivative restatements sitting beside the authoritative table, and the
+surrounding arithmetic now makes the omission self-evident (25 files − 15 importers = 10). It is a
+genuine accuracy defect in the exact register this document exists to police, and it should be closed
+— but it does not leave an obligation unowned, and it does not gate.
+
+**What is owed upstream rather than here.** TSPEC §2.1's `coverageInstrumentation.test.js` row still
+says P9-02's title moves *"six → seven"*. I re-measured: `c8.include` holds seven entries at HEAD, so
+the title is stale by one in the other direction and this feature takes it to eight. **This document
+is the correct one**, and it now says so explicitly, recording the divergence as an erratum owed to
+TSPEC rather than silently matching a number known to be wrong. That is exactly the right handling —
+it must not be "corrected" into agreement with upstream. Carried below as F-02, `inherited`, Low, and
+non-gating on this document.
+
+**Recommendation: Approved with minor changes.** Fold F-01's two clauses, and F-03's changelog
+anchors if convenient, into the next edit that touches this document. Neither blocks Phase D.
 
 ## Consequences
 
