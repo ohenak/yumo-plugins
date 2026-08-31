@@ -807,18 +807,73 @@ checkable rather than asserted.
 
 ### 6.4 Anti-drift oracles
 
-Four, each closing a way this design could silently stop being what it says it is:
+Five, each closing a way this design could silently stop being what it says it is:
 
 | Oracle | Asserts | Fails when |
 |---|---|---|
-| **Parser identity** (§2.5) | `statsParsers()`'s four members are `===` the corresponding `orchestrate-dev.js` exports | someone re-implements a grammar locally, even one that agrees on today's corpus |
-| **Doc-type catalogue agreement** (§3.3) | for every name in `REVIEW_DOC_TYPE_ROWS`, `parseReviewFilename("CROSS-REVIEW-se-review-{T}-v1.md")`-shaped input parses `ok`, **and** no seventh type the driver accepts is missing from the row set — probed by asserting a known-rejected type (`REVIEW`) stays rejected and the six stay accepted | the driver's private `REVIEW_DOC_TYPES` grows or shrinks without FSPEC §7.4 A-3's required FSPEC edit |
-| **Vendoring co-change** (§2.1) | `lib/stats.mjs` appears in `prepack.mjs`'s `MODULE_NAMES`, `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES` and `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`, and that `tspecPackedCount`'s vendored class size equals that list's length | one of the five sites is edited and another is not — the exact failure `pdlc-engineering-loop`'s LEARNINGS names as "a co-change set enumerated in prose with no oracle is unsound by construction" |
+| **Parser identity** (§2.5) | the four members of the bundle `statsParsers()` returns are `===` the corresponding `orchestrate-dev.js` exports — asserted against the **exported** `statsParsers` from `bin/cli.mjs` (§3.4), the one production construction site, never against a bundle the test builds; plus a second conjunct that the object `cmdStats` passes to `runStats` is that same bundle, so the recording double of §6.1 can never become the production path | someone re-implements a grammar locally, even one that agrees on today's corpus; or a future refactor slips a wrapper between `statsParsers()` and production |
+| **Doc-type catalogue agreement** (§3.3) | **set-equality** between `REVIEW_DOC_TYPE_ROWS` and the doc types the driver accepts, computed by probing `parseReviewFilename` over a *candidate* set — see below — with a **real role slug** | the driver's private `REVIEW_DOC_TYPES` grows or shrinks without FSPEC §7.4 A-3's required FSPEC edit |
+| **Exclusion-set equality** (§4.4) | **set-equality** between `NON_FEATURE_DIRS` and the non-feature directory names present at this repository's `docs/` root — see below | a ninth non-feature directory appears at `docs/` and silently joins the feature list, which is the regression REQ-STATS-07 and BR-26 exist to prevent |
+| **Vendoring co-change** (§2.1) | `lib/stats.mjs` appears in `prepack.mjs`'s `MODULE_NAMES`, `publish-preflight.mjs`'s `WORKFLOW_MEMBERS`, `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES` and `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS`; and that `tspecPackedCount`'s vendored class size **equals `MODULE_NAMES.length + 1`** — see below | one of the five sites is edited and another is not — the exact failure `pdlc-engineering-loop`'s LEARNINGS names as "a co-change set enumerated in prose with no oracle is unsound by construction" |
 | **No-write capability** (§2.3) | the `StatsIo` object literal `statsIo()` returns has exactly the four keys `listDir`, `fileSize`, `readFile`, `exists` | a fifth seam is added, which is how a write would first become possible |
 
-The vendoring oracle **derives** the expected member from `MODULE_NAMES` rather than transcribing a
-literal, so it cannot disagree with the list it checks — the `EXPECTED_TEST_COMMAND` lesson from
-`pdlc-loop-economics`'s LEARNINGS F-4 applied before it recurs.
+**The doc-type probe uses a role slug, not a reviewer skill id.** `parseReviewFilename` validates the
+parsed role against `REVIEWER_ROLE_SLUGS = Object.values(MAP)` — `software-engineer`,
+`product-manager`, `test-engineer` — and returns `{ok: false, reason: "bad_role"}` before it ever
+reaches the doc-type check. `se-review` is a *key* of that `MAP`, not a value, so a probe built from
+it returns `bad_role` for every doc type: the "six stay accepted" half would be red for a correct
+implementation and the "`REVIEW` stays rejected" half would pass for the wrong reason. The probe
+therefore spells `CROSS-REVIEW-software-engineer-{T}-v1.md`.
+
+**And it is set-equality, not containment.** A fixed probe that checks six accepted names and one
+known-rejected name cannot detect a *seventh* type the driver has begun accepting — which is
+precisely the drift RK-3 names this oracle as the only mitigation for. `REVIEW_DOC_TYPES` is
+module-private in `orchestrate-dev.js`, so the accepted set is recovered behaviourally: probe
+`parseReviewFilename("CROSS-REVIEW-software-engineer-{T}-v1.md")` over a **candidate set** — the six
+rows, plus every other all-caps token the pipeline's vocabulary contains (`REVIEW`, `IMPLEMENTATION`,
+`LEARNINGS`, `POSTMORTEM`, `CODE_REVIEW`, `QUEUE`, `DOD`, `HANDOFF`) — collect those that return
+`ok: true`, and assert that collected set is **set-equal** to `REVIEW_DOC_TYPE_ROWS`, in both
+directions and in order. A seventh accepted type inside the candidate set fails immediately; one
+outside it is the residue, and it is bounded by FSPEC §7.4 A-3, which already makes any new driver
+doc type an FSPEC edit. Exporting `REVIEW_DOC_TYPES` from `orchestrate-dev.js` would let the oracle
+compare catalogues directly and is the better long-term shape; it is not taken here because widening
+a completed sibling's frozen module surface is exactly the co-change cost §2.1 already prices, and
+the behavioural probe closes the same gap without it.
+
+**The vendoring oracle's invariant is `+ 1`, not equality.** `MODULE_NAMES` in
+`pdlc/engine/scripts/prepack.mjs` lists **four** copied modules; `WORKFLOW_MEMBERS` in
+`pdlc/engine/__tests__/_tspec-packed-set.mjs` lists **five** packed paths, because
+`vendor/workflows/VENDOR-MANIFEST.json` is written by `runPrepack` rather than copied and so has no
+`MODULE_NAMES` entry. `tspecPackedCount` hand-writes its vendored class size (`4 + 15 + 5 + 1`), and
+that hand-written `5` is the only thing today's arrangement checks. Asserting
+`vendoredClassSize === MODULE_NAMES.length + 1` — with the `+ 1` commented as the manifest — ties
+the transcribed number to its source, so adding `lib/stats.mjs` to `MODULE_NAMES` without amending
+the packed-set table and the count is red, and amending one of the two without the other is red too.
+Deriving from `MODULE_NAMES` rather than transcribing a literal is the `EXPECTED_TEST_COMMAND`
+lesson from `pdlc-loop-economics`'s LEARNINGS F-4, applied before it recurs.
+
+**The exclusion-set oracle.** BR-26 decides that the set is "checked set-equal against the
+non-feature directories present at the `docs/` root", and §4.4 previously discharged that in prose —
+a measurement, not an assertion, and prose does not go red. The oracle lists `docs/` at the real
+repository root, keeps directories only (BR-25), and asserts two halves:
+
+1. **Superset.** Every name in `NON_FEATURE_DIRS` is present as a directory at `docs/`. Deleting
+   `docs/discarded/` goes red — the honest signal that REQ-STATS-07's fixed set needs a REQ edit.
+2. **Subset.** Every directory at `docs/` *not* in `NON_FEATURE_DIRS` is a feature directory on an
+   **independent witness**: it carries at least one file whose basename ends `-{dirname}.md` (an
+   artifact named for it), or it carries no files at all (EC-03's readable-but-empty feature row).
+   A ninth non-feature directory — `docs/_evidence/`, or a bare-named one holding foreign files —
+   satisfies neither and goes red.
+
+The witness is deliberately *not* §4.4's leading-underscore predicate. An oracle that partitioned
+with the predicate under test would agree with any predicate at all, including a wrong one; the
+artifact-naming witness is derived from the repository's artifact convention instead, so the oracle
+and the predicate can disagree — which is the only way it can catch anything. This is also the
+oracle AT-19's *Given* presumes — AT-19 itself
+asserts the *reporting* half (an unrecognised directory surfaces as `unclassified`), which is
+covered by a fixture, while the set-equality half needs the real `docs/` root and lives here.
+Because the assertion is over one directory's immediate children rather than a whole-tree walk, it
+is not exposed to the untracked-file flake `coveredViolations` produces.
 
 ### 6.5 The read-only oracle (AT-21, AT-22)
 
