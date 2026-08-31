@@ -20,11 +20,11 @@
 // same stated reason `loop-config-example.test.js` transcribes `MERGE_DEFAULTS`: the example is
 // checked against the documented shape rather than agreeing with the code by construction.
 //
-// At HEAD the example carries no `decisionLedger` section. T-12 (this file) is `[red]` in a wave
-// gated apart from its `[green]` implementation task T-19 (PLAN), so every block here is committed
-// `test.skip`, titled "T-19: ...", per the wave-gate contract: each block was run un-skipped first
-// and observed to fail for the right reason (missing `decisionLedger` section), then skipped so the
-// wave gate stays green until T-19 un-skips it.
+// T-12 (this file) landed `[red]` in a wave gated apart from its `[green]` implementation task
+// T-19 (PLAN): every block was committed `test.skip`, titled "T-19: ...", run un-skipped first and
+// observed to fail for the right reason (missing `decisionLedger` section), then re-skipped so the
+// wave gate stayed green until T-19. T-19 un-skips these three blocks now that
+// `.claude/pdlc.config.example.json` carries the `decisionLedger` section.
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
@@ -46,7 +46,7 @@ function readConfig() {
   return JSON.parse(readFileSync(configPath, "utf8"));
 }
 
-test.skip("T-19: decision ledger config example — top-level section set contains the existing eight blocks plus decisionLedger", () => {
+test("T-19: decision ledger config example — top-level section set contains the existing eight blocks plus decisionLedger", () => {
   const config = readConfig();
   const sections = Object.keys(config);
 
@@ -75,7 +75,7 @@ test.skip("T-19: decision ledger config example — top-level section set contai
   );
 });
 
-test.skip("T-19: decision ledger config example — decisionLedger section's key set equals C-5's three declared keys", () => {
+test("T-19: decision ledger config example — decisionLedger section's key set equals C-5's three declared keys", () => {
   const config = readConfig();
   const decisionLedger = config?.decisionLedger;
 
@@ -90,7 +90,7 @@ test.skip("T-19: decision ledger config example — decisionLedger section's key
   );
 });
 
-test.skip("T-19: decision ledger config example — every decisionLedger value equals C-5's literal declared default", () => {
+test("T-19: decision ledger config example — every decisionLedger value equals C-5's literal declared default", () => {
   const config = readConfig();
   const decisionLedger = config?.decisionLedger ?? {};
 
