@@ -183,8 +183,15 @@ same versioned edit.
 
 ## Delta-Confirmation Findings
 
-_TBD_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | High | inherited | nonlocal | §4.3 states "REQ-STATS-06 at v1.4 carries the same scoping" and treats the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` shape as contributing no surviving cross-review, so the fixture reports `harvested`. REQ v1.6 now states the predicate is set-membership over C-4's grammars and that "a grammatical basename outside the driver's document-type catalogue is a survivor even where REQ-STATS-03 reports it malformed" — which makes the family non-empty and the ratio `measured`. FSPEC BR-16 (v1.7) still says `harvested`. The TSPEC's citation of REQ is now false and AT-17's fourth leg's expected value is contested. Reconcile REQ-STATS-06 against BR-16 at the owning phase, then re-stamp §4.3's version pins and its "FSPEC §7.3 records it closed" clause. | §4.3, harvested-test paragraph and the AT-17 fourth-leg fixture |
+| F-02 | Medium | delta | local | The v1.5 changelog asserts REQ and FSPEC "neither moved since v1.4's grounding". Both moved: FSPEC v1.5 → v1.7 (BR-16 rewrite, BR-16 count two → four, AT-15 trace row) and REQ v1.4 → v1.6 (harvested halt state withdrawn, NG-6 rescoped, REQ-STATS-06 predicate reworded). The cited hashes are current and correct; the "neither moved" clause attached to them is not, and it is why this round's re-grounding did not surface F-01. | §0 changelog, v1.5 entry, opening sentence |
+
+FINDING: High | inherited | nonlocal | §4.3 cites REQ-STATS-06 for a grammatical-membership scoping REQ v1.6 reversed; REQ now calls the out-of-catalogue basename a survivor (ratio `measured`) while TSPEC and FSPEC BR-16 say `harvested`, contesting AT-17's fourth-leg oracle | §4.3 harvested-test paragraph
+FINDING: Medium | delta | local | v1.5 changelog claims REQ/FSPEC "neither moved since v1.4's grounding"; FSPEC moved v1.5 to v1.7 and REQ v1.4 to v1.6, which is why the re-grounding missed F-01 | §0 changelog v1.5 entry
 
 ## Verdict
 
-_TBD_
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
