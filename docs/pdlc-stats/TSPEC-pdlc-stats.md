@@ -658,8 +658,25 @@ underscore is the only discriminant the repository's own convention actually sup
 `_queue`/`_constraints`/`_decisions` carry it and no feature directory does — and it satisfies
 BR-26's purpose for the growth case that motivates it (a new `docs/_evidence/` surfaces rather than
 joining the feature list with meaningless metrics). It does **not** cover a future bare-named
-non-feature directory, which would be reported as a feature with zero-state metrics. That residue is
-raised as an erratum against the FSPEC (§8) rather than resolved by inventing a richer rule here.
+non-feature directory, which would be reported as a feature with zero-state metrics.
+
+**The predicate is provisional on the FSPEC erratum (§8.3), and this document does not pretend
+otherwise.** `NON_FEATURE_DIRS` is not provisional — REQ-STATS-07 fixes those eight names and the
+new §6.4 oracle asserts them set-equal. What is provisional is only the *positive* recognition
+predicate for a ninth, unfixed name, which the FSPEC states nowhere. The leading underscore ships as
+the shipping behaviour so that the feature is not blocked on an upstream round, and the observable
+each possible FSPEC answer implies is named here so that adopting it is a `discoverFeatures` change
+and nothing else:
+
+| If the FSPEC's erratum answers… | The observable becomes | Blast radius |
+|---|---|---|
+| "leading underscore" (ratifies this document) | unchanged | none |
+| "a directory carrying no `REQ-*.md` is unclassified" | a bare-named artifact-free directory joins `unclassified` instead of `features`; EC-03/AT-26's readable-but-empty *feature* row would have to be re-decided with it, since the two collide | `discoverFeatures` predicate + AT-26's fixture |
+| "an explicit, FSPEC-owned allow-list of feature names" | unclassified becomes the complement of a second enumeration, and a second set-equality oracle joins §6.4 | `discoverFeatures` + one oracle |
+
+In every case the change is confined to `discoverFeatures` and its unit tests: no metric, renderer,
+key set or seam depends on how a directory was classified, only on the resulting two lists. That
+containment is why shipping the provisional predicate is safe rather than presumptuous.
 
 `docs/completed/` is traversed as a container and never reported as a feature, which is what stops
 `docs/completed/REQ-completed.md` — a loose file, verified present — from ever mattering: the
