@@ -159,7 +159,7 @@ reviews survive reports `harvested` rows *and* a measured DoD number in the same
 | B2 | Read the `docs/` root. | Readable? | No → EC-09, exit 1 (the one non-zero exit fleet mode has). Yes → B3. |
 | B3 | Discover candidate features: immediate **directories** under `docs/`, minus BR-25's exclusion set; plus the immediate directories under `docs/completed/`. | Is this entry a directory? Is its name in the exclusion set? | Loose files at either root are never candidates (BR-25). |
 | B4 | Assert the exclusion set is set-equal to the non-feature directories actually present at the `docs/` root. | Equal? | No → EC-10: the report still prints, and the unexpected directory is reported as an unclassified entry rather than silently joining or silently vanishing. |
-| B5 | For each candidate, run A4–A8. | Did the feature's computation fail to produce a metric set (unreadable directory, no artifacts at all)? | Yes → a gap row naming the feature and the reason (BR-27). No → a normal row. |
+| B5 | For each candidate, run A4–A8. | Could the directory not be **read** (permissions, or it is not a readable directory)? | Yes → a gap row naming the feature and the reason (BR-27). No → a normal row, including for a directory that is readable and empty (EC-03: emptiness is a measurable state, not a gap). |
 | B6 | Render (Flow C) and exit 0. | — | Gap rows are rows, not failures: fleet mode exits 0 whenever it produced its report (BR-27). |
 
 A feature that appears under both `docs/` and `docs/completed/` is reported **once**, from
