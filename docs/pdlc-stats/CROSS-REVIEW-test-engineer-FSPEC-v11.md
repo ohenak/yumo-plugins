@@ -166,10 +166,38 @@ counterpart, so no new test is owed by this cascade.
 
 ## Open Questions
 
+None blocking. One record item is filed below as F-01 rather than left as a question, because the
+answer is not in doubt — the header field is simply behind.
+
 ## Positive Observations
+
+- **The erratum was decided, not reconciled, and it decided in the direction the tests already
+  pointed.** Withdrawing the survivor clause rather than adding a carve-out means no new rule entered
+  REQ, so C-5's no-independent-parsing-rule constraint is not stressed and no new oracle is owed.
+- **A REQ/FSPEC contradiction that had already been encoded in three downstream artifacts (FSPEC
+  BR-16, AT-17 leg 4, PROP-RATIO-08 leg 4) resolved without any of the three moving.** That is the
+  cheap outcome, and it is cheap because the downstream chain had been internally consistent.
+- **The replacement sentence states a mechanism, not just a verdict** — "contributes no process bytes
+  and counts as no file of its family remaining" — which is what makes BR-16's "the two never
+  disagree" checkable rather than asserted.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+FSPEC v1.7 still holds against REQ as it now stands. The erratum removed the one upstream sentence
+that contradicted BR-16, AT-17 leg 4 and AT-15, and every other REQ clause FSPEC cites — C-5,
+REQ-STATS-03's malformed disposition, REQ-STATS-07's zero-state row, REQ-STATS-09's scoped *Given* —
+is present at HEAD in the form FSPEC compresses. No High finding is open anywhere in the document.
+The single Low finding is a header record pointer, non-gating, fixable in one line at the next edit
+of FSPEC; it does not touch a rule, an oracle or an expected value.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | The FSPEC header's `Upstream` field pins `REQ-pdlc-stats.md (v1.4)`, but this FSPEC was approved at v10 against REQ **v1.6** (sha256:5f3e805…ed9f8) and is confirmed here against **v1.7**. REQ-STATS-05's halt state moved twice and REQ-STATS-06 once across v1.4→v1.7, so a TSPEC/PLAN author trusting the pin would derive from a REQ that no longer exists. Not gating: the authoritative record is the `UPSTREAM-STATE` anchor in the cross-review chain, and no FSPEC rule or oracle depends on the field. Suggest bumping it to `(v1.7)` at the next FSPEC edit. The five "closed at REQ v1.4" credits in §7.3 are historical statements and correctly stay as they are. | Header metadata block (`Upstream` row) |
+
+FINDING: Low | inherited | nonlocal | FSPEC header `Upstream` field pins REQ v1.4; REQ is v1.7 and the approval base was v1.6 — record pointer only, no rule or oracle depends on it | Header metadata block (`Upstream` row)
 
 ## Verdict
