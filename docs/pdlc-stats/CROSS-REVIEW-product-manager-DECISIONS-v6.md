@@ -208,8 +208,23 @@ re-grounding pass.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | Option A's cost is stated as **nine** in-repo sites throughout; TSPEC §2.1/§6.4/§7.3/RK-1 at v1.3 say **ten**, with `pdlc/README.md` as row ten. DECISIONS additionally argues in prose that README "is not a tenth row of the site table" — upstream has since decided the opposite. Re-verified: 24 candidates − 14 consumers = 10. | DEC-STATS-01 *Context* / option table / *Corrected cost claim* / K-1 / *Reversibility* / *Standing costs accepted* |
+| F-02 | High | delta | local | DEC-STATS-03's named detector is stated as deep-equal **and non-aliased** over all **four** exports. TSPEC v1.3 split it by return type: non-aliasing over the three object-returning classifiers only, **A-B-A** for `deriveDodRoundIndex`, because a non-aliasing assertion over a `=> number` return "reds against a correct, wholly pure implementation". "Until it lands" is also stale — it landed. | DEC-STATS-03 *named detector* paragraph / *Standing costs accepted* purity row |
+| F-03 | Medium | delta | local | K-8 says "**Seven** assertion edits in all"; TSPEC's `loop-distribution.test.js` row now says **eight**, folding P7-02's `vendoredClassWord` ternary into the count. DECISIONS owns the same work as a separate clause, so only the headline number diverges. | K-8 |
+| F-04 | Medium | delta | local | K-9's promoted constraint — destined for `docs/_constraints/DOMAIN-CONSTRAINTS.md` — carries `git grep -l "escalation-view" … ` → 25 files → nine transcribers. TSPEC's reproducible derivation is now probe `lib/loop-session.mjs`, 24 candidates, one stated filter dropping 14, ten sites. The durable artifact would ship a query whose count no longer reproduces the document citing it. | K-9 / *Corrected cost claim* sweep block |
+| F-05 | Low | delta | local | TSPEC's new `coverageInstrumentation.test.js` row says P9-02's title moves "six → seven"; at HEAD the title says six while `c8.include` holds seven entries, so the feature takes it to **eight**. DECISIONS' changelog is correct. The erratum is owed **upstream**; DECISIONS must not be edited into agreement. | K-3 / site table `coverageInstrumentation.test.js` row |
+| F-06 | Medium | inherited | nonlocal | Option B is still priced at four sites; `loop-distribution.test.js:186`'s `(4 + 15 + 1)` holds the engine `lib/` class a second time. My v5 F-01, unchanged by this round, on a rejected option's price. Non-gating. | *Corrected cost claim* / option table row B |
+
+FINDING: High | delta | local | DEC-STATS-01 Context / option table / K-1 / Reversibility / Standing costs accepted | Option A's co-change cost is stated as nine in-repo sites and DECISIONS argues explicitly that `pdlc/README.md` is not a tenth site-table row; TSPEC v1.3 (§2.1, §6.4, §7.3, RK-1) says ten with README as row ten, derived reproducibly as 24 candidates minus 14 consumers — so the K-row checklist a PLAN author partitions is one item short of its upstream and contradicts it in prose.
+FINDING: High | delta | local | DEC-STATS-03 named-detector paragraph / Standing costs accepted purity row | The detector is stated as deep-equal and non-aliased over all four driver exports, but TSPEC v1.3 split the conjunct by return type — A-B-A for `deriveDodRoundIndex`, because non-aliasing over a number-returning classifier reds against a correct, wholly pure implementation — so DECISIONS as written specifies a test that fails against correct code; "Until it lands" is also stale.
+FINDING: Medium | delta | local | K-8 | "Seven assertion edits in all" diverges from TSPEC's eight, which now folds P7-02's `vendoredClassWord` ternary into the count; the underlying work agrees but the headline a task-sizing PLAN author reads does not.
+FINDING: Medium | delta | local | K-9 promoted constraint / Corrected cost claim sweep block | The constraint promoted to DOMAIN-CONSTRAINTS.md carries the superseded `escalation-view` probe, 25 files and nine transcribers; TSPEC now derives ten from probe `lib/loop-session.mjs` over 24 candidates with a stated filter, so the durable artifact would ship a query whose count no longer reproduces its citing document.
+FINDING: Low | delta | local | K-3 / site table coverageInstrumentation.test.js row | TSPEC's new row states P9-02's title moves six → seven, but the title is already stale by one at HEAD (seven include entries today, eight after the feature) and DECISIONS has it right; the erratum is owed upstream and DECISIONS must not be corrected into agreement with it.
+FINDING: Medium | inherited | nonlocal | Corrected cost claim / option table row B | Option B is priced at four sites, omitting `loop-distribution.test.js:186`'s second holding of the engine `lib/` class; carried unchanged from v5 F-01, on a rejected option's price, non-gating.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 1}
