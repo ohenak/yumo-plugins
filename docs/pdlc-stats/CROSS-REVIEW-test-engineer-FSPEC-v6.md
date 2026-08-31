@@ -92,6 +92,70 @@ No finding in this section.
 
 ## Business Rules
 
+### BR-11 — resolved, and falsifiably
+
+The new leftovers clause ("a basename beginning `CODE_REVIEW-` that does not match — a `-draft`
+suffix, another feature's name — contributes nothing to BR-10's value and counts as nothing remaining
+here, so it neither raises the number nor suppresses `harvested`") states both directions of the
+qualifier. Both directions matter and both are now testable: the "does not raise the number" half is
+BR-10/AT-28's territory, the "does not suppress `harvested`" half is AT-12's new third directory. The
+two halves are consistent with EC-16's silent-not-malformed disposition, which the delta left alone.
+No finding.
+
+### BR-16 — resolved, with two problems in the new prose
+
+The predicate is right and now matches REQ-STATS-06 word for word. Two issues with how it is written.
+
+**1. The `docs/completed/pdlc-advisory-wave-gate/` citation is a false real-path claim (F-02).** The
+sentence reads: "A directory holding only the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md`
+files BR-06 reports as malformed — the shape `docs/completed/pdlc-advisory-wave-gate/` carries —
+reports `harvested`, not a measured ratio". The appositive is meant to point at the *basename shape*,
+but its nearest antecedent is the directory, and on that reading the claim is false. I measured it:
+
+```
+docs/completed/pdlc-advisory-wave-gate/
+  LEARNINGS-pdlc-advisory-wave-gate.md          present
+  CROSS-REVIEW-{pm,te}-REVIEW-v{1,2}.md         4 out-of-catalogue
+  CROSS-REVIEW-… (REQ/FSPEC/TSPEC/PLAN/…)       many grammatical, TSPEC to v6
+  CODE_REVIEW-pdlc-advisory-wave-gate-v{1,2}.md present
+```
+
+Neither family is entirely absent there, so that directory reports a **measured** ratio, not
+`harvested`. This matters in this document specifically because §6's own preamble licenses real-path
+tests with literal expectations: a reader who takes the citation at face value writes AT-17's fourth
+leg against the real directory and pins the opposite of BR-16. AT-17 itself is correct — it uses a
+constructed fixture whose *only* `CROSS-REVIEW-` basenames are the out-of-catalogue form — so no test
+is currently wrong. Fix: say "the basename shape `docs/completed/pdlc-advisory-wave-gate/` carries",
+or drop the citation and keep BR-06's, which is already the accurate one.
+
+**2. The new BR-14 equivalence has no falsifying oracle (F-03).** BR-16 now rests on "a basename
+failing a grammar contributes no bytes to the process side and counts as no file remaining" — one
+sentence carrying two claims. The *remaining* half is pinned by AT-17 leg 4. The *no bytes* half is
+pinned by nothing: BR-14 itself never says the doc-type is closed to BR-09's six (it is derivable via
+BR-06, but derivable is not asserted), and AT-15's "files on neither list" enumeration is
+`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md` — no `CROSS-REVIEW-`-prefixed member. An
+implementation that sums every `CROSS-REVIEW-*` basename into `processBytes` while excluding
+out-of-catalogue names from the "remaining" test passes AT-15, AT-17 and every other test in §6, and
+reports a `processBytes` an operator would sanity-check against and find inflated. See §Acceptance
+Tests for the one-line fix.
+
+### BR-25 — resolved
+
+Enumeration verified complete against the tree. The rewrite also improved the framing ("whatever its
+basename claims"), which is the load-bearing part: `QUEUE-HISTORY-rows-0-1.md` is precisely a basename
+that no has-a-REQ heuristic would trip over, so naming it adds a second, differently-shaped instance
+rather than a duplicate of the first. No finding.
+
+### BR-27 — untouched, and now misquoting upstream (F-04)
+
+BR-27 says: "This narrows REQ-STATS-07's 'missing artifacts fail to parse … reports it by name as
+missing/malformed' … but 'as missing' is not what a zero-state row says, so the wording is raised as an
+erratum (§7.3)." REQ v1.3 deleted that string. REQ-STATS-07 now reads "for any feature whose directory
+cannot be read, reports it by name with the reason … a readable but empty directory is not a gap but a
+normal row whose metrics report their zero states" — which is BR-27's rule, adopted upstream verbatim
+in substance. So BR-27 narrows nothing, quotes text that no longer exists, and points at an erratum
+that has been discharged. The behavior is unchanged and AT-26 stays correct; the citation is stale.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
