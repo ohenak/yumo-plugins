@@ -885,6 +885,30 @@ untracked tool cache or editor backup from flaking the test, which is exactly th
 tree. Untracked paths are deliberately **inside** the snapshot: BR-28 permits no write anywhere, so
 an untracked path changing is a real violation.
 
+**Concurrent in-tree writes by the suite itself are a second flake, and the snapshot-pair trick does
+not close it.** A stale untracked file is identical in both snapshots; a *concurrent* create-then-
+delete is not. This suite really does write inside the tree while it runs:
+`__tests__/learningsCaptureScript.test.js:215` does
+`mkdtempSync(path.join(SCRATCH_ROOT, ".tmp-capture-driver-"))` under `pdlc/workflows/` — placed
+there deliberately, so the ESM loader resolves specifiers inside `rootDir` — and removes it in
+`afterEach`. `npm test` (`pdlc/workflows/package.json`) runs jest with no `--runInBand`, so files
+execute in parallel workers; only `test:coverage` serialises (`c8 npm test -- --runInBand`). A
+worker creating or deleting a scratch path inside another worker's snapshot window fails AT-21/AT-22
+for a reason that has nothing to do with `stats`. AT-21/AT-22 are FSPEC-fixed, so their assertion is
+not narrowed; the *snapshot* is scoped instead, by two measures stated here so an implementer does
+not rediscover them under a flaky CI run:
+
+| Measure | What it does |
+|---|---|
+| **Declared scratch prefixes are excluded from the snapshot** | the walk skips `.git/`, `node_modules/`, and any path segment matching the suite's declared in-tree scratch prefixes — today exactly `.tmp-*` — held in one exported constant in the shared `__tests__/helpers/` module, so a future scratch prefix is added in one place. The exclusion is sound because these paths are created by the *test suite*, never by `stats`, whose seam bundle has no write member at all (§2.3): a production write could not land there. |
+| **A guard conjunct** | the same test asserts that the excluded-prefix constant is non-empty and that no path under it existed *before* the run that `stats` could have been asked to read — so the exclusion can never grow into a hole that hides a real write. |
+
+An alternative was weighed and rejected: pinning the read-only test file to serial execution (a
+jest project with `maxWorkers: 1`, or `--runInBand` for the whole suite). It would slow every run of
+a ~15k-line suite to close a flake that a four-character prefix exclusion closes, and it would still
+be defeated by any future test that writes outside the declared prefixes. The exclusion is the
+narrower instrument.
+
 Each leg asserts both conjuncts against one invocation — snapshot unchanged **and** the run did its
 job (metric set on stdout with exit 0, or the refusal report with exit 1). The `git`/network half is
 asserted structurally: the seam bundle has no `git` or network member, and §6.4's no-write-capability
@@ -899,12 +923,29 @@ is a claim about *all* inputs rather than a worked example:
 |---|---|
 | PROP-1 (partition) | For any generated basename list, every basename lands in exactly one of: counted for one doc type, malformed, or neither — never two. Falsifies a `not_cross_review` filter that leaks into the malformed list. |
 | PROP-2 (state totality) | For any generated directory listing, every `DocTypeRounds`, `DodRounds` and `ByteRatio` produced carries a `state` from its declared union, `rounds`/`ratio` is `null` in exactly the non-`measured` states, and `collidingRole` is non-`null` in exactly `unmeasurable`. Falsifies a key-absent shape (BR-22's fixed-shape guarantee). |
-| PROP-3 (determinism) | Two `runStats` calls over the same `fakeStatsIo` tree produce byte-identical `stdout`. Falsifies any set- or object-key iteration reaching the output (BR-09, BR-13, BR-18 ordering claims). |
+| PROP-3 (order independence) | For any generated directory content, `runStats` over a `fakeStatsIo` whose `listDir` returns that content in a **generated permutation** produces `stdout` byte-identical to the sorted-order run, and the `byDocType` key order and human row order both equal `REVIEW_DOC_TYPE_ROWS` exactly. Falsifies any place where listing order, insertion order or set iteration reaches the output (BR-09, BR-13, BR-18). |
+
+PROP-3 is stated over a *permuted* listing rather than over two identical calls deliberately. Two
+calls of the same deterministic code over the same input agree by construction — JavaScript object
+keys are insertion-ordered and `Set` iteration is insertion-ordered too — so a repeat-call property
+is green for an implementation whose row order is driven entirely by whatever order the filesystem
+happened to return. Varying the input order is what makes the ordering claims BR-09, BR-13 and BR-18
+own actually falsifiable; the second conjunct pins the order to the constant rather than merely to
+"stable", so an implementation that is stably *wrong* also fails.
 
 Mutation testing targets the branch orders §4.3 fixes: swapping `unmeasurable` before/after
 `harvested`, swapping BR-16's harvested test before/after BR-15's zero-denominator test, and
 dropping the `- 1` from either of the two driver-index conversions. Each mutation must turn a test
-red; a mutation that survives means the branch order is untested, not that it is safe.
+red; a mutation that survives means the branch order is untested, not that it is safe. The killing
+test is named per mutation rather than assumed, because "some test goes red" is not a checkable
+claim:
+
+| Mutation | Killed by |
+|---|---|
+| drop `- 1` from `deriveDodRoundIndex(...) - 1` | AT-11's real-path literal: `docs/completed/pdlc-loop-economics/` reads `2`, and the mutant reads `3` — the value AT-11 names explicitly as the one it must *not* be |
+| drop `- 1` from `deriveRoundWindow(...).startIndex - 1` | AT-09's `TSPEC` row = `6` (mutant: `7`) and AT-10's `13` (mutant: `14`) |
+| swap `unmeasurable` before/after `harvested` | a dedicated unit fixture — AT-25's round-1 collision **plus** `LEARNINGS-{feature}.md` in the same directory, the only configuration on which the two orders disagree. AT-25's own *Given* does not name `LEARNINGS`, so this conjunct is added at the unit level rather than claimed from the AT, and BR-07's "`unmeasurable`, not `0` and not `harvested`" is what it asserts |
+| swap BR-16's harvested test before/after BR-15's zero-denominator test | AT-17's third fixture — harvested *and* zero spec bytes — the only fixture on which the two orders disagree |
 
 ## 7. Traceability
 
