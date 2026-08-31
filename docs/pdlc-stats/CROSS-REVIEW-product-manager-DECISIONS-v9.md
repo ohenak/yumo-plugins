@@ -107,3 +107,36 @@ entries (`orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs`,
 **eight**. DECISIONS carries the correct arithmetic and books the repair as owed upstream. Neither
 of TSPEC's two revisions touched that row, so the item is inherited, unchanged, and still non-gating
 — it is a defect in TSPEC's bytes, not in the document in front of me.
+
+## Decision
+
+**Approved with minor changes.** Zero High. Two Low, both inherited and nonlocal, neither actionable
+inside this document.
+
+The bar for this round was narrow and explicit: only a defect the revision introduced, or a factual
+contradiction with the repository at HEAD or an upstream document, may block. There was no revision,
+so the first limb is vacuous. On the second limb I tested every load-bearing claim I could reach
+mechanically, and they hold:
+
+| Load-bearing claim | Status at HEAD |
+|---|---|
+| `pdlc/workflows/package.json`'s `c8.include` holds seven entries | True — seven `**/`-anchored entries |
+| P9-02's literal is `REQUIRED_INCLUDES` + capture script + two `lib/` modules = seven | True — `REQUIRED_INCLUDES` is four (`coverageInstrumentation.test.js:37-46`) |
+| The feature moves that set to eight | True — one added member |
+| The ten co-change sites are the ten in `DEC-STATS-01`'s table | True — set-equal to TSPEC §2.1's ten |
+| The two sibling-document edits sit outside the ten, owned by K-7 | True, and TSPEC v1.5 now agrees explicitly |
+| `pdlc/README.md`'s prose enumeration is the tenth site, pinned by no oracle | True — TSPEC §2.1 carries the same "pinned by no oracle" residue at `RK-1` |
+| P-1's title pins the count | True — `learningsPremises.test.js:78` matches the quoted phrase |
+| REQ-STATS-02's top-level key set is set-equal to the printed metric set | True, and strengthened by REQ v1.6 |
+
+**The count reconciliation still holds after upstream moved.** The v8 round's repair — both
+breakdowns naming the tenth site, agreeing with the site table, K-1's partition, K-9's ownership and
+*Standing costs accepted* — is undisturbed. Three decompositions, one number, and upstream's ten now
+matches it from the other side.
+
+**No new decision is opened here**, per the freeze. Two observations that would otherwise have been
+questions are recorded as deferred items instead:
+
+DEFERRED: The document's v1.6 grounding line reads in the present tense ("TSPEC HEAD **is** v1.4") and is now three upstream revisions stale; a future round may prefer version-scoped past tense in changelog attestations so a superseded pin cannot be misread as live.
+
+DEFERRED: TSPEC §8.3's REQ-STATS-06-versus-BR-16 conflict decides AT-17's fourth-leg expected value; if its reconciliation ever reaches the parser-catalogue seam, `DEC-STATS-03`'s bundle identity oracle is the place to re-check, though nothing today makes that likely.
