@@ -351,6 +351,203 @@ function in the file that produces a `2`.
 
 ## 4. Data Model
 
+### 4.1 The metric types
+
+One discriminated union per metric, `state` as the discriminant, matching BR-22's rule that a state
+rides **inside** its metric's value:
+
+```ts
+type MetricState = "measured" | "harvested" | "unmeasurable" | "unavailable";
+
+interface DocTypeRounds {
+  state: "measured" | "harvested" | "unmeasurable";
+  rounds: number | null;          // null in every non-measured state
+  collidingRole: string | null;   // null outside "unmeasurable"
+}
+
+interface ReviewRounds {
+  byDocType: Record<string, DocTypeRounds>;  // always all six, in BR-09 order
+  malformed: string[];                       // basenames, listing order, deduped
+}
+
+interface DodRounds  { state: "measured" | "harvested"; rounds: number | null; }
+interface HaltEntry  { phase: string; resolution: "resolved" | "open"; }
+interface ByteRatio  {
+  state: "measured" | "harvested" | "unavailable";
+  ratio: number | null;            // 2dp, BR-15
+  processBytes: number;            // reported even when state is "unavailable"
+  specBytes: number;
+}
+
+interface FeatureStats {
+  feature: string;
+  dir: string;                     // the directory actually read (BR-02, BR-17 header)
+  reviewRounds: ReviewRounds;
+  dodRounds: DodRounds;
+  halts: HaltEntry[];              // possibly empty — BR-13, no state needed
+  byteRatio: ByteRatio;
+}
+
+type FeatureResult = FeatureStats | { feature: string; gap: string };  // BR-23's discriminant
+```
+
+`FeatureResult`'s discriminant is **key presence** — a `gap` key or a metric object — never a
+sentinel inside a metric. That is BR-23 stated as a type rather than as a convention. `byDocType` is
+built by iterating `REVIEW_DOC_TYPE_ROWS` and assigning in order, so JSON key order and human row
+order are the same array; BR-09's "two runs over an unchanged tree produce byte-identical output"
+needs nothing further, because no set iteration ever reaches the output.
+
+### 4.2 The outcome type
+
+```ts
+type StatsOutcome = {
+  stdout: string;   // "" only on the usage-error path (BR-20's single exception)
+  stderr: string;
+  exitCode: 0 | 1;
+};
+```
+
+`runStats` returns strings, not side effects. Both renderers are pure functions of one
+`StatsReport`, the internal value `runStats` builds before rendering:
+
+```ts
+type StatsReport =
+  | { kind: "single"; result: FeatureStats }
+  | { kind: "fleet";  results: FeatureResult[]; unclassified: string[] }
+  | { kind: "error";  reason: "not_found" | "no_docs_root" | "unreadable_feature";
+      feature: string | null; message: string };
+```
+
+`kind: "error"` carries exactly the three `reason` values BR-30 enumerates and no fourth. `feature`
+is `null` only on a fleet-mode root failure — D-9's carve-out, and AT-27's eight-run leg asserts the
+name is present in every single-feature run rather than hardcoded `null`.
+
+**One report value, two renderers.** `renderHuman` and `renderJson` are both total over
+`StatsReport` and neither recomputes anything. That is what makes AT-06's "the two modes agree
+metric for metric" a structural property rather than a coincidence: a metric can only reach one mode
+by way of the value the other mode also reads. It is also what makes REQ-STATS-02's set-equality
+checkable — §6.3 specifies the oracle that derives the human table's metric set and the JSON key set
+from the same `StatsReport` and asserts they correspond.
+
+### 4.3 How each metric is computed
+
+Given `listing = io.listDir(dir).filter(e => !e.isDirectory)` — one call, reused by all four
+metrics, and the `isDirectory` filter is BR-03/EC-04 discharged at the source rather than per metric:
+
+**Review rounds (BR-05…BR-09).** `basenames = listing.map(e => e.name)`.
+
+```
+harvested = basenames.includes(`LEARNINGS-${feature}.md`)
+for docType of REVIEW_DOC_TYPE_ROWS:
+    w = parsers.deriveRoundWindow(basenames, docType)
+    if (!w.ok)                 -> { state: "unmeasurable", rounds: null, collidingRole: w.role }
+    else if (w.startIndex > 1) -> { state: "measured", rounds: w.startIndex - 1, collidingRole: null }
+    else if (harvested)        -> { state: "harvested", rounds: null, collidingRole: null }
+    else                       -> { state: "measured", rounds: 0, collidingRole: null }
+malformed = basenames.filter(b => { const r = parsers.parseReviewFilename(b);
+                                    return !r.ok && r.reason !== "not_cross_review"; })
+```
+
+Three properties of that branch order are deliberate. `unmeasurable` is tested **first**, so a
+collision is never masked by the harvested test (BR-07: `unmeasurable` is not `0`). `w.startIndex > 1`
+is the "any file present for this type" test — `deriveRoundWindow` returns `startIndex = 1` exactly
+when the type has no matching file — so `harvested` is only ever reached for a type with no
+evidence, which is BR-08's per-doc-type discipline. And `malformed` comes from its own
+`parseReviewFilename` pass, not from `w.skipped`, for the early-return reason in §3.2.
+
+**DoD rounds (BR-10, BR-11).**
+
+```
+n = parsers.deriveDodRoundIndex(basenames, feature) - 1
+if (n > 0)          -> { state: "measured",  rounds: n }
+else if (harvested) -> { state: "harvested", rounds: null }
+else                -> { state: "measured",  rounds: 0 }
+```
+
+`n > 0` is exactly BR-11's "no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar
+remains": the driver's matcher escapes the feature name before matching, so a foreign-feature
+`CODE_REVIEW-` file contributes nothing, and `CODE_REVIEW-{feature}-draft.md` does not match at all
+— EC-16/AT-28's "silent, not malformed", inherited rather than coded.
+
+**Halts (BR-12, BR-13).** Match `^POSTMORTEM-(.+?)-{escapedFeature}\.md$` against each basename,
+with `{feature}` escaped by the same `replace(/[.*+?^${}()|[\]\\]/g, "\\$&")` idiom
+`deriveDodRoundIndex` uses, so a feature name is never misread as a pattern. The capture is the
+phase, taken verbatim — no catalogue, no validation (BR-12: `POSTMORTEM-I-pdlc-headless-engine.md`
+exists on disk although the driver's force-phase token list omits `I`). Resolution:
+
+```
+m = parsers.parseResolvedMarker(io.readFile(abs))
+resolution = (m.ok && m.resolved) ? "resolved" : "open"     // fail-closed, incl. read failure
+```
+
+That single expression covers all three of EC-14's conditions — absent, duplicated, unparseable —
+because `parseResolvedMarker` returns `ok: false` for each, and it matches the driver's own
+`checkPostmortem` mapping of both `ok: false` and `resolved: false` onto unresolved. Entries are
+sorted by `phase` with `Array.prototype.sort()`'s default (code-unit) collation, ascending; BR-13
+names the collation because `PR` is two characters, and code-unit order puts `D, F, I, T` in exactly
+AT-14b's asserted sequence.
+
+**Byte ratio (BR-14…BR-16).** Two disjoint file sets, each summed with `io.fileSize`:
+
+```
+specFiles    = REVIEW_DOC_TYPE_ROWS.map(t => `${t}-${feature}.md`) ∩ basenames
+crossReviews = basenames.filter(b => parsers.parseReviewFilename(b).ok)
+postMortems  = the halt matcher's matches
+dodReviews   = basenames matching `CODE_REVIEW-${escapedFeature}-v(\d+)\.md`
+processFiles = crossReviews ∪ postMortems ∪ dodReviews
+```
+
+The spec side reuses `REVIEW_DOC_TYPE_ROWS` because REQ C-3's six document types and BR-09's six
+row types are the same six names — one constant, not two lists that can drift. The process side's
+cross-review membership is `parseReviewFilename(...).ok`, so a grammatically-failing basename
+contributes to **neither** side: `CROSS-REVIEW-{role}-REVIEW-v{N}.md` is listed as malformed and
+sized into nothing. That is BR-14's "matching the grammars" read literally, and it is stated here
+because it is the one consequence of BR-06 that lands in a different metric. Then, in this order:
+
+```
+if (harvested && (crossReviews.length === 0 || dodReviews.length === 0))
+                             -> { state: "harvested",   ratio: null, processBytes, specBytes }
+else if (specBytes === 0)    -> { state: "unavailable", ratio: null, processBytes, specBytes }
+else -> { state: "measured", ratio: round2(processBytes / specBytes), processBytes, specBytes }
+```
+
+Harvested before zero-denominator is BR-16's stated precedence, and AT-17's third fixture — harvested
+with no spec documents either — is the leg that distinguishes the two orders. `round2` is
+`Math.round(x * 100) / 100`; the human renderer prints `ratio.toFixed(2)` of the **same** rounded
+number, so BR-15's "the two modes never disagree on a displayed value" holds by construction rather
+than by two independent formatters agreeing.
+
+### 4.4 Discovery (BR-25, BR-26)
+
+`NON_FEATURE_DIRS` is the frozen eight BR-25 fixes: `_queue`, `_constraints`, `_decisions`,
+`design`, `requirements`, `ideas`, `discarded`, `completed`. All eight are present at this
+repository's `docs/` root today, and they are exactly the non-feature directories there.
+
+```
+liveDirs      = listDir(docs/).filter(isDirectory)
+archivedDirs  = exists(docs/completed) ? listDir(docs/completed).filter(isDirectory) : []
+unclassified  = liveDirs.filter(d => d.name.startsWith("_") && !NON_FEATURE_DIRS.includes(d.name))
+liveFeatures  = liveDirs.filter(d => !NON_FEATURE_DIRS.includes(d.name) && !unclassified.includes(d))
+features      = liveFeatures ∪ { archived whose name is not already a live feature }   // BR-02
+```
+
+The underscore test is this document's choice and is flagged: **FSPEC BR-26/EC-10 name an
+"unclassified" outcome for a directory "in neither the exclusion set nor recognizable as a feature",
+but state no positive recognition predicate**, and EC-03/AT-26 rule out the obvious candidate
+(artifact presence) by making a readable-but-empty directory a normal measured row. The leading
+underscore is the only discriminant the repository's own convention actually supplies —
+`_queue`/`_constraints`/`_decisions` carry it and no feature directory does — and it satisfies
+BR-26's purpose for the growth case that motivates it (a new `docs/_evidence/` surfaces rather than
+joining the feature list with meaningless metrics). It does **not** cover a future bare-named
+non-feature directory, which would be reported as a feature with zero-state metrics. That residue is
+raised as an erratum against the FSPEC (§8) rather than resolved by inventing a richer rule here.
+
+`docs/completed/` is traversed as a container and never reported as a feature, which is what stops
+`docs/completed/REQ-completed.md` — a loose file, verified present — from ever mattering: the
+`isDirectory` filter drops it before any name test runs, as it does
+`docs/PLAN-pdlc-integration-boundary-gates.md` and `docs/completed/QUEUE-HISTORY-rows-0-1.md`, both
+also verified present.
+
 ## 5. Error Handling
 
 ## 6. Test Strategy
