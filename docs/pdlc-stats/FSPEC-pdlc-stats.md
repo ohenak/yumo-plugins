@@ -723,8 +723,7 @@ byte totals are still reported, and exit is 0 (BR-15, EC-12).
 cross-reviews intact and no `CODE_REVIEW` file; one with `CODE_REVIEW` files intact and no
 cross-review; one with neither and no spec documents either; and one holding `CODE_REVIEW` files
 intact plus, as its only `CROSS-REVIEW-` basenames, the out-of-catalogue
-`CROSS-REVIEW-{role}-REVIEW-v{N}.md` form — the shape `docs/completed/pdlc-advisory-wave-gate/`
-carries. *When:* all four are reported. *Then:* all four report `harvested` — the third not `n/a`,
+`CROSS-REVIEW-{role}-REVIEW-v{N}.md` form BR-16 names. *When:* all four are reported. *Then:* all four report `harvested` — the third not `n/a`,
 the fourth not a measured ratio, because files whose bytes BR-14 refuses are equally files BR-16
 does not count as remaining (BR-16, EC-13).
 
