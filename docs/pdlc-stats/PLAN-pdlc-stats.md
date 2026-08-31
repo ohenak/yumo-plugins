@@ -136,7 +136,53 @@ no task edits `pdlc/workflows/dist/` and no batch expects it to move.
 
 ## File Ownership Manifest
 
-*(pending)*
+One file, one owning task per batch — the premise batch-safety rule 2 rests on, stated mechanically
+so it is auditable rather than asserted.
+
+| File | Owning task(s) | New? |
+|---|---|---|
+| `pdlc/workflows/__tests__/statsPreflight.test.js` | T-01 | new |
+| `pdlc/workflows/__tests__/helpers/statsDoubles.js` | T-02 | new |
+| `pdlc/workflows/__tests__/statsArgv.test.js` | T-03 | new |
+| `pdlc/workflows/__tests__/statsMetrics.test.js` | T-04 | new |
+| `pdlc/workflows/__tests__/statsDiscovery.test.js` | T-05 | new |
+| `pdlc/workflows/__tests__/statsRender.test.js` | T-06 | new |
+| `pdlc/workflows/__tests__/statsOutcome.test.js` | T-07 | new |
+| `pdlc/workflows/__tests__/statsAntiDrift.test.js` | T-08 | new |
+| `pdlc/engine/__tests__/stats-cli.test.js` | T-09 | new |
+| `pdlc/engine/__tests__/stats-cli-structure.test.js` | T-10 | new |
+| `pdlc/engine/__tests__/stats-read-only.test.js` | T-11 | new |
+| `pdlc/engine/__tests__/_stats-scratch-prefixes.mjs` | T-11 | new |
+| **`pdlc/workflows/lib/stats.mjs`** | T-12 (creates, b3), T-13 (b4), T-14 (b5), T-15 (b6), T-16 (b7) | new |
+| `pdlc/engine/bin/cli.mjs` | T-17 | exists |
+| `pdlc/workflows/__tests__/statsRealPaths.test.js` | T-18 | new |
+| `pdlc/workflows/__tests__/statsProperties.test.js` | T-19 | new |
+| `pdlc/engine/__tests__/stats-vendoring.test.js` | T-20 | new |
+| `pdlc/engine/scripts/prepack.mjs` | T-21 | exists |
+| `pdlc/engine/__tests__/run.test.js` | T-21 | exists |
+| `pdlc/workflows/__tests__/learningsPremises.test.js` | T-21 | exists |
+| `pdlc/README.md` | T-21 | exists |
+| `docs/_constraints/DOMAIN-CONSTRAINTS.md` | T-21 | exists |
+| `pdlc/engine/__tests__/_tspec-packed-set.mjs` | T-22 | exists |
+| `docs/completed/pdlc-engine-distribution/TSPEC-pdlc-engine-distribution.md` | T-22 | exists |
+| `docs/completed/pdlc-engine-distribution/FSPEC-pdlc-engine-distribution.md` | T-22 | exists |
+| `pdlc/engine/__tests__/loop-distribution.test.js` | T-23 | exists |
+| `pdlc/workflows/package.json` | T-24 | exists |
+| `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | T-24 | exists |
+| `pdlc/engine/scripts/publish-preflight.mjs` | T-25 | exists |
+| `pdlc/engine/scripts/fixture-machine.mjs` | T-25 | exists |
+| `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | T-26 | new |
+| `pdlc/OPERATIONS.md` | T-27 | exists |
+
+**The one multi-owner file is `pdlc/workflows/lib/stats.mjs`**, and it is serialized rather than
+noted: its five writing tasks sit in five **distinct** batches (3, 4, 5, 6, 7), forced by real
+`Deps` edges (T-13 → T-12, T-14 → T-13, T-15 → T-14, T-16 → T-15), never by prose. No batch in this
+PLAN contains two tasks that create or append the same physical file — checked row by row against
+the table above, including the batch-10 cluster, whose five tasks touch twelve files with no
+overlap.
+
+`pdlc/README.md` is edited by exactly one task (T-21), which carries both the prose-enumeration
+co-change `K-9` requires and the new command bullet, so no second batch re-opens the file.
 
 ## Dependencies
 
