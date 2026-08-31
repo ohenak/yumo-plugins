@@ -641,9 +641,12 @@ of the other's state (BR-11).
 ### 6.5 Halts
 
 **AT-13 — one entry per phase, resolution as the driver classifies it.**
-*Who:* pipeline operator. *Given:* `docs/completed/pdlc-wave-resume/`, which carries
-`POSTMORTEM-PR-pdlc-wave-resume.md`, whose line-leading marker reads `RESOLVED: yes`, alongside a
-copied `POSTMORTEM-P-some-other-feature.md`. *When:* the
+*Who:* pipeline operator. *Given:* `docs/completed/pdlc-wave-resume/` **copied into a temporary
+root**, carrying `POSTMORTEM-PR-pdlc-wave-resume.md`, whose line-leading marker reads
+`RESOLVED: yes`, with `POSTMORTEM-P-some-other-feature.md` added to the copy. The two extra files
+are added to the copy and never to the repository: the `resolved` literal below is carried over from
+the real bytes, and the real directory stays exactly as the other real-path tests (AT-09, AT-10,
+AT-18) measure it. *When:* the
 report is produced. *Then:* the halt set is exactly one entry, `{phase: "PR", resolution:
 "resolved"}` — the literal, not a re-derivation; the foreign-feature basename contributes nothing
 and appears in no list (EC-15). *And:* the companion fixture, the same file with
@@ -657,6 +660,17 @@ carries a duplicated `RESOLVED:` marker. *When:* both are reported. *Then:* the 
 explicit "none" (human) / empty array (JSON) and exits 0; the second shows that phase tagged `open`
 and exits 0 (BR-13, EC-14).
 
+**AT-14b — multiple halts render in BR-13's order, asserted as a literal sequence.**
+*Who:* pipeline operator. *Given:* `docs/completed/pdlc-headless-engine/`, which carries
+`POSTMORTEM-{D,F,I,T}-pdlc-headless-engine.md` — four post-mortems, four distinct phases. *When:*
+the report is produced in both modes. *Then:* the halt entries are exactly four and their **sequence**
+is the literal `D, F, I, T`, in that order, in the human table and in the JSON array alike. The
+sequence is the assertion, not the set: BR-13's collation is this rule's only falsifiable content,
+and an implementation ordering by directory-listing or insertion order passes any set-shaped oracle.
+*And:* over a constructed fixture carrying phases `P` and `PR`, the rendered sequence is the literal
+`P, PR` — the two-character identifier BR-13 names as the case where a byte-wise comparison and a
+locale-sensitive one can part company (BR-13).
+
 ### 6.6 Byte ratio
 
 **AT-15 — the ratio is process over spec, over the fixed sets.**
@@ -667,7 +681,11 @@ whose target is far larger than the link — every one of the nine a distinct si
 on neither list (`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`). *When:* the report is
 produced. *Then:* the two totals equal the literal sums of their members; adding a file on neither
 list leaves both unchanged; **and** removing any one of the nine changes its side's total by exactly
-that file's size. The link contributes its own size, not its target's (EC-19). The removal probe is
+that file's size. The link contributes its own size, not its target's (EC-19). The symbolic-link leg
+is the one leg here permitted to be skipped where the filesystem cannot carry a link; the
+enumeration and removal-probe legs are **not** skippable and run with a regular file in that
+member's place, because AT-15 is the only test asserting BR-14's enumeration by removal and a
+skipped platform must not take that probe with it. The removal probe is
 what makes the assertion set-equality rather than containment
 — without it, an implementation that omits `DECISIONS-{feature}.md` or the post-mortem family from
 its enumeration still passes (BR-14).
@@ -734,24 +752,36 @@ both exit 1, and both emitted their report or usage error; no network request wa
 *Who:* pipeline operator, then an automated caller. *Given:* a feature name matching no directory
 under either root, in a repository with no `docs/completed/` at all. *When:* `pdlc stats {feature}`
 and `pdlc stats {feature} --json`. *Then:* both exit 1; the human run names the feature on stderr;
-the JSON run emits a well-formed error object on stdout that a caller can distinguish from a
-feature with no artifacts (BR-30, EC-01).
+the JSON run's stdout parses and its top-level keys are exactly `schemaVersion`, `error`, `feature` —
+three, no more — with `error.reason` exactly `not_found`, `error` carrying exactly `reason` and
+`message`, and `feature` the name supplied. *And:* the same document compared against a real
+feature with no artifacts (AT-26's empty directory) under `--json`: the two are distinguishable by
+key set alone, not by inspecting a message string (BR-30, EC-01).
 
 **AT-24 — the flag set is closed, and a usage error prints nothing to stdout.**
-*Who:* automated caller. *Given:* `pdlc stats {feature} --dry-run`, and `pdlc stats {feature} --cwd`
-with no value, and `pdlc stats a b`. *When:* each is run. *Then:* each exits 1 with a usage error on
-stderr naming the offending token, and stdout is empty in every case — including under `--json`,
-so a caller never parses half a document (BR-01, EC-08).
+*Who:* automated caller. *Given:* `pdlc stats {feature} --dev`, `pdlc stats {feature} --plugin-root
+{path}`, `pdlc stats {feature} --dry-run`, `pdlc stats {feature} --cwd` with no value, and
+`pdlc stats a b`. *When:* each is run. *Then:* each exits 1 with a usage error on stderr naming the
+offending token, and stdout is empty in every case — including under `--json`, so a caller never
+parses half a document (BR-01, EC-08). `--dev` and `--plugin-root` are named deliberately: they are
+the tokens BR-01 singles out as accepted elsewhere and refused here, and the likely implementation —
+a `FLAGS_BY_COMMAND` row copied from a neighbour, `doctor`'s being
+`["plugin-root","cwd","allow-api-key-billing","dev"]` — accepts both while still refusing
+`--dry-run`, which is in no command's list. A test carrying only the never-anywhere token cannot
+fail in the one way this rule exists to prevent.
 
 ### 6.10 States and edge cases
 
 **AT-25 — a round-1 collision is `unmeasurable`, and only for its own row.**
 *Who:* pipeline operator. *Given:* a directory where one role carries both
 `CROSS-REVIEW-{role}-TSPEC.md` and `CROSS-REVIEW-{role}-TSPEC-v1.md`, and the other five document
-types carry grammatical cross-reviews at known indices. *When:* the report is produced in both
-modes. *Then:* the TSPEC row reads exactly `unmeasurable` and names that role (JSON:
-`state: "unmeasurable"`, `rounds: null`, `collidingRole` the role's slug); the other five rows carry
-their measured indices unchanged; and exit is 0 (BR-07, BR-19, BR-22, EC-06).
+types carry grammatical cross-reviews at these indices: `REQ` 3, `FSPEC` 2, `PLAN` 5, `PROPERTIES` 1,
+`DECISIONS` 4. *When:* the report is produced in both modes. *Then:* the TSPEC row reads exactly
+`unmeasurable` and names that role (JSON: `state: "unmeasurable"`, `rounds: null`, `collidingRole`
+the role's slug); the other five rows read exactly `3`, `2`, `5`, `1`, `4` respectively; and exit is
+0. The five are stated as literals, not as "unchanged", so the conjunct is a transcription rather
+than a tautology and the real risk — one role's collision poisoning rows it does not belong to — can
+fail the test (BR-07, BR-19, BR-22, EC-06).
 
 **AT-26 — an empty feature directory is a measurement, not a gap.**
 *Who:* pipeline operator. *Given:* a readable, empty `docs/{feature}/`. *When:* `pdlc stats
@@ -764,9 +794,15 @@ normal row, carrying no gap marker and no reason string (EC-03, BR-27).
 {feature}`, then `pdlc stats`. *Then:* the single-feature run emits no report, names the feature and
 the reason on stderr, and exits 1; the fleet run carries that feature as a gap row with the same
 reason, reports every other feature normally, and exits 0. Both halves are asserted, because D-6's
-decision is precisely that the two modes differ here (EC-11, EC-21). *And:* over a tree whose
-`docs/` root is absent, and again over one where it cannot be read, both modes exit 1 carrying the
-same root message — not a not-found message — and neither prints a report (EC-09).
+decision is precisely that the two modes differ here (EC-11). *And:* over a tree whose `docs/` root
+is absent, and again over one where it cannot be read, all four runs exit 1 and every conjunct is
+positive: each stderr message names the root; each carries the clause matching its own condition
+(absent in the absent runs, unreadable in the unreadable runs, so the two messages are **not**
+byte-identical); no message is EC-01's not-found message; and under `--json` stdout parses as
+BR-30's error object with top-level keys exactly `schemaVersion`, `error`, `feature`, `error.reason`
+exactly `no_docs_root` and `feature` `null` in the fleet runs. Stdout's *content* is asserted, not
+merely its non-report-ness: this is the first invocation a new caller mis-runs, and "prints no
+report" is satisfied by both an empty stdout and an error object (EC-09, BR-20, BR-30).
 
 **AT-28 — a non-matching `CODE_REVIEW-` basename is silent, not malformed.**
 *Who:* pipeline operator. *Given:* a directory holding `CODE_REVIEW-{feature}-v2.md` and
