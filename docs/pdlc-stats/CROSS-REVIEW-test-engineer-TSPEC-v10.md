@@ -225,7 +225,36 @@ of them.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+TSPEC v1.7 still holds against REQ v1.7. The erratum settled the one dispute the document was
+routing upstream, and settled it on the side §4.3 already implements: no type, signature, branch
+order, code sketch, baseline literal or acceptance-test expected value moves. AT-17's fourth leg —
+the single assertion-bearing site the dispute could have flipped — keeps `harvested`, now agreed by
+REQ, FSPEC and TSPEC alike.
+
+What does not hold is the document's narration of the dispute. Four passages still quote or assume
+REQ text that has been withdrawn. Two of them (§4.3's contested paragraph, §8.3's open item) sit
+where downstream phases decide what is settled and how hard to pin an expectation, so they are
+Medium; two (§7.2's AT-17 aside, the v1.7 changelog's REQ pin) are Low. The fix is the re-stamp §4.3
+itself promised — "when it settles, exactly three things here re-stamp" — plus closing the §8.3
+bullet without disturbing the BR-26 item beside it. No decision is required and no section needs
+re-opening.
+
+**Positive observations.**
+
+- **Routing beat guessing.** §4.3 declined to invent a resolution, implemented its immediate
+  upstream, named the exact sites that would re-stamp, and routed the conflict to the owning phase.
+  That discipline is why this cascade is a re-stamp and not a re-design.
+- **The nominated re-stamp list was accurate.** Of the three sites §4.3 named, two turn out to need
+  no change (the BR-16 pin, AT-17's value) precisely because the dispute landed on BR-16's side. The
+  document predicted its own delta correctly.
+- **The AT-17 leg-4 fixture is properly discriminating.** Keeping `CODE_REVIEW` files intact so the
+  DoD disjunct cannot mask the cross-review disjunct is what makes the leg a real oracle for
+  REQ-STATS-06 rather than an accidental pass.
+- **One parser, one rule.** REQ v1.7's explicit tie back to REQ-STATS-03's malformed classification
+  vindicates §4.3's choice to route cross-review membership through `parseReviewFilename(...).ok`
+  instead of a second, independent grammar.
 
 ## Delta-Confirmation Findings
 
