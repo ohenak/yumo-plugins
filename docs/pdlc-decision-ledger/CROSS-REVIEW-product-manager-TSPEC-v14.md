@@ -166,6 +166,48 @@ cheaper than fixing them twice.
 
 ## Test Strategy
 
+Product lens only: whether the requirements this delta touches are still provable as the REQ and
+FSPEC ask.
+
+**AT-14 still asserts everything FSPEC asks it to assert.** This is the row the delta changed, so it
+is the one that matters. FSPEC AT-14 (FSPEC:484–491) requires that, given a zero-decision in-scope
+set, then `maxEntries` `0`, then `maxBytes` `0`, "in all three cases the dispatch stream is
+**byte-identical to AT-04's committed baseline**" — the positive assertion, pinning in one
+comparison that there is no index block, no rule text standing alone above a missing index, and no
+added or removed whitespace. TSPEC §7.6's row still says exactly that: all **three** cases,
+byte-identical to AT-04's stream. The case list is complete, the oracle is the same one, and the
+positive-assertion form survives. **The requirement is not narrowed.** What changed is only which id
+the row hangs the three cases on, and F-02 is scoped precisely to that: cite `FSPEC AT-14`, or
+`E-6, E-7`, rather than `E-7` alone. I want to be explicit that this is a pointer defect and not a
+coverage gap, because the two would carry very different severities and only one of them is present.
+
+**REQ-DECLEDGER-07 is still served end to end.** FSPEC:101 maps it to BR-12, BR-13; E-6, E-7, E-8,
+N-1; AT-13, AT-14, AT-15. Every one of those still has a locus in this TSPEC: E-6/E-7 at §4.1 and
+§6.1's F-13, E-8 at §6.1 and AT-15, the bounds property at §7.5, and AT-13/AT-14/AT-15 in §7.6's
+table. The `0`-on-either-bound totality FSPEC calls for so that "O-8's bounds property is total over
+either bound" is present on both axes rather than on `maxEntries` alone — which was the widening
+FSPEC v1.3 made and this document absorbed at v1.2, and the delta preserves it.
+
+**REQ-DECLEDGER-08 / BR-11 / NG-4 remain provable, and the proof path is intact at HEAD.** This is
+the requirement the census serves, and it was the subject of my v12 blocking finding. §7.3's contract
+is unmoved; PLAN v0.9's T-11 now states the same partition with its operands named and cites §7.3 as
+the authority rather than restating it; the file-ownership manifest and the DoD checklist agree. The
+three downstream documents and this one carry one number. Nothing in this delta disturbs that.
+
+**No property or acceptance criterion contradicts product intent after the delta.** I diffed the
+changed regions against the AT and traceability tables specifically looking for a moved row and found
+none. The corpus oracle AT-18, the replay invariance AT-16, the reopening integration AT-17 and the
+census AT-12 are all byte-identical across `3a17387d6..HEAD`.
+
+**One testing-adjacent observation, recorded rather than raised.** The staleness class F-01 belongs
+to — a downstream document's revision history asserting a fact about *another* document's HEAD state
+— is the one thing in this pipeline that no test can catch, because it is prose about a moving
+target. The citation-by-id discipline this very round adopted is the structural answer to it, and
+applying that discipline to cross-document *state* claims (cite the version pin, or state the claim
+as of a named commit) would close the recurrence. I note it here rather than as a finding because
+the fix belongs to process, not to this document; it is reflected in F-01's `Process` reading and in
+Q-01.
+
 ## Open Questions
 
 ## Positive Observations
