@@ -35,6 +35,27 @@ because the survivor question is exactly what that arithmetic turned on.
 
 ## Linked Requirements
 
+Only **REQ-STATS-06** changed. The FSPEC's §2 requirement-trace row for it reads
+`REQ-STATS-06 | process-to-spec byte ratio | §3.1 step 8; §4.2 | BR-14, BR-15, BR-16 | AT-15, AT-16, AT-17`.
+Every column still resolves after the erratum:
+
+- The **§ anchors** are unmoved — REQ-STATS-06 is still one AC with the same title and the same
+  *Given/When/Then* spine; only its closing paragraph's final clause changed.
+- The **rule set** is still the right one. The moved clause is a statement about BR-16's predicate
+  (which files count as remaining), not about BR-14's enumeration or BR-15's rendering, and BR-16 is
+  cited here.
+- The **test set** is unchanged and still sufficient: AT-17 is the test that exercises the moved
+  clause, and it is already in the row.
+
+No other requirement-trace row is implicated. I checked the REQ diff for edits reachable from other
+rows and there are none: REQ-STATS-02, REQ-STATS-03, REQ-STATS-04, REQ-STATS-05 and REQ-STATS-07 are
+byte-identical across `1847dd9c0..e12b78fd8`. In particular REQ-STATS-05's harvested halt state —
+withdrawn in v1.6, `0` restored — was already inside my pinned bytes and is not part of this cascade.
+
+The erratum note's own scope claim ("one clause decided, no rule added … No other change") is
+falsifiable against the diff, and the diff bears it out: the REQ gains no new AC, no new constraint
+id, and no new obligation for this FSPEC to compress.
+
 ## Behavioral Flow
 
 ## Business Rules
