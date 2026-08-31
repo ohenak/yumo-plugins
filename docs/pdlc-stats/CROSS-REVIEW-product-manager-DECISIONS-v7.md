@@ -145,7 +145,43 @@ anchors if convenient, into the next edit that touches this document. Neither bl
 
 ## Consequences
 
-<!-- pending -->
+**For Phase D / PLAN.** Not blocked. The co-change contract PLAN partitions is complete and internally
+consistent at the level PLAN reads it: ten site-table rows, K-1's partition covering all ten, and one
+owning task per file under K-3, K-7, K-8 and K-9. K-9 now owns three sites (`run.test.js`,
+`learningsPremises.test.js`, `pdlc/README.md`) rather than two — a PLAN author sizing K-9's task
+should note that, because two of the three have falsifiers and the third does not, so the task's
+"done" signal is a green suite **plus** a review check.
+
+**For the implementer.** The purity detector is now safe to implement literally. Under v1.4's wording
+it was not: `deriveDodRoundIndex` typed `=> number` would have redded a correct, wholly pure
+implementation against a non-aliasing assertion, which is the failure mode worse than no test at all
+because it trains the team to loosen the oracle. That trap is closed.
+
+**For upstream (TSPEC).** One erratum stays owed: §2.1's `coverageInstrumentation.test.js` row
+(*"six → seven"*, TSPEC `:191` and its changelog at `:50-51`). Until it lands, two approved documents
+disagree on a mechanical fact, with DECISIONS correct. The risk is direction-of-travel: the pin says
+upstream is authoritative, so a later downstream reader may "correct" DECISIONS into agreement with a
+number that is wrong. DECISIONS mitigates this by naming the divergence and its direction in K-3's
+clause, which is the best a downstream document can do unilaterally.
+
+**For harvest.** Two signals in this round look durable beyond the feature, and I flag them for
+`docs/_constraints/DOMAIN-CONSTRAINTS.md` rather than inflating any severity here:
+
+- **The DEC-DOC-01 rationale this round produced is sharper than the rule as written.** *"A line
+  anchor into a file this feature itself edits is invalidated by that edit"* explains the rule from
+  the co-change side rather than the citation-hygiene side, and it generalises: line anchors are
+  least reliable exactly where a feature is most active. Worth promoting into the DEC-DOC-01 note.
+- **Count words and their breakdowns drift apart when only the count is routed.** F-01 is the third
+  round in this document where a total moved and an enumeration beside it did not (v1.3's `six → seven`,
+  v1.4's B re-pricing, now `nine → ten`). The mechanical form of the lesson: when an erratum moves a
+  cardinal, grep the document for every enumeration that decomposes it, not only for the digit.
+  This is the same class of defect the feature's own K-rows exist to prevent in code — worth a
+  process learning that review of a count change must check the count's decompositions.
+
+**On the stale dispatch pin.** The TSPEC hash in this dispatch matches no revision on the branch.
+The author handled it correctly and said so. I raise it as Q-01 rather than a finding, because the
+document's bytes are not defective — but if the pin is being computed from a document version that
+was rewritten in place, that is a pipeline concern worth a look before the next cascade.
 
 ## Positive Observations
 
