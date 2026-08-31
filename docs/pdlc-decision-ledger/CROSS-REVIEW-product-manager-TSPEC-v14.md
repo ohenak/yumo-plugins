@@ -85,6 +85,43 @@ here. Declining is the right call; only its stated reason has gone stale.
 
 ## Interfaces
 
+**The census pin in §7.3 is untouched, and it is still the authority.** This is the contract the
+routed item is about, so I re-read it rather than assuming the delta left it alone. §7.3's *The size
+of the owned list, stated once* still pins **six functions ∪ eight constants = fourteen** with the
+operand-collision disambiguation TE won at round 12, still names the correction direction as
+downstream-to-here, and still states that a downstream document carrying a *fifteen*-member owned
+list, or homing any of the three census constants in `orchestrate-dev.js`, is stale against this
+section rather than a competing design. The *Forbidden token set* row (:1475) and the *Scanned
+source* row (:1476) still enumerate the same membership. Byte-unmoved by this delta. Whatever the
+changelog says about PLAN, the contract this document publishes is unchanged and correct.
+
+**I re-measured PLAN at HEAD site by site, and the routed premise is false.** PLAN is at **v0.9**
+(`PLAN`:17), two versions past the v0.7 the changelog names. All six routed sites:
+
+| Site | State at PLAN HEAD |
+|---|---|
+| Revision history | v0.8 and v0.9 entries both present (`PLAN`:19, :23); the v0.7 entry survives explicitly demoted — "*superseded in part by v0.8: the count and home this entry records were corrected downstream-to-TSPEC-§7.3; retained as history*" (`PLAN`:29) |
+| T-11 | "**All three are declarations of this task's own test file** … None of the three is production code, and none is a member of `DECISION_LEDGER_OWNED_DECLS`"; partition stated as six data-carrying ∪ eight plumbing = **fourteen**, cited from §7.3 rather than asserted (`PLAN`:162) |
+| T-18 | "This task writes **no census constant**: TSPEC §7.3 homes all three … so there is no production declaration to add here (v8 PM F-01 / TE F-01; this reverses the v0.7 instruction)" (`PLAN`:168) |
+| File-ownership manifest | `decisionLedgerCensus.test.js` named "the sole home of **all three** frozen census lists … never of `orchestrate-dev.js`" (`PLAN`:217) |
+| §Definition of Done | six data-carrying ∪ eight plumbing = fourteen, all three lists in the test file (`PLAN`:503–514) |
+| Production home | `grep -n CENSUS_TOKENS` over PLAN returns no site assigning it a home in `orchestrate-dev.js` |
+
+So neither half of the routed item is true at HEAD: there is no fifteen-member owned list in PLAN,
+and no production home for `DECISION_LEDGER_CENSUS_TOKENS`. The correction direction §7.3 published
+was followed, in full, in PLAN's own phase — which is the mechanism working exactly as designed.
+
+**What that makes F-01.** The v1.3 changelog paragraph (:38–45) states, in the present tense, that
+"`PLAN` v0.7 carries the retired fifteen-member owned list and a production home for
+`DECISION_LEDGER_CENSUS_TOKENS`", "on the same reasoning v1.2 recorded". The disposition it draws —
+route to PLAN's phase, do not fix here — is right, and I am not asking for it to change. The tense
+and the version are wrong, and the consequence is not cosmetic: this stale sentence is what fed the
+routed item into *this* dispatch, which is asking PLAN to make a correction PLAN made two versions
+ago. Left standing, it re-mints the same erratum on every subsequent round. I keep this at **Medium**
+for the same reason I did at v13 — the error is confined to revision history, and no normative
+section, count, contract or acceptance criterion of this TSPEC is affected. The cost is process, not
+specification.
+
 ## Data Model
 
 ## Test Strategy
