@@ -714,9 +714,13 @@ collation, so the rule's stated reason for naming one is itself asserted (BR-13)
 (`REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS`) and **all three** process families
 (a cross-review, a post-mortem, a `CODE_REVIEW`) — one process-side member being a symbolic link
 whose target is far larger than the link — every one of the nine a distinct size, plus files
-on neither list (`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`). *When:* the report is
+on neither list (`LEARNINGS-*.md`, `MUTATION-EVIDENCE-*.md`, `SIZING-*.md`, and — the case that
+separates the two sides of BR-16's agreement claim — a `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file,
+`CROSS-REVIEW-`-prefixed but outside BR-09's six document types). *When:* the report is
 produced. *Then:* the two totals equal the literal sums of their members; adding a file on neither
-list leaves both unchanged; **and** removing any one of the nine changes its side's total by exactly
+list leaves both unchanged — including the out-of-catalogue cross-review, whose bytes reach neither
+side, so an implementation that globs `CROSS-REVIEW-*` into the process total fails here (BR-14,
+BR-16); **and** removing any one of the nine changes its side's total by exactly
 that file's size. The link contributes its own size, not its target's (EC-19). The symbolic-link leg
 is the one leg here permitted to be skipped where the filesystem cannot carry a link; the
 enumeration and removal-probe legs are **not** skippable and run with a regular file in that
