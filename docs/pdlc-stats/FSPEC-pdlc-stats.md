@@ -675,4 +675,52 @@ so a caller never parses half a document (BR-01, EC-08).
 
 ## 7. Open Questions
 
-*(pending)*
+### 7.1 Questions this FSPEC decided that the REQ left to it
+
+| # | Question | Decision | Rationale |
+|---|---|---|---|
+| D-1 | Does REQ-STATS-08's working-tree comparison span untracked and ignored paths, or only tracked ones? (SE cross-review v3 Q-01, explicitly routed here.) | It spans every path under the repository root except `.git/` — untracked paths included. | The comparison is between two snapshots of the same tree taken around one invocation, not against a fixed literal, so the untracked-file flake this repository has seen before (`coveredViolations`) does not arise. Including untracked paths is the stronger and the safer assertion: BR-28 permits no write anywhere, so an untracked path changing is a real violation. (AT-21) |
+| D-2 | Does the DoD metric report the pipeline's next-round index or the last round that happened? (SE cross-review v3 Q-02, explicitly routed here.) | The last round that happened: the highest version present. | The pipeline's derivation answers a different question ("which round runs next") and returns highest-plus-one; reporting it unchanged would be off by one on every feature and would report `1` for a feature that never ran DoD. BR-10 states the near-miss so an implementer does not rediscover it. |
+| D-3 | JSON field spellings, the human table layout, the ratio's precision, and the not-available / harvested token spellings (REQ O-1). | Fixed in §4.3 and §4.4. | REQ O-1 assigns these here. Fixing them in one place is what makes REQ-STATS-02's set-equality and REQ R-5's stability guarantee checkable. |
+| D-4 | Is the review-rounds row set derived from the files present, or fixed? | Fixed: the six-document-type catalogue, always, in catalogue order (BR-09). | A row set derived from files present cannot express `harvested` for a type whose files were deleted — which is the state REQ R-6 exists to protect. |
+| D-5 | Does the single-feature JSON document echo the feature name? | No (BR-21). | REQ-STATS-02 requires the top-level key set be set-equal to the printed metric set plus one schema-version field; a `feature` key would break that equality. The caller supplied the name. Fleet mode carries names as the keys of `features`, inside the metric container, not as extra top-level keys. |
+| D-6 | Does an unreadable feature directory in single-feature mode degrade to a gap or fail? | It fails, exit 1 (EC-11). | Fleet mode's gap row exists so one bad feature does not suppress the other rows. In single-feature mode there are no other rows, and a report with a silently missing metric is worse than a refusal. |
+
+### 7.2 Open — for TSPEC
+
+| # | Item | Owner |
+|---|---|---|
+| O-1 | Whether the command reuses the pipeline driver's existing parsing or implements its own read path. This FSPEC requires only REQ C-5's outcome — no divergence from the driver's classification of the same bytes — and states no rule that would constrain the choice. | TSPEC (REQ O-2) |
+| O-2 | Whether `stats` registers as a subcommand of the existing `pdlc` entry point or ships standalone. BR-01 fixes the flag surface and BR-29 the exit codes either way, so this choice changes no observable behavior specified here. | TSPEC (REQ O-3) |
+| O-3 | How byte totals are obtained. BR-14 fixes *which* files are on each side and that the number is the file's size on disk; the mechanism is TSPEC's, bounded only by BR-28's read-only stance. | TSPEC |
+| O-4 | Whether fleet mode's per-feature computation is sequential or concurrent. BR-18's lexicographic ordering and §3.4's read-only invariant hold either way; nothing in this document requires one. | TSPEC |
+
+### 7.3 Upstream errata raised, not folded in
+
+Two REQ cross-review rounds closed *Approved with minor changes* with wording findings still open in
+the REQ text. They are raised as errata against the REQ rather than silently resolved here, and this
+FSPEC records which reading it derived from so the two documents can be reconciled without guessing:
+
+- **REQ-STATS-06's harvested predicate parses two ways** (test-engineer v3 F-01, software-engineer
+  v3 F-01, both Medium). This FSPEC derives BR-16 from the reading the REQ's own adjacent rationale
+  supports: `LEARNINGS` present **and at least one** of the `CROSS-REVIEW-*` / `CODE_REVIEW-*`
+  families entirely absent. AT-17 pins that reading on three fixtures.
+- **REQ-STATS-04's harvested sentence lost its subject** (test-engineer v3 F-02, Low). BR-11 states
+  the intended reading explicitly.
+- **REQ-STATS-04's harvested test is stated over `CODE_REVIEW-*`, broader than the grammar REQ C-5
+  binds it to** (software-engineer v3 F-03, Low). BR-11 follows the REQ literally; a foreign-feature
+  `CODE_REVIEW-` file would suppress the harvested state under both documents, so this FSPEC
+  introduces no divergence, and the erratum stays with the REQ.
+- **REQ-STATS-02's state enumeration over-distributes across the ACs it names** (test-engineer v3
+  F-03, Low) and **REQ-STATS-08's conjunct (b) lost its list separator** (both reviewers, Low).
+  BR-22 and §3.4 state the intended readings; no FSPEC behavior turns on either.
+
+### 7.4 Assumptions
+
+- **A-1** Authored in an orchestrated (non-interactive) dispatch. §7.1's decisions are explicit and
+  operator-vetoable, not silent defaults.
+- **A-2** Metrics are computed fresh at invocation time; no cache and no persisted stats file
+  exists, consistent with REQ G-4, C-1 and A-2.
+- **A-3** The reviewer role catalogue and the document-type catalogue that BR-05 and BR-09 depend on
+  are the pipeline's own, not a set this feature defines. A role or document type added to the
+  pipeline appears here without an FSPEC change.
