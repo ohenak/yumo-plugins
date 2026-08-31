@@ -153,7 +153,11 @@ so it is auditable rather than asserted.
 | `pdlc/engine/__tests__/stats-cli-structure.test.js` | T-10 | new |
 | `pdlc/engine/__tests__/stats-read-only.test.js` | T-11 | new |
 | `pdlc/engine/__tests__/_stats-scratch-prefixes.mjs` | T-11 | new |
-| **`pdlc/workflows/lib/stats.mjs`** | T-12 (creates, b3), T-13 (b4), T-14 (b5), T-15 (b6), T-16 (b7) | new |
+| **`pdlc/workflows/lib/stats.mjs`** (creates it, batch 3) | T-12 | new |
+| **`pdlc/workflows/lib/stats.mjs`** (batch 4) | T-13 | exists from T-12 |
+| **`pdlc/workflows/lib/stats.mjs`** (batch 5) | T-14 | exists from T-12 |
+| **`pdlc/workflows/lib/stats.mjs`** (batch 6) | T-15 | exists from T-12 |
+| **`pdlc/workflows/lib/stats.mjs`** (batch 7) | T-16 | exists from T-12 |
 | `pdlc/engine/bin/cli.mjs` | T-17 | exists |
 | `pdlc/workflows/__tests__/statsRealPaths.test.js` | T-18 | new |
 | `pdlc/workflows/__tests__/statsProperties.test.js` | T-19 | new |
