@@ -141,7 +141,46 @@ rows v1.7 already fixed, and the erratum edits no matrix row.
 
 ## Open Questions
 
+None blocking this confirmation. One observation is out of my scope here but should not go
+unrecorded, because it is the kind of thing that is cheap to see now and expensive to find later.
+
+While grepping the withdrawn clause across the feature's documents I found that **TSPEC still
+asserts the "survivor" rule as live** — `TSPEC-pdlc-stats.md:52`, `:792`, `:1310`, `:1321`. Line 52
+goes further and frames it as a standing contradiction against BR-16 ("which contradicts BR-16's
+'reports `harvested`'"). Upstream has now decided that case the other way, so those TSPEC passages
+describe a rule that no longer exists and a conflict that is resolved.
+
+This is **not a finding against FSPEC** and I have deliberately not filed it as one: TSPEC is
+downstream of FSPEC, not upstream, so it is outside both this document's scope and this
+confirmation's question. FSPEC is faithful to REQ and that is what I was asked. I record it because
+the orchestrator, not I, owns whether TSPEC's cascade round has already absorbed this; if TSPEC has
+not yet been re-grounded on REQ v1.7, these four sites are where its erratum lands, and a TSPEC that
+ships describing `survivor` as live would put the implementation at risk of coding the withdrawn
+rule. Flagging it early costs nothing; discovering it at implementation costs a wave.
+
 ## Positive Observations
+
+- The erratum does the minimum that is correct. It resists the temptation to "fix" FSPEC prose to
+  match a changed upstream when FSPEC was already right — the document needed a pin, not a rule, and
+  it got a pin. Rule churn under an erratum is how approved acceptance tests silently lose their
+  expected values, and none of that happened here.
+- The erratum paragraph states its own reasoning and its own scope ("no rule changed", "No other
+  change"), and the diff bears both claims out at 11/2 lines confined to the header. A reviewer can
+  check the claim against the diff in one command, which is what makes a delta confirmation cheap.
+- The forward citation to PROP-RATIO-08's fourth leg is real and precisely characterised. Given this
+  pipeline's history of nonexistent-authority citations, a citation that survives verification
+  verbatim is worth naming.
+- AT-17's fourth leg and its `F-HARVEST-FOUR` fixture were specified before upstream settled the
+  question, and they anticipated the answer upstream ultimately gave. The test layer got this right
+  ahead of the requirement layer.
+
+## Recommendation
+
+**Approved**
+
+The delta resolves the routed item — by correctly recording it as absorbed upstream and paying the
+one debt FSPEC actually owed, the stale pin — and breaks nothing I previously approved. FSPEC v1.8
+remains a faithful compression of REQ v1.7 at the dispatched hash. No High, Medium or Low finding.
 
 ## Recommendation
 

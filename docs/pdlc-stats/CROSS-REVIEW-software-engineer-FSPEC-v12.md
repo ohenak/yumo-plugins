@@ -61,6 +61,57 @@ reading; only its declared pin lagged.
 
 ## Behavioral Flow
 
+Untouched by the delta. §3.1's step sequence and §3.2's step table carry no byte of this edit, and
+nothing in REQ v1.7 moved under them.
+
+The one step that could have been disturbed is **A8** ("Compute process-to-spec byte ratio
+(BR-14…BR-16)"), because its decision column is the flow-level restatement of the clause REQ v1.7
+decided. It reads: *either process family entirely absent alongside `LEARNINGS-{feature}.md`? spec
+total zero?* -> `harvested`, `n/a`, or a rendered ratio, with harvested checked before the
+zero-denominator test. That ordering is exactly BR-16's precedence and exactly REQ-STATS-06's, and
+the out-of-catalogue case reaches it through the same predicate rather than a parallel branch. No
+drift.
+
+Step **A7** (halts) still reads "No files -> an empty halt set, not an error", which is REQ-STATS-05
+as amended at v1.6. The flow never encoded the withdrawn harvested halt state, so it needed no edit
+and got none.
+
+Implementability is unchanged from my v11 approval: the ratio step remains a pure function of one
+directory listing plus per-file sizes, with no ordering dependency on any other metric, and the
+harvested predicate is evaluated over the same file set the numerator sums — one traversal, one
+classification pass. That single-pass property is what makes BR-16's "the two never disagree"
+claim cheap to hold in code rather than an invariant someone must remember to maintain.
+
+## Business Rules
+
+This is where the routed conflict lived, so I read BR-14, BR-15 and BR-16 in full against REQ v1.7
+rather than diffing them (the diff is empty — that is the claim under test).
+
+**BR-16 is now consistent with upstream on all three of its sentences.** It states the harvested
+condition ("at least one of the two harvest-deleted process families is entirely absent"), then the
+co-evaluation guarantee ("evaluated over exactly the file set BR-14's numerator sums, so the two
+never disagree: a basename failing a grammar contributes no bytes to the process side and counts as
+no file remaining"), then the worked case (a directory whose only `CROSS-REVIEW-` basenames are the
+out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` form reports `harvested`, not a measured
+ratio). REQ v1.7's REQ-STATS-06 now says the same thing in the same direction. The contradiction
+that motivated this erratum — upstream calling that basename a survivor while BR-16 called the
+family gone — no longer exists in either document. Absorbed, correctly, and this FSPEC needed no
+rule change to absorb it: it was the side upstream moved toward.
+
+**BR-14's enumerations still match C-3 and C-4 member for member.** Six spec basenames, three
+process grammars, both tagged fixed-by-REQ and not operator-configurable. I diffed the lists
+literally; no member added, dropped, or respelled on either side.
+
+**BR-15's `n/a` token and two-decimal rendering** are FSPEC-owned (REQ O-1 defers precision and
+token spellings here), so upstream has nothing to contradict. The precedence relative to BR-16 —
+harvested tested before the zero denominator — is asserted in BR-16, EC-13 and step A8 alike, which
+is the redundancy I asked for in an earlier round and it survived this edit intact.
+
+**BR-11 (DoD harvested)** and **BR-13 (no halts is zero halts)** are the two rules most exposed to
+the v1.5/v1.6 upstream churn. Both read correctly against REQ v1.7: BR-11's condition is
+REQ-STATS-04's, and BR-13 reports an empty halt set with no harvested alternative, which is
+REQ-STATS-05 after v1.6's withdrawal.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
