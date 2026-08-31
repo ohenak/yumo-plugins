@@ -2657,6 +2657,99 @@ function renderDecisionLedgerBlock({ selected }) {
   );
 }
 
+// ─── TSPEC §4.2, §3.1, §3.4, §3.6 — Decision selection (pure) ──────────────────────────────
+
+/** TSPEC §5.2. Frozen. The set-equality operand for `selectDecisions`' `omitted[].reason`. */
+const DECISION_LEDGER_OMIT_REASONS = Object.freeze(["RSN-ENTRIES", "RSN-BYTES"]);
+
+const DECISION_LEDGER_PROJECT_PREFIX = "docs/_decisions/";
+
+/** TSPEC §3.1. The single in-scope feature directory, priority order. */
+function decisionLedgerFeatureDirs(feature) {
+  return [`docs/${feature}/`, `docs/completed/${feature}/`, `docs/discarded/${feature}/`];
+}
+
+/**
+ * TSPEC §4.2, §3.1, §3.4, §3.6. Pure, total. Partitions `entries` by origin (§3.1: project-level
+ * always in scope; feature-level resolved to the single directory belonging to `feature`, priority
+ * `docs/{feature}/` then `docs/completed/{feature}/` then `docs/discarded/{feature}/` — no other
+ * feature's directory is ever in scope), applies §3.4's project-level-wins precedence keyed on
+ * origin (never on path order), then §3.6's drop loop: feature-level before project-level, reverse
+ * enumeration order within an origin — equivalently, drop from the tail of the
+ * `[...projectRecords, ...featureRecords]` concatenation one whole line at a time, so the survivors
+ * are always a front-anchored prefix of it. `renderedBytes` is obtained by calling
+ * `renderDecisionLedgerBlock` on the candidate set at each step (`DEC-DECLEDGER-11`) —
+ * `selectDecisions` never concatenates a line itself. Framing is charged to `maxBytes` (D-5) because
+ * the renderer produces it as part of the same string. `failedSources` counts entries with
+ * `readOk === false`; `emptySources` counts entries that read but yielded zero records — the two are
+ * kept separate (O-7, §6.3).
+ *
+ * @param {{entries: Array<{path: string, text: string|null, readOk: boolean}>, feature: string, thresholds: {maxEntries: number, maxBytes: number}}} args
+ * @returns {{selected: object[], omitted: Array<{id: string, reason: string}>, failedSources: string[], emptySources: string[], renderedBytes: number}}
+ */
+function selectDecisions({ entries, feature, thresholds }) {
+  const failedSources = [];
+  const emptySources = [];
+
+  let featureDir = null;
+  for (const dir of decisionLedgerFeatureDirs(feature)) {
+    if (entries.some((entry) => entry.path.startsWith(dir))) {
+      featureDir = dir;
+      break;
+    }
+  }
+
+  const inScope = entries.filter(
+    (entry) =>
+      entry.path.startsWith(DECISION_LEDGER_PROJECT_PREFIX) ||
+      (featureDir !== null && entry.path.startsWith(featureDir))
+  );
+
+  const projectById = new Map();
+  const featureById = new Map();
+
+  for (const entry of inScope) {
+    if (!entry.readOk) {
+      failedSources.push(entry.path);
+      continue;
+    }
+    const records = recogniseDecisionRecords(entry.text, entry.path);
+    if (records.length === 0) {
+      emptySources.push(entry.path);
+      continue;
+    }
+    for (const record of records) {
+      const byId = record.origin === "project" ? projectById : featureById;
+      if (!byId.has(record.id)) byId.set(record.id, record);
+    }
+  }
+
+  // §3.4: project-level wins on id collision, keyed on origin, never on path order.
+  for (const id of projectById.keys()) featureById.delete(id);
+
+  const fullOrder = [...projectById.values(), ...featureById.values()];
+
+  // §3.6: drop loop, whole line at a time, from the tail of `fullOrder`.
+  let candidates = fullOrder;
+  const omitted = [];
+  let block = renderDecisionLedgerBlock({ selected: candidates });
+  let renderedBytes = Buffer.byteLength(block, "utf8");
+
+  while (
+    candidates.length > 0 &&
+    (candidates.length > thresholds.maxEntries || renderedBytes > thresholds.maxBytes)
+  ) {
+    const reason = candidates.length > thresholds.maxEntries ? "RSN-ENTRIES" : "RSN-BYTES";
+    const dropped = candidates[candidates.length - 1];
+    omitted.push({ id: dropped.id, reason });
+    candidates = candidates.slice(0, -1);
+    block = renderDecisionLedgerBlock({ selected: candidates });
+    renderedBytes = Buffer.byteLength(block, "utf8");
+  }
+
+  return { selected: candidates, omitted, failedSources, emptySources, renderedBytes };
+}
+
 // ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
 
 const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
