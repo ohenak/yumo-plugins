@@ -199,19 +199,29 @@ than left to the implementation.
 ### REQ-STATS-07 Fleet mode reports every feature, flags gaps explicitly (P1)
 **Source:** US-03. **Who:** pipeline operator. **Given:** `pdlc stats` invoked with no feature
 argument. **When:** the command runs. **Then:** it discovers every feature directory under
-`docs/{feature}/` and `docs/completed/{feature}/` (excluding the non-feature-scoped directories this
-repo's `CLAUDE.md` and `pdlc/OPERATIONS.md` already name — `docs/_queue/`, `docs/_constraints/`,
-`docs/_decisions/`, `docs/design/`, `docs/requirements/`, `docs/ideas/`, `docs/discarded/`),
-computes REQ-STATS-01's metric set for each, and for any feature whose expected artifacts are
-missing or fail to parse, reports that feature by name as missing/malformed in the output rather
-than omitting it.
+`docs/{feature}/` and `docs/completed/{feature}/`, computes REQ-STATS-01's metric set for each, and
+for any feature whose expected artifacts are missing or fail to parse, reports that feature by name
+as missing/malformed rather than omitting it. Discovery considers **directories only** — a loose
+file at the `docs/` root is never a feature — and skips this fixed, this-REQ-owned exclusion set,
+which is asserted set-equal (so a directory added later fails rather than silently joining the
+report): `docs/_queue/`, `docs/_constraints/`, `docs/_decisions/`, `docs/design/`,
+`docs/requirements/`, `docs/ideas/`, `docs/discarded/`, `docs/completed/`. `docs/completed/` is a
+**container of** features: it is traversed for its children and never itself reported as a feature,
+which is what keeps the archive marker `docs/completed/REQ-completed.md` from presenting a phantom
+feature named `completed` that would pass a has-a-REQ heuristic. A malformed or gap-flagged feature
+is a reported row, not a failure: fleet mode exits zero whenever it produced its report, and exits
+non-zero only when it could not read the `docs/` root at all.
 
 ### REQ-STATS-08 Read-only, no network, no git writes (P0)
 **Source:** US-01, US-02, US-03. **Who:** pipeline operator or automated caller. **Given:** any
 invocation of `pdlc stats`, in either mode, on success or on failure. **When:** the command runs to
-completion or exits with an error. **Then:** it creates, modifies, or deletes no file on disk;
-issues no network request; and runs no `git` write command (`commit`, `push`, `add`, `checkout`, or
-similar) — a read-only `git` inspection is permitted only where limited to read commands.
+completion or exits with an error. **Then:** on the **same** invocation, the command both
+(a) does its job — exits zero having emitted REQ-STATS-01's metric set, or, on the REQ-STATS-09
+path, exits non-zero having emitted the not-found report — and (b) leaves the working tree
+set-equal before and after by path and modification time, issues no network request, and runs no
+`git` write command (`commit`, `push`, `add`, `checkout`, or similar); a read-only `git` inspection
+is permitted. Conjunct (b) is never satisfied alone: a binary that prints nothing, or crashes, fails
+this criterion.
 
 ### REQ-STATS-09 Unknown feature reported, not silently empty (P1)
 **Source:** US-01. **Who:** pipeline operator. **Given:** a feature argument naming a directory
