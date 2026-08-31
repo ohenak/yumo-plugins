@@ -126,9 +126,11 @@ test("AT-2.2: the plugin's three `claude plugin install` sites are asserted as a
   // "Loop economics: pin-cascade and derivative-stop (opt-in)" section (21 lines) shifted
   // them to 192/198, and expanding the Skills table from 11 merged-role rows to one row per
   // skill directory (15 rows, 3-column Skill | File | Role) added 4 lines above the install
-  // block, so 192/198 became 196/202. The pin is deliberate — it asserts the sites as a
-  // POSITIVE at a known locus rather than merely counting occurrences — so it is re-pinned,
-  // not relaxed.
-  locate("pdlc/README.md", 196, "claude plugin install");
-  locate("pdlc/README.md", 202, "claude plugin install");
+  // block, so 192/198 became 196/202. `pdlc-decision-ledger`'s T-19 added a 4-line
+  // "decisionLedger" pointer paragraph (3 lines of text plus a trailing blank line) ahead of
+  // the install block, so 196/202 became 200/206. The pin is deliberate — it asserts the sites
+  // as a POSITIVE at a known locus rather than merely counting occurrences — so it is
+  // re-pinned, not relaxed.
+  locate("pdlc/README.md", 200, "claude plugin install");
+  locate("pdlc/README.md", 206, "claude plugin install");
 });

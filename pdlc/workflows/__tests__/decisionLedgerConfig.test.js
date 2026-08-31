@@ -363,13 +363,13 @@ const LIVE_ROOT = realpathSync(resolve(HERE, "../../.."));
 // family in `documentOracles.test.js` (~579-641): every list assertion is
 // DERIVED from the shipped production
 // constants (never hand-transcribed) and is a true set-equality check, so a
-// deleted omission reason / notice / config key reds it. T-19 does not exist
-// yet — DECISION_LEDGER_OMIT_REASONS / DECISION_LEDGER_NOTICES /
-// DECISION_LEDGER_DEFAULTS are not exported by orchestrate-dev.js until
-// batches 3-8 land — so every conjunct below is committed `test.skip`,
-// titled `T-19: …`, and reaches the constants via a dynamic `await import`
-// inside the test body (never a top-level import) so the file still loads
-// cleanly while the export does not exist.
+// deleted omission reason / notice / config key reds it. Every conjunct below
+// reaches the constants via a dynamic `await import` inside the test body
+// (never a top-level import), unchanged now that T-19 has landed and
+// un-skipped these blocks (`DECISION_LEDGER_OMIT_REASONS` /
+// `DECISION_LEDGER_NOTICES` / `DECISION_LEDGER_DEFAULTS` are exported by
+// `orchestrate-dev.js` and `pdlc/OPERATIONS.md` carries the disclosed
+// "Decision ledger" section).
 // ---------------------------------------------------------------------------
 
 describe("pdlc/OPERATIONS.md decisionLedger disclosure family constants (PLAN T-12a / T-19)", () => {
@@ -392,28 +392,28 @@ describe("pdlc/OPERATIONS.md decisionLedger disclosure family constants (PLAN T-
     return [...new Set(tokens)].sort();
   }
 
-  test.skip("T-19: the omission-reason list set-equals DECISION_LEDGER_OMIT_REASONS", async () => {
+  test("T-19: the omission-reason list set-equals DECISION_LEDGER_OMIT_REASONS", async () => {
     const { DECISION_LEDGER_OMIT_REASONS } = await import("../orchestrate-dev.js");
     const section = decisionLedgerSection();
     const actual = bulletTokens(section, "- **Omission reasons:**");
     expect(actual).toEqual([...DECISION_LEDGER_OMIT_REASONS].sort());
   });
 
-  test.skip("T-19: the notice-id list set-equals the keys of DECISION_LEDGER_NOTICES", async () => {
+  test("T-19: the notice-id list set-equals the keys of DECISION_LEDGER_NOTICES", async () => {
     const { DECISION_LEDGER_NOTICES } = await import("../orchestrate-dev.js");
     const section = decisionLedgerSection();
     const actual = bulletTokens(section, "- **Notices:**");
     expect(actual).toEqual(Object.keys(DECISION_LEDGER_NOTICES).sort());
   });
 
-  test.skip("T-19: the config-key list set-equals the keys of DECISION_LEDGER_DEFAULTS", async () => {
+  test("T-19: the config-key list set-equals the keys of DECISION_LEDGER_DEFAULTS", async () => {
     const { DECISION_LEDGER_DEFAULTS } = await import("../orchestrate-dev.js");
     const section = decisionLedgerSection();
     const actual = bulletTokens(section, "- **Config keys:**");
     expect(actual).toEqual(Object.keys(DECISION_LEDGER_DEFAULTS).sort());
   });
 
-  test.skip("T-19: pdlc/README.md and CLAUDE.md name decisionLedger, defer to pdlc/OPERATIONS.md as the catalogue, and carry no key-by-key restatement", async () => {
+  test("T-19: pdlc/README.md and CLAUDE.md name decisionLedger, defer to pdlc/OPERATIONS.md as the catalogue, and carry no key-by-key restatement", async () => {
     const { DECISION_LEDGER_OMIT_REASONS, DECISION_LEDGER_NOTICES, DECISION_LEDGER_DEFAULTS } =
       await import("../orchestrate-dev.js");
     const restatedTokens = new Set([
@@ -432,7 +432,7 @@ describe("pdlc/OPERATIONS.md decisionLedger disclosure family constants (PLAN T-
     }
   });
 
-  test.skip("T-19: pdlc/workflows/__tests__/decisionLedger*.test.js names set-equal the PLAN's twelve-module file-ownership manifest", () => {
+  test("T-19: pdlc/workflows/__tests__/decisionLedger*.test.js names set-equal the PLAN's twelve-module file-ownership manifest", () => {
     const testDir = resolve(WORKFLOWS, "__tests__");
     const actual = readdirSync(testDir)
       .filter((name) => name.startsWith("decisionLedger") && name.endsWith(".test.js"))
