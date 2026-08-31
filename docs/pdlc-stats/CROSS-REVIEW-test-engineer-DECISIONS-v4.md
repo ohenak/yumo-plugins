@@ -110,3 +110,52 @@ rule claims — over tracked sources, not `__tests__/` — and record `publish-p
 worked example of why: *the copy that runs at publish time is production code, and a test-directory
 query cannot see it*. That single example is what makes the promoted constraint teach the right
 instrument.
+
+### F-02 (Medium, Local) — the sweep command returns 14, not 15
+
+The paragraph reads:
+
+> grep -rln "escalation-view" pdlc/engine/__tests__/ pdlc/workflows/__tests__/
+>
+> — fifteen files at HEAD, of which the ones that **transcribe a member list** (rather than importing
+> a module, which is what the other ten do) are: …
+
+Run verbatim at HEAD it returns **14** files. The five named transcribers are all correct — I opened
+each — and `loop-cli.test.js` is correctly excluded by the predicate, so the *set* the paragraph
+derives is right; only the arithmetic around it is off. With 14 hits, five transcribers and
+`loop-cli.test.js`, the importers number **eight**, not ten.
+
+The `loop-cli.test.js` aside is off in the same direction: *"its five references are
+`path.join(…, "lib", "loop-session.mjs")` import paths and comments"*. At HEAD there are six, on six
+lines — `:122`, `:637`, `:652`, `:681` for `loop-session`, `:827` and `:852` for `escalation-view` —
+and the two that make the file a sweep hit at all are the `escalation-view` pair, not the
+`loop-session` ones the sentence quotes.
+
+Why this matters more than a typo would: the sentence it sits under is *"the number is now
+reproducible rather than accumulated"*, and the paragraph's whole purpose is to let the next reader
+establish completeness by running a command. The first thing that reader does is run it, get 14, and
+have to decide whether the tree drifted or the document is wrong. That is precisely the doubt the
+sweep was introduced to remove. Note the trigger's own count is fine and I re-derived it: 5 holders +
+1 + 5 + 3 + 1 = **fifteen lists across nine files**, exactly as written — which makes the collision
+with a wrong *fifteen files* two paragraphs earlier actively confusing, since the two fifteens count
+different things and only one of them is right.
+
+**What change resolves it.** Print the number the command prints (`… | wc -l` → 14), make the
+importers eight, and either drop the `loop-cli.test.js` reference count or state it as six with the
+`escalation-view` pair named — since that pair is why the file is a hit.
+
+### F-03 (Low, Local) — a tenth transcription with no oracle and no swept directory
+
+`pdlc/README.md:231` states the class in prose: *"The four workflow modules it dispatches
+(`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`) are
+vendored into the package at pack time"*. `grep -rn "four workflow modules"` outside `docs/` returns
+that line and nothing else, so no document oracle pins it.
+
+I am not asking for a tenth table row. The table is a table of *falsifiers*, every row of which reds
+on a partial edit; a prose line no test reads does not belong in it, and adding it would weaken the
+row-shape the table has earned. But the standing-costs bullet says the number *"stopped growing …
+because it is now produced by a query rather than by reading files"*, and this line is a counter-
+example of the mild kind: a place the fact is written down, outside both swept directories, that will
+silently say *four* after this feature ships six. One clause in *Standing costs accepted* —
+*"plus `pdlc/README.md`'s prose count, which no oracle pins; it drifts silently and is corrected by
+review, not by a red"* — records it honestly without inflating the site count.
