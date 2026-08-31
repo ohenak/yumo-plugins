@@ -76,7 +76,34 @@ REQ-STATS-07 governs test authoring — but the goal should not summarise it wro
 
 ## Positive Observations
 
+- **The routed ambiguity is closed at the same altitude it was raised.** se-author's point was that
+  REQ-STATS-06 mirrored FSPEC BR-16's loose phrasing; the fix quotes C-4 rather than restating a
+  grammar inline, so REQ and FSPEC now converge on one authority instead of two spellings.
+- **The two harvested predicates finally rhyme.** REQ-STATS-04 and REQ-STATS-06 now both test
+  "no file matching the grammar remains", so a test author writing harvested fixtures uses one
+  mental model across both metrics instead of a glob for one and a grammar for the other.
+- **The edit is a strict narrowing and shows it.** Both on-disk archive fixtures classify
+  identically before and after, which is the cheapest possible evidence that no previously approved
+  expectation moved — I could re-derive it from the tree without running anything.
+- **Bounded, as an erratum should be.** 9 insertions / 3 deletions, one AC sentence plus a status
+  note; no AC gained scope and no FSPEC material was pulled upward.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves the single routed item without breaking anything previously approved. The
+predicate cites C-4 verbatim, correctly excludes the surviving post-mortem family, preserves both
+on-disk fixtures' expectations, and defers rendering to FSPEC as before. No open High finding exists,
+old or new, so this confirmation approves.
+
+Three non-gating findings follow. F-01 is inherited and unchanged from v4 (G-3's summary still
+contradicts the corrected REQ-STATS-07). F-02 records a real cross-AC split between C-4's open
+doc-type placeholder and the driver's closed catalogue that a shared harvested fixture could trip
+over. F-03 is the only finding attributable to this round's bytes, and it is confined to the status
+note's rationale, not the acceptance criterion: the cross-review grammar carries no feature segment,
+so it cannot deliver the foreign-feature scoping the note claims for it. All three are single-clause
+edits.
 
 ## Delta-Confirmation Findings
 
