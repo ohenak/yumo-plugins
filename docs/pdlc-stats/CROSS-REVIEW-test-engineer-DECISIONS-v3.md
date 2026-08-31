@@ -107,3 +107,41 @@ The remedy is one word, but the reason to spend it is v2 F-02's: the enumeration
 gets built from, and the number is what tells its author whether the task is sized right. A
 "six-edit" task row against a seven-edit file is the kind of understatement that leaves the seventh
 edit to the wave's last reviewer.
+
+### F-03 (Low, Local) — "hoist" means two different things two lines apart
+
+This round changed *"One constant and one hoist site"* to *"One constant and three hoists in one
+function"*, which is the accurate statement: `renderJson` hoists `SCHEMA_VERSION` into the single
+success, fleet success and refusal documents. The re-evaluation trigger below it was not touched and
+still reads:
+
+> A second JSON-only field appears. Two hoists is where an explicitly named envelope type
+> (`JsonEnvelope<T>`) becomes cheaper than repeating the hoist.
+
+Under the old text ("one hoist site") the threshold read forward. Under the new text the two
+sentences appear to count the same thing and disagree: the decision already ships three hoists, so
+the trigger's stated threshold is already exceeded on the day it is written. It is recoverable from
+the first sentence — the condition is *a second JSON-only field*, and "two hoists" means two hoisted
+fields, not two call sites — but a re-evaluation trigger has to be readable as a condition someone
+could later observe firing. As written, a reader checking "are we at two hoists yet?" answers yes
+immediately.
+
+**Change that resolves it.** Say *"A second hoisted **field** is where an explicitly named envelope
+type (`JsonEnvelope<T>`) becomes cheaper than repeating the hoist"*, so the noun matches the trigger
+condition above it and cannot be read against the three sites.
+
+### F-04 (Low, Local) — the re-baselining leaves one message string stale
+
+`assertAdditiveOnly`'s length assertion carries the message *"delta over baseline must be exactly the
+two new members"* (`loop-distribution.test.js:76`). K-8's re-baselining makes `added` a
+single-member list, so the message misdescribes the failure it reports for all four call sites. No
+oracle weakens — the assertion itself is `actual.length === baseline.length + added.length` and stays
+exact — but a wrong failure message costs the next debugger real time, and it belongs in the same
+edit K-8 already owns. Worth one clause in K-8's list.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does `pdlc/workflows/__tests__/coverageInstrumentation.test.js`'s P9-02 test belong to K-3 as a *conjunct to be added* or as a *site already pinning at HEAD*? K-3 currently reads both ways: it says the literal "gains the same module" (site, live now) and that the two conjuncts are "both to be added in this change and routed to TSPEC §6.4" (new work). At HEAD the P9-02 test is live and array-equal over six entries, so the literal edit is a co-change of an existing oracle, and only the c8-run driver's third import is new. Splitting those two halves in K-3's text would also settle F-01's table question mechanically. |
+| Q-02 | The third residual now says the P7-02 document oracle greps two member-count *sentences*, not `PK-*` rows, so a counts-only edit that omits `PK-26` stays green — accurate at HEAD. Given K-7 is a single owning task that writes the row and the counts together, is the residual still worth carrying, or has it shrunk to "one task could be done half-way", which is true of every task? I lean toward keeping it, because the sibling document is frozen and the failure is silent, but the row would read stronger if it said what a DoD reviewer should actually *look at* (the §5.4 table's last row id) rather than what the oracle does not cover. |
