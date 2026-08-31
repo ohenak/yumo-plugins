@@ -57,11 +57,49 @@ coverage matrix reaches BR-01…BR-30, AT-01…AT-28 plus AT-14b, and EC-01…EC
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | G-7 records that `docs/completed/`'s children are filtered by no exclusion set, so a future `docs/completed/_archive-notes/` would report as a feature. That disposition is faithful to BR-25, and I agree it is not this document's to fix — but is it worth one line in the FSPEC erratum channel alongside G-1's, so the product decision is on the record in the document that owns the exclusion set rather than only in this one's gap list? |
+| Q-02 | PROP-DISC-05's oracle is described as going "red the moment a ninth directory appears" at the `docs/` root — which is the safety net G-1 leans on. In this repository new **feature** directories arrive constantly (thirteen today) while non-feature directories almost never do. Is the oracle's partition robust enough that routine feature creation never reds it, given the witness fires on `-{dirname}.md` and a brand-new feature directory can legitimately be empty for one commit between `mkdir` and the first REQ write? |
+| Q-03 | G-4 leaves PLAN T-27's operator documentation without an oracle and defers to `dod-verify`'s adjacent-surface sweep. Given F-03, T-27 and the `USAGE` line are the same class of gap — operator-facing surface with no test. Would you prefer one combined gap row for "operator-visible text this feature adds, unasserted", so the DoD sweep has a single target? |
 
 ## Positive Observations
 
-_pending_
+- The §Overview "Verified premises" table is the single best thing in this document, and it is
+  correct in every row I re-checked. Grounding `- 1` in `deriveDodRoundIndex`'s literal
+  `return max + 1`, and grounding the local-constant-plus-drift-oracle design in
+  `REVIEW_DOC_TYPES` being `const` rather than `export const` at `orchestrate-dev.js:10105`, are the
+  kind of evidence that makes the downstream properties checkable rather than assertable.
+- The falsifiability discipline is genuinely applied, not declared. PROP-DISC-01 refuses an
+  "archive not mentioned" probe in favour of byte-identity, and names why a basename-deduplicating
+  merged read would beat the weaker check. PROP-RATIO-02 replaces a containment assertion with a
+  nine-file removal probe. PROP-RR-08 spells five literal indices rather than writing "unchanged".
+  PROP-HALT-01/-02 are stated as a *pair* because either half alone passes a hard-coded classifier.
+  Every one of these is the harder version of an oracle that would have been easier to write.
+- No implementation echoes anywhere I looked: PROP-JSON-03 and PROP-JSON-09 explicitly forbid
+  `Object.keys` of the implementation's own output and the module's own `SCHEMA_VERSION`;
+  PROP-DISC-05 forbids asserting against the module's export; §Oracles' exclusion-set row goes
+  further and forbids partitioning by the very leading-underscore predicate under test, citing
+  DC-14. That last one is a genuinely subtle trap avoided.
+- Negative assertions are consistently paired with a positive one on the same path — PROP-RR-04
+  ("an implementation that lists everything, and one that lists nothing, must each fail"),
+  PROP-DOD-04 (both directories asserted), PROP-RATIO-03 (positive-presence pair), PROP-ERR-04
+  ("empty stdout must fail"), and PROP-RO-01/-02's liveness conjunct against a binary that prints
+  nothing. REQ-STATS-08's "conjunct (b) never suffices alone" is honoured exactly as the REQ words it.
+- The four branch-order mutations each get a fixture built specifically to defeat the earlier
+  branch — PROP-RR-11 for `unmeasurable`-before-`harvested`, PROP-RATIO-09 for
+  `harvested`-before-zero-denominator — with the reason AT-25 and AT-17 cannot serve as those
+  fixtures stated plainly. The kill map naming which test kills each mutation, and *why not another*,
+  is the right shape.
+- §Gaps and Open Items is honest work: G-1 declines to assert a provisional predicate rather than
+  writing a property that would have to be rewritten when the erratum lands; G-3 refuses a
+  wall-clock assertion and records the zero coverage instead; G-6 admits the real-path literals will
+  go stale and pins the remedy in the test's own comment. G-1's routing claim is accurate — TSPEC
+  §8.3 does carry that erratum, still open.
+- Test-level placement is argued rather than asserted: PROP-RATIO-04 is pushed to `integration-fs`
+  because `fakeStatsIo` cannot distinguish `lstat` from `stat`, and PROP-RATIO-05 adds the
+  structural conjunct because a behavioural test alone passes on a platform where link and target
+  agree. That is the correct pair for EC-19.
 
 ## Recommendation
 
