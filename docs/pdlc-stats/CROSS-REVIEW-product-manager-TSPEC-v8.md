@@ -155,3 +155,31 @@ FINDING: Low | delta | local | §0 changelog and §4.3 internal pointers | "§7.
 - **REQ v1.6's halt withdrawal was checked, not assumed.** Clause (c) reasons from the type
   (`halts: HaltEntry[]` has no state discriminator, empty array *is* the measured `0`) to the
   conclusion that nothing changes. I verified it against REQ-STATS-05 and R-6 at HEAD; it holds.
+
+## Recommendation
+
+**Approved with minor changes.**
+
+Both v7 findings are closed on evidence I re-derived independently: §4.3's `BR-16` passage now
+matches FSPEC v1.7 and the archive as measured at HEAD (62 / 4 / 58), the pin moved to v1.7, and the
+changelog's false no-movement attestation is withdrawn with the mechanism named. No open High
+remains anywhere in the document, and nothing approved at v6 regressed — types, sketch, counts,
+oracles and expectations are byte-identical.
+
+The two findings recorded here are non-gating and both sit inside the passage this round wrote:
+
+1. **`F-01` (Medium)** — re-scope the dispute's blast radius. The contested side is the process
+   side, so `AT-15`'s neither-list leg is *in* the dispute, §4.3's `crossReviews` membership
+   paragraph is a fourth re-stamp site, and §8.3's routed item should say so, so the owning phase
+   settles both halves of `BR-14`/`BR-16`'s agreement rather than only the harvested verdict.
+2. **`F-02` (Low)** — three internal pointers: "§7.2's AT-09 row" → §6.1, twice; "§5's types" →
+   §4.1.
+
+Neither blocks the TSPEC from proceeding. The REQ-versus-FSPEC conflict itself is upstream work, is
+correctly routed rather than repaired here, and I am raising it on the erratum channel alongside
+this review so the owning phase receives it with the process-byte half attached.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
