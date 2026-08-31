@@ -171,7 +171,18 @@ identity alone.
 
 ## Delta-Confirmation Findings
 
-_pending_
+No findings.
+
+The routed item is landed at every one of its six sites, the two moved rows and their two mirrored
+§Definition of Done bullets state one contract in one vocabulary, all four upstream pins re-measure
+correctly at HEAD, and the one upstream movement outside the item list (TSPEC §4.3) lands here as a
+justified no-op. Nothing I previously approved is broken, and nothing this document cites has moved
+out from under it.
+
+For the record, my two open items from v9 are both closed by this delta: **F-01 (High)** — T-10a's
+conjunct 3 is re-pinned to TSPEC §7.2's two referents, with §7.4 re-scoped to the prompt clause
+alone — and **F-02 (Low)** — the self-refuting single-siting clauses are replaced by an explicit
+citation of the authority paragraph, which is the stronger of the two fixes I offered.
 
 ## Questions
 
