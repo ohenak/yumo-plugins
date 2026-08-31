@@ -62,6 +62,46 @@ FINDING: Low | delta | local | T-23, `assertAdditiveOnly` message citation | Quo
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried, still non-gating: v1's Q-01 (the precedent for amending an archived feature's frozen specs, T-22) and Q-02 (REQ-STATS-07's unqualified "fails" versus FSPEC EC-10/BR-26's `unclassified` runtime reporting). v1.2's changelog now explicitly routes these to harvest and the erratum channel, which is the disposition I asked for — nothing further is owed in this round. |
+| Q-02 | T-08's Status is `✅` while the PLAN it sits in is still converging. That is truthful (the suite landed in `e6bf3d36b`) and I am not raising it as a finding, but it means the PLAN is now simultaneously a spec under review and a live ledger. Worth an operator decision at harvest about whether status ticks should ride in on document-revision commits (`5962eedb0` carried this one under a te F-03 subject line). |
+
+DEFERRED: Add the second-open-erratum row to the Residual risks table (F-01) at the next PLAN touch or in DoD hand-off — carried from v3, non-gating.
+DEFERRED: Strip the added backticks from T-24's "verbatim" P9-02 title (F-02) and re-anchor T-23's message citation to `:77` (F-03).
+DEFERRED: Decide at harvest whether task-Status ticks belong in document-revision commits (Q-02).
+
 ## Positive Observations
 
+- **te F-02's fix is the strongest edit in this round, and it is a product win, not just a test-hygiene one.** The old conjunct ("`bin/cli.mjs`'s source contains no `statSync` call in the `stats` seam") could never have failed: `lstatSync` contains `statSync`, so the naive matcher matches the *correct* implementation. EC-19 — a symlink must not inflate a feature's byte total — would have shipped with an oracle that was green by construction. The new text does three things well: it names the exact matcher, it says in-line *why* the naive form is unfalsifiable, and it drops the undelimited "in the `stats` seam" qualifier by first measuring that HEAD's `bin/cli.mjs` has no `statSync`-family call at all (`:262` is `fs.existsSync`). The boundary is measured, not asserted.
+- **T-09's new leg closes the gap between "the helper counts links correctly" and "the product counts links correctly".** EC-19's user-visible promise is that a symlink into a large document cannot inflate a feature's byte ratio by orders of magnitude (`FSPEC-pdlc-stats.md:580`). Before this edit the only behavioural evidence ran over T-02's `realStatsIo()` — a helper this same PLAN asks the implementer to write — with T-10's conjunct source-level on top. A correct helper plus a `statSync` shipped seam passed both. Running the leg through `main()` on the production `statsIo` under `--cwd` puts the assertion on the artifact the user actually gets, and the PLAN says exactly that in the row ("A `statSync` implementation of `statsIo().fileSize` reds here"). That is DC-07's builder-not-wired discipline applied without being asked.
+- **The manifest fix chose the right shape.** Disambiguating five `stats.mjs` rows by appending prose to the path would have broken any grouping pass keyed on the `File` column — the very consumer the manifest exists for. Adding a `Batch(es)` column and restoring bare paths fixes it structurally, and the new "Reading the table" note tells the next feature to add a column rather than decorate a path. That note is the reusable part; I would expect it to survive into harvest.
+- **The consumer narrowing was made in all three places at once.** `document-oracles.mjs`'s "imported only by `documentOracles.test.js`" now reads identically in the Overview premise and in T-21's promoted constraint text, with the `advisoryWaveGate.test.js` comment-not-import distinction spelled out in both. A worked exclusion that will be pasted into `DOMAIN-CONSTRAINTS.md` had to be exactly right, and it now is.
+- **The changelog does not overclaim.** It states that pm v2 filed no findings and cites the verdict; that is true to the byte. It also disposes of the two open pm questions rather than dropping them silently.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+The round-2 revision breaks nothing and lands no false claim. Measured against HEAD, all nine
+load-bearing repository claims introduced or touched by the edit are true, two of them exactly
+where they say they are; the two Low findings are a stray pair of backticks and a line anchor off
+by one, neither of which changes what an implementer does. The one Medium is inherited from v3 and
+unchanged — it is a hand-off completeness gap in the Residual-risks table, not a fidelity break, and
+it blocks no task.
+
+On product fidelity, which is my only lens: no acceptance criterion carried by this PLAN has been
+narrowed, reinterpreted or dropped by the revision, and the AC coverage table gained a row rather
+than losing one. EC-19/AT-15 is the criterion the round actually moved, and it moved from
+helper-level evidence to evidence on the shipped seam — strictly closer to what REQ and FSPEC
+promise a user.
+
+Changes to make, none gating, at the next PLAN touch:
+
+1. Add the second-open-erratum row to the Residual risks table (F-01).
+2. Drop the backticks from T-24's verbatim title (F-02); re-anchor T-23's citation to `:77` (F-03).
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
