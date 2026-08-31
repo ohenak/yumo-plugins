@@ -31,7 +31,30 @@ and F-02 are about; F-03 is an inherited oracle weakness the new AT-17 leg makes
 
 ## Design
 
-_pending_
+Nothing in §2 (module placement, layering, `lstat` choice, the parser bundle) reads on the changed
+upstream text; the delta touches BR-11, BR-16, BR-25 and two AT bodies only. §2.5's parser-identity
+premise is if anything strengthened: the upstream now says out loud that grammar membership decides
+both the numerator and the harvested state, which is precisely the invariant the identity oracle
+protects.
+
+The one design-level passage that has gone stale is §4.3, in two paragraphs:
+
+- **DoD rounds (BR-10, BR-11)** — the TSPEC states "FSPEC BR-11's wording is looser (`no
+  CODE_REVIEW-* file remains in the directory`), and the two readings disagree on a directory left
+  holding a `CODE_REVIEW-{feature}-draft.md` or a foreign-feature `CODE_REVIEW-` file… the FSPEC's
+  looser wording is routed as an erratum (§8.3)". At HEAD, FSPEC BR-11 states the grammar-scoped
+  form and spells out the `-draft` and foreign-feature leftovers explicitly. There is no looser
+  wording, no disagreement, and nothing to route.
+- **The harvested test reads "no `CROSS-REVIEW-*` remains" grammatically, and that is a choice** —
+  the TSPEC states "FSPEC BR-16 and REQ-STATS-06 both phrase the condition over `CROSS-REVIEW-*`,
+  and the two readings genuinely disagree…" and closes with "The FSPEC's ambiguity is routed as an
+  erratum (§8.3), not resolved by silence." At HEAD both documents phrase the condition over the
+  grammars, and FSPEC BR-16 names the `CROSS-REVIEW-{role}-REVIEW-v{N}.md` shape and
+  `docs/completed/pdlc-advisory-wave-gate/` itself. The ambiguity is gone.
+
+Both paragraphs are load-bearing prose an implementer TDDs from: each tells them the FSPEC means
+something the FSPEC no longer means, and each justifies the code by a divergence that no longer
+exists. The repair is a re-grounding edit, not a design change — the `if` chains stay byte-identical.
 
 ## Seams
 
