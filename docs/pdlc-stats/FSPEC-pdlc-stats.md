@@ -295,8 +295,12 @@ An implementation that reports the driver's return value unchanged is off by one
 including reporting `1` for a feature that never ran DoD.
 
 **BR-11 (DoD harvested).** The DoD metric reports `harvested` when `LEARNINGS-{feature}.md` is
-present **and** no `CODE_REVIEW-*` file remains in the directory. Where any survives, the measured
-highest version wins — the harvested state never displaces evidence this metric can actually read.
+present **and** no `CODE_REVIEW-{feature}-v{N}.md` file matching the version grammar remains
+(REQ-STATS-04). Where any survives, the measured highest version wins — the harvested state never
+displaces evidence this metric can actually read. The qualifier decides the leftovers: a basename
+that begins `CODE_REVIEW-` but does not match — a `-draft` suffix, or another feature's name —
+contributes nothing to BR-10's measured value, and equally counts as nothing remaining here, so it
+neither raises the number nor suppresses `harvested`. The two tests read one file set.
 
 **BR-12 (halts: one entry per phase, resolution as the driver classifies it).** One entry is
 reported per distinct phase that has a `POSTMORTEM-{phase}-{feature}.md` file, each tagged
@@ -337,9 +341,17 @@ total is zero — legitimately reachable mid-authoring (REQ R-4) — the ratio i
 `n/a`, never a division by zero, an infinity, or a crash.
 
 **BR-16 (ratio harvested, and its precedence).** The ratio reports `harvested` when
-`LEARNINGS-{feature}.md` is present **and at least one of the two process families is entirely
-absent** — that is, either no `CROSS-REVIEW-*` file remains, or no `CODE_REVIEW-*` file remains, or
-neither remains. Post-mortems survive harvest while cross-reviews and DoD reviews do not, so a
+`LEARNINGS-{feature}.md` is present **and at least one of the two harvest-deleted process families
+is entirely absent** — that is, either no file matching BR-14's
+`CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` grammar remains, or no file matching its
+`CODE_REVIEW-{feature}-v{N}.md` grammar remains, or neither (REQ-STATS-06). The condition is
+evaluated over exactly the file set BR-14's numerator sums, so the two can never disagree: a
+basename that fails a grammar contributes no bytes to the process side and counts as no file
+remaining. Two leftovers follow from that and are named because both exist on disk. A directory
+left holding only the out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` files that BR-06 reports
+as malformed — the shape `docs/completed/pdlc-advisory-wave-gate/` carries — reports `harvested`,
+not a measured ratio; and a stray `CODE_REVIEW-{feature}-draft.md` or another feature's
+`CODE_REVIEW-` file does not hold the DoD family open. Post-mortems survive harvest while cross-reviews and DoD reviews do not, so a
 numerator computed over a partially deleted process set would silently undercount rather than be
 visibly absent. This test is evaluated **before** BR-15's zero-denominator test: a harvested feature
 whose spec documents are also gone reports `harvested`, not `n/a`, because the more specific
