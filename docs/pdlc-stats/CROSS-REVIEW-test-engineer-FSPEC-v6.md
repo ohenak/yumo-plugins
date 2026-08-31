@@ -283,6 +283,40 @@ implies the REQ is silent where it is not.
 - BR-25's rewrite generalised the rule ("whatever its basename claims") instead of only appending the
   missing filename — the enumeration is now an illustration of a rule rather than the rule itself.
 
+## Recommendation
+
+**Approved with minor changes.**
+
+The delta resolves all nine routed items, resolves them the way REQ v1.4 states them, and breaks
+nothing I previously approved — no acceptance test became wrong, no traceability row lost its cover,
+no metric's behavior moved. No High finding, delta or inherited, is open.
+
+What should change before this FSPEC is treated as final: absorb §7.3's five closed errata (F-01) and
+refresh the three passages that quote or contest deleted upstream text (F-04, F-05, F-06) — the
+document is behaviorally correct against REQ v1.4 but describes itself as being in tension with a REQ
+it now agrees with. Two are cheap and worth doing in the same pass: BR-16's wave-gate citation (F-02)
+and AT-15's one-clause enumeration fix (F-03), the latter being the only finding here that leaves a
+real behavior unpinned by any test.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §7.3 was rewritten this round and re-affirms five errata as open — two of them **High** — that REQ v1.3 closed; the changelog's "re-grounded on REQ v1.4" overclaims, only the three harvested errata were absorbed | §7.3 Upstream errata raised, not folded in |
+| F-02 | Medium | delta | local | BR-16's new appositive reads as a claim that `docs/completed/pdlc-advisory-wave-gate/` reports `harvested`; measured, that directory has LEARNINGS, four out-of-catalogue names, many grammatical cross-reviews and `CODE_REVIEW-…-v{1,2}`, so it reports a **measured** ratio — under §6's real-path-literal convention this misleads a test author | BR-16 |
+| F-03 | Medium | delta | local | BR-16's new "contributes no bytes to the process side" half has no falsifying oracle: BR-14 never closes `{doc-type}` to BR-09's six, and AT-15's neither-list enumeration carries no `CROSS-REVIEW-`-prefixed non-matching basename | BR-16 / AT-15 |
+| F-04 | Medium | inherited | nonlocal | BR-27 quotes REQ-STATS-07's "reports it by name as missing/malformed" verbatim — text REQ v1.3 deleted — and claims to narrow a criterion that now states BR-27's rule itself | BR-27 |
+| F-05 | Medium | inherited | nonlocal | EC-09 and D-9 assert a departure from REQ-STATS-09's *Given* that no longer exists: v1.3 carved the missing/unreadable-`docs/`-root case out as a root failure, so the two documents do not disagree on a P1 path | EC-09 / §7.1 D-9 |
+| F-06 | Low | inherited | nonlocal | §1's fidelity anchor, BR-12 and D-8 argue around a C-5 silence and a REQ-STATS-03 indecision that v1.3 removed; they should cite the carve-out and the "one label stands" decision rather than reason toward them | §1 Fidelity anchor / BR-12 / §7.1 D-8 |
+
+FINDING: Medium | delta | local | §7.3 Upstream errata raised, not folded in | The round rewrote §7.3 and still says "Two errata remain" plus "Three more follow", but REQ v1.3 (commit 50dffe8c8) closed all five: C-5 now carves out post-mortem-listing discovery, REQ-STATS-03 decides the malformed label ("one label stands"), REQ-STATS-09's Given excludes the no-docs-root case, REQ-STATS-07 states the zero-state row, and REQ-STATS-02/08's wording is repaired. Two of the five are labelled High and sit in the fail-closed erratum channel harvest reads. Absorb them as the three harvested errata were absorbed, or mark each `closed`.
+FINDING: Medium | delta | local | BR-16 | The new clause "the shape `docs/completed/pdlc-advisory-wave-gate/` carries" reads, on its nearest antecedent, as a claim that the directory itself reports `harvested`; measured at HEAD it holds LEARNINGS, four `-REVIEW-v{N}` names, many grammatical cross-reviews (TSPEC to v6) and CODE_REVIEW v1/v2, so neither family is absent and it reports a measured ratio. AT-17 correctly uses a constructed fixture, so no test is wrong today — but §6 licenses real-path tests with literal expectations, so this citation is a trap. Say "the basename shape … carries", or drop it and lean on BR-06's accurate citation.
+FINDING: Medium | delta | local | BR-16 / AT-15 | BR-16 now asserts "a basename failing a grammar contributes no bytes to the process side and counts as no file remaining" — two claims, one oracle. AT-17 leg 4 pins "no file remaining"; nothing pins "no bytes", since BR-14 does not close `{doc-type}` to BR-09's six and AT-15's neither-list set is only `LEARNINGS-*.md` / `MUTATION-EVIDENCE-*.md` / `SIZING-*.md`. An implementation globbing `CROSS-REVIEW-*` into `processBytes` while parsing the grammar for round counts passes every test in §6. Add `CROSS-REVIEW-{role}-REVIEW-v1.md` to AT-15's neither-list enumeration and assert both totals unchanged.
+FINDING: Medium | inherited | nonlocal | BR-27 | BR-27 quotes REQ-STATS-07 as "missing artifacts fail to parse … reports it by name as missing/malformed" and says it narrows that wording, raising an erratum in §7.3. REQ v1.3 deleted that string; REQ-STATS-07 now reads "for any feature whose directory cannot be read, reports it by name with the reason … a readable but empty directory is not a gap but a normal row whose metrics report their zero states" — BR-27's own rule. The quote is of text that no longer exists and the erratum pointer is dead. Behavior and AT-26 are unaffected.
+FINDING: Medium | inherited | nonlocal | EC-09 / §7.1 D-9 | EC-09's Behavior cell ("departs from REQ-STATS-09's *Given*, which sweeps this case in") and D-9's rationale ("the criterion's wording needs a carve-out … until one lands the two documents disagree on a P1 path") both describe an upstream that v1.3 replaced: REQ-STATS-09's Given is now scoped "in a repository whose `docs/` root is present and readable — a missing or unreadable `docs/` root is not this criterion's case but a root failure." The decided behavior is what the REQ now mandates and AT-27's eight root-failure legs stay correct; only the dissent framing is stale.
+FINDING: Low | inherited | nonlocal | §1 Fidelity anchor / BR-12 / §7.1 D-8 | §1 and BR-12 argue that selecting which files are post-mortems is not a C-5 divergence "because there is no driver classification of that listing to diverge from", and D-8 leaves the malformed label as "the REQ's to decide". C-5 now states the carve-out itself and REQ-STATS-03 now decides the label. The arguments remain true but imply an upstream silence and an upstream indecision that no longer exist; cite the carve-out and the decision instead.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 5, "low": 1}
