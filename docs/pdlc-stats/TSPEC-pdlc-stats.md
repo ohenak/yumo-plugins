@@ -13,7 +13,26 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.1 | 2026-08-31 |
+| Draft | se-author | 1.2 | 2026-08-31 |
+
+**v1.2 — erratum round 3** (targeted versioned edit; no restructuring, no re-litigation). Re-grounded
+on REQ v1.4 / FSPEC v1.4 first. (a) §2.1's co-change set is corrected from five sites to the
+**nine** sweep-derived in-repo sites plus the **two** sibling-feature document edits
+(`docs/completed/pdlc-engine-distribution/` TSPEC §5.4 `PK-26`, FSPEC §5.2's per-class count five →
+six), and the earlier "four sites plus a fifth that counts it" phrasing is replaced by the accurate
+*six symbol edits across five enumeration files*; `loop-distribution.test.js`,
+`coverageInstrumentation.test.js`, `run.test.js` and `learningsPremises.test.js` are named as sites
+6–9; option B's "15 → 16" now names `publish-preflight.mjs`'s production-side `LIB_MODULES_*` pair
+as the second copy of that class. The same count is corrected at §6.4's vendoring row, §7.3's cost
+paragraph and RK-1, which also now name what reds *first*. (b) §6.4 gains a **classifier-purity**
+conjunct (twice-called, fresh module instance, `deepEqual` and non-aliased results) so
+`DEC-STATS-03`'s "driver exports gain state" trigger is detectable rather than review-only, and a
+**construction-site count** conjunct closing `DEC-STATS-01` `K-4`. (c) §4.3's BR-11 and BR-16
+paragraphs are re-grounded on FSPEC v1.4 — the divergences they narrated are closed — and cite
+FSPEC AT-12's third and AT-17's fourth legs rather than presenting the fixtures as locally invented;
+§6.1 records why those two legs are not archive baselines. (d) §8.3 drops the three bullets FSPEC
+§7.3 declares closed (BR-16, BR-11, BR-25); only BR-26/EC-10 remains open. No behavioural claim,
+type, signature or code sketch changed.
 
 **v1.1** addresses cross-review round 1 (`CROSS-REVIEW-product-manager-TSPEC-v1.md`,
 `CROSS-REVIEW-test-engineer-TSPEC-v1.md`): the JSON document's key sets and `schemaVersion` are now
