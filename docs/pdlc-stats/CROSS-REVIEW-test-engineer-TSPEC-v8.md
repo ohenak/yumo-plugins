@@ -104,3 +104,76 @@ The five-key JSON literal still matches REQ-STATS-02's printed metric set plus t
 field, and the delta does not touch it. Recording this in the changelog is the right call: at round 7
 this was a near-miss that happened to hold, and an unrecorded near-miss is indistinguishable from an
 unchecked one on the next pass.
+
+## Test Strategy
+
+No oracle changed this round. §6.4's purity split, the vendoring oracle, the catalogue-agreement
+set-equality, the exact-key-set conjuncts, the snapshot isolation property and the named mutation
+kills are all outside the diff. What changed is §4.3's *account* of what the oracles rest on, and
+that account is now materially better in one place and wrong in another.
+
+**Better: the measured counts are real.** §4.3 now records that
+`docs/completed/pdlc-advisory-wave-gate/` holds 62 `CROSS-REVIEW-*` files, of which 4 are the
+out-of-catalogue form and 58 match BR-14's grammar, and concludes that a real-path test written
+against this directory must expect a **measured** ratio, not `harvested`. I re-measured all three at
+HEAD rather than trusting the document: `ls | grep -c '^CROSS-REVIEW-'` → 62; the four
+out-of-catalogue files are `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v{1,2}.md`; 62 − 4 =
+58. Correct, and this is exactly the kind of literal FSPEC §6 requires and RK-4 asks to be re-measured
+rather than derived. It also forecloses a real bug: the earlier revision's "harvested directory"
+reading would have produced a real-path test asserting `harvested` against a directory that measures.
+
+**Wrong: AT-15's byte half is not immune to the dispute (F-01).** §4.3's new contested-scoping
+paragraph closes:
+
+> FSPEC §8 also maps BR-16 to **AT-15**, whose neither-list pins the byte half of the same agreement
+> (a `CROSS-REVIEW-{role}-REVIEW-v{N}.md` file reaching neither side); that half is unaffected by the
+> dispute, since neither reading gives the file spec-side bytes.
+
+The reason clause is true and irrelevant, and the conclusion does not follow. AT-15's *Then*
+(`FSPEC:730`–`:733`) does not assert that the file misses the **spec** side; it asserts the file's
+bytes "reach **neither** side, so an implementation that globs `CROSS-REVIEW-*` into the process
+total fails here". The pinned claim is about the **process** total. So the question is whether the
+contested reading gives the file process-side bytes — and it does:
+
+- REQ `C-4` (`REQ:110`–`:113`) defines the process side as "the byte total of every file matching the
+  documented … grammars: `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, …".
+- `CROSS-REVIEW-test-engineer-REVIEW-v1.md` matches that grammar with `doc-type = REVIEW`.
+- REQ-STATS-06 (`REQ:196`–`:197`) computes process bytes over "C-4 set, present files only", and
+  REQ v1.6 (`REQ:205`–`:206`) says membership is "set-membership over C-4's grammars", making this
+  basename a member.
+
+Under REQ v1.6's reading the file therefore **does** contribute process bytes, and AT-15's
+neither-list expectation is false. Under BR-16's reading it contributes nothing and AT-15 holds. The
+byte half is not a bystander to the dispute; it is the second thing the dispute decides.
+
+This matters for two concrete reasons, both testing reasons:
+
+1. **The re-stamp set is understated.** §4.3 says "exactly three things here re-stamp — this
+   paragraph, BR-16's version pin above, and AT-17's fourth-leg expectation". If the reconciliation
+   lands REQ's way, a fourth site re-stamps: §4.3's own byte-membership paragraph immediately above
+   (`TSPEC:745`–`:748`), which states that a grammatically-failing basename "contributes to **neither**
+   side" and is "sized into nothing". An implementer following the enumeration literally would leave
+   that paragraph — and any test written from it — asserting the losing reading.
+2. **The "no oracle depends on the outcome" claim is too strong.** AT-15 is a byte-total oracle with
+   a removal probe and literal sums; §4.3 itself calls the removal probe "what makes the assertion
+   set-equality rather than containment". An oracle whose expected totals shift by four files' bytes
+   under one reading is an oracle that depends on the outcome.
+
+I am filing this **Medium**, not High, deliberately. Nothing currently written in the TSPEC is
+inconsistent: §4.3 implements BR-16 throughout, and under BR-16 both the harvested disjunct and
+AT-15's neither-list are correct as stated. No test written to this document today would assert a
+wrong value. The defect is in the *scoping of the open item* — it under-describes what the pending
+reconciliation reaches, which is a hazard at re-stamp time rather than an error at authoring time.
+The fix is a sentence, not a redesign: drop the "unaffected" claim, add AT-15's neither-list and
+§4.3's byte-membership paragraph to the re-stamp list, and soften "no oracle depends on the outcome"
+to name AT-15 as the one that does.
+
+**Unchanged and still correct.** AT-17's fourth leg now carries both readings explicitly — "expected
+`harvested` on BR-16's reading, and `measured` on REQ-STATS-06 v1.6's" — and names itself as the row
+to re-stamp. That is the right way to carry a contested expectation: determinate today (implement
+BR-16), flagged for tomorrow. The `CODE_REVIEW`-files-intact conjunct is still correctly identified
+as load-bearing, since the condition is a disjunction and an empty DoD family would read `harvested`
+through the other disjunct whatever the cross-review side said. §6.1's AT-09 baseline row still
+asserts `TSPEC` row = `6` with the four basenames in `malformed` (`reason: "bad_doc_type"`), which is
+consistent with the 4/58 split and unaffected by either reading, since AT-09 asserts a round index
+and a malformed listing, not a ratio.
