@@ -451,3 +451,66 @@ describe("buildDecisionLedgerInjector — _log receives one line per dispatch", 
     expect(injector).toBeNull();
   });
 });
+
+// ─── DECISION_LEDGER_CORPUS_OUTCOMES — TSPEC §5.2's set-equality operand (CR F-01/F-02) ─────────
+// The catalogue is pinned two-sidedly, the shape its two siblings already carry
+// (`DECISION_LEDGER_NOTICES` at decisionLedgerConfig.test.js's notice block,
+// `DECISION_LEDGER_OMIT_REASONS` at its omit-reason block), and the shape the sibling FEATURE
+// carries for `LEARNINGS_CORPUS_OUTCOMES` (`learningsRecord.test.js`, `learningsArmInventory.test.js`):
+//   (a) declared members set-equal a literal transcribed from TSPEC §5.2 / FSPEC F-6+F-7 — never
+//       read back off the constant, so deleting a member reddens;
+//   (b) the `corpusOutcome` values the injector actually EMITS across its F-6 / F-7 / F-10 arms
+//       set-equal the same transcribed literal — so a production assignment drifting away from the
+//       catalogue (or a catalogue member no arm can produce) reddens in either direction.
+
+describe("DECISION_LEDGER_CORPUS_OUTCOMES — catalogue set-equality, both directions", () => {
+  // Hand-transcribed from FSPEC F-6 (`RSN-UNLISTABLE`) and F-7 (`RSN-EMPTY`).
+  const TRANSCRIBED_CORPUS_OUTCOMES = ["RSN-EMPTY", "RSN-UNLISTABLE"];
+
+  test("T-17: the declared catalogue is frozen and set-equal to the transcribed {RSN-UNLISTABLE, RSN-EMPTY}", async () => {
+    const { DECISION_LEDGER_CORPUS_OUTCOMES } = await import("../orchestrate-dev.js");
+
+    expect(Object.isFrozen(DECISION_LEDGER_CORPUS_OUTCOMES)).toBe(true);
+    expect([...new Set(Object.values(DECISION_LEDGER_CORPUS_OUTCOMES))].sort()).toEqual(
+      [...TRANSCRIBED_CORPUS_OUTCOMES].sort()
+    );
+  });
+
+  test("T-17: the corpusOutcome values the injector EMITS set-equal the catalogue (F-6, F-7, F-10 arms)", async () => {
+    const { buildDecisionLedgerInjector, DECISION_LEDGER_CORPUS_OUTCOMES } = await import(
+      "../orchestrate-dev.js"
+    );
+
+    const runArm = async ({ _git, _readFile }) => {
+      const sink = [];
+      const injector = buildDecisionLedgerInjector({ config: ENABLED_CONFIG, sink, _git, _readFile });
+      await injector({ feature: FEATURE });
+      assertNoLiveGitWrites(_git.calls);
+      return sink[0].corpusOutcome;
+    };
+
+    // F-6: enumeration itself fails.
+    const unlistable = await runArm({
+      _git: makeGitDouble({ "ls-files": { ok: false, stdout: "" } }),
+      _readFile: makeReadFileDouble(),
+    });
+    // F-7: enumeration succeeds and lists zero paths.
+    const empty = await runArm({
+      _git: makeGitDouble({ "ls-files": { ok: true, stdout: "" } }),
+      _readFile: makeReadFileDouble(),
+    });
+    // F-10: enumeration succeeded with a path, nothing survives selection — stays `null`,
+    // so it contributes nothing to the emitted set (§6.2's total leg).
+    const survivorless = await runArm({
+      _git: makeGitDouble(gitReply(PROJECT_PATH)),
+      _readFile: makeReadFileDouble({ [PROJECT_PATH]: NO_RECORD_TEXT }),
+    });
+
+    expect(survivorless).toBeNull();
+    const emitted = [unlistable, empty, survivorless].filter((v) => v !== null);
+    expect([...new Set(emitted)].sort()).toEqual([...TRANSCRIBED_CORPUS_OUTCOMES].sort());
+    expect([...new Set(emitted)].sort()).toEqual(
+      [...new Set(Object.values(DECISION_LEDGER_CORPUS_OUTCOMES))].sort()
+    );
+  });
+});

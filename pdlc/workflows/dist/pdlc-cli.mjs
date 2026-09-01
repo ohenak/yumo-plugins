@@ -2866,9 +2866,9 @@ function buildDecisionLedgerInjector({ config, sink, _git, _readFile, _log }) {
     };
     let corpusOutcome = null;
     if (gathered.unlistable) {
-      corpusOutcome = "RSN-UNLISTABLE";
+      corpusOutcome = DECISION_LEDGER_CORPUS_OUTCOMES.UNLISTABLE;
     } else if (gathered.entries.length === 0) {
-      corpusOutcome = "RSN-EMPTY";
+      corpusOutcome = DECISION_LEDGER_CORPUS_OUTCOMES.EMPTY;
     } else {
       selection = selectDecisions({ entries: gathered.entries, feature, thresholds });
     }
