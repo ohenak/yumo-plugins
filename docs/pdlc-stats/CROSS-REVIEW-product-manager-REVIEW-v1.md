@@ -230,16 +230,67 @@ technique `stats-cli-structure.test.js:525` already uses for `statSync`.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | TSPEC RK-5 already records the leading-underscore discovery predicate as **provisional** with an erratum open against FSPEC BR-26. As shipped, `discoverFeatures` (`pdlc/workflows/lib/stats.mjs:349-351`) marks a directory unclassified only when its name starts with `_`, so a future bare-named non-feature directory at the `docs/` root (say `docs/templates/`) would join the fleet as a feature with meaningless metrics — the outcome BR-26 exists to prevent. I am **not** re-raising this as an erratum, since it is already raised and open and re-routing a settled question is DEC-ERR-01's anti-pattern. The question for the operator is only whether the residue is still acceptable now that the command is shipping to consuming repositories whose `docs/` roots this team does not control. |
+| Q-02 | The fleet report prints `Ratio=0.00` for a feature holding only a REQ (e.g. `pdlc-adapter-read-cache` in the live run), which is a correct measurement — spec bytes non-zero, process bytes zero. Is `0.00` distinguishable enough from `n/a` for an operator skimming a wide fleet table, or would the roll-up benefit from an explicit "no process artifacts yet" reading in a later REQ? Not a defect; a product observation for the NG-1 harvest integration. |
 
 ## Positive Observations
 
-_pending_
+- **The REQ C-5 fidelity constraint is honoured structurally, not by assertion.** The four driver
+  classifiers are injected by reference from the same `orchestrate-dev.js` instance
+  (`statsParsers()` in `pdlc/engine/bin/cli.mjs`), and
+  `pdlc/engine/__tests__/stats-cli-structure.test.js:447` asserts identity with `===` against the
+  real exports, with `:483` pinning that the bundle is constructed exactly once. This is the
+  strongest available answer to O-2, and it means the command cannot drift from the driver's
+  classification of the same bytes. Keep this arrangement.
+- **REQ-STATS-03's hardest clause is right, and I could see it being right.** Running the command on
+  this feature listed `CROSS-REVIEW-product-manager-REVIEW-v1.md` and the two `-IMPLEMENTATION-`
+  files as `malformed` — the grammatical-but-out-of-catalogue basenames the pipeline itself writes,
+  reported under one label with no third bucket, exactly as REQ v1.7 decided.
+- **R-6's harvested-versus-zero distinction survives end to end.** Per-document-type harvested
+  states, the DoD harvested state and the ratio's harvested state each ride inside their own
+  metric's value in `--json` (`renderJson`, `pdlc/workflows/lib/stats.mjs:585-601`) rather than as
+  extra top-level keys, which is precisely REQ-STATS-02's requirement, and
+  `stats-read-only.test.js:214-218` pins the five-key set against a literal.
+- **REQ-STATS-08's liveness conjunct is taken seriously.** AT-21/AT-22 assert the snapshot pair
+  **and** the decided output on the same invocation, so a binary that prints nothing cannot pass —
+  the exact trap the criterion's last sentence names. The scratch-prefix guard
+  (`stats-read-only.test.js:162-195`) additionally proves the exclusion set is not a hole.
+- **The engine channel was not forgotten.** `lib/stats.mjs` is vendored in `prepack.mjs`,
+  `publish-preflight.mjs` and `fixture-machine.mjs`, and the operator documentation landed in both
+  `pdlc/README.md` and `pdlc/OPERATIONS.md`. A metrics command that shipped without reaching the
+  installed CLI would have met every AC on paper and none in practice.
+- **Both suites are green and fast** — 921 engine tests, 5116 workflow tests, zero failures — and the
+  real-path tests declare their literals as dated measurements with a re-measure instruction, which
+  is the honest way to pin against a live archive.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+F-01 is a High finding and is mandatory to close. Concretely, before this can be approved:
+
+1. **F-01** — add process-level legs that run `main([...,"stats","--cwd",<root>])` with **no**
+   feature argument, asserting the assembled fleet artifact in both modes (gap row with reason,
+   unclassified row, exit 0; and the `--json` fleet key set with the `gap`-key discriminant), plus
+   the fleet halves of AT-26 and AT-27.
+
+The three Medium findings should be closed in the same pass, since each is a small, local test edit:
+
+2. **F-02** — replace AT-06's substring assertions with literal line comparisons.
+3. **F-03** — add a set-equality oracle between the human metric set and the JSON top-level key set.
+4. **F-04** — extend the read-only snapshot pair to a human-mode success run and to the new fleet run.
+
+F-05 and F-06 are Low and non-gating; F-05 is a genuine rule divergence worth fixing while the code
+is open, F-06 is an optional hardening of an argument PROPERTIES already accepted.
+
+To be clear about what this verdict is **not** saying: every one of the nine acceptance criteria is
+implemented and behaves correctly on a live run, no P0 or P1 requirement is omitted or narrowed, and
+I found no scope creep. The revision asked for is proof at the production edge for one criterion,
+plus three oracles that currently cannot fail.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 2}
