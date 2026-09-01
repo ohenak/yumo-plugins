@@ -174,7 +174,35 @@ It does not gate this phase.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | BR-17's illustrative block (`FSPEC-pdlc-stats.md:410-421`) is explicitly "illustrative of layout and token spelling, not a fixture", and the halt rows now render at the review block's 12-character label column rather than 4 (`stats.mjs:518-545`). I read that as inside the latitude the FSPEC grants, and no operator doc reproduces a halt row, so I raise no finding — but if any downstream consumer parses the human halt row by column offset, this delta would be a breaking change worth an FSPEC note. Is there such a consumer? |
+| Q-02 | With F-05 fixed, a partially-harvested feature (LEARNINGS present, `CODE_REVIEW-…-v0.md` surviving) reports `DoD rounds 0 / measured` rather than `harvested`. That is what BR-11 says, and it is the reading I asked for. Does the operator-facing wording in `pdlc/OPERATIONS.md:262-270` need a sentence making the presence-beats-harvest precedence explicit, or is BR-11 the only place that needs to say it? |
+
 ## Positive Observations
+
+- **F-01 was fixed at the tier the finding named, not one tier down.** The response could have added
+  another `runStats` test with a richer fake and called the fleet branch covered. Instead it stood up
+  a real temporary tree and went through `main()`, so `cmdStats`'s null-feature forwarding is now
+  load-bearing in a test. That is the AC → production caller → served artifact walk done properly.
+- **The F-05 fix went beyond the finding.** I filed a Low about one wrong token; the response
+  noticed that `computeDodRounds` and `computeByteRatio` were carrying two independent copies of the
+  same basename grammar and collapsed them into one shared `dodReviewNames` — so the two metrics can
+  no longer disagree about whether a DoD review exists. Fixing the class rather than the instance is
+  the right instinct, and it was done without widening the behavioural change beyond BR-11.
+- **The new oracles carry their own justification.** Each added test comments *why* the previous
+  form could not falsify the claim (`statsRender.test.js:366-369` on substring aliasing,
+  `statsMetrics.test.js:234-236` on the derived index being indistinguishable from absence,
+  `statsAntiDrift.test.js:137-147` on what the snapshot and PROP-RO-05 each could not reach). A
+  future reader will not re-weaken them by accident.
+- **Negative assertions are paired throughout the delta.** The no-capability oracle carries a
+  positive `export function runStats` conjunct; both read-only snapshot legs assert exit 0 plus real
+  report content alongside "the tree did not change"; the AT-27 root-failure legs now assert the
+  condition-specific clause *and* that the message is not EC-01's. None of the new evidence can
+  false-green on a command that did nothing.
+- **Set-equality where the contract is an enumeration.** The human-vs-JSON metric oracle and the
+  fleet document's top-level key check are both set-equal in both directions rather than
+  containment, so a deleted metric fails rather than passing quietly.
 
 ## Recommendation
 
