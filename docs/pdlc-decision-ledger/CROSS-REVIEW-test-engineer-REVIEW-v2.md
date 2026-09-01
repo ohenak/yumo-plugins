@@ -103,4 +103,17 @@ Why this stays **Low** and not higher: no false-green ships. The suite as a whol
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My one blocking finding from v1 is resolved, and resolved at the root: the corpus-outcome catalogue is now production-load-bearing and pinned in both directions, with two mutations to prove it. Both Medium findings were also closed — the unreachable parameter deleted rather than wired, and the reviewer-only routing claim given a positive byte-identity oracle that mutation M7 kills in isolation. Two of the four Lows are closed as well, and the round volunteered a fix for a notice-filter false-green it found on its own.
+
+Nothing in the delta broke anything approved in v1: full suite 166/166 green, skip count unchanged at 70, bundle in sync, and every mutation I aimed at pre-existing oracles still reds.
+
+The two remaining Lows are the same two v1 rows, unchanged and non-gating. F-01 is worth one conjunct before this feature is harvested — the shipped property does not reach as far as `PROPERTIES` says it does, and I have now measured that rather than inferred it — but the suite around it is not false-green, so it does not hold the phase.
+
+Separately, two upstream documents are stale against correctly shipped code and are routed as errata rather than counted here: `TSPEC` §4.5 and `PROPERTIES` PROP-WIRE-08 still name `reviewerPrompt`'s deleted `ledgerBlock` parameter (with line anchors `:11483`/`:11506` that no longer append anything), and both documents' bounds-property statement still says the rendered set is a *prefix* of the unbounded set, which `TSPEC` §3.6's own E-8 rule contradicts.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
