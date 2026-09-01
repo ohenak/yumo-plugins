@@ -151,3 +151,73 @@ That chain is real — `stats-cli-structure.test.js:531-551` is precisely the eq
 asserting `statsIo()` and `realStatsIo()` make an identical `node:fs` call set — so PROP-RATIO-11
 closes a genuine gap rather than duplicating cover. This is the right reason to add a `process`-level
 property, and I would have raised its absence had the author not added it.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | The §PLAN tasks preamble, rewritten this round, makes two present-tense claims about the repository that are false at HEAD. It says "the first implementation waves have since landed **ten of the fifteen** files" and that "`statsRealPaths.test.js` is legitimately **absent** because **wave 9 has not run**". Wave 9 has run: `statsRealPaths.test.js` is tracked at HEAD, landed by `9a3a70fd9` ("T-18 — 🟢 Real-path acceptance tests over the live archive"), and T-19's `statsProperties.test.js` landed at `ca8031311`. Checking every file in PLAN's File Ownership Manifest with `git ls-files --error-unmatch`, **all sixteen are tracked**, not ten. The paragraph exists solely to state repository status and to assert completeness over the table ("No row names a file that is neither shipped nor declared new"), and its one worked example is the file most clearly present — so the error is in the load-bearing clause, not in decoration. Concretely: correct the count, and either drop the `statsRealPaths.test.js` sentence or restate it as present at `9a3a70fd9`. The T-18/T-19/T-20 rows still marked `(new)` are consistent with the preamble's own definition of `(new)` ("created by this feature, not absent today") and need no edit if the preamble is fixed. | §PLAN tasks → preamble ("All fifteen new test files were confirmed absent when this table was first written…") |
+
+FINDING: High | delta | local | §PLAN tasks preamble | Rewritten preamble claims wave 9 has not run and `statsRealPaths.test.js` is absent; the file is tracked at HEAD (`9a3a70fd9`, T-18) and all sixteen manifest files are tracked, not ten of fifteen.
+
+**Provenance `delta`, not `inherited`:** the entire paragraph is new in this round's diff. The
+pre-round bytes said "All fifteen new test files were confirmed **absent** at HEAD" — also stale,
+which is exactly why the author rewrote it — but the specific false claims about wave 9 and
+`statsRealPaths.test.js` did not exist before this edit. The round replaced one stale sentence with
+a differently-wrong one, so this is the delta's own defect.
+
+**Locality `local`:** it sits inside the §PLAN tasks section this round changed, in the very lines
+the diff added.
+
+**Why High rather than Medium.** Under the frozen-round rule a finding may block only if the delta
+introduced it, or if a load-bearing claim contradicts the repository at HEAD. This satisfies both
+limbs independently. I would ordinarily weigh status bookkeeping as Medium, and I want to be
+explicit that no property's assertion, oracle or trace is wrong because of it. What lifts it is
+that the paragraph's *only job* is to state repository status accurately, it was added this round
+to fix exactly this class of staleness, and it asserts completeness while naming a present file as
+absent. An implementer reading it concludes that wave 9 is outstanding work. The fix is two
+sentences and needs no decision from anyone.
+
+**Nothing else in the delta is gating.** I found no other contradiction with HEAD, and every other
+changed row verified against the code it names, as recorded in §Oracles.
+
+DEFERRED: T-11's row still reads "(both new)" for two files tracked since `54652b40f`; consistent with the preamble's definition of `(new)`, so no edit is owed once F-01 is fixed, but a commit anchor there would match the T-09/T-10 rows' precision.
+DEFERRED: PROP-RATIO-05 pins the literal regex `/(?<![A-Za-z])statSync\s*\(/` while the shipped oracle (`stats-cli-structure.test.js:259`) extracts full `<word>Sync(` call names into a set — semantically equivalent, and the shipped form is arguably the better oracle, but the property and the implementation spell the mechanism differently.
+DEFERRED: PLAN T-10's baseline note that "HEAD's `bin/cli.mjs` carries neither `statSync` nor `lstatSync` anywhere" is stale now that T-17 landed `lstatSync` at `bin/cli.mjs:1302`; it reads as a statement of the pre-implementation baseline, so I am not raising it as an upstream erratum.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | With wave 9 landed, is PROP-RATIO-11 expected to arrive as an amendment to T-09's already-shipped `stats-cli.test.js` rather than as part of a first red wave? The property and PLAN T-09 both read as if T-09 is still ahead; the sequencing is an orchestration matter, not a PROPERTIES defect, so I have not filed it as a finding. |
+
+## Positive Observations
+
+- PROP-ERR-10's restatement replaces an overclaim with a bounded claim plus a widened corpus plus a
+  recorded residual (G-8). That is the honest shape for a behaviourally-collected enum oracle, and
+  it resisted the easy fix of reading the reason enum from a module constant — which would have been
+  the oracle that agrees with a wrong implementation.
+- PROP-RATIO-11's justification is the strongest new prose in the document: it identifies that
+  helper-level evidence plus a call-set equivalence conjunct is a *chain*, not direct evidence on
+  the shipped seam, and adds the one `process`-level leg that breaks the chain. I verified the
+  equivalence conjunct it refers to actually exists.
+- `F-CLI-SYMLINK`'s `--cwd` requirement carries its CI reason inline. That is a real constraint I
+  confirmed against `pr-tests.yml`, and stating it in the fixture saves an implementer a red run.
+- The T-09 row's caveat that the symbolic-link leg is *not yet* in the shipped file is precise and
+  true. The document is capable of accurate status bookkeeping — which is why F-01 is worth fixing
+  rather than tolerating.
+- My v4 F-01 was resolved in all four of its halves, and the resolution was checked against FSPEC
+  rather than assumed.
+
+## Recommendation
+
+**Needs revision**
+
+One High finding (F-01), delta-introduced and local: correct the §PLAN tasks preamble's file count
+and drop or restate the `statsRealPaths.test.js` sentence. No property, oracle, fixture or trace
+needs to change. Everything else in this round's delta verified against code and stands.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 0}
