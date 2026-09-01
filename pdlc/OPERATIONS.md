@@ -259,6 +259,49 @@ tracked default-branch content rather than the working tree, and which has three
 
 Widening the shipped defaults for every consumer belongs to `pdlc-merge-phase`, not here (§5).
 
+## `pdlc stats` (read-only reporting)
+
+`pdlc stats [feature] [--json] [--cwd <path>]` is a read-only reporting command over artifacts the
+pipeline has already written — a directory listing, file sizes, and the same classification
+functions the driver itself uses (`parseReviewFilename`, `deriveRoundWindow`,
+`deriveDodRoundIndex`, `parseResolvedMarker`, all imported from `orchestrate-dev.js` rather than
+re-implemented). It reports four metrics: review rounds per document type, DoD rounds, halts with
+resolution state, and the process-to-spec byte ratio. `pdlc/README.md`'s vendoring sentence defers
+here for flag detail; this section is that detail.
+
+**Modes.** At most one positional argument is accepted. Supplying a feature name runs
+single-feature mode over that feature's `docs/{feature}/` directory; omitting it runs fleet mode
+over every feature directory under the resolved `docs/` root (excluded directories are skipped, not
+reported as gaps).
+
+**Flags (closed set).** `--json` is a boolean flag selecting the machine-readable renderer in place
+of the human one; it takes no value. `--cwd <path>` is a value flag that names the repository root
+`docs/` is resolved under; it defaults to `process.cwd()` when omitted. No other flag is accepted —
+an unknown flag, a value flag given with no value, or a second positional argument is a usage error.
+A usage error names the offending token on stderr, exits `1`, and leaves stdout **empty in both
+render modes**, including `--json`: a JSON-mode caller must never receive a half-built document.
+
+**Exit codes.** `pdlc stats` exits `0` or `1` and **never** `2`. Exit `2` is reserved elsewhere in
+this CLI for a recorded pipeline halt; a reporting command has no halt to signal, so nothing on the
+`stats` path can produce it. `0` means the command ran and reported — including an empty fleet
+report over a `docs/` root with no eligible feature directories, and including a fleet report that
+contains one or more per-feature gap rows, since one unreadable feature never sinks the rest of the
+fleet. `1` means the command refused or could not report at all: a usage error, a missing or
+unreadable `docs/` root (fleet mode's only non-zero exit), an unknown feature in single-feature
+mode, or a single named feature whose directory cannot be read.
+
+**Read-only stance.** No filesystem write, no deletion, no directory creation, no network request,
+and no `git` command — write or otherwise — is issued on any path: success, usage error, not-found,
+unreadable root, or an unexpected per-feature failure in fleet mode. This holds on the failure paths
+exactly as it holds on the success path; it is not a "success only" property.
+
+**JSON mode.** Under `--json`, stdout carries exactly one JSON document and nothing else — no
+banner, no trailing newline content beyond the document itself — with diagnostics still routed to
+stderr. On a refusal that still produces a report (an unknown feature, an unreadable `docs/` root,
+an unreadable single feature), stdout carries a three-key error object naming the reason
+(`no_docs_root`, `unreadable_feature`, etc.) rather than being left empty; empty stdout is reserved
+for the usage-error path alone.
+
 ## Durability and cadence (BR-30)
 
 **`/loop`'s scope and lifetime** (runtime version **2.1.245**, transcribed from the runtime's own

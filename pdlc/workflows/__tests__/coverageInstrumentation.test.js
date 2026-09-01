@@ -257,38 +257,41 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
 
   // P9-02a: strengthens the containment-only oracle above to a set-equality —
   // a deleted entry reds as loudly as a missing one. Direction is artifact
-  // (pkg.c8.include) on the left, spec literal on the right. The six-member
+  // (pkg.c8.include) on the left, spec literal on the right. The seven-member
   // literal is REQUIRED_INCLUDES' three entries, CAPTURE_SCRIPT_INCLUDE, and
-  // the two lib/ modules P9-02 adds. consolidate-learnings.js is deliberately
+  // the three lib/ modules P9-02/K-3 add. consolidate-learnings.js is deliberately
   // excluded (PM Q-02). Un-skipped by P9-02.
-  test("P9-02: the include set is exactly the six modules the feature owns, no more and no fewer", () => {
+  test("P9-02: the include set is exactly the seven modules the feature owns, no more and no fewer", () => {
     const include = pkg.c8?.include ?? [];
     expect(include).toEqual([
       ...REQUIRED_INCLUDES,
       CAPTURE_SCRIPT_INCLUDE,
       "**/pdlc/workflows/lib/loop-session.mjs",
       "**/pdlc/workflows/lib/escalation-view.mjs",
+      "**/pdlc/workflows/lib/stats.mjs",
     ]);
   });
 
   // P9-02a: duplicates the shipped resolution oracle above, but the driver
-  // also imports the two new lib/ modules so a bare-basename entry that
+  // also imports the three new lib/ modules so a bare-basename entry that
   // `allow-external` silently drops is caught by a real c8 run rather than a
   // string comparison. Un-skipped by P9-02.
-  test("P9-02: the shipped c8 config resolves the two new lib/ modules too (F4)", () => {
+  test("P9-02: the shipped c8 config resolves the three new lib/ modules too (F4)", () => {
     const tmp = mkdtempSync(path.join(os.tmpdir(), "pdlc-c8-arrangement-lib-"));
     try {
       const buildRuntime = path.join(PKG_DIR, "build-runtime.mjs");
       const captureScript = path.resolve(PKG_DIR, "../../scripts/capture-learnings-baseline.mjs");
       const loopSession = path.join(PKG_DIR, "lib", "loop-session.mjs");
       const escalationView = path.join(PKG_DIR, "lib", "escalation-view.mjs");
+      const stats = path.join(PKG_DIR, "lib", "stats.mjs");
       const driver = path.join(tmp, "driver.mjs");
       writeFileSync(
         driver,
         `await import(${JSON.stringify(pathToFileURL(buildRuntime).href)});\n` +
           `await import(${JSON.stringify(pathToFileURL(captureScript).href)});\n` +
           `await import(${JSON.stringify(pathToFileURL(loopSession).href)});\n` +
-          `await import(${JSON.stringify(pathToFileURL(escalationView).href)});\n`,
+          `await import(${JSON.stringify(pathToFileURL(escalationView).href)});\n` +
+          `await import(${JSON.stringify(pathToFileURL(stats).href)});\n`,
         "utf8",
       );
 
@@ -321,7 +324,7 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
       const measured = Object.keys(summary).filter((k) => k !== "total");
 
       expect(measured).toEqual(
-        expect.arrayContaining([buildRuntime, captureScript, loopSession, escalationView]),
+        expect.arrayContaining([buildRuntime, captureScript, loopSession, escalationView, stats]),
       );
     } finally {
       rmSync(tmp, { recursive: true, force: true });

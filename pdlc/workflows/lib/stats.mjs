@@ -1,0 +1,631 @@
+// stats.mjs — the `pdlc stats` metric core (feature: pdlc-stats).
+//
+// Pure logic for `pdlc stats` (TSPEC §2, §3.3). Everything below `cmdStats`
+// (in `pdlc/engine/bin/cli.mjs`) is a pure function of injected seams: a
+// `StatsIo` bundle (four read-only `node:fs` wrappers, TSPEC §3.1) and a
+// `StatsParsers` bundle (the four classifiers already exported by
+// `pdlc/workflows/orchestrate-dev.js`, injected rather than re-implemented —
+// REQ C-5, TSPEC §2.5). This module reads no filesystem and imports nothing
+// from `orchestrate-dev.js` itself; the driver-parser bundle is constructed
+// once, in production, at `bin/cli.mjs`'s `statsParsers()` (TSPEC §3.4).
+//
+// Delivered surface. The JSDoc typedefs for TSPEC §3.1 (the injected
+// `StatsIo` seam), §3.2 (the driver-parser bundle), §4.1 (the metric types)
+// and §4.2 (the outcome/report types); the two frozen constants
+// `REVIEW_DOC_TYPE_ROWS` and `NON_FEATURE_DIRS`; and the six exports TSPEC
+// §3.3 names — `parseStatsArgv`, `discoverFeatures`, `computeFeatureStats`,
+// `runStats`, `renderHuman` and `renderJson` — all of which are defined
+// below.
+
+// --- TSPEC §3.1: the injected seams -----------------------------------
+
+/**
+ * @typedef {Object} DirEntry
+ * @property {string} name
+ * @property {boolean} isDirectory
+ * @property {boolean} isFile
+ * @property {boolean} isSymbolicLink
+ */
+
+/**
+ * Read-only by construction: no member writes, creates, deletes or spawns.
+ * @typedef {Object} StatsIo
+ * @property {(absDir: string) => DirEntry[]} listDir throws on unreadable — caller catches
+ * @property {(absPath: string) => number} fileSize lstat().size — never follows a link (§2.4)
+ * @property {(absPath: string) => string} readFile utf8; POSTMORTEM bodies only
+ * @property {(absPath: string) => boolean} exists total: never throws
+ */
+
+// --- TSPEC §3.2: the driver-parser bundle (REQ C-5's seam) -------------
+
+/**
+ * @typedef {
+ *   { ok: true, role: string, docType: string, round: number, suffixed: boolean } |
+ *   { ok: false, reason: "not_cross_review" | "bad_role" | "bad_doc_type" |
+ *                        "bad_round" | "trailing_junk" }
+ * } ReviewParse
+ */
+
+/**
+ * @typedef {
+ *   { ok: true, startIndex: number, endIndex: number,
+ *     present: Map<string, number[]>, skipped: Array<{basename: string, reason: string}> } |
+ *   { ok: false, reason: "malformed_round_one_duplicate", role: string }
+ * } RoundWindow
+ */
+
+/** @typedef {{ok: true, resolved: boolean} | {ok: false, reason: string}} ResolvedMarker */
+
+/**
+ * Exactly the four `orchestrate-dev.js` exports, by reference (§2.5).
+ * @typedef {Object} StatsParsers
+ * @property {(basename: string) => ReviewParse} parseReviewFilename
+ * @property {(basenames: string[], docType: string) => RoundWindow} deriveRoundWindow
+ * @property {(basenames: unknown, feature: string) => number} deriveDodRoundIndex
+ * @property {(fileText: string) => ResolvedMarker} parseResolvedMarker
+ */
+
+// --- TSPEC §4.1: the metric types ---------------------------------------
+
+/** @typedef {"measured" | "harvested" | "unmeasurable" | "unavailable"} MetricState */
+
+/**
+ * @typedef {Object} DocTypeRounds
+ * @property {"measured" | "harvested" | "unmeasurable"} state
+ * @property {number | null} rounds null in every non-measured state
+ * @property {string | null} collidingRole null outside "unmeasurable"
+ */
+
+/**
+ * @typedef {Object} ReviewRounds
+ * @property {Record<string, DocTypeRounds>} byDocType always all six, in BR-09 order
+ * @property {string[]} malformed basenames, in listing order (no dedup step)
+ */
+
+/**
+ * @typedef {Object} DodRounds
+ * @property {"measured" | "harvested"} state
+ * @property {number | null} rounds
+ */
+
+/**
+ * @typedef {Object} HaltEntry
+ * @property {string} phase
+ * @property {"resolved" | "open"} resolution
+ */
+
+/**
+ * @typedef {Object} ByteRatio
+ * @property {"measured" | "harvested" | "unavailable"} state
+ * @property {number | null} ratio 2dp, BR-15
+ * @property {number} processBytes reported even when state is "unavailable"
+ * @property {number} specBytes
+ */
+
+/**
+ * @typedef {Object} FeatureStats
+ * @property {string} feature
+ * @property {string} dir the directory actually read (BR-02, BR-17 header)
+ * @property {ReviewRounds} reviewRounds
+ * @property {DodRounds} dodRounds
+ * @property {HaltEntry[]} halts possibly empty — BR-13, no state needed
+ * @property {ByteRatio} byteRatio
+ */
+
+/** @typedef {FeatureStats | {feature: string, gap: string}} FeatureResult BR-23's discriminant */
+
+// --- TSPEC §4.2: the outcome type ---------------------------------------
+
+/**
+ * @typedef {Object} StatsOutcome
+ * @property {string} stdout "" only on the usage-error path (BR-20's single exception)
+ * @property {string} stderr
+ * @property {0 | 1} exitCode
+ */
+
+/**
+ * @typedef {
+ *   { kind: "single", result: FeatureStats } |
+ *   { kind: "fleet", results: FeatureResult[], unclassified: string[] } |
+ *   { kind: "error", reason: "not_found" | "no_docs_root" | "unreadable_feature",
+ *     feature: string | null, message: string }
+ * } StatsReport
+ */
+
+// --- TSPEC §3.3: parseStatsArgv -----------------------------------------
+
+/**
+ * BR-01's closed surface. Total; never throws.
+ * @param {string[]} argv
+ * @returns {{ok: true, feature: string | null, json: boolean, cwd: string | null} |
+ *           {ok: false, message: string}}
+ */
+export function parseStatsArgv(argv) {
+  const positionals = [];
+  let json = false;
+  let cwd = null;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === "--json") {
+      json = true;
+      continue;
+    }
+    if (token === "--cwd") {
+      i += 1;
+      cwd = i < argv.length ? argv[i] : null;
+      continue;
+    }
+    positionals.push(token);
+  }
+
+  if (positionals.length > 1) {
+    return {
+      ok: false,
+      message: `pdlc stats: unexpected extra argument "${positionals[1]}"`,
+    };
+  }
+
+  return {
+    ok: true,
+    feature: positionals.length === 1 ? positionals[0] : null,
+    json,
+    cwd,
+  };
+}
+
+// --- TSPEC §3.3: the two frozen constants -------------------------------
+
+// BR-09's six review doc types, in order. A local constant, not an import of
+// the driver's module-private `REVIEW_DOC_TYPES` (TSPEC §3.3).
+export const REVIEW_DOC_TYPE_ROWS = Object.freeze([
+  "REQ",
+  "FSPEC",
+  "TSPEC",
+  "PLAN",
+  "PROPERTIES",
+  "DECISIONS",
+]);
+
+// BR-25's frozen eight non-feature `docs/` directory names (TSPEC §4.4).
+export const NON_FEATURE_DIRS = Object.freeze([
+  "_queue",
+  "_constraints",
+  "_decisions",
+  "design",
+  "requirements",
+  "ideas",
+  "discarded",
+  "completed",
+]);
+
+// --- TSPEC §4.3: computeFeatureStats ------------------------------------
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
+function joinChild(dir, name) {
+  return dir.endsWith("/") ? `${dir}${name}` : `${dir}/${name}`;
+}
+
+// --- Review rounds (BR-05...BR-09) --------------------------------------
+
+function computeReviewRounds(basenames, parsers, harvested) {
+  const byDocType = {};
+  for (const docType of REVIEW_DOC_TYPE_ROWS) {
+    const w = parsers.deriveRoundWindow(basenames, docType);
+    if (!w.ok) {
+      // BR-07: tested first — a round-1 collision is never masked by the harvested test.
+      byDocType[docType] = { state: "unmeasurable", rounds: null, collidingRole: w.role };
+    } else if (w.startIndex !== 1) {
+      byDocType[docType] = { state: "measured", rounds: w.startIndex - 1, collidingRole: null };
+    } else if (harvested) {
+      byDocType[docType] = { state: "harvested", rounds: null, collidingRole: null };
+    } else {
+      byDocType[docType] = { state: "measured", rounds: 0, collidingRole: null };
+    }
+  }
+
+  // A separate, direct `parseReviewFilename` pass over the listing (§4.3) — not
+  // `w.skipped`, which is per-doc-type and would double-report across the six rows.
+  const malformed = basenames.filter((basename) => {
+    const r = parsers.parseReviewFilename(basename);
+    return !r.ok && r.reason !== "not_cross_review";
+  });
+
+  return { byDocType, malformed };
+}
+
+// --- DoD rounds (BR-10, BR-11) -------------------------------------------
+
+// BR-11's version grammar for a DoD review file. Shared with `computeByteRatio`
+// so the two metrics can never disagree about whether such a file is present.
+function dodReviewNames(basenames, escapedFeature) {
+  const pattern = new RegExp(`^CODE_REVIEW-${escapedFeature}-v(\\d+)\\.md$`);
+  return basenames.filter((b) => pattern.test(b));
+}
+
+function computeDodRounds(basenames, parsers, feature, dodReviews, harvested) {
+  // BR-11 branches on file PRESENCE, not on the derived index: "a surviving file
+  // is measured, highest version wins — the harvested state never displaces
+  // evidence the metric actually read". A lone `…-v0.md` derives index 1 (rounds
+  // 0), which is indistinguishable from "no file at all" on the index alone.
+  if (dodReviews.length > 0) {
+    return { state: "measured", rounds: parsers.deriveDodRoundIndex(basenames, feature) - 1 };
+  }
+  if (harvested) return { state: "harvested", rounds: null };
+  return { state: "measured", rounds: 0 };
+}
+
+// --- Halts (BR-12, BR-13) -------------------------------------------------
+
+function computeHalts(basenames, io, parsers, dir, escapedFeature) {
+  const pattern = new RegExp(`^POSTMORTEM-([^-]+)-${escapedFeature}\\.md$`);
+  const halts = [];
+  for (const basename of basenames) {
+    const match = pattern.exec(basename);
+    if (!match) continue;
+    const phase = match[1];
+    // Fail-closed, incl. read failure: `ok: false` from `parseResolvedMarker` reads as
+    // unresolved, covering EC-14's absent/duplicated/unparseable-marker conditions.
+    const marker = parsers.parseResolvedMarker(io.readFile(joinChild(dir, basename)));
+    const resolution = marker.ok && marker.resolved ? "resolved" : "open";
+    halts.push({ phase, resolution });
+  }
+  // BR-13: default `Array.prototype.sort()` code-unit collation on `phase`, ascending.
+  halts.sort((a, b) => (a.phase < b.phase ? -1 : a.phase > b.phase ? 1 : 0));
+  return halts;
+}
+
+// --- Byte ratio (BR-14...BR-16) -------------------------------------------
+
+function computeByteRatio(basenames, io, parsers, feature, escapedFeature, dir, dodReviews, harvested) {
+  const specNames = REVIEW_DOC_TYPE_ROWS.map((t) => `${t}-${feature}.md`).filter((name) =>
+    basenames.includes(name),
+  );
+  const crossReviews = basenames.filter((b) => parsers.parseReviewFilename(b).ok);
+  const postMortemPattern = new RegExp(`^POSTMORTEM-([^-]+)-${escapedFeature}\\.md$`);
+  const postMortems = basenames.filter((b) => postMortemPattern.test(b));
+
+  const processNames = new Set([...crossReviews, ...postMortems, ...dodReviews]);
+  const sizeOf = (name) => io.fileSize(joinChild(dir, name));
+  const specBytes = specNames.reduce((sum, name) => sum + sizeOf(name), 0);
+  const processBytes = [...processNames].reduce((sum, name) => sum + sizeOf(name), 0);
+
+  // Harvested before zero-denominator (BR-16's stated precedence).
+  if (harvested && (crossReviews.length === 0 || dodReviews.length === 0)) {
+    return { state: "harvested", ratio: null, processBytes, specBytes };
+  }
+  if (specBytes === 0) {
+    return { state: "unavailable", ratio: null, processBytes, specBytes };
+  }
+  return { state: "measured", ratio: round2(processBytes / specBytes), processBytes, specBytes };
+}
+
+/**
+ * The four metrics for one feature directory (TSPEC §4.3). Pure given `io` + `parsers`.
+ * @param {StatsIo} io
+ * @param {StatsParsers} parsers
+ * @param {string} feature
+ * @param {string} dir
+ * @returns {FeatureStats}
+ */
+export function computeFeatureStats(io, parsers, feature, dir) {
+  // BR-03/EC-04: one `listDir` call, `!isDirectory` filter at the source — every
+  // metric below reuses this same file-only listing, never re-listing the directory.
+  const listing = io.listDir(dir).filter((entry) => !entry.isDirectory);
+  const basenames = listing.map((entry) => entry.name);
+  const escapedFeature = escapeRegex(feature);
+  const harvested = basenames.includes(`LEARNINGS-${feature}.md`);
+
+  const reviewRounds = computeReviewRounds(basenames, parsers, harvested);
+  const dodReviews = dodReviewNames(basenames, escapedFeature);
+
+  const dodRounds = computeDodRounds(basenames, parsers, feature, dodReviews, harvested);
+  const halts = computeHalts(basenames, io, parsers, dir, escapedFeature);
+  const byteRatio = computeByteRatio(
+    basenames,
+    io,
+    parsers,
+    feature,
+    escapedFeature,
+    dir,
+    dodReviews,
+    harvested,
+  );
+
+  return { feature, dir, reviewRounds, dodRounds, halts, byteRatio };
+}
+
+// --- TSPEC §4.4: discoverFeatures (BR-25, BR-26) --------------------------
+
+function byName(a, b) {
+  return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+}
+
+/**
+ * BR-25/BR-26. Returns discovered features (BR-02 preference already applied)
+ * and unclassified names.
+ * @param {StatsIo} io
+ * @param {string} docsRoot
+ * @returns {{ features: Array<{ name: string, dir: string }>, unclassified: string[] }}
+ */
+export function discoverFeatures(io, docsRoot) {
+  const completedDir = joinChild(docsRoot, "completed");
+
+  const liveDirs = io.listDir(docsRoot).filter((entry) => entry.isDirectory);
+  const archivedDirs = io.exists(completedDir)
+    ? io.listDir(completedDir).filter((entry) => entry.isDirectory)
+    : [];
+
+  // BR-26 (provisional, TSPEC §4.4/RK-5): a leading-underscore live directory
+  // not in NON_FEATURE_DIRS is unclassified, not a feature.
+  const unclassifiedDirs = liveDirs.filter(
+    (d) => d.name.startsWith("_") && !NON_FEATURE_DIRS.includes(d.name),
+  );
+  const liveFeatureDirs = liveDirs.filter(
+    (d) => !NON_FEATURE_DIRS.includes(d.name) && !unclassifiedDirs.includes(d),
+  );
+
+  const liveFeatures = liveFeatureDirs.map((d) => ({
+    name: d.name,
+    dir: joinChild(docsRoot, d.name),
+  }));
+  const liveNames = new Set(liveFeatures.map((f) => f.name));
+
+  // BR-02: live preferred over archived — an archived name already live is dropped.
+  const archivedFeatures = archivedDirs
+    .filter((d) => !liveNames.has(d.name))
+    .map((d) => ({ name: d.name, dir: joinChild(completedDir, d.name) }));
+
+  const features = [...liveFeatures, ...archivedFeatures].sort(byName);
+  const unclassified = unclassifiedDirs.map((d) => d.name).sort();
+
+  return { features, unclassified };
+}
+
+// --- TSPEC §3.3/§5: runStats -----------------------------------------------
+
+// BR-02: prefer the live directory over the archived one. `exists` is total —
+// per TSPEC §3.1's `StatsIo` contract it never throws — so no try/catch here.
+function findFeatureDir(io, docsRoot, feature) {
+  const liveDir = joinChild(docsRoot, feature);
+  if (io.exists(liveDir)) return liveDir;
+  const archivedDir = joinChild(joinChild(docsRoot, "completed"), feature);
+  if (io.exists(archivedDir)) return archivedDir;
+  return null;
+}
+
+// Distinguishes "absent" (exists() false) from "unreadable" (exists() true but
+// listDir() throws) so the two root-failure legs never collapse into the same
+// message (AT-27's absent-vs-unreadable byte-inequality leg).
+function docsRootStatus(io, docsRoot) {
+  if (!io.exists(docsRoot)) {
+    return { readable: false, message: `docs root not found: ${docsRoot}` };
+  }
+  try {
+    io.listDir(docsRoot);
+    return { readable: true, message: null };
+  } catch (err) {
+    return { readable: false, message: `docs root unreadable: ${docsRoot} (${err.message})` };
+  }
+}
+
+// Builds the internal `StatsReport` (TSPEC §4.2). Never throws for a decided
+// scenario (TSPEC §5): every seam call that can fail on a decided path is
+// wrapped, and the three `kind: "error"` reasons are exhaustive (BR-30).
+function buildReport({ feature, io, parsers, docsRoot }) {
+  const rootStatus = docsRootStatus(io, docsRoot);
+  if (!rootStatus.readable) {
+    return { kind: "error", reason: "no_docs_root", feature, message: rootStatus.message };
+  }
+
+  if (feature !== null) {
+    const dir = findFeatureDir(io, docsRoot, feature);
+    if (dir === null) {
+      return {
+        kind: "error",
+        reason: "not_found",
+        feature,
+        message: `feature not found: ${feature}`,
+      };
+    }
+    try {
+      return { kind: "single", result: computeFeatureStats(io, parsers, feature, dir) };
+    } catch (err) {
+      return { kind: "error", reason: "unreadable_feature", feature, message: err.message };
+    }
+  }
+
+  // Fleet mode: sequential, one feature at a time (FSPEC §7.2 O-4) — a plain
+  // `for` loop, never `Promise.all`/concurrent scheduling. A per-feature
+  // `try`/`catch` (EC-21's catch-all, not a read-specific guard — BR-27) turns
+  // any failure computing one feature into a `{gap}` row without touching any
+  // other feature's state or the fleet's exit code.
+  const discovered = discoverFeatures(io, docsRoot);
+  const results = [];
+  for (const f of discovered.features) {
+    try {
+      results.push(computeFeatureStats(io, parsers, f.name, f.dir));
+    } catch (err) {
+      results.push({ feature: f.name, gap: err.message });
+    }
+  }
+  return { kind: "fleet", results, unclassified: discovered.unclassified };
+}
+
+/**
+ * Pure orchestration: argv → `StatsOutcome`. Only `cmdStats` calls this
+ * (TSPEC §3.3). Never throws for a decided scenario — the outermost catch in
+ * `cmdStats` exists only for genuinely unexpected faults (e.g. `statsParsers()`
+ * import failure), never for anything this function itself can produce.
+ * @param {{argv: string[], io: StatsIo, parsers: StatsParsers, cwd: string}} args
+ * @returns {StatsOutcome}
+ */
+export function runStats({ argv, io, parsers, cwd }) {
+  const parsed = parseStatsArgv(argv);
+  if (!parsed.ok) {
+    // BR-20's single exception: stdout stays "" on a usage error.
+    return { stdout: "", stderr: `${parsed.message}\n`, exitCode: 1 };
+  }
+
+  const docsRoot = joinChild(cwd, "docs");
+  const report = buildReport({ feature: parsed.feature, io, parsers, docsRoot });
+  const exitCode = report.kind === "error" ? 1 : 0;
+
+  if (parsed.json) {
+    return { stdout: `${JSON.stringify(renderJson(report))}\n`, stderr: "", exitCode };
+  }
+  if (report.kind === "error") {
+    return { stdout: "", stderr: `${renderHuman(report)}\n`, exitCode };
+  }
+  return { stdout: `${renderHuman(report)}\n`, stderr: "", exitCode };
+}
+
+// --- TSPEC §4.2.1: renderHuman / renderJson -------------------------------
+
+// BR-24: an integer, 1 at first release. A `renderJson` obligation, not a
+// `StatsReport`/`FeatureStats` field (TSPEC §4.2.1).
+const SCHEMA_VERSION = 1;
+
+// BR-19: the non-numeric tokens are fixed across both render modes, except
+// the zero-denominator byte-ratio state, which is human-only `n/a`.
+function docTypeToken(docType) {
+  if (docType.state === "measured") return String(docType.rounds);
+  if (docType.state === "harvested") return "harvested";
+  return `unmeasurable (colliding role: ${docType.collidingRole})`;
+}
+
+function dodToken(dodRounds) {
+  return dodRounds.state === "measured" ? String(dodRounds.rounds) : "harvested";
+}
+
+function ratioToken(byteRatio) {
+  if (byteRatio.state === "measured") return byteRatio.ratio.toFixed(2);
+  if (byteRatio.state === "harvested") return "harvested";
+  return "n/a";
+}
+
+// --- BR-17: single-feature human layout -----------------------------------
+
+// The label column width shared by the review-rounds rows and the halt rows.
+// BR-17's illustrative block fixes it at 12 for the review block; the halt rows
+// adopt the same width by decision rather than by accident (CR-v1 TE F-05), so
+// the two blocks align and a phase token longer than the longest one the
+// pipeline emits today still renders with a separating gap instead of running
+// into its resolution word.
+const LABEL_COLUMN_WIDTH = 12;
+
+
+function renderReviewRoundsBlock(reviewRounds) {
+  const lines = ["Review rounds"];
+  for (const docType of REVIEW_DOC_TYPE_ROWS) {
+    lines.push(
+      `  ${docType.padEnd(LABEL_COLUMN_WIDTH)}${docTypeToken(reviewRounds.byDocType[docType])}`,
+    );
+  }
+  if (reviewRounds.malformed.length > 0) {
+    lines.push(`  malformed: ${reviewRounds.malformed.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+function renderHaltsBlock(halts) {
+  if (halts.length === 0) return "Halts           none";
+  const rows = halts.map((h) => `  ${h.phase.padEnd(LABEL_COLUMN_WIDTH)}${h.resolution}`);
+  return ["Halts", ...rows].join("\n");
+}
+
+function renderSingleHuman(stats) {
+  const header = `Feature: ${stats.feature}   (${stats.dir})`;
+  const reviewRoundsBlock = renderReviewRoundsBlock(stats.reviewRounds);
+  const dodLine = `DoD rounds      ${dodToken(stats.dodRounds)}`;
+  const haltsBlock = renderHaltsBlock(stats.halts);
+  const ratioLine =
+    `Byte ratio      ${ratioToken(stats.byteRatio)}` +
+    `  (process ${stats.byteRatio.processBytes} B / spec ${stats.byteRatio.specBytes} B)`;
+
+  return [header, "", reviewRoundsBlock, "", dodLine, haltsBlock, ratioLine].join("\n");
+}
+
+// --- BR-18: fleet human layout (two reductions — D-7) ----------------------
+
+function renderFleetHaltsCell(halts) {
+  const resolved = halts.filter((h) => h.resolution === "resolved").length;
+  return `${halts.length} (${resolved} resolved)`;
+}
+
+function renderFleetRow(name, entry) {
+  if ("gap" in entry) {
+    return `  ${name}  gap: ${entry.gap}`;
+  }
+  const docTypeCells = REVIEW_DOC_TYPE_ROWS.map(
+    (docType) => `${docType}=${docTypeToken(entry.reviewRounds.byDocType[docType])}`,
+  ).join(" ");
+  return (
+    `  ${name}  ${docTypeCells}` +
+    `  DoD=${dodToken(entry.dodRounds)}` +
+    `  Halts=${renderFleetHaltsCell(entry.halts)}` +
+    `  Ratio=${ratioToken(entry.byteRatio)}` +
+    `  malformed=${entry.reviewRounds.malformed.length}`
+  );
+}
+
+function renderFleetHuman(report) {
+  const rows = report.results.map((r) => renderFleetRow(r.feature, r));
+  const unclassifiedRows = report.unclassified.map((name) => `  ${name}  unclassified`);
+  return ["Fleet", ...rows, ...unclassifiedRows].join("\n");
+}
+
+/**
+ * Total over `StatsReport` (TSPEC §4.2). Never recomputes a metric — every
+ * token comes from the report's own values.
+ * @param {StatsReport} report
+ * @returns {string}
+ */
+export function renderHuman(report) {
+  if (report.kind === "single") return renderSingleHuman(report.result);
+  if (report.kind === "fleet") return renderFleetHuman(report);
+  return `Error: ${report.message}`;
+}
+
+// --- BR-21/BR-23/BR-24/BR-30: the JSON projection --------------------------
+
+function toMetricObject(stats) {
+  return {
+    reviewRounds: stats.reviewRounds,
+    dodRounds: stats.dodRounds,
+    halts: stats.halts,
+    byteRatio: stats.byteRatio,
+  };
+}
+
+/**
+ * A projection of `StatsReport`, not a serialisation of it: `feature` and
+ * `dir` never reach the document (TSPEC §4.2.1). Key order is fixed by
+ * object-literal construction (BR-18/PROP-3).
+ * @param {StatsReport} report
+ * @returns {Object}
+ */
+export function renderJson(report) {
+  if (report.kind === "single") {
+    return { schemaVersion: SCHEMA_VERSION, ...toMetricObject(report.result) };
+  }
+  if (report.kind === "fleet") {
+    const features = {};
+    for (const entry of report.results) {
+      features[entry.feature] = "gap" in entry ? { gap: entry.gap } : toMetricObject(entry);
+    }
+    return { schemaVersion: SCHEMA_VERSION, features, unclassified: report.unclassified };
+  }
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    error: { reason: report.reason, message: report.message },
+    feature: report.feature,
+  };
+}

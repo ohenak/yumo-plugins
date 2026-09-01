@@ -22,6 +22,7 @@ export const MODULE_NAMES = [
   "orchestrate-queue.js",
   "lib/loop-session.mjs",
   "lib/escalation-view.mjs",
+  "lib/stats.mjs",
 ];
 
 function sha256(bytes) {

@@ -223,6 +223,7 @@ export const WORKFLOW_MEMBERS = [
   "vendor/workflows/VENDOR-MANIFEST.json",
   "vendor/workflows/lib/loop-session.mjs",
   "vendor/workflows/lib/escalation-view.mjs",
+  "vendor/workflows/lib/stats.mjs",
 ];
 
 function licenceRecorded(decisionsText) {

@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft — in review (Phase T) | Claude | 0.15 | 2026-08-24 |
+| pdlc | Draft — in review (Phase T) | Claude | 0.16 | 2026-08-31 |
 
 **Changelog**
 
@@ -30,6 +30,7 @@
 | 0.14 | **Round-13 findings addressed (TE F-51 High, TE F-52 / PM F-01 Medium, TE F-53 Low, TE Q-28).** A targeted edit inside the sections the findings name; no upstream moved this round (REQ v0.12, FSPEC v0.8 unchanged at HEAD), no settled decision re-opened, and §5.4 deliberately untouched — TE F-49/F-50 and PM F-02/F-03 are all deferred against that frozen section. **F-51 (the blocking one): §8's publish-gate equality was specified over a strictly smaller expected set than the one that ships.** §8.5's second bullet read "the same commands as `pr-tests.yml`'s five"; at HEAD `ci-arrangement.test.js`'s `T49` builds `expectedCommands` by iterating **every** entry of `PR_GATE_FILES` (`pr-tests.yml`'s five gate jobs **and** `fixture-machine.yml`'s), and `publish.yml`'s `gate` job carries the fixture-machine legs (`Launcher real-spawn legs`, `Fixture-machine legs`) for exactly that reason (CODE_REVIEW v1 §3-2). The smaller equality is that defect: `fixture-machine.yml` carries AT-2.3…AT-2.6 (AC-2.2…AC-2.5), so a tag gated without them is gated on weaker evidence than the PR was, with the suite green. §8.5's bullet now states the equality over §5.1's trigger-derived set and says the expected side is **derived from `PR_GATE_FILES`, not a hand-maintained five**; the four count references that repeated the smaller set are brought to the same rule — §8.1's `gate` row, §8.2's opening and its third reason, and §14's K-1 — and §8.1's dangling "V-18's five rendered check names" reads six, matching V-18. **TE Q-28 answered in §8.5: derived.** A future PR-gating workflow is a **two-file** edit (the workflow plus `publish.yml`'s gate job), and T49 goes red until the second lands. **F-52 / PM F-01: "the single render site" is not single at HEAD, and the claim is now scoped instead of withdrawn.** `bin/cli.mjs`'s `cmdDoctor` flattens `result.notices` on its own path rather than printing through `formatStartup`. That predates this feature, harms no operator (the text is printed either way) and exposes no acceptance criterion — AC-5.6 is about the running pipeline, of which `doctor` is not a surface — but as written it invited a later reader to author "only `formatStartup` reads `notice.text`" as an oracle and go red against correct code. §6.5, §3.1's handshake/startup row and §10.1's S-7 now say **one render site for the five `formatStartup` call sites in `bin/cli.mjs`** (`dev`, `queue`, `queue --loop`, both `--dry-run`, refusal) and name `cmdDoctor`'s own copy; routing `doctor` through `formatStartup` is noted as cheap but unscheduled, since no criterion requires it (PM Q-01). No §12.1 oracle keyed on the singleness, so no test text changes. **F-53: the owed absorption now carries an owner and a landing round** (§5.1) |
 | 0.12 | **Round-10 Phase-F erratum round (PM and SE, one item each, same defect).** A targeted, versioned edit: nothing settled in rounds 1–9 is re-opened and no scope is expanded. **Upstream re-grounding first (DEC-ERR-01/DEC-ERR-03):** REQ moved **v0.10 → v0.11** since this TSPEC was last approved against it, and its erratum row decides **AC-1.3's ownership split** — the FSPEC states the expected set's *classes and per-class member counts*, the TSPEC states its *member names*, and no verifier is asked to read a literal member list out of the FSPEC. That decision is **absorbed ahead of the raised items** and is what fixes them: it says which side owns the number. FSPEC is unchanged at v0.2. **Raised items (PM, SE): §5.4's second copy of the 23/24 member count carried no reciprocal co-change obligation, so it could drift silently against FSPEC §5.2's copy.** §5.4 now (a) **derives** the size from its own `PK-*` rows rather than authoring a second total — 4 manifest-adjacent/`bin/` + 15 `lib/*.mjs` + 3 vendored + 1 install script + licence 0-before-N-2/1-after — with 23/24 shown as that sum's value, and (b) states the mirror of FSPEC §5.2's obligation: any `PK-*` row added, removed or re-classed updates FSPEC §5.2's per-class counts in the same change, with the per-class counts and not the total as the change-control point (a member moved between classes leaves the total invariant), and PF-4's both-directions equality as what turns a missed co-change red. Upstream re-grounding recorded per DEC-ERR-01; REQ upstream cell updated to v0.11 (§5.4, lineage header) |
 | 0.15 | **Versioned co-change amendment by `pdlc-engineering-loop` (TSPEC §7 D-3/D-4).** Not a re-opening of this completed feature — a spec-first edit of the shipped release-gate tables that its own §5.4 obligates for any `PK-*` addition, made because `pdlc-engineering-loop` vendors two more workflow modules onto the installed engine. §5.4's expected packed set gains **PK-24** (`vendor/workflows/lib/loop-session.mjs`) and **PK-25** (`vendor/workflows/lib/escalation-view.mjs`), both under the `files` entry `vendor/workflows/`. The "vendored workflow members" note is corrected from three to **five**: PK-20…PK-22 plus PK-24…PK-25, "and nothing else." The derived total moves from 23/24 (before/after N-2) to **25/26**, with the vendored-class term in that arithmetic read as 5, not 3. FSPEC §5.2's per-class count for "Workflow members" is amended in the same change (see that document's own changelog row). No other `PK-*` row, class, or oracle is touched; `tspecPackedCount`'s vendored-class literal moves separately, in a later task, per this feature's own TSPEC §7 D-3. |
+| 0.16 | **Versioned co-change amendment by `pdlc-stats` (`DEC-STATS-01` K-7).** Not a re-opening of this completed feature — the same precedented versioned route 0.15 used, bundled into a single change: `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS` and `pdlc-stats`'s own PLAN own the code-side edit, and this document's §5.4 gains **PK-26** (`vendor/workflows/lib/stats.mjs`), under the `files` entry `vendor/workflows/`. The "vendored workflow members" note is corrected from five to **six**: PK-20…PK-22 plus PK-24…PK-26, "and nothing else," with the derived total following — from 25/26 (before/after N-2) to **26/27**, with the vendored-class term in that arithmetic read as 6, not 5. FSPEC §5.2's per-class count for "Workflow members" is amended in the same change (see that document's own changelog row). No other `PK-*` row, class, or oracle is touched. |
 
 ## 1. Scope and altitude
 
@@ -375,6 +376,7 @@ unchanged; earlier changelog rows quote the old `E-nn` member ids as written at 
 | PK-23 | `scripts/postinstall.mjs` | explicit `files` entry; §9.2 depends on it existing in the installed tree |
 | PK-24 | `vendor/workflows/lib/loop-session.mjs` | `files` entry `vendor/workflows/` — **vendored by `pdlc-engineering-loop`** (0.15, D-4) |
 | PK-25 | `vendor/workflows/lib/escalation-view.mjs` | `files` entry `vendor/workflows/` — **vendored by `pdlc-engineering-loop`** (0.15, D-4) |
+| PK-26 | `vendor/workflows/lib/stats.mjs` | `files` entry `vendor/workflows/` — **vendored by `pdlc-stats`** (0.16, `DEC-STATS-01` K-7) |
 
 **PK-17…PK-19 are listed literally because `files` packs a directory, not a file list.** The
 entry `lib/` packs whatever is in the tree at pack time, so the three modules §3.1 creates
@@ -405,11 +407,12 @@ The flip is therefore a visible edit to one record (the same record PF-3 already
 an inference the oracle makes from the tree it is auditing. The expected set's size is
 **derived here from the `PK-*` rows above, not authored as a second total**: four
 manifest-adjacent and `bin/` members (PK-1, PK-2, PK-4, PK-4b), fifteen `lib/*.mjs`
-(PK-5…PK-19 — V-03's twelve plus §3.1's three), **five** vendored workflow members
-(PK-20…PK-22, plus PK-24…PK-25 added by `pdlc-engineering-loop`, 0.15), `scripts/postinstall.mjs`
+(PK-5…PK-19 — V-03's twelve plus §3.1's three), **six** vendored workflow members
+(PK-20…PK-22, plus PK-24…PK-25 added by `pdlc-engineering-loop`, 0.15, and PK-26 added by
+`pdlc-stats`, 0.16), `scripts/postinstall.mjs`
 (PK-23), and the licence (PK-3) at 0 before N-2's
-decision is recorded and 1 after — 4 + 15 + 5 + 1 + 0/1, which is **25 members before N-2 and
-26 after**, the same arithmetic FSPEC §5.2 states from its own side.
+decision is recorded and 1 after — 4 + 15 + 6 + 1 + 0/1, which is **26 members before N-2 and
+27 after**, the same arithmetic FSPEC §5.2 states from its own side.
 
 **That shared number carries a reciprocal co-change obligation, so the two copies cannot
 diverge silently.** Per REQ v0.11's AC-1.3 the FSPEC owns the expected set's **classes and
@@ -453,13 +456,15 @@ both-directions equality gates on it.
 **Note for the FSPEC's §5.2 workflow-module row.** That row is marked *"[blocked on O-10],
 not enumerable yet"*. This section unblocks it: the **vendored workflow members** are exactly
 **PK-20 (`vendor/workflows/orchestrate-dev.js`), PK-21 (`vendor/workflows/orchestrate-queue.js`),
-PK-22 (`vendor/workflows/VENDOR-MANIFEST.json`), PK-24 (`vendor/workflows/lib/loop-session.mjs`)
-and PK-25 (`vendor/workflows/lib/escalation-view.mjs`)** — the five rows under the `files` entry
+PK-22 (`vendor/workflows/VENDOR-MANIFEST.json`), PK-24 (`vendor/workflows/lib/loop-session.mjs`),
+PK-25 (`vendor/workflows/lib/escalation-view.mjs`) and PK-26 (`vendor/workflows/lib/stats.mjs`)** —
+the six rows under the `files` entry
 `vendor/workflows/`, and nothing else (PK-24…PK-25 added by `pdlc-engineering-loop`, 0.15, D-4;
-see that document's own §7 for the workflow that vendors them). (Round 3's renumbering moved
+PK-26 added by `pdlc-stats`, 0.16, `DEC-STATS-01` K-7;
+see those documents' own §7 for the workflows that vendor them). (Round 3's renumbering moved
 PK-20…PK-22 off `E-17…E-19`, which now denote the three `lib/` modules from this feature's §3.1;
 the stale reference is corrected here, PM v4 F-01. AT-3.8b's expected set is defined by *this*
-sentence, so it names the vendored five, not the `lib/` three.) AT-3.8b is therefore writable,
+sentence, so it names the vendored six, not the `lib/` three.) AT-3.8b is therefore writable,
 and the PLAN schedules it in Phase 1 rather than deferring it.
 
 ## 6. Version resolution: store, launcher, pin, dev-mode (F-4)
