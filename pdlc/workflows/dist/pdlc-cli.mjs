@@ -15717,8 +15717,8 @@ async function main({
         // to the learnings injector above (`:15645-15649`).
         _log: ({ feature: dispatchFeature, docType: dispatchDocType, phaseId: dispatchPhaseId, corpusOutcome }) =>
           emit(
-            `decision-ledger: phase ${dispatchPhaseId ?? "-"} ${dispatchDocType ?? "-"} ` +
-              `(feature ${dispatchFeature ?? "-"}) — corpus ${corpusOutcome ?? "OK"}`
+            `decision-ledger: phase ${dispatchPhaseId} ${dispatchDocType ?? "-"} ` +
+              `(feature ${dispatchFeature}) — corpus ${corpusOutcome ?? "OK"}`
           ),
       })
     : null;

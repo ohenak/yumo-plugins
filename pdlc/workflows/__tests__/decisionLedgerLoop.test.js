@@ -4,7 +4,7 @@
  * TSPEC §7.2's Integration row: `reviewLoop` driven directly with a scripted `_injectDecisionLedger`
  * seam, asserting the COMPOSED reviewer-prompt bytes on both the iteration-1 and iteration-≥2
  * return paths of `reviewerPrompt` — the shape TSPEC §4.5 fixes: `reviewLoop` gains one optional
- * seam `_injectDecisionLedger: null | ((args: { feature }) => Promise<string>) = null`, and
+ * seam `_injectDecisionLedger: null | ((args: { feature, phaseId, docType, round }) => Promise<string>) = null`, and
  * `reviewerPrompt` gains one trailing parameter `ledgerBlock = ""`, appended AFTER `oraclePart` and
  * `findingGrammarPart` on both return paths, read once per round (shared by both reviewers — TSPEC
  * §4.5: "the single `await` per round is placed immediately before the two `reviewerPrompt`
