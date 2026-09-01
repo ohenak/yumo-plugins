@@ -207,4 +207,37 @@ upstream as `ERRATUM: FSPEC` rather than a code change; no implementation edit i
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01) is open, so the mandatory bar applies. This is a narrow revision on a
+feature that is otherwise in strong shape: the wiring is proven at the composition root, the
+disabled path is anchored to committed merge-base bytes, and the driver-invariance criterion is
+asserted rather than assumed. Exactly what must change:
+
+1. **F-01 (High, blocking).** Make over-budget omission line-local: a line whose own rendered length
+   cannot fit is omitted directly, and the lines behind it still render if they fit
+   (`orchestrate-dev.js:2727-2739`). Extend `decisionLedgerBounds.test.js`'s AT-15 block
+   (`:243-269`) with a head-position arrangement — the oversized record project-level, short records
+   behind it — asserting those short lines are present in the rendered block. Blocked on the upstream
+   reconciliation raised as `ERRATUM: TSPEC` / `ERRATUM: PROPERTIES`: TSPEC §3.6's tail-drop order and
+   `PROP-BND-04`'s prefix conjunct must give way to FSPEC E-8, or E-8 must be narrowed. **Do not
+   resolve this by narrowing FSPEC E-8 unilaterally** — that changes a P1 acceptance criterion's
+   meaning and belongs back in the REQ/FSPEC conversation.
+2. **F-02 (Medium).** Give `DECISION_LEDGER_CORPUS_OUTCOMES` the coverage its two siblings already
+   have — a hand-transcribed set-equality plus an observed-values set-equality over
+   `decisionLedgerInjector.test.js`'s existing arms — or read the catalogue from the injector so the
+   constant stops being dead.
+3. **F-03 (Medium).** Filter the flag-off notice conjunct on `n.id` so it can fail, and add the
+   positive pair: a `main()`-driven malformed-section case asserting the emitted notice-id set is
+   set-equal to `{NTC-DECLEDGER-MALFORMED}`.
+4. **F-04 (Low).** No code change requested; routed upstream so BR-9's wording matches the approved
+   per-round read.
+
+Nothing in this review asks for a scope change: no out-of-scope behaviour was found in the diff, no
+P0 criterion is unimplemented, and every new seam has a production caller.
+
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
