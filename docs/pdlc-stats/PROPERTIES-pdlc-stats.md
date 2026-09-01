@@ -407,7 +407,7 @@ Gaps are named in §Gaps and Open Items rather than left for a reader to discove
 | REQ-STATS-03 (review rounds) | PROP-RR-01…13, PROP-NEG-02, PROP-NEG-04 |
 | REQ-STATS-04 (DoD rounds) | PROP-DOD-01…04, PROP-NEG-04 |
 | REQ-STATS-05 (halts) | PROP-HALT-01…08 |
-| REQ-STATS-06 (byte ratio) | PROP-RATIO-01…10, PROP-NEG-04 |
+| REQ-STATS-06 (byte ratio) | PROP-RATIO-01…11, PROP-NEG-04 |
 | REQ-STATS-07 (fleet, explicit gaps) | PROP-DISC-04…10, PROP-ERR-05, PROP-ERR-06, PROP-ERR-07, PROP-RENDER-06, PROP-NEG-06 |
 | REQ-STATS-08 (read-only, both conjuncts) | PROP-RO-01…06, PROP-NEG-01 |
 | REQ-STATS-09 (unknown feature) | PROP-ERR-01, PROP-ERR-02, PROP-ERR-03, PROP-ERR-10, PROP-NEG-05 |
@@ -433,7 +433,7 @@ Three REQ ids carry no property row, by design rather than by omission: **A-3** 
 
 | BR | Properties | BR | Properties |
 |---|---|---|---|
-| BR-01 | PROP-CLI-01…05 | BR-16 | PROP-RATIO-08, PROP-RATIO-09 |
+| BR-01 | PROP-CLI-01…05 | BR-16 | PROP-RATIO-03, PROP-RATIO-06, PROP-RATIO-08, PROP-RATIO-09 |
 | BR-02 | PROP-DISC-01, PROP-DISC-02, PROP-NEG-03 | BR-17 | PROP-RENDER-01…03 |
 | BR-03 | PROP-DISC-03 | BR-18 | PROP-DISC-09, PROP-RENDER-05, PROP-RENDER-06, PROP-PBT-03 |
 | BR-04 | PROP-DISC-08 | BR-19 | PROP-RENDER-04, PROP-RR-07, PROP-RATIO-07 |
@@ -468,10 +468,10 @@ Three REQ ids carry no property row, by design rather than by omission: **A-3** 
 | AT-13 | PROP-HALT-01, PROP-HALT-02, PROP-HALT-04 | EC-13 | PROP-RATIO-09 |
 | AT-14 | PROP-HALT-03, PROP-HALT-07 | EC-14 | PROP-HALT-03 |
 | AT-14b | PROP-HALT-06, PROP-HALT-08 | EC-15 | PROP-HALT-04, PROP-HALT-05 |
-| AT-15 | PROP-RATIO-01…04 | EC-16 | PROP-DOD-04 |
+| AT-15 | PROP-RATIO-01…04, PROP-RATIO-06, PROP-RATIO-11 | EC-16 | PROP-DOD-04 |
 | AT-16 | PROP-RATIO-07 | EC-17 | PROP-DISC-04 |
 | AT-17 | PROP-RATIO-08, PROP-RATIO-09 | EC-18 | PROP-DISC-08 |
-| AT-18 | PROP-DISC-04, PROP-DISC-06, PROP-DISC-08, PROP-DISC-10 | EC-19 | PROP-RATIO-04, PROP-RATIO-05 |
+| AT-18 | PROP-DISC-04, PROP-DISC-06, PROP-DISC-08, PROP-DISC-10 | EC-19 | PROP-RATIO-04, PROP-RATIO-05, PROP-RATIO-11 |
 | AT-19 | PROP-DISC-05, PROP-DISC-07, PROP-JSON-07 | EC-20 | PROP-DISC-10 |
 | AT-20 | PROP-ERR-05, PROP-ERR-06, PROP-JSON-08 | EC-21 | PROP-ERR-06 |
 | AT-21 / AT-22 | PROP-RO-01…04, PROP-RO-06, PROP-NEG-01 | | |
@@ -486,8 +486,14 @@ Three REQ ids carry no property row, by design rather than by omission: **A-3** 
 ### PLAN tasks
 
 Every row of PLAN §Batches' task table, with the properties it discharges and the test file it
-writes. All fifteen new test files were confirmed **absent** at HEAD, so each is planned-new, not
-assumed-existing; the five files this feature *amends* were confirmed **present**.
+writes. All fifteen new test files were confirmed **absent** when this table was first written, so
+each is planned-new rather than assumed-existing; the five files this feature *amends* were
+confirmed **present**. `(new)` therefore means **created by this feature**, not absent today: the
+first implementation waves have since landed several of them (the workflows `stats*` suites, and
+`stats-cli.test.js` / `stats-cli-structure.test.js` at `2fc6d9b57` and `df1441b76`), and the rows
+below say so where the distinction carries a claim. No row names a file that is neither shipped nor
+declared new in PLAN's File Ownership Manifest — `statsRealPaths.test.js` is legitimately absent
+because wave 9 has not run.
 
 | Task | Test file (status at HEAD) | Properties |
 |---|---|---|
@@ -499,8 +505,8 @@ assumed-existing; the five files this feature *amends* were confirmed **present*
 | T-06 render reds | `pdlc/workflows/__tests__/statsRender.test.js` (new) | PROP-RENDER-01…-06; PROP-RR-12; PROP-JSON-03…-10; PROP-RATIO-10 |
 | T-07 outcome reds | `pdlc/workflows/__tests__/statsOutcome.test.js` (new) | PROP-DISC-03, -09, -10; PROP-ERR-01…-07, -09, -10; PROP-CLI-07; PROP-NEG-05, -06 |
 | T-08 anti-drift (workflows half) | `pdlc/workflows/__tests__/statsAntiDrift.test.js` (new) | PROP-RR-13, PROP-DISC-05 |
-| T-09 CLI process reds | `pdlc/engine/__tests__/stats-cli.test.js` (new) | PROP-CLI-02, -03, -04, -06, -08; PROP-JSON-01, -02; PROP-NEG-08 |
-| T-10 CLI structural reds | `pdlc/engine/__tests__/stats-cli-structure.test.js` (new) | PROP-DRIFT-01…-04; PROP-RO-05; PROP-RATIO-05; PROP-CLI-05; PROP-NEG-07 |
+| T-09 CLI process reds | `pdlc/engine/__tests__/stats-cli.test.js` (present at HEAD, `2fc6d9b57`; the symbolic-link leg PLAN v1.2 adds is not yet in it) | PROP-CLI-02, -03, -04, -06, -08; PROP-JSON-01, -02; PROP-RATIO-11; PROP-NEG-08 |
+| T-10 CLI structural reds | `pdlc/engine/__tests__/stats-cli-structure.test.js` (present at HEAD, `df1441b76`) | PROP-DRIFT-01…-04; PROP-RO-05; PROP-RATIO-05; PROP-CLI-05; PROP-NEG-07 |
 | T-11 read-only reds | `pdlc/engine/__tests__/stats-read-only.test.js`, `…/_stats-scratch-prefixes.mjs` (both new) | PROP-RO-01…-04, -06; PROP-NEG-01 |
 | T-12 green: argv + constants | amends T-03/T-08 files | turns PROP-CLI-01, PROP-RR-13, PROP-DISC-05 green |
 | T-13 green: metrics | amends T-04's file | turns the T-04 set green |
@@ -528,13 +534,13 @@ assumed-existing; the five files this feature *amends* were confirmed **present*
 | unit-render | PROP-RR-12; PROP-RENDER-01…-06; PROP-JSON-03…-10; PROP-RATIO-10 | 16 |
 | integration-fake | PROP-DISC-01…-03, -07…-10; PROP-ERR-01…-07, -09, -10; PROP-CLI-07; PROP-PBT-03; PROP-NEG-03, -05, -06 | 21 |
 | integration-fs | PROP-DISC-04…-06; PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04 | 13 |
-| process | PROP-CLI-02…-04, -06, -08; PROP-JSON-01, -02; PROP-RO-01…-06; PROP-RATIO-05; PROP-DRIFT-01…-03, -05, -06; PROP-NEG-01, -07, -08 | 22 |
+| process | PROP-CLI-02…-04, -06, -08; PROP-JSON-01, -02; PROP-RO-01…-06; PROP-RATIO-05, -11; PROP-DRIFT-01…-03, -05, -06; PROP-NEG-01, -07, -08 | 23 |
 | E2E (spawned) | none | 0 |
 
 The shape is the intended pyramid: 69 properties falsifiable without a filesystem or a process, 13
-needing the real archive because `lstat` semantics and real basenames are the claim, 22 at the CLI
-edge because flag closure, stdout emptiness, exit codes, wiring identity and the read-only stance
-are not observable below it, and no spawned end-to-end test at all.
+needing the real archive because `lstat` semantics and real basenames are the claim, 23 at the CLI
+edge because flag closure, stdout emptiness, exit codes, wiring identity, the shipped `lstat` seam
+and the read-only stance are not observable below it, and no spawned end-to-end test at all.
 
 ## Gaps and Open Items
 
