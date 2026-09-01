@@ -176,10 +176,116 @@ No fixture in the changed set encodes an expectation that the moved upstreams in
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | High | delta | local | §Coverage Matrix → PLAN tasks, preamble (`:509-516`) | The new preamble asserts `statsRealPaths.test.js` "is legitimately absent because wave 9 has not run". All three of wave 9's files exist and are tracked at HEAD. |
+
+**F-01 in full.** This round rewrote the §PLAN-tasks preamble to explain what `(new)` means now that
+implementation has begun, and closed it with a self-audit sentence:
+
+> No row names a file that is neither shipped nor declared new in PLAN's File Ownership Manifest —
+> `statsRealPaths.test.js` is legitimately absent because wave 9 has not run.
+
+Both halves of that sentence are false at HEAD.
+
+PLAN's File Ownership Manifest assigns wave 9 three files (`PLAN-pdlc-stats.md:178-180`):
+`pdlc/workflows/__tests__/statsRealPaths.test.js` (T-18), `pdlc/workflows/__tests__/statsProperties.test.js`
+(T-19) and `pdlc/engine/__tests__/stats-vendoring.test.js` (T-20). All three are present and tracked
+at HEAD — 8.4K, 8.8K and 3.9K respectively. `statsRealPaths.test.js` was added by commit `9a3a70fd9`,
+whose subject is "feat(pdlc-stats): T-18 — 🟢 Real-path acceptance tests over the live archive". So
+wave 9 *has* run, and the one file the sentence names by name as absent is the one that most
+plainly exists.
+
+This is not staleness that overtook the author. `9a3a70fd9` landed at 15:51, and the commit carrying
+this preamble (`1be839ea8`) landed at 17:04 — over an hour later, with the T-18 commit already an
+ancestor. The claim was falsifiable by `ls` at the moment it was written.
+
+The reason I am treating this as blocking rather than as a note is that the revision made this exact
+distinction load-bearing and then applied it asymmetrically. The same edit updated two sibling rows
+to say the opposite for files in the *same* situation: T-09's row became "(present at HEAD,
+`2fc6d9b57`)" and T-10's became "(present at HEAD, `df1441b76`)". T-18's row was left reading
+"`pdlc/workflows/__tests__/statsRealPaths.test.js` (new)" and the preamble was written to certify
+that reading as correct. The table's "status at HEAD" column now reports two files accurately and a
+third inaccurately, with prose vouching for the inaccurate one.
+
+The product consequence is traceability, which is my lens. T-18 carries eleven properties —
+PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04; PROP-DISC-04 —
+covering acceptance criteria AT-09, AT-10, AT-11, AT-13, AT-14b, AT-15 and AT-18. A reader using
+this table to answer "what evidence exists for these acceptance criteria today" is told the tests
+are unwritten when they are shipped. That misdirects two downstream consumers concretely: an
+implementer picking up wave 9 would create a file that already exists, and a DoD verifier scoping
+remaining work would count eleven properties as outstanding that are not.
+
+**What to change.** Correct the preamble sentence to state what is true at HEAD — wave 9 has run and
+all three of its files are present — and update the T-18 row's status cell to "(present at HEAD,
+`9a3a70fd9`)" to match the form already used for T-09 and T-10. If the author prefers a status
+column that does not need re-truing on every wave, replacing per-row commit annotations with a
+single dated "measured at commit X" line above the table would serve the same purpose and decay more
+gracefully; that is a suggestion, not a requirement. Requirement ref: the table discharges the
+REQ-STATS traceability set via PLAN T-18; the specific criteria affected are AT-09/-10/-11/-13/-14b/
+-15/-18.
+
+**Scope:** `Local`. The fix is one sentence and one table cell in this document. I considered
+`Process` — a "documents that annotate live repository state go stale between rounds" lesson is
+tempting — but the failure here was not staleness, it was a claim contradicting the tree at the
+moment of writing, and no pipeline change would have caught it that a re-read would not.
+
+Nothing else in the nine changed hunks raises a finding. The other four discharged findings
+(F-02…F-05 of v3) and both software-engineer findings land correctly, as recorded above.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The §PLAN-tasks table now mixes two annotation styles — "(new)" for unshipped files and "(present at HEAD, `{sha}`)" for shipped ones — so its accuracy has to be re-established every wave. Would you rather carry a single "status measured at commit X" line above the table and drop the per-row annotations? Not blocking; F-01's fix stands either way. |
+| Q-02 | PROP-RATIO-11 and PROP-RATIO-04 both assert the `lstat`-not-`stat` claim, at `process` and `integration-fs` respectively. §Oracles argues the duplication is deliberate and I accept the argument. Is there a point after implementation at which PROP-RATIO-04 becomes redundant and could be retired, or do you intend both to stand permanently? A harvest-channel question, not a revision request. |
 
 ## Positive Observations
 
+- **F-03 was answered with the harder of the two available fixes.** Asked to state PROP-ERR-10's
+  falsifier honestly, the author could have simply softened the claim. Instead the corpus was
+  genuinely widened with a second behavioural sweep across all four `throwOn` seams *and* the
+  remaining residual was written down at G-8. Widening the evidence and admitting what is still
+  uncovered is strictly more work than either alone, and it leaves the property both stronger and
+  truthful about its limits.
+- **The document declared its own divergence from FSPEC rather than letting a reviewer find it.**
+  PROP-RATIO-03 names `HANDOFF-PROMPT.md` as "a local addition FSPEC does not carry". Unmarked
+  divergence from an upstream contract is exactly the class of defect I am meant to catch as a High
+  finding; catching it yourself and labelling it converts a finding into a fact a reader can check.
+- **PROP-RATIO-05's matcher was made normative for a stated reason.** The note that
+  `source.includes("statSync")` matches the correct `lstatSync` and "could never red" identifies a
+  structural oracle that would have passed vacuously forever. That is a defect class that ordinarily
+  survives review, because a vacuous assertion looks identical to a satisfied one.
+- **The new fixture reasons about the blast radius of its own existence.** `F-CLI-SYMLINK`'s note
+  that a real-path symlink "would change a measurement rather than exercise this claim" protects
+  PROP-RR-03's and PROP-DOD-01's recorded literals from a future well-meaning edit. Anticipating how
+  a later contributor could break a neighbouring property is unusually far-sighted for a fixture
+  note.
+- **The revision closed seven findings across two reviewers without collateral movement.** REQ and
+  FSPEC are byte-identical to the v4 state, property counts reconcile exactly (105 = 5+27+16+21+13+23),
+  and every Traces cell I spot-checked against PLAN and FSPEC at HEAD was accurate. The single defect
+  is in a status annotation, not in a property, an oracle or a trace.
+
 ## Recommendation
+
+**Needs revision**
+
+One High finding, and it is narrow: the §PLAN-tasks preamble states that wave 9 has not run and that
+`statsRealPaths.test.js` is absent, when all three wave-9 files are present and tracked at HEAD and
+the T-18 commit predates the preamble commit by an hour. The property set, the oracles and the
+fixtures are sound — I raise no finding against any of them.
+
+Exactly what to change, and nothing more:
+
+1. Rewrite the preamble's closing sentence (`:514-516`) to state that wave 9 has run and its three
+   files — `statsRealPaths.test.js`, `statsProperties.test.js`, `stats-vendoring.test.js` — are
+   present at HEAD.
+2. Change the T-18 row's status cell (`:546`) from `(new)` to `(present at HEAD, 9a3a70fd9)`, matching
+   the form already used for T-09 and T-10.
+
+No other edit is owed by this review. Both Questions are non-blocking and may be answered in the
+revision note or deferred to harvest.
+
+DEFERRED: Consider replacing the per-row "(new)" / "(present at HEAD, {sha})" annotations in the §PLAN-tasks table with a single "status measured at commit X" line, so the table does not need re-truing after every implementation wave (Q-01).
 
 ## Verdict
