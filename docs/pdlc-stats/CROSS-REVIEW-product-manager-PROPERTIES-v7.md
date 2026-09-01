@@ -170,10 +170,67 @@ expectation and none needs to be added.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | PROP-RATIO-05 defines its whole-file `statSync` conjunct "over the comment- and string-masked source the structural oracle reads" and cites `(PLAN T-10)` in that same sentence. PLAN v1.4's re-grounded T-10 now states that "comment- or string-masking of the source is **not** owed". The two approved documents now specify different oracle inputs for one Security-category property. PROPERTIES is the side that matches the shipped oracle (`stats-cli-structure.test.js:525-529` masks before matching), so nothing is red today; the risk is forward — PLAN licenses stripping `maskNonCode` from that conjunct, after which PROP-RATIO-05 falsely describes the shipped test with no test going red. Fix from either end: PLAN T-10 says masking is not required *for falsifiability* but is retained because PROPERTIES defines the property over the masked source, or PROPERTIES drops the masking clause and pins the property to the raw source. I have no product preference between them — only that they agree. No requirement is narrowed or dropped: `REQ-STATS-06`/`EC-19`/`AT-15` are untouched and both matcher forms red on a genuine `statSync(` call. | §Properties — PROP-RATIO-05; PLAN §Batches T-10 |
+
+FINDING: Medium | delta | nonlocal | §Properties — PROP-RATIO-05 | PROP-RATIO-05 defines its whole-file `statSync` conjunct over the comment- and string-masked source and cites PLAN T-10; PLAN v1.4's re-grounded T-10 now declares comment- or string-masking "not owed". Two approved documents specify different oracle inputs for one Security property. PROPERTIES matches the shipped oracle, which does mask, so nothing is red today; the forward risk is that PLAN licenses removing the masking step, after which PROP-RATIO-05 describes an oracle that does not exist without any test failing. Reconcile in either direction. No requirement is narrowed or dropped.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | My v6 `UPSTREAM-STATE` pins TSPEC at `sha256:7b119eb7…`, but no commit in this branch's history for `TSPEC-pdlc-stats.md` hashes to that value — I walked every revision of the file and found no match. The v6 confirmation itself was sound (it re-measured the material it approved directly against the repository, not against the pin), and the pin lives in a reviewer-owned artifact this document does not write, so I raise no finding. But if the anchor is being computed over a normalisation this check did not apply, the staleness gate is comparing values that cannot meet, and that is worth one look at the engine's anchor computation rather than at any document. |
+| Q-02 | Carried forward, still non-blocking: §PLAN tasks' column header reads "Test file (status at HEAD)" while rows for files present at HEAD read `(new)`. PLAN v1.4's declaration that its own `Status` column is planning-time and not maintained during implementation makes this vocabulary question sharper, not weaker — two documents now use status-shaped columns that mean provenance. A wording pass at harvest, not now. |
 
 ## Positive Observations
 
+- **The re-grounding was measured, not asserted, and it re-measured the right thing.** T-10's old
+  justification rested on `bin/cli.mjs` containing neither `statSync` nor `lstatSync` anywhere — an
+  incidental property of a pre-T-17 file. Rather than quietly deleting the stale sentence or
+  re-opening the conjunct, PLAN v1.4 names both new occurrences, shows the matcher yields zero on
+  each by a *different* anchor, and says explicitly that the falsifiability never rested on the
+  expired baseline. I reproduced every step. This is the difference between a document that stays
+  true and one that stays unchallenged.
+- **The `Status` column declaration is the right resolution of a problem I flagged twice.** My v5 and
+  v6 reviews both carried a DEFERRED note about status cells that go stale the moment a wave lands.
+  PLAN v1.4 does not hand-reconcile the column — it declares the column non-authoritative and names
+  the branch's `feat(pdlc-stats): T-NN` commits as the record a DoD reviewer should read. Declaring
+  a ledger untrustworthy is more honest than a sync that is wrong again by the next commit, and it
+  removes a way a partially-updated column could mislead a reviewer into thinking work was
+  outstanding.
+- **PROPERTIES needed no edit for the TSPEC settlement because it was written to the winning side all
+  along.** The withdrawn "survivor" reading would have re-valued PROP-RATIO-03, -06 and -08's fourth
+  AT-17 leg. All three already implemented BR-16. That is what it looks like when a downstream
+  document tracks its immediate upstream instead of hedging between two contested readings — the
+  settlement costs nothing downstream.
+- **The erratum stayed inside its floor.** Two edits, seven lines added, both traceable to
+  re-grounding rather than to the v5 item list, and every v5 finding answered on its decided form
+  with a stated reason for taking no write. No task moved, no batch moved, no `Source File` cell
+  moved. In a confirmation round that restraint is what makes the round cheap.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+PROPERTIES remains a faithful compression of upstream as upstream now stands. Both moves were
+checked against the text PROPERTIES actually leans on, not against the dispatch's item list: the
+TSPEC v1.8 settlement requires no downstream edit because PROPERTIES already carried the winning
+BR-16 reading in all three affected properties, and the PLAN v1.4 erratum moved no task identity, no
+scope, no ownership and no expected value that PROPERTIES cites. No High finding is open — mine or
+anyone's — and no acceptance criterion has been narrowed, reinterpreted or dropped.
+
+One Medium (F-01) is recorded and does not gate: PROP-RATIO-05 and PLAN T-10 now describe different
+inputs to the same oracle. PROPERTIES is the side that matches the code on disk, so the defect is
+latent rather than live, and it can be closed by a one-sentence edit at either end. It belongs to
+whichever document's next revision comes first.
+
+DEFERRED: reconcile PROP-RATIO-05's masking clause with PLAN T-10's "masking not owed" statement
+(F-01) — either document may take the edit, but they must agree.
+DEFERRED: carried from v5/v6 — replace the per-row `(new)` / `(present at HEAD, {sha})` mix in
+§PLAN tasks with a single dated "status measured at commit X" table (Q-02).
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
