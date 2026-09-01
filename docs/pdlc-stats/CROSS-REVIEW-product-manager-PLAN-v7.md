@@ -94,7 +94,29 @@ maintain a status ledger, so nothing is dropped by the declaration.
 
 ## Dependencies
 
-_pending_
+**No dependency edge moved.** T-10's `Depends on` cell is still `T-01, T-02`, its batch is still `2`,
+and its `Source File` is still `pdlc/engine/bin/cli.mjs`. The edit touched justification prose inside
+the row's description cell only. Batch 2's composition, the serial chain through batches 3–7 and the
+one-writer-per-batch rule that forces it are all untouched, so the phasing I approved at v6 stands.
+
+**Upstream pins, re-measured at HEAD.** `DEC-ERR-03` makes this my duty regardless of the item list,
+so I re-hashed all four upstream documents rather than trusting the changelog:
+
+| Upstream | sha256 at HEAD | Matches dispatch pin? |
+|---|---|---|
+| REQ | `f75c348f…8862` | yes — identical to the dispatch's stated pin |
+| FSPEC | `a493133f…7f5d` | yes |
+| TSPEC | `f32d9cb5…7c02` | yes — v1.8, the value the v1.4 changelog claims |
+| DECISIONS | `ca3f7219…b5cc` | yes |
+
+The v1.4 changelog's account of the upstream move is therefore accurate: the dispatch had pinned an
+older TSPEC (`7b119eb7…`), TSPEC is at `f32d9cb5…` (v1.8), and the other three match. I confirmed the
+substance of that move too — TSPEC v1.8 absorbs the REQ-STATS-06-versus-BR-16 withdrawal that v1.3
+had already re-grounded on. It introduces no new `BR-`, `E-` or `AC-` row and no vocabulary rename,
+so no PLAN task inherits new work from it and no task's citation goes stale.
+
+**Ordering against product priority is unchanged.** P0 work still precedes P2 work in the batch
+graph, and no task was re-prioritised, deferred or dropped by this edit.
 
 ## Verification
 
