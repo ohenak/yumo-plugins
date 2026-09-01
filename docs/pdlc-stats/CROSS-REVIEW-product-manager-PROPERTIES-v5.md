@@ -289,3 +289,6 @@ revision note or deferred to harvest.
 DEFERRED: Consider replacing the per-row "(new)" / "(present at HEAD, {sha})" annotations in the §PLAN-tasks table with a single "status measured at commit X" line, so the table does not need re-truing after every implementation wave (Q-01).
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 0}
