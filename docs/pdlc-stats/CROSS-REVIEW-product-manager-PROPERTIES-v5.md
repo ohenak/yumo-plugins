@@ -102,7 +102,77 @@ and the prose figures 69 / 13 / 23 all agreeing. No arithmetic drift.
 
 ## Oracles
 
+Two §Oracles rows moved and both track their properties faithfully.
+
+**The "Derived and absence-shaped conjuncts" row (`:298`)** adds PROP-RATIO-11 to the
+PROP-RATIO-04/05 cluster and spells out why the claim is asserted twice rather than once: "on the
+helper (PROP-RATIO-04, `integration-fs`) and on the shipped `bin/cli.mjs` seam driven end-to-end
+(PROP-RATIO-11, `process`), because a helper-level pass plus PROP-RATIO-05's call-set equivalence is
+a chain, not direct evidence." That is the right justification and it is the one PLAN gives at T-18
+("T-09 remains the behavioural evidence on the shipped seam", `PLAN-pdlc-stats.md:112`). Duplication
+across two levels is normally worth a scope question; here it is deliberate, argued, and the two
+legs falsify different failures. No finding.
+
+**The "Reason-catalogue equality" row (`:311`)** now describes both sweeps, names the four seams,
+and carries the same honesty clause as the property: "The superset direction is exactly as strong as
+the union of those two sweeps and no stronger; the residual is G-8". Oracle and property say the
+same thing in the same words — no drift between the two places this claim lives, which is the
+failure mode this pairing usually produces.
+
+Applying the three standards I was asked to hold this round to the changed material:
+
+- **No implementation echoes.** PROP-ERR-10 explicitly forbids reading a module constant and
+  requires a hand-transcribed literal; PROP-RATIO-11 computes its expectation from the fixture's
+  known link size, not from the code under test; PROP-RATIO-05 pins a literal regex. Clean.
+- **No absence-only oracles.** PROP-RATIO-11 is the one to watch, since "must **not** equal the sum
+  computed from the target's size" is a negative. It is paired on the same path with the positive:
+  "must equal the sum computed from the link's **own** `lstat` size". Both assertions run over the
+  same `main([...])` invocation. Correctly paired. PROP-RATIO-05's "zero matches" negative is
+  likewise paired with the positive conjunct that `statsIo().fileSize` must be built on `lstatSync`.
+- **Completeness by set-equality.** PROP-ERR-10 asserts set-equality in both directions over the
+  full three-element enumeration and states that "deleting any one of the three fails" — a deleted
+  case does go red. PROP-DISC-10 asserts `features` set-equal to `{}` and `unclassified` set-equal
+  to `[]` rather than checking emptiness by containment. Both meet the bar.
+
+I found no oracle in the changed material whose pass condition the revision widened or narrowed
+away from what REQ and FSPEC require, and none whose falsifier depends on a claim that has since
+moved.
+
 ## Fixtures
+
+**`F-CLI-SYMLINK` (`:406`) is a new fixture and it is correctly scoped.** It builds a `mkdtemp` root
+with `docs/{feature}/` holding one small regular file and one symbolic link whose target is written
+*outside* the feature directory and is an order of magnitude larger — the target being outside
+matters, because a target inside the directory would itself be summed and mask the very difference
+the property tests. The fixture text says so implicitly by placement; the property's expectation is
+computed from the link's own size, so the two agree.
+
+Its `--cwd` rationale is verified true, not merely plausible: the fixture text says the flagless form
+would refuse because "`Engine tests` runs `cd pdlc/engine && npm test` and `pdlc/engine/` carries no
+`docs/`". `pdlc/engine/` indeed has no `docs/` directory, and `stats` does accept `cwd`
+(`pdlc/engine/bin/cli.mjs:190`), so the workaround is both necessary and available. PLAN T-09 makes
+the same argument in the same terms (`PLAN-pdlc-stats.md:103`).
+
+The closing note — "it is deliberately not real-path: no archive directory carries a symbolic link,
+and one added later would change a measurement rather than exercise this claim" — is a good product
+judgement. Adding a symlink to a real archive directory would silently move PROP-RR-03's and
+PROP-DOD-01's measured literals. Keeping the symlink claim in a constructed temp root protects the
+real-path fixtures' recorded expectations. This is the same separation-of-concerns the document
+already applies to `F-HARVEST-FOUR`.
+
+**`F-EXCLUDED-ONLY` (`:357`) restated as directory entries lands F-05.** The wording moved from "as
+directories" to "as **directory entries** (`isDirectory` true, never files)", and PROP-DISC-10's row
+made the matching change. This matters because the fixture runs at `integration-fake` over
+`fakeStatsIo`, whose `listDir` returns `{name, isDirectory, isFile, isSymbolicLink}` records
+(`pdlc/workflows/__tests__/helpers/statsDoubles.js:31`) — there is no real directory to create, so
+"a real directory" was the wrong instruction for the level the property sits at. The new wording is
+executable against the double as built. Verified the enumeration is still exactly right:
+`NON_FEATURE_DIRS` at `pdlc/workflows/lib/stats.mjs:193-202` holds exactly the eight names the
+fixture lists — `_queue`, `_constraints`, `_decisions`, `design`, `requirements`, `ideas`,
+`discarded`, `completed` — in that order. The "eight" in both the fixture and the property is a
+measured fact at HEAD, not a stale count.
+
+No fixture in the changed set encodes an expectation that the moved upstreams invalidate.
 
 ## Delta-Confirmation Findings
 
