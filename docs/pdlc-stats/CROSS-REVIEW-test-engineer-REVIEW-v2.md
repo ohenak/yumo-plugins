@@ -121,7 +121,64 @@ rather than a coincidence.
 
 ## Findings
 
-<!-- pending -->
+No High findings. Both v1 blockers are resolved, the revision broke nothing, and the full
+gate command (`npm run test:coverage`) exits 0.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | The no-capability oracle's forbidden-substring list omits `spawn`, `execFile`, `node:child_process` and a bare `git` token (only `"git "` with a trailing space is listed), so the list itself catches less than it appears to; the no-import conjuncts are what actually carry the proof | `statsAntiDrift.test.js:164` |
+| F-02 | Low | Local | PROP-PBT-04 now expresses BR-15 as a `<= 0.005` tolerance plus 2dp representability, which does not pin the rounding tie-break direction at an exact `.005` boundary | `statsProperties.test.js:295-298` |
+
+### F-01 (Low) — the capability list is weaker than the conjuncts around it
+
+The new structural oracle is a good idea, well-motivated by a comment that correctly explains
+why PROP-RO-05 and the empirical snapshot each leave a hole (`statsAntiDrift.test.js:136-146`).
+The loop, though:
+
+```js
+for (const capability of ["child_process", "execSync", "spawnSync", "node:fs", "fetch(", "git "]) {
+  expect(code).not.toEqual(expect.stringContaining(capability));
+}
+```
+
+`spawn(`, `execFile(`, and a `git` token not followed by a space (`execFile("git", [...])`)
+all pass this list. So would `eval(`. The list reads as a set-equality-style enumeration but
+is a hand-picked sample, and it is not derived from any catalogue in the FSPEC, so nothing
+keeps it honest as the module evolves.
+
+This is Low rather than Medium because the list is not where the proof lives. The three
+preceding assertions — `not.toMatch(/^\s*import\b/m)`, `not.toMatch(/\bimport\s*\(/)`,
+`not.toMatch(/\brequire\s*\(/)` — are **total**: `lib/stats.mjs` declares no imports at all,
+so it provably cannot reach `child_process`, `fs` or the network by any spelling, listed or
+not. The capability loop is belt-and-braces over an already-closed door. I am recording it so
+a later reader does not mistake the list for the guarantee and start maintaining it as if it
+were.
+
+If it is kept, the cheapest strengthening is to drop the sample list entirely and lean on the
+import conjuncts, which are the falsifiable ones — or, if a defence-in-depth list is wanted,
+assert on a word-boundary regex (`/\bgit\b/`) rather than a space-suffixed substring.
+
+### F-02 (Low) — the 2dp contract no longer pins tie-breaking
+
+Removing the `round2` echo was the right fix and I would not trade it back. The replacement
+contract is:
+
+```js
+expect(Math.abs(ratio - expectedProcessBytes / expectedSpecBytes)).toBeLessThanOrEqual(0.005);
+expect(Number(ratio.toFixed(2))).toBe(ratio);
+```
+
+Together these pin "a 2dp value within half a hundredth of the true quotient", which is BR-15
+as stated. What they no longer pin is the direction taken at an exact `.005` tie: both
+`Math.round`'s half-up and a half-even rounding satisfy the pair, since `<=` admits either
+neighbour. A mutation from `Math.round` to `Math.floor(x + 0.5)` is indistinguishable here
+(they agree anyway), but a switch to banker's rounding would survive.
+
+This is Low, and arguably the correct trade: pinning the tie-break in the *property* would
+drag the implementation's formula back in, which is exactly what F-04 objected to. The clean
+close, if wanted, is one **example-based** test next to the property with a literal tie fixture
+transcribed from BR-15 (e.g. spec 200 B / process 405 B → the value BR-15 says an operator
+sees), leaving the property to carry the invariant and the example to carry the tie-break.
 
 ## Questions
 
