@@ -258,3 +258,8 @@ remove an implementation echo. Both can be picked up opportunistically or deferr
 **No erratum items.** Every upstream document I checked against — FSPEC BR-11, BR-15, BR-17,
 EC-05, AT-27, PROP-ERR-03 — was correct as written; this round's defects were all in the
 implementation, and the specs were what diagnosed them.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
