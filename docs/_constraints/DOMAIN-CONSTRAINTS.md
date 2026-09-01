@@ -671,3 +671,177 @@ and the residue argument distinguishing a directory's membership from the shippe
 load set).
 
 **Applies to:** TSPEC, PLAN, `se-implement`, co-change sweeps over any vendored/packaged module class
+
+---
+
+## DC-24: A completion claim is discharged by a measured tree transition, not by a report
+
+**Constraint:** "Done", "remediated", "wave complete" is a claim about the **repository**, not about
+an agent's intent, and it is discharged only by a measurement anyone can re-run: `git status
+--porcelain` empty over the task's pathspec, the branch tip moved, and — where a downstream check
+reads the remote — pushed. A verifier is re-dispatched only after that measurement passes. Until
+then the work does not exist for any gate, any CI check, or any reviewer.
+
+- **Every gated check reads the pushed tip.** All four Phase PUB checks run against the pushed
+  commit, so an uncommitted remediation is invisible to every one of them — including a brand-new
+  oracle written specifically to catch the defect being remediated.
+- **Record the tree state as a measurement, not as an assertion.** A finding that writes down the
+  file list, the numstat, the untracked paths and the tip SHA re-verifies mechanically in the next
+  round; a finding that writes "the fix is in place" does not.
+- **An untracked file is not delivered.** A new test file left untracked is the most expensive
+  version of this failure, because the suite is green locally for the author and the file is absent
+  everywhere else.
+
+This is DC-16 ("a gate reads committed state, never a transcript") applied to **delivery** rather
+than to verdicts and indices, and it shares DC-22's premise that an agent's `completed` status
+describes what it reported, not what it did.
+
+**Origin:** promoted 2026-09-01 from LEARNINGS `pdlc-stats` (§4 — `CODE_REVIEW-v3`'s *only* finding
+was that round 2's remediation was never committed: 9 modified tracked files, `+65/−80`
+comment-only, plus an untracked 178-line `pdlc/engine/__tests__/stats-narrative-drift.test.js`,
+alive only in the working tree with the branch tip still at `926cdb42b`; the remediator reported
+"completed" having landed nothing, and one whole DoD round plus one whole CR round were spent on a
+delivery step with *zero* content change) and `pdlc-loop-economics` (§4.5, §5.5 — the entire M1–M3
+implementation sat uncommitted on top of a single commit `146e2b3ba` at **both** DoD rounds, so
+CODE_REVIEW-v1/v2 filed F-8 twice and PLAN §9's commit-shape obligations were unverifiable in both;
+separately, one agent committed and pushed `146e2b3ba` without authorization).
+
+**Applies to:** `se-implement`, `tech-lead`, `tech-lead-python`, `dod-verify`, wave gates, agent
+dispatch
+
+---
+
+## DC-25: A recommendation for a mechanical guard is built or explicitly declined — "recorded" is not a state
+
+**Constraint:** When a post-mortem, review or LEARNINGS names a **mechanical check** that would have
+caught the defect, the pass either builds it or records an explicit declination with a reason and a
+named surface. There is no third state. A recommendation parked as a "standing candidate" — in a
+memory note, a queue backlog row, or prose in the document that recommends it — leaves the defect
+recurring at exactly the rate it would if nothing had been written down, while consuming the
+attention that would otherwise have escalated it.
+
+The distinction from DC-08 is the object. DC-08 binds an **unresolved item** to a named successor
+surface so a later reader finds it. DC-25 is about a **guard**: naming the guard and binding it to a
+surface is not the same as having it, and the interval between the two is measured in re-occurrences,
+not in rounds. Where the guard is an ordering obligation, DC-21 applies and the interval is fatal.
+
+**Origin:** promoted 2026-09-01 from LEARNINGS `pdlc-decision-ledger` (§4.2, the feature's
+self-described "single highest-signal item": `POSTMORTEM-PR` edition 1 named the routed-locus diff
+gate as the fix for the round-4 halt and additionally recorded it in the
+`erratum-routed-item-unlanded-halt` memory note as a "standing pipeline-improvement candidate" —
+five rounds later the **identical** failure recurred, cost two confirmer dispatches, and forced a
+second halt and a second post-mortem edition on the same phase; §4.8 repeats the shape, where T-18's
+wave-gate halt was *predicted in writing* by T-11's and still halted) and `pdlc-loop-economics`
+(§4.5 — the "every subagent dispatch needs an explicit do-NOT-commit line" lesson is recorded as
+recurring "across features (see prior LEARNINGS' equivalent note)" and is still "not yet a standing
+template clause"; §5.1, three vestigial SKILL.md sentences left as a declared-but-unbound deferral
+with no queue row). Corroborated by `pdlc-stats` §5.2 (no mechanism retires a stale downstream
+routing clause).
+
+**Applies to:** post-mortems, `harvest-learnings`, `consolidate-learnings`, queue hygiene, engine
+backlog
+
+---
+
+## DC-26: An assertion pinned to an untracked file measures the operator's machine, and is vacuous in CI
+
+**Constraint:** A test, gate or run-precondition that reads a file **not tracked in the repository**
+— a local `.claude/pdlc.config.json`, a tool cache, an editor state directory — asserts a property
+of one developer's machine. Two failures follow and both were paid for:
+
+- **Red locally for a reason no reviewer can act on.** The operator's copy legitimately differs from
+  the canonical one, so the pin reds on their tree and green everywhere else, and the red survives
+  review because no diff explains it.
+- **Vacuous in CI.** In a fresh clone the file is absent, so the assertion degrades to whatever its
+  fallback is — `process.env.GITHUB_ACTIONS === "true"` is a tautology — and passes without
+  exercising anything. Green in CI for a reason unrelated to the property under test.
+
+The sanctioned shapes: derive the expected value from the **tracked** source (`.claude/pdlc.config.example.json`)
+so the two structurally cannot disagree, rather than hand-transcribing it; and declare an
+environment-conditional degrade as a **named skip**, never as a passing assertion — a branch that
+cannot fail is not a check (DC-14).
+
+This is DC-15 ("an oracle that walks a live tree measures the host, not the diff") on a **single-file
+pin** rather than a tree walk, and it is the general form of `CLAUDE.md`'s debugging note about
+untracked files reddening `coveredViolations`.
+
+**Origin:** promoted 2026-09-01 from LEARNINGS `pdlc-loop-economics` (§2 F-4, §5.2 —
+`waveResumePreflight.test.js:45` hand-transcribes `EXPECTED_TEST_COMMAND` and disagrees with the
+shipped `.claude/pdlc.config.example.json`, which carries a `(cd pdlc/engine && npm test) && `
+prefix the literal omits; it was the *only* red suite in **both** DoD rounds and is CI-vacuous by
+the `GITHUB_ACTIONS` degrade) and `pdlc-stats` (§2, §5.1 — te-REVIEW F-03, still open at harvest:
+the operator's untracked `.claude/pdlc.config.json:10` carries a locally-prepended engine leg while
+`waveResumePreflight.test.js:45-46` expects the canonical workflows-only string, and CI supplies the
+canonical value so the red never appears there). Two unrelated features reached the same pin from
+opposite ends without either seeing the other.
+
+**Applies to:** TSPEC, PROPERTIES, implementation, wave gates, `dod-verify`, reviews
+
+---
+
+## DC-27: A numeric literal in a specification carries its provenance class and its measurement basis
+
+**Constraint:** Every byte count, file count, size budget or coverage number written into a spec
+belongs to exactly one **provenance class** — an upstream decision, a measurement of a named tree at
+a named version, or a budget ceiling not yet drawn down — and the spec states which, and against
+**which tree** it was measured. Two rules follow:
+
+- **A ceiling is not a measurement, and may enter an assertion only in the direction that cannot
+  mask a violation.** Substituting the true (smaller) drafted value must **overstate** usage or
+  **understate** margin. A ceiling is never a term in an asserted **equality**: `measured + ceiling
+  == total` is arithmetically checkable, dimensionally false, and goes red against a conforming
+  implementation that came in under budget. Use `measured ≤ bound − ceiling`. This rule is
+  **directional**, not positional — it is not "the ceiling may only appear on the larger side" — and
+  it is scoped to **pinned values, not prose**.
+- **The measurement basis is the pre-feature tree unless stated otherwise.** A design document's
+  counts are measured against `main`, not against the branch in the middle of changing them; "this
+  feature makes it eight" is the predicted consequence of "seven at `main`", not a contradiction of
+  it. State the basis, or reviewers grounding on HEAD will re-file the same finding every round.
+
+Corollary, from the same evidence: **do not transcribe a reviewer's suggested numbers into a
+specification — re-derive them first.** TSPEC discipline already requires every claim about existing
+code to cite a file and a line; it must apply equally to numbers a reviewer supplied.
+
+**Origin:** promoted 2026-09-01 from LEARNINGS `pdlc-decision-ledger` (§2, §4.1, §5.1 — the round-6
+finding proposed a fix in concrete byte literals, round 7 landed the suggested wording verbatim
+without re-deriving, and `12,059 = 10,859 + 1,200` added a budget **ceiling** to a **measurement**:
+arithmetically true, dimensionally false, red on a conforming implementation. Cost a
+budget-exhausted round 7 halt and `POSTMORTEM-D-pdlc-decision-ledger.md`; remedied by TSPEC v0.7
+restating conjuncts (5)/(6) in pinned-measurement units and by minting `DEC-DECLEDGER-16`, whose own
+§5.1 asks for exactly this promotion, restated directionally) and `pdlc-stats` (§3 row 1 — the
+proposal to re-open K-3's arithmetic because `c8.include` measures **eight** entries at branch HEAD
+was rejected because the basis is the pre-feature tree: `git show main:pdlc/workflows/package.json`
+has exactly seven, and LEARNINGS marks the lesson reusable precisely because reviewers grounding on
+HEAD keep re-filing it).
+
+**Applies to:** REQ, FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES, all reviews
+
+---
+
+## DC-28: A prose contract about where code may be constructed owes a source-census oracle
+
+**Constraint:** When a document states that a thing has exactly one construction site — "one
+arrangement, reused", "a second construction site is a review-blocking finding", "no builder writes
+this" — that contract is **mechanically checkable over the source tree** and must be checked there,
+not left to a reviewer's attention. The oracle is a source census with **set equality** over the
+named surface: the literal naming of each member occurs exactly once, at the sanctioned site, and a
+member added later either joins the pinned set or reds the census.
+
+- **Prefer a structural census over instance-sampled runtime assertions.** A runtime assertion only
+  covers the dispatches some test happens to exercise; a census over all builder names holds under
+  growth.
+- **An absence contract is a census too.** "No code doing X exists" is pinned by censusing the
+  source for X, not by observing that some sampled run did not do X.
+
+**Origin:** promoted 2026-09-01 from LEARNINGS `pdlc-stats` (§2, §5.7 — te-DECISIONS v1 F-04, tagged
+`Cross-Feature`: K-4 declared a second construction site review-blocking for `statsParsers()`, while
+`resolveWorkflowRoot()`, `loopSessionModule()` and `escalationViewModule()` carry the identical
+"one arrangement, reused" contract in prose **with no detector either**; the named fix shape is a
+source-scan oracle, and LEARNINGS records it as a repo-wide shape, not a `pdlc stats` fact) and
+`pdlc-loop-economics` (§3 final row — DEC-LOOPECON-07 rejected asserting the anchor-absence property
+on rendered prompt strings at runtime in favour of a structural source census with set equality over
+all 30+1 prompt-builder names, and generalises the choice: "prefer structural/set-equality oracles
+over instance-sampled runtime ones", citing `pdlc-wave-resume` as the prior instance). One feature
+paid for the mechanism's absence; the other shipped it and stated the general rule.
+
+**Applies to:** TSPEC, PROPERTIES, DECISIONS, `se-implement`, `te-review`, `dod-verify`

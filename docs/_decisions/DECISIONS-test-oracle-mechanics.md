@@ -141,3 +141,50 @@ verdict.
 **Origin.** Promoted 2026-08-27 from LEARNINGS of pdlc-engineering-loop (Phase PR halt: 6 iterations
 feeding synthesized findings back to the author) and pdlc-learnings-injection (zero `FINDING:` lines
 across 6 approving rounds — a fail-closed class).
+
+---
+
+## DEC-ORACLE-07: A paired conjunct, and any model standing in for the production structure, must be shown red on the arm it runs on
+
+**Decision.** DC-14 requires that an absence-shaped assertion be paired with a positive conjunct on
+the same path. That requirement is necessary and **not sufficient**: it does not say the paired
+conjunct must be *falsifiable on the arm it actually runs on*. Two shapes satisfy the checklist and
+still carry zero power, and both are now disallowed:
+
+- **The tautological conjunct.** Comparing a value to itself — asserting a key set is `set-equal` to
+  the flag-off key set, on the flag-off run — is `X == X`. The rule is obeyed and the oracle cannot
+  fail. The distinguishing conjunct is a **cross-arm** comparison: pair the run against the
+  *opposite* arm, so the assertion separates the two behaviours it exists to separate.
+- **The model stand-in.** A property that builds its own idealised data structure and asserts
+  against *that model's* invariants, rather than driving the production function or structure, is
+  proving a fact about the model. A `Map` keyed by identity deduplicates by construction, so a
+  dedup property written over it literally cannot fail no matter what the classifier under test
+  returns — while the PROPERTIES prose claims it guards dedup in production.
+
+**The discharge is mutation, not inspection** (DC-06): drive the code under test down to a no-op
+stub and confirm the property goes **red**. "It passes against the real implementation" is not
+evidence; a property that passes against a stub is a property that passes against everything. Where
+a property's *stated* reach exceeds its actual reach and the wider suite happens to kill the mutant
+anyway, that is a testing-lens gap to record, not a false green — but the prose must be narrowed to
+the reach the conjunct actually has.
+
+**Rationale.** Both instances survived a review process that was applying the existing checklist
+correctly. The failure is not reviewer diligence; it is that the checklist stops one step short of
+the property that makes an oracle load-bearing. Adding the falsifiability step is cheap at authoring
+time and is mechanically demonstrable, which is what distinguishes it from an exhortation.
+
+**Origin.** Promoted 2026-09-01 from LEARNINGS `pdlc-decision-ledger` (§2 — T-10a's conjunct 3:
+`report`'s key set asserted `set-equal` to the flag-off key set on the flag-off run, so the repo's
+own oracle checklist was obeyed and the conjunct had zero power; POSTMORTEM-PR recommendation 6 asks
+for the cross-arm entry and a worked example. §5.9 records the companion shape, PROP-BND-04's
+vacuous escape hatch, where mutation M8's renderer leaves the property green and `PROPERTIES:270–272`
+/ `TSPEC:1616–1617` state in words that it should fail) and `pdlc-loop-economics` (§4.4, DoD F-9 —
+PROP-LOOPECON-06/07's `fast-check` property builds `simulateOpenFindingList`, a `Map`-based model,
+and asserts that model's invariants instead of the production array accounting at
+`orchestrate-dev.js:9643-9644`; verified non-falsifying by mutation-testing the classifier down to a
+no-op stub and watching the property stay green. Remediated after v2 by replacing the model with a
+production-shaped array ledger, mutation-verified red under a stubbed classifier, 49/49 green).
+
+Corroborates, and does not re-mint, `DC-14` (an oracle never sources its expected value from the
+code under test) and `DC-03` (every load-bearing assertion is falsified before it is trusted); this
+entry names the residue those two leave open.

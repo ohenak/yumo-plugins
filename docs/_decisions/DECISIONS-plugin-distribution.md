@@ -200,6 +200,52 @@ equality goes red if `pdlc/engine/LICENSE` and this record's flip do not land to
 
 ---
 
+## DEC-DIST-08: Adding to the vendored module class is a spec-level change; a feature pays the co-change sweep deliberately or lands in-file, and records which
+
+**Decision:** `pdlc/engine`'s `prepack.mjs` vendors a **frozen `MODULE_NAMES` list**, and the
+`lib/` directory's membership is decided by the shipped engine's runtime load set. Adding a module
+to that class is therefore not a local implementation choice — it is a change to a packaged surface
+with a repo-wide co-change cost, and it must be decided at spec altitude (TSPEC/DECISIONS), not
+discovered during implementation. A feature has exactly two sanctioned moves, and records which one
+it took and why:
+
+- **Pay the sweep.** Add the module and discharge the full co-change set — which, per DC-23, is
+  repo-scoped and source-restricted, and explicitly **not** `__tests__/`-scoped: production-side
+  copies of the enumeration (`publish-preflight.mjs`, `prepack.mjs`) are the ones a test-directory
+  grep silently drops, and every co-change site that pins the enumeration's **size** moves with it.
+- **Land in-file.** Keep the new functions inside `orchestrate-dev.js` behind a sentinel-bounded
+  block. This is the cheaper move where the REQ forbids editing `pdlc/engine/`, and it is a real
+  cost, not a free one: every implementation task then writes the same physical file, which forces
+  serial waves. Record the cost and an explicit re-evaluation trigger.
+
+**What this is not:** a preference for one move over the other. Two of the three features below
+chose in-file and one chose the sweep, and all three were right for their own scope. The decision is
+that the choice is **made and recorded at spec time**, because both branches have consequences that
+land on the PLAN's wave structure or on a ten-site sweep, and neither is recoverable cheaply once
+implementation has started.
+
+**Origin:** promoted 2026-09-01 from three features that hit the same coupling from three directions.
+`pdlc-loop-economics` (§2, DEC-LOOPECON-08) declined the `lib/` module because `prepack.mjs`'s frozen
+`MODULE_NAMES` list would require editing `pdlc/engine/`, which REQ NG-3 forbids; it took the
+serial-wave cost knowingly and booked an explicit re-evaluation trigger for a future feature that
+does touch `pdlc/engine/`, and its LEARNINGS names the `MODULE_NAMES`/`prepack` coupling as
+constraining every future workflows feature, not just its own. `pdlc-decision-ledger` (§3) reached
+the identical verdict independently — "the `MODULE_NAMES` swept-surface machinery is not available
+without a spec change; land in `orchestrate-dev.js`'s sentinel-bounded block" — and recorded it as
+feature-local. `pdlc-stats` paid the other branch: `lib/stats.mjs` joined the vendored class, and
+its TSPEC §2.1 ten-site co-change derivation, five te-DECISIONS rounds circling the sweep's scoping,
+and the promotion of DC-23 are what that branch costs.
+
+**Consequence:** DC-23 governs the sweep's scope once the first branch is taken. This record governs
+the decision to take it, and is the citation a TSPEC uses when it takes the second branch instead.
+
+**Testability:** `pdlc/engine/__tests__/packaging.test.js`'s `PF-4` both-directions packed-set
+equality and `publish-preflight.mjs:205-219`'s `LIB_MODULES_AT_HEAD` / `LIB_MODULES_FROM_THIS_FEATURE`
+pair already go red if the enumeration moves at one site and not the others; this record adds no new
+oracle, it names the decision those oracles price.
+
+---
+
 ---
 
 ## Open at project level
