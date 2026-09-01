@@ -45,21 +45,21 @@ re-litigated here.
 
 ### F-01 (High) — fleet mode never driven through the production caller
 
-Closed, and closed at the right tier. `pdlc/engine/__tests__/stats-cli.test.js:379-403` builds a
+Closed, and closed at the right tier. `pdlc/engine/__tests__/stats-cli.test.js:380-408` builds a
 real temporary tree (a healthy feature, a `chmod 000` feature for EC-21's per-feature gap, and a
-leading-underscore directory for BR-26), and `:415-437` / `:450-483` invoke
+leading-underscore directory for BR-26), and `:414-447` / `:449-484` invoke
 `main(["node","pdlc","stats","--cwd",fixture.root])` and its `--json` twin — the *same* entry point
 as the single-feature legs, so `cmdStats`'s null-feature forwarding, `buildReport`'s fleet branch,
 `renderFleetHuman` and `renderJson`'s fleet arm are all now on a production path rather than
 reachable only through `runStats` with an injected `fakeStatsIo`.
 
 The assertions are on the operator-visible artifact, not on a builder's return value: the healthy
-row must carry `REQ=1` and `malformed=0` (`:427-429`), the gap row must carry a non-empty reason
-after `gap: ` (`:431-437`) — REQ-STATS-07's "the reason is visible, never a bare feature name" —
-and the unclassified row must be present and marked (`:439-442`). The `--json` leg pins the fleet
-document's top-level key set by set-equality (`:466-469`), the per-entry discriminant by
-set-equality on both arms (`:472-478`), and that an unclassified name never leaks into `features`
-(`:480`). REQ-STATS-07 (P1) is now proven where an operator would experience it.
+row must carry `REQ=1` and `malformed=0` (`:428-430`), the gap row must carry a non-empty reason
+after `gap: ` (`:432-437`) — REQ-STATS-07's "the reason is visible, never a bare feature name" —
+and the unclassified row must be present and marked (`:439-443`). The `--json` leg pins the fleet
+document's top-level key set by set-equality (`:465-469`), the per-entry discriminant by
+set-equality on both arms (`:471-479`), and that an unclassified name never leaks into `features`
+(`:481`). REQ-STATS-07 (P1) is now proven where an operator would experience it.
 
 A second, unconditional fleet leg lands at `pdlc/engine/__tests__/stats-read-only.test.js:243-266`:
 the same `main([...,"stats","--json","--cwd",REPO_ROOT])` call, wrapped in the tree-snapshot pair,
@@ -68,11 +68,11 @@ the no-argument fleet run prints one row per feature with every metric column po
 
 ### F-04 (Medium) — read-only snapshot covered only single-feature `--json`
 
-Closed on both axes I named. `stats-read-only.test.js:220-241` adds the human-mode success leg —
+Closed on both axes I named. `stats-read-only.test.js:224-245` adds the human-mode success leg —
 snapshot pair around `main([...,"stats",REAL_FEATURE,"--cwd",REPO_ROOT])`, plus the paired positive
 conjunct the protocol demands (exit 0, a report head, and all four REQ-STATS-01 metric labels
 present), so "no write happened" cannot false-green on a command that silently did nothing.
-`:243-266` adds the fleet leg with the same positive pairing (three-key set-equality on the parsed
+`:247-272` adds the fleet leg with the same positive pairing (three-key set-equality on the parsed
 document, plus the roll-up containing the real feature). REQ-STATS-08's "any invocation … in either
 mode" is now covered for {single, fleet} x {human, json} at the snapshot tier.
 
@@ -83,12 +83,12 @@ F-02 is closed at `pdlc/workflows/__tests__/statsRender.test.js:366-381`: the fo
 already satisfied — are now whole rendered lines matched against the split line array
 (`"DoD rounds      2"`, `"Halts"`, `"  D           resolved"`,
 `"Byte ratio      1.42  (process 123456 B / spec 87000 B)"`). A dropped or wrong-valued row now
-fails. The related fleet conjunct at `:463-468` moved from a bare `"2"` to the rendered
+fails. The related fleet conjunct at `:485-488` moved from a bare `"2"` to the rendered
 `malformed=2` cell, and the fixture's halt count was changed to three against two malformed
 basenames so the two cells can no longer alias each other — the aliasing risk I flagged is
 structurally removed, not merely re-asserted.
 
-F-03 is closed at `statsRender.test.js:405-427`. `METRIC_LABEL_TO_JSON_KEY` is a literal
+F-03 is closed at `statsRender.test.js:406-435`. `METRIC_LABEL_TO_JSON_KEY` is a literal
 transcription of BR-17's four block labels paired with BR-21's JSON keys — no value is derived from
 the module under test — and the check is set-equality in both directions between the labels found
 on the human side and `Object.keys(json)` minus `schemaVersion`, with a cardinality assertion
@@ -101,14 +101,14 @@ exactly what I asked for.
 Closed with a **production** change, and the change is faithful to the clause it cites.
 FSPEC BR-11 (`FSPEC-pdlc-stats.md:327-333`) reads: "Where any survives, the measured highest
 version wins — the harvested state never displaces evidence this metric can actually read."
-`computeDodRounds` (`pdlc/workflows/lib/stats.mjs:253-263`) now branches on **presence**
+`computeDodRounds` (`pdlc/workflows/lib/stats.mjs:255-265`) now branches on **presence**
 (`dodReviews.length > 0`) rather than on the derived index being `> 0`, which was the source of the
 off-by-one blind spot: `deriveDodRoundIndex` returns `max + 1`
 (`pdlc/workflows/orchestrate-dev.js:12396`), so a lone `-v0.md` derived `1 - 1 = 0`, indistinguishable
 from "no file at all".
 
 I checked the grammar and the blast radius rather than taking the fix on trust. `dodReviewNames`
-(`stats.mjs:250-252`) uses `^CODE_REVIEW-{feature}-v(\d+)\.md$`, byte-identical to
+(`stats.mjs:250-253`) uses `^CODE_REVIEW-{feature}-v(\d+)\.md$`, byte-identical to
 `deriveDodRoundIndex`'s own pattern (`orchestrate-dev.js:12387`), so BR-11's qualifier holds — a
 `-draft` leftover still neither raises the number nor suppresses `harvested`. Because the derivation
 floors at `max + 1 = 1`, the measured branch can never emit a negative round count. Behaviour for
@@ -140,6 +140,37 @@ stance to operators in exactly these terms, and it is now backed on the failure 
 the success path.
 
 ## Findings
+
+All six of my v1 findings are resolved, including the High. Scanning only the changed sections, I
+found nothing that regresses the product contract; one new Low is worth recording about the
+coverage of the fix to F-01 itself.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | The human-mode fleet leg at the production caller is guarded `{ skip: isRoot }` (`pdlc/engine/__tests__/stats-cli.test.js:415`), so in a root-executing environment REQ-STATS-07's *human* fleet artifact — the gap reason and the unclassified marker an operator actually reads — has no production-caller proof; the only unconditional fleet leg (`stats-read-only.test.js:247`) is `--json`. | REQ-STATS-07 |
+
+**F-01 (Low) — detail and suggested fix.** The skip is not wrong: the fixture uses `chmod 000` to
+produce EC-21's gap row, and a root process reads that directory anyway, so the leg would false-fail
+under root. The precedent is established (`stats-cli.test.js:280`, `:294` guard the
+unreadable-feature legs the same way, and those predate this round). The gap is narrower than the
+guard: the healthy-row and unclassified-row assertions (`:428-430`, `:439-443`) need no permission
+trick at all, and they are the ones carrying BR-18's "no metric is dropped" and BR-26's "an
+unclassified directory is never silently a feature" — both operator-visible in the human rendering
+only. As it stands, under root the human fleet report has no production-caller test anywhere in the
+suite, while the `--json` fleet document keeps one.
+
+The fix is small and needs no new fixture machinery: split the fleet human test in two — an
+unguarded leg over a fixture with only the healthy and `_odd-directory` entries (asserting
+`lines[0] === "Fleet"`, the `REQ=1` / `malformed=0` row, and the `unclassified` row), and keep
+`{ skip: isRoot }` on a second leg that adds the `chmod 000` directory and asserts only the gap row
+and its reason. That preserves every assertion made today while making the majority of them
+unconditional.
+
+I am filing this Low rather than Medium deliberately: the GitHub-hosted `ubuntu-latest` runner that
+executes the `Engine tests (ubuntu-latest)` gate check runs as a non-root user, so this leg does run
+on every PR today, and REQ-STATS-07 is a P1 that is separately proven at the unit tier and by live
+invocation. The finding is about durability of the guard, not about a hole in what CI verifies now.
+It does not gate this phase.
 
 ## Questions
 
