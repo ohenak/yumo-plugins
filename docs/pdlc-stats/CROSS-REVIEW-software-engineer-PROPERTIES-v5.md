@@ -69,3 +69,44 @@ reason released without an FSPEC edit fails" flatly. That was stronger than the 
 support. The restatement bounds the claim to the corpus, widens the corpus with the `throwOn` sweep
 so the bound is as wide as the seam inventory allows, and records the residual at G-8 instead of
 asserting it away. That is the right shape for a behaviourally-collected enum oracle.
+
+## Oracles
+
+Every check I ran this round, with the command, so a later reader can re-run it rather than trust
+this file.
+
+| Check | Command | Result |
+|---|---|---|
+| PROPERTIES bytes moved since v4's approval | `shasum -a 256 docs/pdlc-stats/PROPERTIES-pdlc-stats.md` | `9b118684…` vs v4's `APPROVAL-HASH: 7baf9b33…` — changed, so a real delta round ✅ |
+| Delta is exactly what I scanned | `git diff 73565854d..HEAD -- docs/pdlc-stats/PROPERTIES-pdlc-stats.md` | +63 / −23, sections as listed in §Overview ✅ |
+| Property count claim (`105 properties`) | `grep -oE '^\| (PROP-[A-Z]+-[0-9]+)' … \| sort -u \| wc -l` | `105` ✅ |
+| Level distribution sums to the count | table rows read directly | 5 + 27 + 16 + 21 + 13 + 23 = **105** ✅; and the prose's "69 properties falsifiable without a filesystem or a process" = 5+27+16+21 = **69** ✅ |
+| `process` row's new total | count of `\| process \|` property rows | 23 property rows (the 24th match is the distribution table's own row) ✅ |
+| `NON_FEATURE_DIRS` is eight names | `pdlc/workflows/lib/stats.mjs:193` | eight, in the fixture's order ✅ |
+| `fakeStatsIo` `throwOn` seams are four | `grep -n 'shouldThrow(' …/helpers/statsDoubles.js` | `listDir`, `fileSize`, `readFile`, `exists` — exactly the four PROP-ERR-10 names ✅ |
+| `--cwd` is a shipped flag | `grep -n -- '--cwd' pdlc/engine/bin/cli.mjs` | usage line 64, parser 189 ✅ |
+| `bin/cli.mjs` uses `lstatSync`, not `statSync` | `grep -n statSync pdlc/engine/bin/cli.mjs` | only `nodeFs.lstatSync(absPath).size` at 1302, plus a comment at 1288 ✅ |
+| Structural oracle really masks comments/strings | `stats-cli-structure.test.js:69, 525` | `maskNonCode` exists; the test reads whole-file source through it ✅ |
+| `F-CLI-SYMLINK`'s `--cwd` rationale | `ls -d pdlc/engine/docs`; `.github/workflows/pr-tests.yml:126-132` | no `pdlc/engine/docs`; the `Engine tests` job runs `npm test` with `working-directory: pdlc/engine` — so the flagless form really would refuse ✅ |
+| T-09's file present at the named commit | `git log --oneline -1 2fc6d9b57` | `feat(pdlc-stats): T-09 — 🔴 CLI process-level reds` ✅ |
+| T-10's file present at the named commit | `git log --oneline -1 df1441b76` | `feat(pdlc-stats): T-10 — 🔴 CLI structure reds` ✅ |
+| T-09 row's "symbolic-link leg not yet in it" | `grep -n 'symlink\|lstat' pdlc/engine/__tests__/stats-cli.test.js` | no matches — the row's caveat is **true** ✅ |
+| **`statsRealPaths.test.js` absent, wave 9 not run** | `git ls-files --error-unmatch …/statsRealPaths.test.js`; `git log -1 -- …` | **tracked at HEAD, landed by `9a3a70fd9` "T-18 — 🟢 Real-path acceptance tests"** ❌ **contradicts the document** |
+| Status of all sixteen manifest files | `git ls-files --error-unmatch` over each | **all sixteen tracked**, including `statsProperties.test.js` (`ca8031311`, T-19) and `stats-vendoring.test.js` ❌ contradicts "ten of the fifteen" |
+
+**What the last two rows mean.** The §PLAN tasks preamble now makes two present-tense claims about
+the repository that a reader can check in one command each, and both are wrong in the same
+direction: it under-reports how far implementation has got. Wave 9 is T-18 / T-19 / T-20
+(`PLAN-pdlc-stats.md` File Ownership Manifest, batch 9), and T-18 and T-19 have both landed on this
+branch. The document names `statsRealPaths.test.js` specifically as the worked example of a
+legitimately-absent row, and that file is the one most clearly present.
+
+**Why this is not the same class as the T-09/T-10 rows.** Those two rows do the status bookkeeping
+correctly — they name the commit, and T-09's row even carries the sharp caveat that the
+symbolic-link leg PROP-RATIO-11 needs is *not yet* in the shipped file, which I confirmed. The
+preamble is the part that got it wrong, and it got it wrong while asserting completeness over the
+whole table. A reader who trusts the preamble concludes that wave 9 is outstanding work.
+
+**What I deliberately did not re-derive.** I did not re-run the archive measurements, the PLAN trace
+resolution for unchanged rows, or the §Traceability rows the edit did not touch. Those were verified
+in v3 and reconfirmed in v4, and this round's diff does not reach them.
