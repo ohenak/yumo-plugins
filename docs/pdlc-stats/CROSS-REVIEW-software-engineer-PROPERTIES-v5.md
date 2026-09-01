@@ -110,3 +110,44 @@ whole table. A reader who trusts the preamble concludes that wave 9 is outstandi
 **What I deliberately did not re-derive.** I did not re-run the archive measurements, the PLAN trace
 resolution for unchanged rows, or the §Traceability rows the edit did not touch. Those were verified
 in v3 and reconfirmed in v4, and this round's diff does not reach them.
+
+## Fixtures
+
+Two fixture edits landed this round; both are sound.
+
+**`F-EXCLUDED-ONLY` restated as directory entries.** The old wording asked for the eight
+`NON_FEATURE_DIRS` names "as directories"; the new wording says "**directory entries**
+(`isDirectory` true, never files)". This is the more precise statement for the level the property
+actually runs at. PROP-DISC-10 is `integration-fake`, so the fixture is a `fakeStatsIo` tree, and
+that double synthesises entries with an explicit `isDirectory` boolean rather than consulting a
+filesystem (`pdlc/workflows/__tests__/helpers/statsDoubles.js:60-72`). "A real directory" was
+ambiguous about whether the property needed `integration-fs`; "directory entry, `isDirectory` true"
+is exactly the discriminator the discovery filter reads. It also keeps the falsifier the row
+depends on intact: an implementation that takes EC-09's root-failure branch still fails, because
+the entries are present and readable.
+
+**`F-CLI-SYMLINK` is new, and its constraints are justified rather than asserted.** A `mkdtemp` root
+holding `docs/{feature}/` with one small regular file plus one process-side symbolic link whose
+target — written *outside* the feature directory — is an order of magnitude larger. Three things
+about it are right:
+
+- **The target lives outside the feature directory.** If it lived inside, it would be summed as a
+  member in its own right and the two candidate totals would no longer be cleanly distinguishable.
+  The row says so, and it matters for the property to falsify.
+- **`--cwd` is required, with a stated reason I confirmed.** `Engine tests` runs
+  `working-directory: pdlc/engine` + `npm test` (`.github/workflows/pr-tests.yml:126-132`) and there
+  is no `pdlc/engine/docs/`, so the flagless form would refuse at exit 1 and the test would assert
+  nothing about `lstat`. This is the kind of CI-shaped constraint that is cheap to state now and
+  expensive to discover in a red pipeline.
+- **It is deliberately not real-path, and says why.** No archive directory carries a symbolic link,
+  and adding one would change a measurement rather than exercise the claim. That reasoning protects
+  the real-path measurements PROP-RR-03/-05 and the AT-09/-10/-11 legs depend on.
+
+**The level placement is defended, not assumed.** The §Oracles design row now reads
+`PROP-RATIO-04/05/11` and spells out why `lstat`-vs-`stat` is asserted twice: PROP-RATIO-04 runs
+over T-02's `realStatsIo()` helper and PROP-RATIO-05 is source-level, so a helper-level pass plus
+PROP-RATIO-05's call-set equivalence is a *chain* rather than direct evidence on the shipped seam.
+That chain is real — `stats-cli-structure.test.js:531-551` is precisely the equivalence conjunct
+asserting `statsIo()` and `realStatsIo()` make an identical `node:fs` call set — so PROP-RATIO-11
+closes a genuine gap rather than duplicating cover. This is the right reason to add a `process`-level
+property, and I would have raised its absence had the author not added it.
