@@ -179,4 +179,37 @@ these are wording repairs, not re-openings of a decision.
 
 ## Positive Observations
 
+- **The F-01 fix was made where the criterion lives, not where the test was easiest.** The pre-pass
+  is guarded so it can only fire when the block is already over budget
+  (`orchestrate-dev.js:2735-2736`), which means the ordinary flag-on path is byte-unchanged and the
+  fix costs nothing to the common case. The docstring says why in FSPEC's own words
+  (`:2673-2680`), so the next reader meets the criterion, not just the code.
+- **The prefix property was reconciled rather than deleted.** The easy answer to a property that
+  contradicts a fixed criterion is to drop the property. `decisionLedgerBounds.test.js:177-204`
+  instead restates it as strict order-preservation plus "a record dropped from ahead of a survivor
+  must be one whose own line could not fit", which still reds under a front-drop mutation. That is
+  the harder and the right move, and the mutation ledger above it (`:42-54`) records it honestly.
+- **Both new AT-15 arrangements assert positively.** The tail arrangement was upgraded from
+  `not.toContain` to a set-equality on the survivors (`:294`), and the head arrangement adds a
+  set-equality on `omitted` (`:326`) plus a non-vacuity conjunct that the oversized record really is
+  `fullOrder[0]` (`:314`). No absence-only oracle was left behind by the fix that removed one.
+- **F-02 was closed at the root, not just in the test.** Reading
+  `DECISION_LEDGER_CORPUS_OUTCOMES.UNLISTABLE` / `.EMPTY` from production
+  (`orchestrate-dev.js:2857-2860`) retires the dead-constant half outright, and the two-sided
+  set-equality (`decisionLedgerInjector.test.js:466-514`) is the sibling feature's shape transcribed,
+  not invented.
+- **The reviewer-only routing conjunct is a genuine addition, not a restatement.** Asserting the
+  creator and optimizer dispatches are byte-identical across the two arms while the reviewer prompts
+  differ (`decisionLedgerMain.test.js:494-526`) closes a hole neither of my v1 findings named: a
+  regression appending the block to a non-reviewer dispatch was previously invisible. REQ G-2's
+  "who receives it" is now asserted on the served artifact.
+- **The signature cleanup did not sever the wiring.** Removing `reviewerPrompt`'s unreachable
+  `ledgerBlock` parameter (`fa83831a3`) is exactly the kind of change that quietly unwires a
+  feature; grep confirms the block still reaches only `:10024` and `:10032` and is appended last at
+  `:11610`, the full 166-suite run is green, and `build-runtime.mjs --check` reports the dist twin
+  in sync — so the operator-facing artifact carries the fix, not just the source.
+- **The de-tautologised fixture-provenance row is a small thing done properly.**
+  `decisionLedgerFixtureGuard.test.js:238-254` now reads the commit out of the baseline document and
+  fails if the row is missing or renamed, instead of comparing a constant to its own literal.
+
 ## Recommendation
