@@ -254,3 +254,8 @@ anti-drift checks are all built the way this pipeline asks for, and the two gaps
 diagnostic and malformed-reporting corners rather than in any metric. Closing them makes the
 suite say what the specification already says.
 
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 1}
