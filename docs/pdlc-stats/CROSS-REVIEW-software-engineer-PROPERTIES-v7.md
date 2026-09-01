@@ -39,6 +39,35 @@ document**. The correction is owed upstream, not here.
 
 ## Properties
 
+I re-read every PROPERTIES row that cites PLAN T-10 — the only PLAN section the erratum rewrote —
+and the §PLAN tasks section, against T-10's current text rather than the version I approved.
+
+| PROPERTIES row | Cites | Still faithful to PLAN v1.4? |
+|---|---|---|
+| PROP-RATIO-05 | `TSPEC §2.4, §3.1; PLAN T-10` | Partly — see F-01, F-02 |
+| PROP-CLI-05 | `BR-01; TSPEC §3.4; PLAN T-10/T-17` | Yes — `FLAGS_BY_COMMAND.stats` set-equality and `VALUE_FLAGS` non-membership are untouched by the erratum |
+| PROP-CLI-06 | `BR-29; TSPEC §3.5; PLAN T-09/T-10` | Yes — exit-code conjunct untouched |
+| PROP-DRIFT-01…-04, PROP-RO-05, PROP-NEG-07 | T-10 (via §PLAN tasks) | Yes — parser-identity, classifier purity, construction-site count and no-write capability conjuncts are verbatim unchanged across the diff |
+| §PLAN tasks table | PLAN task ids and statuses | Yes, and strengthened — see Positive Observations |
+
+**What actually changed inside T-10.** The conjunct itself is unchanged: `statsIo().fileSize`'s body
+names `lstatSync`, and `bin/cli.mjs`'s whole source matches `/(?<![A-Za-z])statSync\s*\(/` zero
+times, whole-file, no "in the `stats` seam" qualifier. Both the old and the new row call that matcher
+**normative, not illustrative**. What moved is the *reason* the row gives for the whole-file scope.
+v1.3 justified it on a baseline property — that `bin/cli.mjs` "contains neither `statSync` nor
+`lstatSync` anywhere", with a raw `:262` line anchor. That baseline expired when T-17 landed. v1.4
+re-grounds the justification on the matcher's two anchors instead, and adds a sentence concluding
+that "comment- or string-masking of the source is **not** owed."
+
+**Why this is good news for PROPERTIES.** PROP-RATIO-05 already justified the whole-file scope on the
+anchor — "because the anchor already excludes the correct `lstatSync` and the naive
+`source.includes("statSync")` could never red." PLAN v1.3's expired baseline reasoning was the
+weaker of the two, and my v6 recorded it as a DEFERRED item ("PLAN T-10's stale pre-implementation
+baseline note"). The erratum resolves that deferred item and moves PLAN onto the reasoning PROPERTIES
+was already using. The two documents are *closer* after this edit than before it.
+
+The residue is one clause, and it is F-01.
+
 ## Oracles
 
 ## Fixtures
