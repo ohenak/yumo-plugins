@@ -235,8 +235,23 @@ describe("decisionLedgerFixtureGuard — the frozen decision-corpus fixture (TSP
     });
   }
 
-  it("the frozen source commit is recorded as 8c673a09f (Baseline v1.2's Verified-at commit)", () => {
-    expect(EXPECTED_SOURCE_COMMIT).toBe("8c673a09f");
+  it("the frozen source commit matches Baseline v1.2's own `Verified at` row (provenance, not a literal compared to itself)", () => {
+    // CR TE F-04: this row used to read `expect(EXPECTED_SOURCE_COMMIT).toBe("8c673a09f")` — the
+    // constant compared against its own declaration, which states no fact about the fixture or its
+    // provenance. The claim the title makes is that the transcribed commit is the one the BASELINE
+    // document records, so the referent is that document's bytes, read here.
+    const baselinePath = path.resolve(
+      __dirname,
+      "../../../docs/_constraints/pdlc-decision-corpus-baseline.md"
+    );
+    const baselineText = readFileSync(baselinePath, "utf8");
+    const verifiedAtRow = baselineText
+      .split("\n")
+      .find((line) => line.includes("| Verified at |"));
+
+    // Non-vacuity: a missing/renamed row must fail here rather than make the match trivially true.
+    expect(typeof verifiedAtRow).toBe("string");
+    expect(verifiedAtRow).toContain(EXPECTED_SOURCE_COMMIT);
   });
 
   it("the fixture bytes are non-trivial and a corrupted file would not compare equal (the instrument fires)", () => {
