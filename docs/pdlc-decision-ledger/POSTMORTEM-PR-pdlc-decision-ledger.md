@@ -10,7 +10,17 @@
 | Date | 2026-08-29 |
 | Edition | **2** — supersedes the edition written for the v0.4 halt of the same phase; that halt's record is retained in §Iterations |
 
-RESOLVED: no
+RESOLVED: yes
+
+Resolution (2026-09-01, operator): all six routed findings landed in PLAN v0.9 (its changelog
+entry names each), and rounds 10–11 then approved with zero findings; the implementation shipped
+the corrected form (T-10a conjunct 3's symmetric-difference assertion is live in
+`decisionLedgerMain.test.js`, committed wave 4). The verification grep in Recommendation 3 now
+matches exactly once per retired phrase — both hits are the v0.9 changelog entry *quoting* the
+retired referents it removed, not live assertions; every task row, the DoD bullet, and T-11's
+closing pointer carry the corrected wording. This file was simply never flipped in the v0.9
+commit as instructed. Recommendations 4–6 (routed-locus diff gate and oracle strengthening)
+remain open as engine-side work and are tracked outside this feature.
 
 ## Phase
 
