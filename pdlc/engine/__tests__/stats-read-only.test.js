@@ -217,6 +217,58 @@ test("AT-21: `pdlc stats {feature} --json` leaves the tree unchanged and emits t
   );
 });
 
+// AT-21 (human-mode success leg). REQ-STATS-08 binds "any invocation of `pdlc stats`,
+// in either mode"; the snapshot above covers `--json` only, so a write reachable on the
+// human rendering path alone would not be seen (CR-v1 PM F-04).
+
+test("AT-21: `pdlc stats {feature}` in human mode leaves the tree unchanged and emits the report with exit 0", async () => {
+  const { main } = await import("../bin/cli.mjs");
+
+  const before = snapshotTree(REPO_ROOT);
+  const { stdout, stderr, exitCode } = await captureRun(() =>
+    main(["node", "pdlc", "stats", REAL_FEATURE, "--cwd", REPO_ROOT]),
+  );
+  const after = snapshotTree(REPO_ROOT);
+
+  assertSnapshotsEqual(before, after);
+
+  // The paired "the job was done" conjunct: a no-op command would fail this half.
+  assert.equal(exitCode, 0, stderr || stdout);
+  assert.ok(stdout.startsWith(`Feature: ${REAL_FEATURE}`), `unexpected report head: ${stdout}`);
+  for (const label of ["Review rounds", "DoD rounds", "Halts", "Byte ratio"]) {
+    assert.ok(stdout.includes(label), `human report is missing the ${label} metric:\n${stdout}`);
+  }
+});
+
+// AT-21 (fleet leg). The fleet invocation reads every feature directory under `docs/`
+// rather than one, so it is the widest read this command can perform — and the one the
+// snapshot pair most needs to cover (CR-v1 PM F-01/F-04).
+
+test("AT-21: `pdlc stats` with no feature argument (fleet) leaves the tree unchanged and emits the fleet report with exit 0", async () => {
+  const { main } = await import("../bin/cli.mjs");
+
+  const before = snapshotTree(REPO_ROOT);
+  const { stdout, stderr, exitCode } = await captureRun(() =>
+    main(["node", "pdlc", "stats", "--json", "--cwd", REPO_ROOT]),
+  );
+  const after = snapshotTree(REPO_ROOT);
+
+  assertSnapshotsEqual(before, after);
+
+  assert.equal(exitCode, 0, stderr || stdout);
+  const doc = JSON.parse(stdout);
+  // BR-23 — the fleet success document's exact top-level key set (TSPEC §5).
+  assert.deepEqual(
+    new Set(Object.keys(doc)),
+    new Set(["schemaVersion", "features", "unclassified"]),
+  );
+  // The real archive is read, not an empty roll-up: this repository's own features appear.
+  assert.ok(
+    Object.keys(doc.features).includes(REAL_FEATURE),
+    `the fleet document does not list ${REAL_FEATURE}`,
+  );
+});
+
 // ─── AT-22: failure legs — read-only still holds ───────────────────────────
 
 test("AT-22a: an unknown feature leaves the tree unchanged and refuses with exit 1", async () => {

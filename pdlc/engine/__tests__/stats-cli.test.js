@@ -367,3 +367,122 @@ describe("T-17: End-to-end: pdlc stats pdlc-loop-economics --json --cwd <repoRoo
     }
   });
 });
+
+// ─── AT-26/AT-27 fleet halves: the no-feature-argument invocation, driven
+//     through the SAME production caller (`main()` → `case "stats"` →
+//     `cmdStats` → real `statsIo()`/`statsParsers()`) as the single-feature
+//     legs above. CR-v1 PM F-01: `buildReport`'s fleet branch,
+//     `renderFleetHuman` and `renderJson`'s fleet arm were reachable only
+//     through `runStats` with an injected `fakeStatsIo`, so nothing stopped
+//     `cmdStats` from ceasing to forward a null feature. These legs assemble
+//     the operator-visible fleet artifact over a real temporary tree. ──────
+
+function makeFleetFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-stats-cli-fleet-"));
+  const docsDir = path.join(root, "docs");
+
+  // A healthy feature: one spec document plus one cross-review, so every
+  // metric is measurable rather than degenerate.
+  const healthyDir = path.join(docsDir, "alpha-feature");
+  fs.mkdirSync(healthyDir, { recursive: true });
+  fs.writeFileSync(path.join(healthyDir, "REQ-alpha-feature.md"), "# REQ\n");
+  fs.writeFileSync(
+    path.join(healthyDir, "CROSS-REVIEW-product-manager-REQ-v1.md"),
+    "# review\n",
+  );
+
+  // A feature whose directory cannot be listed: EC-21's per-feature catch-all
+  // turns it into a `{gap}` row without changing the fleet's exit code.
+  const brokenDir = path.join(docsDir, "beta-feature");
+  fs.mkdirSync(brokenDir, { recursive: true });
+  fs.writeFileSync(path.join(brokenDir, "REQ-beta-feature.md"), "# REQ\n");
+  fs.chmodSync(brokenDir, 0o000);
+
+  // BR-26: a leading-underscore directory outside NON_FEATURE_DIRS is
+  // unclassified, not a feature.
+  fs.mkdirSync(path.join(docsDir, "_odd-directory"), { recursive: true });
+
+  return { root, brokenDir };
+}
+
+function cleanupFleetFixture({ root, brokenDir }) {
+  fs.chmodSync(brokenDir, 0o755);
+  fs.rmSync(root, { recursive: true, force: true });
+}
+
+describe("T-17: AT-26/AT-27 (fleet halves): `pdlc stats --cwd <root>` with NO feature argument", () => {
+  test(
+    "human mode: the assembled fleet report carries the healthy row, the gap row with its reason, and the unclassified row, at exit 0",
+    { skip: isRoot },
+    async () => {
+      const fixture = makeFleetFixture();
+      try {
+        const { stdout, stderr, exitCode } = await captureRun(() =>
+          main(["node", "pdlc", "stats", "--cwd", fixture.root]),
+        );
+
+        assert.equal(exitCode, 0, stderr || stdout);
+        const lines = stdout.split("\n");
+        assert.equal(lines[0], "Fleet");
+        // The healthy row is a full metric row (BR-18's reductions), not a gap.
+        const healthyRow = lines.find((l) => l.includes("alpha-feature"));
+        assert.ok(healthyRow, `no alpha-feature row in:\n${stdout}`);
+        assert.match(healthyRow, /REQ=1/);
+        assert.match(healthyRow, /malformed=0/);
+        // The gap row names the reason, not just the feature (REQ-STATS-07).
+        const gapRow = lines.find((l) => l.includes("beta-feature"));
+        assert.ok(gapRow, `no beta-feature row in:\n${stdout}`);
+        assert.match(gapRow, /gap: /);
+        assert.ok(
+          gapRow.replace(/^\s*beta-feature\s+gap: /, "").length > 0,
+          `the gap row carries no reason text: ${JSON.stringify(gapRow)}`,
+        );
+        // The unclassified row is marked as such, never silently a feature.
+        assert.ok(
+          lines.includes("  _odd-directory  unclassified"),
+          `no unclassified row in:\n${stdout}`,
+        );
+      } finally {
+        cleanupFleetFixture(fixture);
+      }
+    },
+  );
+
+  test(
+    "--json mode: the fleet document's exact three-key top level, with the `gap` entry discriminant and the unclassified name outside `features`",
+    { skip: isRoot },
+    async () => {
+      const fixture = makeFleetFixture();
+      try {
+        const { stdout, stderr, exitCode } = await captureRun(() =>
+          main(["node", "pdlc", "stats", "--json", "--cwd", fixture.root]),
+        );
+
+        assert.equal(exitCode, 0, stderr || stdout);
+        let parsed;
+        assert.doesNotThrow(() => {
+          parsed = JSON.parse(stdout);
+        }, `stdout did not parse as JSON: ${JSON.stringify(stdout)}`);
+
+        // BR-23 — the fleet document's exact top-level key set.
+        assert.deepEqual(
+          new Set(Object.keys(parsed)),
+          new Set(["schemaVersion", "features", "unclassified"]),
+        );
+        assert.deepEqual(Object.keys(parsed.features).sort(), ["alpha-feature", "beta-feature"]);
+        // The entry discriminant: four metric keys, or exactly `{gap}`.
+        assert.deepEqual(
+          new Set(Object.keys(parsed.features["alpha-feature"])),
+          new Set(["reviewRounds", "dodRounds", "halts", "byteRatio"]),
+        );
+        assert.deepEqual(Object.keys(parsed.features["beta-feature"]), ["gap"]);
+        assert.equal(typeof parsed.features["beta-feature"].gap, "string");
+        assert.ok(parsed.features["beta-feature"].gap.length > 0);
+        // Unclassified names never enter `features`.
+        assert.deepEqual(parsed.unclassified, ["_odd-directory"]);
+      } finally {
+        cleanupFleetFixture(fixture);
+      }
+    },
+  );
+});
