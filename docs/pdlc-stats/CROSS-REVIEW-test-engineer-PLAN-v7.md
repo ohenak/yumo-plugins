@@ -63,3 +63,40 @@ or a Definition-of-Done checkbox from that column — I grepped §Definition of 
 §Verification for a `Status` dependency and there is none — so declaring it unmaintained removes an
 authority claim without removing an obligation. Given T-02…T-20 have landed on this branch while
 most rows still read `⬚`, the declaration makes the document honest rather than making it weaker.
+
+## Dependencies
+
+Upstream re-grounded against current bytes before reading the delta, per `DEC-ERR-03`. Measured at
+HEAD:
+
+| Upstream | HEAD `sha256` | Dispatch pin | Verdict |
+|---|---|---|---|
+| REQ | `f75c348f…` | `f75c348f…` | same bytes |
+| FSPEC | `a493133f…` | (unpinned) | v1.8, matches the PLAN's own re-grounding note |
+| TSPEC | `f32d9cb5…` | (unpinned) | v1.8 |
+| DECISIONS | `ca3f7219…` | (unpinned) | unmoved |
+
+TSPEC moved v1.7 → v1.8 since the round-4 revision. I diffed `bf496d9aa..HEAD` over
+`TSPEC-pdlc-stats.md`: the move is confined to the changelog, §4.3's contested paragraph, BR-16's
+version pin and §8.3. **None of the sections T-10 leans on moved** — §2.4 (`lstat`, not `stat`),
+§2.5 (the parser bundle and its wiring oracle) and §6.4's seven-oracle table are byte-identical
+across the move, so the delta's justification is measured against live upstream text.
+
+Two second-order checks on the move, because the PLAN carries claims about it:
+
+- **§8.3's count word.** TSPEC §8.3 at HEAD opens "**One remains open** — BR-26/EC-10's
+  unclassified predicate". The PLAN's residual-risk row calls BR-26/EC-10 "the **only** erratum
+  TSPEC §8.3 still carries open" and its companion row marks the REQ-STATS-06-versus-BR-16
+  disagreement discharged, sourced to "§8.3 (second bullet at TSPEC v1.7, removed at v1.8)". Both
+  agree with upstream's current bytes, including the version at which the bullet went away.
+- **T-04's AT-17 fourth leg.** TSPEC §4.3 now states the settled BR-16 reading — an unrecognised
+  basename contributes no process bytes and counts as no file of its family remaining. T-04 names
+  that leg, records it discharged at REQ v1.7 / absorbed at FSPEC v1.8 in BR-16's favour, and says
+  no expected value moves. Faithful; no re-stamp owed and none claimed.
+
+The `lstat`-not-`stat` conjunct's own upstream anchor, TSPEC §3.1's
+`fileSize(absPath: string): number; // lstat().size — never follows a link (§2.4)`, is present at
+HEAD verbatim, so T-10's parenthetical citation still resolves.
+
+No ordering edge, integration point or prior-phase baseline in §Dependencies was touched by the
+delta.
