@@ -192,9 +192,9 @@ lives in the FSPEC's §6 traceability table and PROPERTIES §7; roll-up below.
 
 ## pdlc-decision-ledger (2026-08-28)
 
-Upstream: `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`
+Upstream: `docs/completed/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`
 (proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move
-M4, §3/§4(c) R3-2). FSPEC: `docs/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md`
+M4, §3/§4(c) R3-2). FSPEC: `docs/completed/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md`
 (FSPEC-DECLEDGER-01), authored against REQ v1.7 and Baseline
 `docs/_constraints/pdlc-decision-corpus-baseline.md` v1.1.
 

@@ -126,7 +126,7 @@ that do carry that posture.
 
 ## 3. Non-Goals
 
-**NG-1** The decision ledger (proposal Move M4, `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`)
+**NG-1** The decision ledger (proposal Move M4, `docs/completed/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`)
 is a separate, already-in-flight REQ and is not part of this bundle; this REQ does not modify
 or depend on its outcome.
 
