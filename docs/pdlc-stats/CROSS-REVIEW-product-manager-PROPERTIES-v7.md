@@ -121,7 +121,52 @@ erratum touched neither.
 
 ## Oracles
 
+PROPERTIES' §Oracles material — the kill map and the level assignments — is unaffected by both
+upstream moves, and I verified this rather than assuming it.
+
+**The kill map's mutants are anchored on TSPEC §6.6, which v1.8 did not touch.** PROP-RR-03's
+real-path literals still read `6` for `docs/completed/pdlc-advisory-wave-gate/` and `13` for
+`docs/completed/pdlc-headless-engine/`, with the mutants at `7` and `14`. TSPEC v1.8's edits are
+confined to §0's changelog, §4.3 and §8.3; §6.6 is byte-identical, so no expected kill value moved.
+
+**PROP-RATIO-09's zero-denominator oracle keeps its meaning under the settled rule.** It traces
+`BR-16, EC-13, AT-17` and TSPEC §6.6. The settled reading makes the out-of-catalogue-only directory
+a genuine zero-denominator case, which is the case PROP-RATIO-09 already asserts. Had REQ v1.6's
+withdrawn "survivor" reading won, this oracle would have needed a new expected value; it did not
+win, and PROPERTIES was already written to the side that did.
+
+**Level assignments are untouched by the PLAN move.** PROP-RATIO-05 is `process`-level and lands on
+T-10; PROP-RATIO-11 is `process`-level and lands on T-09; PROP-RATIO-04 is `integration-fs` over
+`realStatsIo()` and lands on T-18. The erratum moved no task's ownership, so the three-way division
+of symbolic-link evidence — helper-level behavioural, shipped-seam behavioural, source-level
+structural — stands exactly as approved in v6.
+
+The one qualification is the F-01 divergence above: the *input* PROP-RATIO-05's oracle reads is now
+described differently by PROPERTIES and by PLAN. The oracle's level, ownership, falsifier and
+pairing with PROP-RATIO-04 are all unaffected.
+
 ## Fixtures
+
+No fixture is affected by either move, and the two that could have been are the ones I checked.
+
+**`realStatsIo()` still matches the shipped seam.** §Fixtures describes it as "the same four calls
+`bin/cli.mjs`'s `statsIo()` makes — `readdirSync(…, {withFileTypes:true})`, `lstatSync(…).size`,
+`readFileSync`, `existsSync`", and says PROP-RATIO-05's structural conjunct pins the construction-site
+call set "including `lstatSync`, never `statSync`" so helper and shipped seam cannot diverge. T-17's
+landing is exactly the event that could have broken this, and it did not: `statsIo().fileSize` at
+HEAD is `nodeFs.lstatSync(absPath).size`, and the call-set-equivalence conjunct at
+`pdlc/engine/__tests__/stats-cli-structure.test.js:546-551` asserts the shipped and double call sets
+sort equal with `statSync` absent from both. The fixture description is still true of the code.
+
+**`F-CLI-SYMLINK` is unchanged in purpose.** PROP-RATIO-11 drives it end-to-end through
+`main(["node","pdlc","stats",{feature},"--json","--cwd",{tempRoot}])`. The PLAN erratum did not touch
+T-09, which owns it, and the TSPEC erratum did not touch §2.4, which specifies the behaviour.
+
+**`F-EXCLUDED-ONLY` and the out-of-catalogue fixtures survive the TSPEC settlement.** These are the
+fixtures the withdrawn "survivor" reading would have re-valued. Under the settled BR-16 rule they
+keep the expected values PROPERTIES already records — the out-of-catalogue file listed, sizing
+nothing, and the directory holding only such files reporting `harvested`. No fixture needs a new
+expectation and none needs to be added.
 
 ## Delta-Confirmation Findings
 
