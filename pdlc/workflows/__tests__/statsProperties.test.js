@@ -234,6 +234,23 @@ describe("T-19: PROP-3 (order independence over a generated permutation, TSPEC �
 
 // --- PROP-PBT-04: bounded file-size generator keeps the ratio quotient finite ------------
 
+// BR-14's two byte sets, transcribed from the FSPEC rather than imported from the module
+// under test. Spec side: the six document types' `{DOC-TYPE}-{feature}.md`. Process side:
+// `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, `POSTMORTEM-{phase}-{feature}.md`,
+// `CODE_REVIEW-{feature}-v{N}.md`. Everything else contributes to neither side.
+const SPEC_BASENAMES_LITERAL = new Set(
+  ["REQ", "FSPEC", "TSPEC", "PLAN", "PROPERTIES", "DECISIONS"].map((t) => `${t}-${FEATURE}.md`),
+);
+
+function isProcessBasenameLiteral(name, feature) {
+  const crossReview = new RegExp(
+    `^CROSS-REVIEW-(${ROLES.join("|")})-(REQ|FSPEC|TSPEC|PLAN|PROPERTIES|DECISIONS)(-v[1-9][0-9]*)?\\.md$`,
+  );
+  const postMortem = new RegExp(`^POSTMORTEM-[^-]+-${feature}\\.md$`);
+  const dodReview = new RegExp(`^CODE_REVIEW-${feature}-v[0-9]+\\.md$`);
+  return crossReview.test(name) || postMortem.test(name) || dodReview.test(name);
+}
+
 describe("T-19: PROP-PBT-04 (bounded file-size generator, TSPEC §6.6)", () => {
   it("draws bounded file sizes and the byte-ratio quotient is always finite, never Infinity/NaN", () => {
     const basenameAndSizeArb = fc.tuple(
@@ -255,13 +272,31 @@ describe("T-19: PROP-PBT-04 (bounded file-size generator, TSPEC §6.6)", () => {
 
           const { specBytes, processBytes, ratio, state } = result.byteRatio;
 
+          // Independent expectation, computed from the sizes the generator itself chose and
+          // BR-14's transcribed basename grammars — never from `result.byteRatio`, and never
+          // by re-running `round2`. A mutation to which basenames land on which side moves
+          // the expected totals but not the reported ones, so it goes red here.
+          let expectedSpecBytes = 0;
+          let expectedProcessBytes = 0;
+          for (const [name, size] of pairs) {
+            if (SPEC_BASENAMES_LITERAL.has(name)) expectedSpecBytes += size;
+            if (isProcessBasenameLiteral(name, FEATURE)) expectedProcessBytes += size;
+          }
+          expect(specBytes).toBe(expectedSpecBytes);
+          expect(processBytes).toBe(expectedProcessBytes);
+
           // Bounded-generator conjunct: both byte totals stay finite by construction, so a
           // quotient computed from them can never itself be an arithmetic artifact.
           fc.pre(Number.isFinite(specBytes) && Number.isFinite(processBytes));
 
           if (state === "measured") {
             expect(Number.isFinite(ratio)).toBe(true);
-            expect(ratio).toBe(Math.round((processBytes / specBytes) * 100) / 100);
+            // BR-15 as stated — process bytes over spec bytes, to two decimal places —
+            // rather than a copy of the implementation's rounding expression.
+            expect(Math.abs(ratio - expectedProcessBytes / expectedSpecBytes)).toBeLessThanOrEqual(
+              0.005,
+            );
+            expect(Number(ratio.toFixed(2))).toBe(ratio);
           } else {
             expect(ratio).toBeNull();
           }
