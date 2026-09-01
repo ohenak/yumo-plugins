@@ -173,6 +173,13 @@ which walk everything under `root` except `.git/` and `node_modules/`. **To reso
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-02: which locus do you want to be the tested one — `dispatchAndVerify` (my reading of §2.6, and what ships) or `reviewerPrompt` (what TSPEC §4.5 and PROP-WIRE-08 say)? I have routed the document half as errata; the code half is F-02. |
+| Q-02 | The delta's branch coverage is not separately gated: `package.json`'s stage-2 `--per-file --branches 85` measures `orchestrate-dev.js` as one ~15k-line module, so this feature's ~530 new lines cannot fall below the floor visibly (only `check-wave-resume-delta-coverage.mjs` does a delta check, and it is scoped to that other feature). F-02's dead branch is direct evidence that uncovered new code passes the gate. Is a decision-ledger delta-coverage check in scope here, or is that a follow-up? |
+| Q-03 | `selectDecisions` accepts and ignores `feature` (`orchestrate-dev.js:2703`) while every caller passes it, and it accepts entries keyed either `path` or `sourcePath` (`entryPathOf`, `:2699`). Both are documented, but a dual-keyed input shape is a place a caller typo silently degrades to `undefined`. Would you accept a guard test asserting an entry with neither key throws rather than yielding a `undefined`-pathed record? |
+
+
 ## Positive Observations
 
 ## Recommendation
