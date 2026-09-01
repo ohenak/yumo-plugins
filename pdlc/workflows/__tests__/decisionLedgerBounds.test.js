@@ -42,6 +42,13 @@
  *   | PROP-BND-03 (no truncation)        | oversized line truncated to remaining budget instead of dropped whole | RED — "Property failed after 19 tests", counterexample [0,1,1,68], shrunk 6x |
  *   | PROP-BND-04 (prefix under §3.6)    | loop drops from the front (project-level first) instead of the back | RED — "Property failed after 4 tests", counterexample [0,2,1,85], shrunk 12x |
  *
+ * PROP-BND-04 was reconciled with FSPEC E-8 in the Phase CR round (finding
+ * F-01): a line that cannot fit `maxBytes` by itself is omitted line-locally
+ * wherever it sits, so survivors are a prefix of `fullOrder` *with the
+ * oversized-alone lines removed*, not of `fullOrder` itself. The conjunct below
+ * still reds under the front-drop mutation, because a front drop of a line that
+ * would fit is not justified by E-8.
+ *
  * Each row's mutation was applied in isolation, observed to red the property,
  * then reverted before the next row was exercised; the final (unmutated)
  * candidate state is what this file's model formatter below transcribes.
@@ -97,7 +104,8 @@ const boundsArb = fc.record({
  * -level records in enumeration order, then feature-level records in
  * enumeration order (TSPEC §3.6: drops remove from the tail of exactly this
  * concatenation, feature-level before project-level, reverse-enumeration
- * within an origin — so survivors are always a front-anchored prefix of it).
+ * within an origin — so survivors are a front-anchored prefix of it, except
+ * for lines FSPEC E-8 omits line-locally because they cannot fit alone).
  */
 function buildCase({ nProject, nFeature, statements }) {
   const projectRecords = [];
@@ -166,12 +174,34 @@ describe("T-16: BND — bounds invariant as a property (O-8, PROP-BND-01…04, 0
           if (!block.includes(expectedLine)) return false;
         }
 
-        // PROP-BND-04: the rendered set is a prefix of the unbounded set
-        // under §3.6's omission order (project-level enum order, then
-        // feature-level enum order; drops remove from the tail).
-        const expectedPrefixIds = fullOrder.slice(0, result.selected.length).map((r) => r.id);
+        // PROP-BND-04 (as reconciled with FSPEC E-8 — CR F-01): survivors are
+        // order-preserving under §3.6's omission order, and a record dropped
+        // from AHEAD of a survivor is dropped only because its own line cannot
+        // fit `maxBytes` by itself (E-8's "its omission does not abort the
+        // rest"). Everything else drops from the tail, so the survivors are a
+        // prefix of `fullOrder` with the oversized-alone lines removed.
         const actualIds = result.selected.map((r) => r.id);
-        if (JSON.stringify(actualIds) !== JSON.stringify(expectedPrefixIds)) return false;
+        const fullIds = fullOrder.map((r) => r.id);
+        const positions = actualIds.map((id) => fullIds.indexOf(id));
+        if (positions.some((p) => p < 0)) return false;
+        for (let i = 1; i < positions.length; i += 1) {
+          if (positions[i] <= positions[i - 1]) return false;
+        }
+        // Framing bytes, derived from the observed block and the model's own
+        // line formatter (never from a renderer call on the expectation —
+        // PROP-BND-07): block = framing + lines joined by "\n".
+        const lineBytes = (record) =>
+          Buffer.byteLength(modelFormatLine(fullOrder.find((r) => r.id === record.id)), "utf8");
+        const linesBytes =
+          result.selected.reduce((acc, r) => acc + lineBytes(r), 0) +
+          Math.max(0, result.selected.length - 1);
+        const framingBytes = bytes - linesBytes;
+        const lastSurvivor = positions[positions.length - 1];
+        for (let i = 0; i < lastSurvivor; i += 1) {
+          if (positions.includes(i)) continue;
+          // Dropped from ahead of a survivor: only E-8's line-local case allows it.
+          if (framingBytes + lineBytes(fullOrder[i]) <= thresholds.maxBytes) return false;
+        }
 
         // PROP-BND-12: maxBytes bounds the index block alone, not a larger
         // surrounding prompt — varying the surrounding prompt's size must
@@ -244,28 +274,56 @@ describe("T-16: AT-15 — a single oversized line is omitted whole, no fragment,
   test("one line alone exceeding maxBytes is absent in full; the other lines still render", async () => {
     const { selectDecisions, renderDecisionLedgerBlock } = await import(DEV_MODULE_PATH);
 
-    const oversizedStatement = "y".repeat(500);
+    const oversizedStatement = "y".repeat(5000);
     const { entries, fullOrder } = buildCase({
       nProject: 2,
       nFeature: 1,
       statements: ["short-a", "short-b", oversizedStatement],
     });
     const oversizedRecord = fullOrder.find((r) => r.statement === oversizedStatement);
-    const oversizedLine = modelFormatLine(oversizedRecord);
-    // Tight enough to exclude the oversized line entirely, generous enough
-    // that the two short lines fit together.
-    const thresholds = { maxEntries: 100, maxBytes: Buffer.byteLength(oversizedLine, "utf8") - 1 };
+    const shortRecords = fullOrder.filter((r) => r.statement !== oversizedStatement);
+    // Tight enough to exclude the oversized line entirely, generous enough that
+    // the two short lines fit together WITH the framing charged (D-5): the
+    // budget must clear framing + both short lines, or "the remaining lines
+    // render" would be asserted where it cannot hold (CR F-01).
+    const thresholds = { maxEntries: 100, maxBytes: 2000 };
 
     const result = selectDecisions({ entries, feature: FEATURE, thresholds });
     const block = renderDecisionLedgerBlock({ selected: result.selected });
 
-    expect(result.selected.map((r) => r.id)).not.toContain(oversizedRecord.id);
+    expect(result.selected.map((r) => r.id)).toEqual(shortRecords.map((r) => r.id));
     expect(block).not.toContain(oversizedRecord.id);
     // No fragment of the oversized statement present.
     expect(block.includes(oversizedStatement.slice(0, 10))).toBe(false);
-    for (const record of result.selected) {
+    for (const record of shortRecords) {
       expect(block).toContain(modelFormatLine(record));
     }
+  });
+
+  test("the oversized line is FIRST in the order: it alone is omitted, the lines behind it render (E-8, CR F-01)", async () => {
+    const { selectDecisions, renderDecisionLedgerBlock } = await import(DEV_MODULE_PATH);
+
+    const oversizedStatement = "w".repeat(5000);
+    const { entries, fullOrder } = buildCase({
+      nProject: 3,
+      nFeature: 0,
+      statements: [oversizedStatement, "short-a", "short-b"],
+    });
+    const oversizedRecord = fullOrder.find((r) => r.statement === oversizedStatement);
+    const shortRecords = fullOrder.filter((r) => r.statement !== oversizedStatement);
+    expect(fullOrder[0].id).toBe(oversizedRecord.id); // head position, not tail
+    const thresholds = { maxEntries: 100, maxBytes: 2000 };
+
+    const result = selectDecisions({ entries, feature: FEATURE, thresholds });
+    const block = renderDecisionLedgerBlock({ selected: result.selected });
+
+    expect(result.selected.map((r) => r.id)).toEqual(shortRecords.map((r) => r.id));
+    expect(block).not.toContain(oversizedRecord.id);
+    expect(block.includes(oversizedStatement.slice(0, 10))).toBe(false);
+    for (const record of shortRecords) {
+      expect(block).toContain(modelFormatLine(record));
+    }
+    expect(result.omitted).toEqual([{ id: oversizedRecord.id, reason: "RSN-BYTES" }]);
   });
 
   test("where the oversized line is the only line, the block is exactly \"\"", async () => {

@@ -2673,7 +2673,10 @@ function decisionLedgerFeatureDirs(feature) {
  * §3.4's project-level-wins precedence keyed on origin (never on path order), then §3.6's drop
  * loop: feature-level before project-level, reverse enumeration order within an origin —
  * equivalently, drop from the tail of the `[...projectRecords, ...featureRecords]` concatenation
- * one whole line at a time, so the survivors are always a front-anchored prefix of it.
+ * one whole line at a time. The survivors are a front-anchored prefix of that concatenation
+ * except where FSPEC E-8 forbids it: a line that cannot fit `maxBytes` by itself is omitted
+ * line-locally first, wherever it sits, because "its omission does not abort the rest" —
+ * the lines behind a head-position oversized record still render if they fit (CR F-01).
  * `renderedBytes` is obtained by calling the block renderer on the candidate set at each
  * step (`DEC-DECLEDGER-11`) — this step never concatenates a line itself. Framing is
  * charged to `maxBytes` (D-5) because the renderer produces it as part of the same string.
@@ -2719,9 +2722,29 @@ export function selectDecisions({ entries, thresholds }) {
 
   const fullOrder = [...projectById.values(), ...featureById.values()];
 
-  // §3.6: drop loop, whole line at a time, from the tail of `fullOrder`.
-  let candidates = fullOrder;
+  // FSPEC E-8/BR-13: a line that cannot fit `maxBytes` *by itself* is omitted line-locally,
+  // wherever it sits in the order — its omission must not abort the rest, so it is taken out
+  // before the tail drop rather than being reached through every line behind it (CR F-01).
+  // "By itself" is measured the way D-5 charges bytes: the rendered block containing that line
+  // alone, framing included. This pass can only fire when the full block is already over budget
+  // (block([r]) ≤ block(all) for every r), so a corpus that fits is untouched by it.
   const omitted = [];
+  let candidates = fullOrder;
+  if (Buffer.byteLength(renderDecisionLedgerBlock({ selected: fullOrder }), "utf8") >
+      thresholds.maxBytes) {
+    const fitsAlone = [];
+    for (const record of fullOrder) {
+      const aloneBytes = Buffer.byteLength(
+        renderDecisionLedgerBlock({ selected: [record] }),
+        "utf8",
+      );
+      if (aloneBytes > thresholds.maxBytes) omitted.push({ id: record.id, reason: "RSN-BYTES" });
+      else fitsAlone.push(record);
+    }
+    candidates = fitsAlone;
+  }
+
+  // §3.6: drop loop, whole line at a time, from the tail of the surviving order.
   let block = renderDecisionLedgerBlock({ selected: candidates });
   let renderedBytes = Buffer.byteLength(block, "utf8");
 
