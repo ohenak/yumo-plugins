@@ -284,9 +284,13 @@ describe("T-16: AT-27 — an unreadable feature directory gaps the fleet (fleet 
 
 describe("T-16: AT-27 — the eight root-failure runs ({docs root absent, unreadable} × {single-feature, fleet} × {human, json})", () => {
   const rootScenarios = [
-    { label: "absent", buildIo: () => fakeStatsIo({}) },
+    // `clause` is AT-27's positive condition conjunct: each human-mode message must
+    // carry the clause matching its own condition, so swapping the two branch bodies
+    // in `docsRootStatus` fails rather than merely permuting two non-identical strings.
+    { label: "absent", clause: /docs root not found:/, buildIo: () => fakeStatsIo({}) },
     {
       label: "unreadable",
+      clause: /docs root unreadable:/,
       buildIo: () =>
         fakeStatsIo(
           { "/repo/docs": { dirs: [], files: [] } },
@@ -332,6 +336,10 @@ describe("T-16: AT-27 — the eight root-failure runs ({docs root absent, unread
           } else {
             expect(outcome.stdout).toBe("");
             expect(outcome.stderr).toEqual(expect.stringContaining("/repo/docs"));
+            // AT-27 / PROP-ERR-03: the positive condition conjunct, and the human-mode
+            // half of "no message is EC-01's not-found message".
+            expect(outcome.stderr).toMatch(root.clause);
+            expect(outcome.stderr).not.toMatch(/feature not found:/);
           }
         });
       }

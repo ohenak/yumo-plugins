@@ -362,16 +362,78 @@ describe("T-15: renderHuman / renderJson over hand-built StatsReport values", ()
       const human = renderHuman(report);
       const json = renderJson(report);
 
+      // The human-side conjuncts are whole rendered lines transcribed from BR-17's
+      // layout, not substrings: a substring like "2" is already satisfied by an
+      // unrelated byte total, so a deleted or wrong-valued row would survive.
+      const humanLines = human.split("\n");
+
       // DoD rounds: shown in human, present in JSON, same value.
-      expect(human).toEqual(expect.stringContaining("2"));
+      expect(humanLines).toEqual(expect.arrayContaining(["DoD rounds      2"]));
       expect(json.dodRounds.rounds).toBe(2);
       // Halts: phase + resolution shown, and recoverable literally from JSON.
-      expect(human).toEqual(expect.stringContaining("D"));
-      expect(human).toEqual(expect.stringContaining("resolved"));
+      expect(humanLines).toEqual(expect.arrayContaining(["Halts", "  D   resolved"]));
       expect(json.halts).toEqual([{ phase: "D", resolution: "resolved" }]);
       // Byte ratio: the human two-decimal rendering matches the JSON number exactly (BR-15).
-      expect(human).toEqual(expect.stringContaining("1.42"));
+      expect(humanLines).toEqual(
+        expect.arrayContaining(["Byte ratio      1.42  (process 123456 B / spec 87000 B)"]),
+      );
       expect(json.byteRatio.ratio).toBe(1.42);
+    });
+
+    it("single-feature: the human metric set and the JSON top-level key set (minus schemaVersion) are set-equal (REQ-STATS-02, R-5)", async () => {
+      const { renderHuman, renderJson } = await import("../lib/stats.mjs");
+      // REQ-STATS-01's four metrics: the human block label as BR-17 prints it,
+      // transcribed literally, paired with the JSON key BR-21 names for it.
+      const METRIC_LABEL_TO_JSON_KEY = {
+        "Review rounds": "reviewRounds",
+        "DoD rounds": "dodRounds",
+        Halts: "halts",
+        "Byte ratio": "byteRatio",
+      };
+      const report = buildSingleReport({
+        dodRounds: { state: "measured", rounds: 2 },
+        halts: [{ phase: "D", resolution: "resolved" }],
+        byteRatio: { state: "measured", ratio: 1.42, processBytes: 123456, specBytes: 87000 },
+      });
+
+      const humanLines = renderHuman(report).split("\n");
+      const json = renderJson(report);
+
+      // Present in human = a line that begins with the label (a block heading or a
+      // labelled row), so a dropped metric leaves the set on the human side.
+      const humanMetricKeys = Object.entries(METRIC_LABEL_TO_JSON_KEY)
+        .filter(([label]) => humanLines.some((line) => line.startsWith(label)))
+        .map(([, key]) => key);
+      const jsonMetricKeys = Object.keys(json).filter((k) => k !== "schemaVersion");
+
+      // Set-equality in both directions: a metric printed in one mode only goes red.
+      expect(new Set(humanMetricKeys)).toEqual(new Set(jsonMetricKeys));
+      expect(humanMetricKeys.length).toBe(Object.keys(METRIC_LABEL_TO_JSON_KEY).length);
+    });
+
+    it("AT-06 / EC-05: the single-feature human report lists malformed basenames verbatim, and omits the row when the list is empty (BR-17)", async () => {
+      const { renderHuman } = await import("../lib/stats.mjs");
+      const withMalformed = buildSingleReport({
+        reviewRounds: {
+          byDocType: buildByDocType({}),
+          malformed: ["CROSS-REVIEW-pm-REQ-v01.md", "CROSS-REVIEW-pm-FSPEC-v01.md"],
+        },
+      });
+      const withoutMalformed = buildSingleReport({
+        reviewRounds: { byDocType: buildByDocType({}), malformed: [] },
+      });
+
+      const human = renderHuman(withMalformed).split("\n");
+      const emptyHuman = renderHuman(withoutMalformed);
+
+      // EC-05: the basename itself is named, in the single-feature human surface.
+      expect(human).toEqual(
+        expect.arrayContaining([
+          "  malformed: CROSS-REVIEW-pm-REQ-v01.md, CROSS-REVIEW-pm-FSPEC-v01.md",
+        ]),
+      );
+      // The `> 0` guard's other side: no row at all when nothing is malformed.
+      expect(emptyHuman).not.toEqual(expect.stringContaining("malformed"));
     });
 
     it("fleet: malformed renders as a count (human) vs a list (JSON); halts render as '{n} ({r} resolved)' (human) vs per-phase entries (JSON)", async () => {
@@ -383,9 +445,12 @@ describe("T-15: renderHuman / renderJson over hand-built StatsReport values", ()
           byDocType: buildByDocType({}),
           malformed: ["CROSS-REVIEW-pm-REQ-v01.md", "CROSS-REVIEW-pm-FSPEC-v01.md"],
         },
+        // Three halts against two malformed basenames: the counts differ, so the
+        // malformed conjunct can never be aliased by the halts cell (or vice versa).
         halts: [
           { phase: "D", resolution: "resolved" },
           { phase: "F", resolution: "open" },
+          { phase: "PR", resolution: "open" },
         ],
       });
       const report = { kind: "fleet", results: [featureStats], unclassified: [] };
@@ -395,9 +460,11 @@ describe("T-15: renderHuman / renderJson over hand-built StatsReport values", ()
 
       // D-7's two reductions, and only those two: malformed as a count, not the basenames.
       expect(human).not.toEqual(expect.stringContaining("CROSS-REVIEW-pm-REQ-v01.md"));
-      expect(human).toEqual(expect.stringContaining("2"));
-      // halts as "{n} ({r} resolved)" — two halts, one resolved.
-      expect(human).toEqual(expect.stringContaining("2 (1 resolved)"));
+      // The rendered cell, not a loose substring: "malformed=2" cannot be satisfied
+      // by any other cell on the row.
+      expect(human).toEqual(expect.stringContaining("malformed=2"));
+      // halts as "{n} ({r} resolved)" — three halts, one resolved.
+      expect(human).toEqual(expect.stringContaining("Halts=3 (1 resolved)"));
 
       // Every remaining field is recoverable from the JSON entry, in full.
       expect(json.features["feature-a"].reviewRounds.malformed).toEqual([
@@ -407,6 +474,7 @@ describe("T-15: renderHuman / renderJson over hand-built StatsReport values", ()
       expect(json.features["feature-a"].halts).toEqual([
         { phase: "D", resolution: "resolved" },
         { phase: "F", resolution: "open" },
+        { phase: "PR", resolution: "open" },
       ]);
     });
 
