@@ -148,7 +148,34 @@ that claim is asserted by exactly the suite that flaked.
 
 ## Carried-forward upstream items (routed as errata, not findings)
 
+These are defects of documents this implementation derives from, not of the implementation. Per the
+review brief they are not folded into my verdict; each is re-emitted as an `ERRATUM:` line in my
+dispatch message. All five were already raised in v1 (or by the TE round) and none has landed —
+`git diff 93a6d0ea9..HEAD -- docs/pdlc-decision-ledger/` shows no change to TSPEC, PROPERTIES or
+FSPEC. The code is right in every case; the specs describe the pre-CR shape.
+
+| Doc | Locus | Says | Ships |
+|-----|-------|------|-------|
+| TSPEC | §3.6 / §7.5 | survivors are a front-anchored **prefix** of `[...project, ...feature]` | E-8 omission is line-local, so a head-position oversized line is removed while its successors render (`orchestrate-dev.js:2734-2753`) |
+| TSPEC | §4.5 (`TSPEC:399`, `:473-474`, `:1002`) | `reviewerPrompt` **gains one parameter**, `ledgerBlock`, rendered as `"\n" + ledgerBlock` | the parameter was removed (`fa83831a3`); the block is `dispatchAndVerify`'s own trailing argument, appended at `orchestrate-dev.js:11610` |
+| PROPERTIES | PROP-BND-04 (`PROPERTIES:265`) | prefix conjunct: "the rendered set is a prefix of the unbounded set" | order-preserving with oversized-alone lines removed (`decisionLedgerBounds.test.js:177-204`) |
+| PROPERTIES | PROP-WIRE-08 (`PROPERTIES:344`) | appended last "on both return paths `reviewerPrompt` already has" | appended last in `dispatchAndVerify`'s delivered prompt, after the pacing/opener suffix and the learnings block |
+| FSPEC | BR-9 (`FSPEC:242-244`) | index derived "once per **review dispatch**", "no index reused across dispatches" | read once per **round**, shared by that round's two reviewer dispatches — the approved TSPEC §4.5 design (`orchestrate-dev.js:9991`, `:10024`, `:10032`) |
+
+The first three matter most: TSPEC §3.6/§7.5 and PROP-BND-04 currently state a property the shipped
+code deliberately violates in order to satisfy FSPEC E-8 — the fix I asked for in v1. Left unedited,
+a future reviewer reading the approved specs will score correct code non-conforming, or "restore"
+the prefix property and reintroduce the v1 High defect. The reconciliation the code took is the one
+I recommended (E-8 wins; the prefix property is restated as order-preservation-minus-oversized), so
+these are wording repairs, not re-openings of a decision.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried, still open)* `omitted[]` now carries a mix of line-local `RSN-BYTES` omissions and tail-drop omissions, in that order — but no run-report surface names it (`orchestrate-dev.js:2874`). An operator whose long decision is silently absent from the index has nothing to read. Deliberate for v1, or worth one line on the report? |
+| Q-02 | *(carried)* `gatherDecisionCorpus` resolves the feature directory by first hit across `docs/{feature}/` → `docs/completed/{feature}/` → `docs/discarded/{feature}/`. For a feature mid-move, only the first contributes. Product intent, or should the union render? |
+| Q-03 | With the line-local pre-pass in place, a decision whose statement is long enough to blow `maxBytes` alone is now permanently un-indexable at any corpus size — previously it could at least appear when it was the only record. That is the right trade (E-8 says so), but is there a product expectation that authors be told their DECISIONS statement is too long to be indexed? Today the signal is invisible on both sides. |
 
 ## Positive Observations
 
