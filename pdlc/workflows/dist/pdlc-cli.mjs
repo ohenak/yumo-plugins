@@ -11914,13 +11914,16 @@ function reviewerPrompt(
   reviewer,
   docType,
   frozen = false,
-  findingGrammar = false,
-  // pdlc-decision-ledger TSPEC §4.5 (PLAN T-18). Rendered here, decided by `reviewLoop`'s single
-  // per-round `await _injectDecisionLedger({ feature })` immediately before the two `reviewerPrompt`
-  // calls sharing this round — the prompt builder never re-derives the block, so both reviewers of
-  // a round receive byte-identical bytes. Appended LAST on both return paths, after `oraclePart` and
-  // `findingGrammarPart` (§2.6).
-  ledgerBlock = ""
+  findingGrammar = false
+  // pdlc-decision-ledger: this builder deliberately takes NO ledger parameter. `reviewerPrompt`'s
+  // return becomes `dispatchAndVerify`'s `basePrompt`, and that wrapper appends its own
+  // pacing-contract/opener suffix after `basePrompt` for every dispatch kind — a block appended
+  // here would sit BEFORE that suffix and so would not be last in the delivered prompt (§2.6's
+  // "last"). The block is therefore threaded as `dispatchAndVerify`'s own trailing `ledgerBlock`
+  // argument, appended after that suffix (see `runWrapped`/`wrapped` and the per-round
+  // `_injectDecisionLedger` read in `reviewLoop`). A `ledgerBlock` parameter here was unreachable
+  // — no call site ever passed a ninth argument — and was removed in the Phase CR round (TE F-02);
+  // TSPEC §4.5 and PROP-WIRE-08 still name this builder as the locus and are routed as errata.
 ) {
   // DEC-FRZ-01. Rendered here, decided by `freezeInForce` at the call site: the
   // prompt builder never re-derives the trigger, so there is exactly one place
@@ -11961,13 +11964,8 @@ function reviewerPrompt(
     `Do not derive a different file type from the artifact under review — this phase's round ` +
     `history is keyed by that exact name, and a file outside it is not counted.`;
 
-  // pdlc-decision-ledger TSPEC §4.5 (PLAN T-18). Appended LAST, verbatim: the block's own renderer
-  // already opens a non-empty block with "\n\n" (its own docstring, "Order-preserving"), so no
-  // extra separator is added here — doing so would double the blank line the renderer itself frames.
-  const ledgerPart = ledgerBlock || "";
-
   if (iteration < 2)
-    return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}${findingGrammarPart}${ledgerPart}`;
+    return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}${findingGrammarPart}`;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
@@ -11990,8 +11988,7 @@ function reviewerPrompt(
     `${freezePart ? `${freezePart.slice(1)}\n` : ""}` +
     `${targetClause} End with the standard VERDICT trailer.` +
     oraclePart +
-    findingGrammarPart +
-    ledgerPart
+    findingGrammarPart
   );
 }
 
