@@ -486,3 +486,89 @@ describe("T-17: AT-26/AT-27 (fleet halves): `pdlc stats --cwd <root>` with NO fe
     },
   );
 });
+
+// ─── PROP-RATIO-11 — the SHIPPED seam counts a symbolic link's own size,
+//     not its target's (REQ-STATS-06, EC-19, AT-15, TSPEC §2.4) ───────────
+//
+// This is the only behavioural evidence on the production `statsIo()` seam.
+// PROP-RATIO-04's leg runs over `statsRealPaths.test.js`'s `realStatsIo()`
+// helper and PROP-RATIO-05's conjunct is source-level (`bin/cli.mjs` never
+// spells `statSync(`), so a `statSync` implementation of `statsIo().fileSize`
+// is red HERE and only here without leaning on the
+// helper-plus-call-set-equivalence chain at `stats-cli-structure.test.js`.
+//
+// `F-CLI-SYMLINK`: a `mkdtemp` root holding `docs/{feature}/` with one small
+// regular spec file of a known size and one process-side member that is a
+// symbolic link whose target — written OUTSIDE the feature directory, so it
+// contributes no bytes of its own to either side — is an order of magnitude
+// larger. Run through `main([...])` with `--cwd` at that root, because
+// `Engine tests` runs `cd pdlc/engine && npm test` and `pdlc/engine/` carries
+// no `docs/`, so the flagless form would refuse at exit 1.
+
+const SYMLINK_FEATURE = "symlink-fixture";
+/** The link's target, an order of magnitude larger than the link's own size. */
+const SYMLINK_TARGET_BYTES = 20000;
+
+function makeSymlinkFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-stats-cli-symlink-"));
+  const featureDir = path.join(root, "docs", SYMLINK_FEATURE);
+  fs.mkdirSync(featureDir, { recursive: true });
+
+  // Spec side: one small regular file, so `specBytes > 0` and the ratio
+  // reaches `measured` rather than the zero-denominator state.
+  const specPath = path.join(featureDir, `REQ-${SYMLINK_FEATURE}.md`);
+  fs.writeFileSync(specPath, "# REQ\n");
+
+  // The link's target lives outside the feature directory: the only way its
+  // bytes can reach the report is by `fileSize` following the link.
+  const targetPath = path.join(root, "big-target.md");
+  fs.writeFileSync(targetPath, "x".repeat(SYMLINK_TARGET_BYTES));
+
+  // Process side: a cross-review basename (`parseReviewFilename` accepts it)
+  // that is a symbolic link, not a regular file.
+  const linkPath = path.join(featureDir, `CROSS-REVIEW-product-manager-REQ-v1.md`);
+  fs.symlinkSync(path.join("..", "..", "big-target.md"), linkPath);
+
+  return { root, specPath, targetPath, linkPath };
+}
+
+describe("PROP-RATIO-11: the shipped seam counts a symlink's own size, driven end-to-end through main()", () => {
+  test("`pdlc stats <feature> --json --cwd <tempRoot>` reports the link's own lstat size on the process side, never its target's", async () => {
+    const fixture = makeSymlinkFixture();
+    try {
+      // Fixture self-check: the target really is an order of magnitude
+      // larger than the link itself, so the two oracles below can diverge.
+      const linkOwnBytes = fs.lstatSync(fixture.linkPath).size;
+      const targetBytes = fs.statSync(fixture.linkPath).size;
+      assert.equal(targetBytes, SYMLINK_TARGET_BYTES);
+      assert.ok(
+        targetBytes >= linkOwnBytes * 10,
+        `fixture is not an order of magnitude apart: link=${linkOwnBytes}, target=${targetBytes}`,
+      );
+
+      const { stdout, stderr, exitCode } = await captureRun(() =>
+        main(["node", "pdlc", "stats", SYMLINK_FEATURE, "--json", "--cwd", fixture.root]),
+      );
+
+      assert.equal(exitCode, 0, stderr || stdout);
+      let parsed;
+      assert.doesNotThrow(() => {
+        parsed = JSON.parse(stdout);
+      }, `stdout did not parse as JSON: ${JSON.stringify(stdout)}`);
+
+      // The link is the ONLY process-side member, so the process byte total
+      // is exactly the link's own size — the positive oracle.
+      assert.equal(parsed.byteRatio.processBytes, linkOwnBytes);
+      // …and not the target's — the falsifier a `statSync` seam would trip.
+      assert.ok(
+        parsed.byteRatio.processBytes < targetBytes,
+        `process bytes ${parsed.byteRatio.processBytes} reached the target's ${targetBytes}: the seam followed the link`,
+      );
+      // The spec side is untouched by the link, and the ratio is measured.
+      assert.equal(parsed.byteRatio.state, "measured");
+      assert.equal(parsed.byteRatio.specBytes, fs.lstatSync(fixture.specPath).size);
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+});
