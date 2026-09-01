@@ -70,6 +70,39 @@ The residue is one clause, and it is F-01.
 
 ## Oracles
 
+Every claim below was re-measured this round against HEAD, not carried from v6.
+
+| Check | Command | Result |
+|---|---|---|
+| PROPERTIES bytes unchanged | `shasum -a 256 docs/pdlc-stats/PROPERTIES-pdlc-stats.md` | `02fc6fbf…` — equals v6's `APPROVAL-HASH` ✅ |
+| PLAN moved from my v6 pin | `git show e6f18c5a1:…/PLAN-pdlc-stats.md \| shasum -a 256` | `6ab4d081…` = v6's `UPSTREAM-STATE: PLAN` ✅; HEAD is `64d8f1c5…` |
+| Erratum blast radius | `git diff e6f18c5a1..HEAD -- …/PLAN-pdlc-stats.md` | +7 / −2; header, changelog, §Batches preamble, T-10 row only ✅ |
+| Manifest untouched | same diff | no `File Ownership Manifest` hunk ✅ |
+| TSPEC did not move in this window | `git diff --stat e6f18c5a1..HEAD -- …/TSPEC-pdlc-stats.md` | empty ✅ (drift predates the approved PLAN) |
+| REQ / FSPEC match dispatch pins | `shasum -a 256` | `f75c348f…`, `a493133f…` ✅ |
+| Masking language is new in PLAN | `git show e6f18c5a1:…/PLAN-pdlc-stats.md \| grep -i mask` over T-10 | absent in v1.3, present in v1.4 → F-01 is delta ✅ |
+| "normative, not illustrative" is **not** new | same grep | present in both v1.3 and v1.4 → F-02 is inherited ✅ |
+| Shipped oracle **does** mask | `sed -n '525,530p' pdlc/engine/__tests__/stats-cli-structure.test.js` | `const masked = maskNonCode(source)` then `fsSyncCallNames(masked)` ✅ |
+| Shipped oracle is a call-name **set**, not PLAN's regex | `grep -n "A-Za-z" …/stats-cli-structure.test.js:262` | `/\b([A-Za-z_$][A-Za-z0-9_$]*Sync)\s*\(/g` + `calls.has("statSync") === false` → F-02 ✅ |
+| T-17 landed; token now present both ways | `grep -n statSync pdlc/engine/bin/cli.mjs` | `:1288` doc-comment prose, `:1302` `nodeFs.lstatSync(absPath).size` ✅ — PLAN v1.4's re-measurement is correct |
+| PLAN's old `:262` anchor is stale | same grep | no `statSync` at `:262`; v1.4 drops the anchor ✅ |
+| PROPERTIES does not lean on PLAN's Status ticks | `grep -n "⬚\|✅\|Status column" …/PROPERTIES-pdlc-stats.md` | no matches ✅ — the §Batches preamble change cannot reach PROPERTIES |
+| Inherited v6 F-01 still open | `sed -n '154,210p' …/PLAN-pdlc-stats.md \| grep -c "\| new \|"` | `17` `new` rows vs PROPERTIES' "all sixteen" (lines 22, 535) → F-03 ✅ |
+
+**The measurement that decided F-01.** PLAN v1.4 asserts masking is "not owed". I did not stop at the
+document — I read the oracle that ships. `pdlc/engine/__tests__/stats-cli-structure.test.js:525-530`
+is the whole-file conjunct, and it masks: it builds `maskNonCode(source)` and runs the call-name set
+over the masked text. PROP-RATIO-05's phrase "over the comment- and string-masked source the
+structural oracle reads" is a **correct description of the shipped oracle**. PLAN v1.4's new sentence
+is the one that does not match what is on disk.
+
+To be fair to PLAN, "not owed" is a claim about *falsifiability*, not a prohibition, and on that
+narrow reading it is defensible: at HEAD the `:1288` occurrence is prose not followed by `(`, so
+`\s*\(` rejects it with or without masking, and both oracles yield zero. But the row states it as a
+settled design conclusion about T-10's oracle, and T-10's oracle masks. An implementer reading v1.4
+and building the unmasked variant would ship something PROP-RATIO-05 no longer describes, and would
+lose the protection masking gives against a future `statSync(` appearing inside a comment or string.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
