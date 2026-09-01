@@ -334,7 +334,7 @@ lands in `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` (PLAN T-26).
 | `F-PHASES-P-PR` | post-mortems for phases `P` and `PR` on one feature | PROP-HALT-08's collation leg |
 | `F-UNCLASSIFIED` | a `docs/` root carrying a directory in neither the exclusion set nor recognisable as a feature | PROP-DISC-07 |
 | `F-FLEET-GAP` | a fleet root where one feature's `listDir` throws, and a second where the metric computation throws after a clean read | PROP-ERR-05, PROP-ERR-06 |
-| `F-EXCLUDED-ONLY` | a `docs/` root that is present and readable and holds exactly `NON_FEATURE_DIRS`' eight names as directories — `_queue`, `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded`, `completed` — and nothing else: no feature directory, no loose file, and an empty `completed/` | PROP-DISC-10 (AT-18's empty-root leg, EC-20) |
+| `F-EXCLUDED-ONLY` | a `docs/` root that is present and readable and holds exactly `NON_FEATURE_DIRS`' eight names as **directory entries** (`isDirectory` true, never files) — `_queue`, `_constraints`, `_decisions`, `design`, `requirements`, `ideas`, `discarded`, `completed` — and nothing else: no feature directory, no loose file, and an empty `completed/` | PROP-DISC-10 (AT-18's empty-root leg, EC-20) |
 | `F-NO-ROOT` | {`docs/` absent} and {`docs/` unreadable} roots | PROP-ERR-03, PROP-ERR-04 |
 
 Fixture strings are the normative spellings verbatim: `harvested`, `unmeasurable`, `n/a`,
@@ -382,6 +382,15 @@ through `process.stdout.write`/`process.stderr.write` and `checkFlags` uses `con
 pairs are swapped for the duration of the call. "Stdout is empty" (PROP-CLI-02, PROP-JSON-02) is
 then an assertion about a captured buffer, not about a stream nobody read. No test spawns a process:
 importing `bin/cli.mjs` is inert under its `import.meta.url` entry guard.
+
+`F-CLI-SYMLINK` is the one temp-root fixture the process level builds for itself (PLAN T-09): a
+`mkdtemp` root holding `docs/{feature}/` with one small regular file of a known size and one
+process-side member that is a **symbolic link** whose target — written outside the feature
+directory — is an order of magnitude larger. It is run through `main([...])` with `--cwd` pointing
+at that root, because `Engine tests` runs `cd pdlc/engine && npm test` and `pdlc/engine/` carries no
+`docs/`, so the flagless form would refuse at exit 1. It serves PROP-RATIO-11 only, and it is
+deliberately not real-path: no archive directory carries a symbolic link, and one added later would
+change a measurement rather than exercise this claim.
 
 
 ## Coverage Matrix
