@@ -154,8 +154,47 @@ TSPEC pin drift — and confirmed by measurement that neither reaches PROPERTIES
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v5 and v6, still open and still not a PROPERTIES defect: now that wave 9 has landed, is PROP-RATIO-11 expected to arrive as an amendment to T-09's already-shipped `stats-cli.test.js` rather than as part of the first red wave? A sequencing question for the orchestrator, not a document finding. |
+| Q-02 | New, and the reason F-01 is worth one sentence upstream rather than silence: PLAN v1.4 argues falsifiability "rests on the two anchors". The shipped oracle does not use those anchors — it uses a call-name set over masked source (F-02). Should PLAN T-10 be re-grounded a second time onto the mechanism that actually ships, so the row's justification and the test agree? I am not asking PROPERTIES to change; PROP-RATIO-05 already describes the shipped oracle's input correctly. |
+
 ## Positive Observations
 
+- **The erratum retired a stale baseline I had deferred rather than filed.** My v6 recorded PLAN
+  T-10's pre-implementation baseline note as a DEFERRED item — the row justified its whole-file scope
+  on `bin/cli.mjs` containing neither token, which T-17 had already falsified. v1.4 found it without
+  a reviewer naming it, re-measured HEAD honestly (`nodeFs.lstatSync(absPath).size` at `:1302`, bare
+  `statSync` in prose at `:1288`), and said plainly that the old baseline "was only ever an incidental
+  property". Self-correcting a justification that still reached the right conclusion is harder than
+  fixing a wrong conclusion, and it is the kind of thing that usually rots for several rounds.
+- **The re-grounding moved PLAN onto PROPERTIES' reasoning, not the other way round.** PROP-RATIO-05
+  had justified the whole-file scope on the anchor from the start. PLAN now does too. The documents
+  converged on the stronger argument.
+- **The §Batches Status declaration is the right call, and it protects a DoD reviewer from
+  PROPERTIES too.** Declaring the column a planning-time ledger and naming the branch's
+  `feat(pdlc-stats): T-NN` commits authoritative is better than a hand-sync that goes stale on the
+  next commit. It also happens to ratify what PROPERTIES' §PLAN tasks table already does — that table
+  carries commit anchors (`2fc6d9b57`, `df1441b76`, `9a3a70fd9`) rather than ticks, so it was already
+  reading the record PLAN has now named authoritative. Two documents agreeing on provenance without
+  having coordinated is a good sign.
+- **The changelog declared its own upstream drift instead of hiding it.** v1.4 states that the
+  dispatch pinned TSPEC `7b119eb7…` while HEAD carried `f32d9cb5…`, and characterises the delta. I
+  verified the characterisation and it holds. A changelog that volunteers "my dispatch snapshot was
+  stale" is what let me clear the TSPEC pin question in minutes rather than re-reading TSPEC v1.8.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+PROPERTIES still holds against PLAN v1.4. Its bytes did not move, the erratum touched exactly one
+section it leans on (T-10), and that section's *conjunct* is unchanged — only its justification was
+re-grounded, onto the reasoning PROPERTIES was already using. No property, oracle, fixture or trace
+needs to change.
+
+Three Mediums, none gating. The one delta finding (F-01) is a disagreement PLAN created and PLAN
+should close: PLAN T-10 says comment- and string-masking is not owed, PROP-RATIO-05 says the oracle
+reads masked source, and the oracle that ships masks — so the sentence to edit is upstream. F-02 and
+F-03 are inherited, both recorded in v6, neither touched by this round.
 
 ## Verdict
