@@ -143,3 +143,47 @@ therefore agree in effect. They do not agree in *form* — see F-02.
 table, the mutation obligations and the `--branches 85` floor in §Definition of Done are all
 byte-identical across the delta. No AT lost an owner, no oracle lost a falsifier, no red row lost
 its green successor.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | §Verification's "Claims verified against the tree while writing this PLAN" carries three bullets that are false at HEAD, and they fail in exactly the shape this round just repaired for T-10 and declared for the `Status` column: a tree measurement stated in the present tense that this PLAN's own tasks have since invalidated. At HEAD `pdlc/workflows/lib/` holds **four** modules, not three — `stats.mjs` exists (22 KB, landed by T-12/T-13/T-14/T-15/T-16) — so "**`stats.mjs` does not exist**; every row naming it declares it new" reads false to anyone checking today; `prepack.mjs`'s `MODULE_NAMES` has **five** entries, not four, and `package.json`'s `c8.include` has **eight** `**/`-anchored entries, not seven. No task, oracle or expected value is wrong because of this — T-21's obligation rationale (`document-oracles.mjs` is in neither list, so directory membership is not what obliges the co-change) is still sound — but the section is the one a DoD reviewer reads for tree evidence, and a stale count there misreads as authoritative, which is the harm the new `Status` paragraph names in its own last sentence. Cheapest repair, no re-measurement needed: give the section the same one-line scoping the `Status` column just received — state that these are **pre-implementation** measurements taken while the PLAN was written, not maintained, with the branch's `feat(pdlc-stats): T-NN` commits as the current record. | §Verification → "Claims verified against the tree while writing this PLAN", bullets 2 and 3 |
+| F-02 | Low | delta | local | T-10 now calls `/(?<![A-Za-z])statSync\s*\(/` "normative, not illustrative" and, in the same breath, states that comment- or string-masking is "**not** owed". The landed test satisfies neither literally: it masks comments and strings, then extracts whole `<word>Sync(` call names and asserts set non-membership of `statSync`. That is equivalent-or-stronger — whole-identifier extraction cannot mis-attribute `lstatSync`, so it yields the same zero for the same anchors — and "not owed" is permissive rather than prohibitive, so nothing is contradicted. But a DoD reviewer diffing the shipped oracle against a matcher the PLAN calls normative has to re-derive that equivalence. One clause on the row — that any whole-identifier extraction with the same two anchors satisfies the conjunct, and that masking is permitted though not required — closes it. | §Batches → T-10, the `lstat`-not-`stat` seam conjunct |
+
+FINDING: Medium | inherited | nonlocal | §Verification "Claims verified against the tree while writing this PLAN" — three bullets stale at HEAD (`lib/` holds four modules and `stats.mjs` exists; `MODULE_NAMES` has five entries; `c8.include` has eight), the same expired-tree-measurement shape the round repaired for T-10; scope the section as pre-implementation, unmaintained, per the `Status` column's own treatment
+FINDING: Low | delta | local | §Batches T-10 — the matcher is called "normative" while masking is "not owed", but the landed conjunct masks and extracts whole `<word>Sync(` call names; equivalent-or-stronger, so nothing breaks, but the row should admit whole-identifier extraction explicitly
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | None this round. |
+
+## Positive Observations
+
+- The repair re-grounds the conjunct on the matcher's own anchors rather than on a property of the
+  file, which is the durable form: it survives every future edit to `bin/cli.mjs`, including the
+  ones this PLAN's remaining tasks will make. The weaker repair — re-measuring the baseline and
+  re-stating it — would have expired again on the next wave.
+- The row states masking as a *decision* ("not owed", with the reason) rather than leaving it
+  unstated. Even though the implementation chose to mask anyway, an implementer reading the row
+  knows which way the choice was made and why, which is what the routed item asked for.
+- The raw `:262` line anchor was removed rather than re-stamped — the `DEC-DOC-01`-correct repair
+  for a citation into a file under active edit.
+- Declaring the `Status` column an unmaintained planning-time ledger, with the `feat(pdlc-stats):
+  T-NN` commits named as the authoritative record, retires a false authority instead of
+  hand-reconciling one that would go stale on the next commit. The "three `✅` ticks are
+  incidental" claim is accurate — T-01, T-08, T-16, and no others.
+- Upstream was re-grounded before the delta was written, TSPEC's v1.7 → v1.8 move was checked
+  against the sections this document actually leans on, and §8.3's count word ("one remains open")
+  matches the PLAN's residual-risk table on both rows.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No open High finding: the routed item is resolved on stronger ground than it was raised on, and the
+delta breaks nothing previously approved. F-01 is inherited and nonlocal — it predates this edit and
+sits outside the sections it touched — and F-02 is a clarity clause on the edited row. Neither gates.
+Both are cheap enough to fold into whatever edit this document takes next.
