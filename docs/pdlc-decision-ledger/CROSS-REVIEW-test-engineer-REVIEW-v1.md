@@ -217,4 +217,23 @@ which walk everything under `root` except `.git/` and `node_modules/`. **To reso
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01) gates: a frozen catalogue TSPEC §5.2 and PROP-FAIL-09 both require to be the
+operand of a set-equality test has no oracle at all, proven by mutation — deleting a member leaves
+the decision-ledger suite green, and no production line reads the catalogue either. Fixing it is
+small: a frozen + two-sided set-equality test in `decisionLedgerInjector.test.js` against
+transcribed literals, plus tying the injector's emitted `corpusOutcome` values to the catalogue.
+
+F-02 and F-03 are Medium and recorded, not gating, but both are cheap and both remove a
+false-green class: delete (or wire) `reviewerPrompt`'s unreachable `ledgerBlock` parameter, and add
+the flag-on creator/optimizer byte-identity assertion the harness already has the data for.
+
+The rest of the implementation is in good shape — the live `main()` arm, the committed merge-base
+baseline, the semantic rule-text conjuncts and the fixture digest guard are all falsifiable oracles
+that fired under mutation.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 4}
