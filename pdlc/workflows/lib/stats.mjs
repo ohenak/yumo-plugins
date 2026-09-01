@@ -1,4 +1,4 @@
-// stats.mjs — PLAN T-12 (feature: pdlc-stats).
+// stats.mjs — the `pdlc stats` metric core (feature: pdlc-stats).
 //
 // Pure logic for `pdlc stats` (TSPEC §2, §3.3). Everything below `cmdStats`
 // (in `pdlc/engine/bin/cli.mjs`) is a pure function of injected seams: a
@@ -9,15 +9,13 @@
 // from `orchestrate-dev.js` itself; the driver-parser bundle is constructed
 // once, in production, at `bin/cli.mjs`'s `statsParsers()` (TSPEC §3.4).
 //
-// This task (T-12) creates the module: header, the JSDoc typedefs for
-// TSPEC §3.1 (the injected `StatsIo` seam), §3.2 (the driver-parser bundle),
-// §4.1 (the metric types) and §4.2 (the outcome/report types), plus
-// `parseStatsArgv` and the two frozen constants `REVIEW_DOC_TYPE_ROWS` and
-// `NON_FEATURE_DIRS`. It turns T-03 (`statsArgv.test.js`) and T-08
-// (`statsAntiDrift.test.js`) green. The remaining exports named in TSPEC
-// §3.3 (`discoverFeatures`, `computeFeatureStats`, `runStats`, `renderHuman`,
-// `renderJson`) land in later tasks on this module's single-writer chain
-// (T-13 through T-16) and are not defined here.
+// Delivered surface. The JSDoc typedefs for TSPEC §3.1 (the injected
+// `StatsIo` seam), §3.2 (the driver-parser bundle), §4.1 (the metric types)
+// and §4.2 (the outcome/report types); the two frozen constants
+// `REVIEW_DOC_TYPE_ROWS` and `NON_FEATURE_DIRS`; and the six exports TSPEC
+// §3.3 names — `parseStatsArgv`, `discoverFeatures`, `computeFeatureStats`,
+// `runStats`, `renderHuman` and `renderJson` — all of which are defined
+// below.
 
 // --- TSPEC §3.1: the injected seams -----------------------------------
 
