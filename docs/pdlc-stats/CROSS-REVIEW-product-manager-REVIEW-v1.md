@@ -69,7 +69,164 @@ reads differently from its own rule — none is a missing capability.
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | Fleet mode is never driven through the production caller, at any tier. No test anywhere invokes `main([...,"stats"])` **without** a feature argument, and `runStats`'s fleet branch is never driven over a real `StatsIo`. | REQ-STATS-07, REQ-STATS-08 |
+| F-02 | Medium | Local | AT-06's human-side assertions are single-character substring containment that unrelated output already satisfies, so the cross-mode agreement oracle cannot falsify a dropped human metric. | REQ-STATS-02 |
+| F-03 | Medium | Local | No oracle relates the human printed metric set to the JSON top-level key set; each is asserted against its own hardcoded literal, so REQ-STATS-02's stated direction is unfalsifiable. | REQ-STATS-02, REQ R-5 |
+| F-04 | Medium | Local | The read-only snapshot pair covers only single-feature `--json`; there is no human-mode success leg and no fleet leg, though the criterion binds "any invocation … in either mode". | REQ-STATS-08 |
+| F-05 | Low | Local | `CODE_REVIEW-{feature}-v0.md` matches the version grammar and survives on disk, yet the DoD metric reports `harvested`, contradicting "where any survives, the measured highest version wins". | REQ-STATS-04 |
+| F-06 | Low | Local | REQ-STATS-08's "runs no `git` write command" conjunct has no oracle reaching `cmdStats` itself, and the snapshot that would catch one deliberately excludes `.git/`. | REQ-STATS-08, REQ C-1, REQ R-3 |
+
+### F-01 (High) — fleet mode is unproven at the production caller
+
+REQ-STATS-07 is a P1 acceptance criterion whose whole product point is an operator-visible artifact:
+"it discovers every feature directory … and for any feature whose directory cannot be read, reports
+it by name with the reason rather than omitting it". FSPEC states its acceptance tests over the
+command itself — AT-18, AT-20, AT-26 ("`pdlc stats {feature}` **and** `pdlc stats` are both run")
+and AT-27 ("the single-feature run …, then `pdlc stats`").
+
+Walking AC → production caller → served artifact:
+
+- The assembler is `buildReport`'s fleet branch (`pdlc/workflows/lib/stats.mjs:431-440`), reached
+  only when `parsed.feature === null` (`stats.mjs:409`), rendered by `renderFleetHuman`
+  (`stats.mjs:549`) / `renderJson`'s fleet arm (`stats.mjs:589-594`).
+- Its production caller is `cmdStats` in `pdlc/engine/bin/cli.mjs`, which hands `argv` straight to
+  `runStats`.
+- Every `stats` invocation in the engine test suite passes a feature argument:
+  `pdlc/engine/__tests__/stats-cli.test.js:124, 133, 142, 151, 160, 169, 196, 225, 233, 284, 298,
+  331, 356` and `pdlc/engine/__tests__/stats-read-only.test.js:205, 227, 246`. I grepped the whole
+  suite for a no-argument form and found none.
+- The only fleet coverage is `runStats({argv: [], …})` against `fakeStatsIo`
+  (`pdlc/workflows/__tests__/statsOutcome.test.js:100, 259, 299, 382`).
+- The real-filesystem leg (`pdlc/workflows/__tests__/statsRealPaths.test.js`, AT-18) calls
+  `discoverFeatures` — the *builder* — over `realStatsIo()`, never the assembled fleet report.
+  A builder unit-tested but never assembled is exactly the seam this check exists to catch.
+
+The consequence is not hypothetical wiring doubt — I ran `node pdlc/engine/bin/cli.mjs stats` and it
+produced a correct fleet report, exit 0. The consequence is that this operator-visible artifact has
+no regression oracle: `cmdStats` could stop forwarding the null-feature case, `renderFleetHuman`
+could drop the gap or unclassified rows, or the fleet exit code could go non-zero, and both suites
+stay green. REQ-STATS-07's own guarantee — "a gap-flagged feature is a row, not a failure: fleet
+mode exits zero whenever it produced its report" — is the specific thing left unpinned at the edge.
+
+REQ-STATS-08 compounds it: the criterion binds "**any** invocation of `pdlc stats`, in either mode",
+and fleet mode walks far more of the tree than a single-feature run, so it is the invocation most
+able to violate the read-only stance.
+
+**What must change.** Add at least one process-level leg that runs
+`main(["node","pdlc","stats","--cwd",<root>])` — no feature argument — and asserts the assembled
+artifact, not just an exit code: for the human mode, that a named gap row and an unclassified row
+each appear in the one list with their reason/marker; for `--json`, that the top-level key set is
+exactly `{schemaVersion, features, unclassified}` and that a gap entry is discriminated by the
+presence of the `gap` key. Then add the AT-26/AT-27 fleet halves at that same tier, since both
+criteria are written as two-mode comparisons and only the single-feature half is currently driven
+through `main()`.
+
+### F-02 (Medium) — AT-06's human-side oracle is satisfied by unrelated output
+
+REQ-STATS-02's guarantee is that human and JSON never disagree, and FSPEC names AT-06 as the oracle
+for it. `pdlc/workflows/__tests__/statsRender.test.js:353-375` asserts the human side with
+`expect(human).toEqual(expect.stringContaining("2"))` for the DoD count and
+`expect.stringContaining("D")` for the halt phase.
+
+I ran `renderHuman` over that same report shape and then deleted the `DoD rounds` line from the
+output. The assertions still hold: `contains 2 = true` (from `processBytes` `123456`) and
+`contains D = true` (from the literal `DoD rounds` label and the `DECISIONS` row). So the human half
+of the cross-mode oracle cannot falsify a dropped or wrong DoD value at all; only the `"1.42"`
+ratio assertion carries real content.
+
+**What must change.** Assert the human side by exact line, not by substring: transcribe the expected
+`DoD rounds      2` and `  D   resolved` lines literally from the FSPEC layout and compare, so a
+changed value or a deleted row fails. Keep the JSON-side assertions as they are — those are already
+literal.
+
+### F-03 (Medium) — the human/JSON set-equality REQ-STATS-02 promises is never asserted
+
+REQ-STATS-02's observable guarantee is stated as a set relation: stdout's "top-level key set is
+set-equal to REQ-STATS-01's printed metric set plus one schema-version field — … so a metric added
+to human mode without a JSON field fails". R-5 makes that the mitigation JSON consumers rely on.
+
+The suite asserts each side against its own hardcoded literal and never relates them:
+`statsRender.test.js:112-138` (AT-05) pins `Object.keys(json)` to a five-element literal, and
+`statsRender.test.js:83-110` (AT-01) checks that the four known human labels are present and
+ordered. Nothing derives one set from the other. A fifth human metric block added to
+`renderSingleHuman` (`pdlc/workflows/lib/stats.mjs:514-524`) with no corresponding JSON field leaves
+both assertions green — the exact failure REQ-STATS-02 names.
+
+**What must change.** Add one oracle that derives the human metric labels from the rendered output
+(or from a single shared literal list of metric names transcribed from FSPEC) and asserts
+set-equality against `Object.keys(renderJson(report))` minus `schemaVersion`. It must be a
+set-equality, not a containment check, so a metric present on one side only goes red.
+
+### F-04 (Medium) — the read-only proof covers one mode and one invocation shape
+
+REQ-STATS-08 binds "any invocation of `pdlc stats`, **in either mode**, on success or on failure",
+and BR-28 repeats "on any path". The empirical snapshot pair is asserted three times, all
+single-feature: `pdlc/engine/__tests__/stats-read-only.test.js:199` (success, `--json`), `:222`
+(unknown feature, `--json`), `:242` (unknown flag — the usage-error path, which returns before any
+directory is read). So the human-mode success path is never snapshotted, and neither is any fleet
+invocation — the one that reads the most of the tree.
+
+I accept that `runStats` is mode-agnostic, so the risk today is low; the finding is that the
+criterion's own quantifier is not the quantifier the suite proves.
+
+**What must change.** Extend the AT-21 snapshot leg to a human-mode success run and to one
+no-feature fleet run (which F-01 requires adding anyway), asserting the same liveness conjunct —
+report emitted, exit 0 — alongside the unchanged snapshot.
+
+### F-05 (Low) — a surviving `CODE_REVIEW-…-v0.md` is reported `harvested`
+
+REQ-STATS-04 and FSPEC BR-11 both say the harvested state applies only when **no**
+`CODE_REVIEW-{feature}-v{N}.md` matching the version grammar remains, and that "where any survives,
+the measured highest version wins — the harvested state never displaces evidence this metric can
+actually read".
+
+`deriveDodRoundIndex` (`pdlc/workflows/orchestrate-dev.js:12384-12397`) returns `max + 1`, so it
+returns `1` both when no file matches and when only `…-v0.md` matches. `computeDodRounds`
+(`pdlc/workflows/lib/stats.mjs:248-253`) subtracts one and branches on `n > 0`, so the two cases are
+indistinguishable and the surviving file is treated as absent.
+
+Reproduced:
+
+```
+/tmp/pmchk2/docs/alpha/{LEARNINGS-alpha.md, CODE_REVIEW-alpha-v0.md, REQ-alpha.md}
+$ node pdlc/engine/bin/cli.mjs stats alpha --json --cwd /tmp/pmchk2
+… "dodRounds":{"state":"harvested","rounds":null} …
+```
+
+Expected per BR-11: `{"state":"measured","rounds":0}`. Note the ratio metric gets the same input
+right — `computeByteRatio` (`stats.mjs:285`) tests `dodReviews.length`, file presence, not the
+derived index — so the two metrics disagree about whether that file exists.
+
+Operator impact is close to nil: the pipeline's own `deriveDodRoundIndex` never emits `v0`, so a
+`v0` file only appears if hand-created. Severity is Low on that basis, not because the rule is
+soft — R-6's harvested-versus-measured distinction is the thing being blurred.
+
+**What must change.** Branch on file presence rather than on the derived index — e.g. compute the
+matching basenames once (the `dodPattern` filter `stats.mjs:284-285` already does) and report
+`harvested` only when that list is empty and `LEARNINGS-{feature}.md` is present. Add a leg pinning
+the `v0` case to `{measured, 0}`.
+
+### F-06 (Low) — the no-`git`-write conjunct has no oracle reaching `cmdStats`
+
+REQ-STATS-08 requires the command run "no `git` write command (`commit`, `push`, `add`, `checkout`,
+or similar)". PROPERTIES accepts a structural argument for this (PROP-RO-06, resting on PROP-RO-05),
+and PROP-RO-05 **is** implemented: `pdlc/engine/__tests__/stats-cli-structure.test.js:500` pins
+`Object.keys(statsIo())` set-equal to the four read members.
+
+The hole is that `statsIo()` is not the only code that runs. `cmdStats` and `statsWorkflowModule`
+(`pdlc/engine/bin/cli.mjs`) execute outside that bundle, and no oracle forbids them importing
+`node:child_process` or `fetch`. Meanwhile the empirical snapshot excludes `.git/`
+(`pdlc/engine/__tests__/stats-read-only.test.js:38`) — the one directory a `git` write would touch —
+so the empirical half cannot catch it either. `pdlc/workflows/lib/stats.mjs` genuinely has zero
+`import` statements today (I checked), but nothing pins that.
+
+I am recording this as Low rather than pressing it: the structural argument was reviewed and
+accepted upstream at PROPERTIES, and the behaviour is correct today. A cheap close, if the author
+wants it: assert that `stats.mjs`'s source contains no `import` statement and that the `cmdStats`
+span in `bin/cli.mjs` names no `child_process`/`fetch`/`spawn` token — the same source-inspection
+technique `stats-cli-structure.test.js:525` already uses for `statSync`.
 
 ## Questions
 
