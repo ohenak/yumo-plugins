@@ -90,6 +90,75 @@ omitting the head line while its successors render produces a survivor set that 
 The two specs need reconciling before the fix can land cleanly; raised as `ERRATUM: TSPEC` and
 `ERRATUM: PROPERTIES` in my dispatch message, not as findings against this code.
 
+### F-02 (Medium) — `DECISION_LEDGER_CORPUS_OUTCOMES` is unenumerated and unread in production
+
+`DECISION_LEDGER_CORPUS_OUTCOMES` (`orchestrate-dev.js:2750-2753`) is declared frozen and documented
+as "*the two enumeration-failure `corpusOutcome` values*" backing FSPEC F-6/F-7 — the fail-open
+classification REQ-DECLEDGER-04 depends on. Two problems, both mechanical:
+
+1. **No production caller.** `buildDecisionLedgerInjector` sets `corpusOutcome` from the string
+   literals `"RSN-UNLISTABLE"` and `"RSN-EMPTY"` directly (`:2837`, `:2839`), never through the
+   catalogue. Grep over `orchestrate-dev.js` finds exactly one occurrence of the identifier — its own
+   declaration. It is imported by no test either (only named as a token in
+   `decisionLedgerCensus.test.js:106,153`, which asserts source text, not behaviour).
+2. **A deleted case does not fail.** Probe: removing the line `EMPTY: "RSN-EMPTY",` from the
+   catalogue and re-running `npm test -- __tests__/decisionLedger` gives **12 suites / 231 tests
+   passed**. (Source restored immediately; `git status` clean, `build-runtime.mjs --check` back to
+   `in-sync`.) The brief's bar — enumerated contracts need set-equality so a deleted case fails —
+   is not met for this catalogue, and it is met for its two siblings: `DECISION_LEDGER_NOTICES`
+   (`decisionLedgerConfig.test.js:57-62`) and `DECISION_LEDGER_OMIT_REASONS` (`:395-399`).
+
+The precedent feature does both halves and is worth copying verbatim:
+`learningsRecord.test.js:195-202` set-equals `LEARNINGS_CORPUS_OUTCOMES` against a hand-transcribed
+`["RSN-EMPTY","RSN-UNLISTABLE"]`, and `learningsArmInventory.test.js:276-278` set-equals the
+**observed** non-null `corpusOutcome` values from live arms against the catalogue.
+
+**What to change.** Add the two assertions on the decision-ledger side: a hand-transcribed
+set-equality over `DECISION_LEDGER_CORPUS_OUTCOMES`, and an observed-values set-equality collecting
+`corpusOutcome` from `decisionLedgerInjector.test.js`'s existing `RSN-UNLISTABLE` / `RSN-EMPTY` /
+`null` arms (`decisionLedgerInjector.test.js:191-211, 310`). Alternatively, have the injector read the
+catalogue members instead of re-typing the literals, which retires the dead-constant half outright.
+
+### F-03 (Medium) — the flag-off notice conjunct cannot fail, and has no positive pair
+
+`decisionLedgerMain.test.js:431-448` carries the flag-off arm's conjunct (c), described in the file
+header as "*the emitted `NTC-DECLEDGER-*` notice set on the flag-off run is SET-EQUAL to empty, not
+merely 'contains no `NTC-DECLEDGER-*`' (TE F-05)*" (`:37-38`). The assertion filters with
+`String(n).includes("NTC-DECLEDGER-")` (`:447`). The decision-ledger notices are pushed as **objects**
+— `{ id: "NTC-DECLEDGER-MALFORMED", detail: … }` and `{ id: "NTC-DECLEDGER-KEYTYPE", detail: … }`
+(`orchestrate-dev.js:15561-15576`) — and `String({…})` is `"[object Object]"`. The predicate therefore
+matches nothing regardless of what the run emitted: a flag-off run that *did* wrongly emit
+`NTC-DECLEDGER-MALFORMED` would still pass. The conjunct the TE finding asked for is the one that is
+missing.
+
+Compounding it, the pairing the brief demands is absent in the other direction too: no test drives a
+malformed or wrong-typed `decisionLedger` section through `main()` and asserts the notice **does**
+appear on the run report. `parseDecisionLedgerConfig`'s unit tests prove `sectionMalformed` /
+`invalidKeys` are computed correctly (`decisionLedgerConfig.test.js`), but the parser →
+`notices.push` wiring at `orchestrate-dev.js:15561-15576` — the operator-visible half of
+REQ-DECLEDGER-05's fail-open story — has no production-path test.
+
+**What to change.** (a) Filter on the notice's `id` (`(n) => String(n?.id ?? n).includes("NTC-DECLEDGER-")`)
+so conjunct (c) can fail; (b) add a `main()`-driven case with a malformed `decisionLedger` section
+asserting the emitted notice-id set is set-equal to `{NTC-DECLEDGER-MALFORMED}` and that the run
+still completes on defaults — the positive assertion that pairs with the flag-off empty set.
+
+### F-04 (Low) — FSPEC BR-9's "once per review dispatch" no longer describes what ships
+
+FSPEC BR-9 (`FSPEC-pdlc-decision-ledger.md:242-244`) states the index is derived "*at
+dispatch-construction time … once per review dispatch*", with "*no index reused across dispatches*",
+and REQ-DECLEDGER-01 (`REQ:224-226`) forbids "*a snapshot carried forward within the round window*".
+The shipped read is once per **round**: `const ledgerBlock = … await _injectDecisionLedger({ feature })`
+at `orchestrate-dev.js:9968-9969`, deliberately hoisted above both `reviewerPrompt` calls so the two
+reviewers of a round receive byte-identical bytes — exactly as TSPEC §4.5 specifies
+(`TSPEC-pdlc-decision-ledger.md:515-516`, `:1020-1021`), and as approved.
+
+I read the shipped behaviour as correct and the FSPEC sentence as over-broad: the round's two
+dispatches are constructed in the same instant and issued in one `_parallel` call
+(`orchestrate-dev.js:9994-10010`), so nothing is carried forward. But a future reviewer reading BR-9
+literally will score the shipped code non-conforming, which is what makes this worth a line. Routed
+upstream as `ERRATUM: FSPEC` rather than a code change; no implementation edit is requested.
+
 ## Questions
 
 ## Positive Observations
