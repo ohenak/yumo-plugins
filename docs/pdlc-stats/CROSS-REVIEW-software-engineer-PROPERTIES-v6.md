@@ -34,3 +34,23 @@ universal quantifier ("every new file the manifest declares is tracked") is wide
 files it then enumerates, and PLAN's manifest declares a seventeenth `new` row that is genuinely
 absent. Detail in §Findings. Under the freeze I opened no new design question and re-litigated
 nothing settled in v1…v5.
+
+## Oracles
+
+Every check I ran this round, as a command a later reader can re-run against this file.
+
+| Check | Command | Result |
+|---|---|---|
+| Delta scope since v5's base | `git diff --stat 1be839ea8..HEAD -- docs/pdlc-stats/PROPERTIES-pdlc-stats.md` | +34 / −13, four locations only ✅ |
+| No property/oracle/fixture/trace moved | full `git diff` of the range, read hunk by hunk | four hunks: revision history, §Subject under test, §PLAN preamble, T-18 cell ✅ |
+| Wave 9 ran — `statsRealPaths.test.js` | `git ls-files --error-unmatch …/statsRealPaths.test.js`; `git log --oneline -1 9a3a70fd9` | tracked; `T-18 🟢 Real-path acceptance…` ✅ (this is exactly what v5 F-01 denied) |
+| `statsProperties.test.js` anchor | `git log --oneline -1 ca8031311` | `T-19 🟢 Property tests (fast-check…)` ✅ |
+| `stats-vendoring.test.js` anchor | `git log --oneline -1 1846a8a96` | `T-20 🔴 Vendoring co-change oracle (TSPEC §6.4)` ✅ — and red-by-design, consistent with PLAN batch 9's split gate |
+| `lib/stats.mjs` landed at `308afef94` | `git log --oneline --diff-filter=A -- pdlc/workflows/lib/stats.mjs` | `308afef94` is the adding commit ✅ (subject reads `docs(…): se PROPERTIES v3 scope section` — see DEFERRED below) |
+| "all sixteen tracked" | `git ls-files --error-unmatch` over each of the sixteen | all sixteen tracked ✅ |
+| Sixteen is the right count | manifest `new` rows, less the doc artifact | 15 new test/helper files + `lib/stats.mjs` = 16 ✅ |
+| Seventeenth `new` manifest row | `git ls-files --error-unmatch docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | **absent** ❌ — narrows the preamble's quantifier (F-01, Medium) |
+| `FLAGS_BY_COMMAND` fifth row, line 190 | `grep -n 'stats: \["json", "cwd"\]' pdlc/engine/bin/cli.mjs` | `190:  stats: ["json", "cwd"]` ✅ |
+| "fifth row" is literally fifth | rows between `FLAGS_BY_COMMAND` (`:169`) and `:190` | `dev`, `queue`, `doctor`, `decide`, `stats` ✅ |
+| T-09 row's surviving caveat still true | `grep -c 'symlink\|lstat' pdlc/engine/__tests__/stats-cli.test.js` | `0` — the symbolic-link leg is still not in the shipped file ✅ |
+| No stale absence claim left elsewhere | `grep -n 'absent\|not yet\|does not exist\|has not run'` over the document | remaining hits are property text (`reason:"absent"`, `F-NO-ROOT`) or correctly past-tense ✅ |
