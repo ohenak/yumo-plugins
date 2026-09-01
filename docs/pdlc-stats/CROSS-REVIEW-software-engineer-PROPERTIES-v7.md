@@ -127,6 +127,31 @@ to change under either reading, which is part of why F-01 is Medium and not High
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | PLAN T-10 v1.4 newly concludes "comment- or string-masking of the source is **not** owed", while PROP-RATIO-05 states the conjunct holds "over the comment- and string-masked source the structural oracle reads". The shipped oracle at `pdlc/engine/__tests__/stats-cli-structure.test.js:525-530` **does** mask. PROPERTIES is the accurate document; the correction is owed in PLAN T-10, not here. | PROP-RATIO-05 / PLAN T-10 |
+| F-02 | Medium | inherited | local | PROP-RATIO-05 pins the literal regex `/(?<![A-Za-z])statSync\s*\(/` as the oracle, but the shipped conjunct is a call-name **set** — `/\b([A-Za-z_$][A-Za-z0-9_$]*Sync)\s*\(/g` plus `calls.has("statSync") === false`. PLAN v1.4 now rests its whole falsifiability argument on that regex's two anchors, so a divergence I deferred in v6 has become more load-bearing without being introduced by this round. | PROP-RATIO-05 |
+| F-03 | Medium | inherited | nonlocal | The §PLAN tasks preamble's quantifier "every new file the manifest declares is tracked — all sixteen" is wider than the set it enumerates: PLAN's File Ownership Manifest declares **seventeen** `new` rows, the seventeenth being `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` (batch 11, T-26). Unchanged since my v6 F-01; PROPERTIES' bytes did not move. | §PLAN tasks, preamble |
+
+FINDING: Medium | delta | local | PROP-RATIO-05 requires a comment- and string-masked oracle input; PLAN T-10 v1.4 newly declares masking not owed. Shipped oracle masks, so PROPERTIES is accurate and PLAN T-10 carries the correction.
+FINDING: Medium | inherited | local | PROP-RATIO-05 pins a literal regex as the oracle; the shipped T-10 conjunct is a call-name set. Deferred in v6, now load-bearing under PLAN v1.4's anchor-based justification.
+FINDING: Medium | inherited | nonlocal | §PLAN tasks preamble says "all sixteen" new manifest files; the manifest declares seventeen `new` rows, the extra being MUTATION-EVIDENCE-pdlc-stats.md.
+
+**No High, and I want to be explicit about why F-01 is not one.** It is delta-introduced and local,
+so the gating limb is available to me. I am declining it on materiality. The disagreement changes no
+metric, no fixture, no trace and no property *outcome*: at HEAD both the masked and the unmasked
+reading of the matcher yield zero matches, because the sole non-call occurrence is prose not followed
+by `(`. It is a divergence about oracle input hygiene, and it resolves by editing one sentence in
+PLAN T-10 — the document that moved — rather than by touching PROPERTIES at all. Halting the phase
+to correct an upstream sentence that makes the downstream document *look* wrong when it is in fact
+right would be the wrong trade.
+
+**And I want to be explicit about what I did not do.** I did not take the erratum's own item list as
+the boundary. F-01 appears on no list: it is a consequence the edit created in a document nobody
+asked me to compare it against, which is exactly what DEC-ERR-03 tells me to surface. I also checked
+the two changes I could most easily have waved through — the §Batches Status declaration and the
+TSPEC pin drift — and confirmed by measurement that neither reaches PROPERTIES.
+
 ## Questions
 
 ## Positive Observations
