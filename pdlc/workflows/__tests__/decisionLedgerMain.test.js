@@ -182,6 +182,13 @@ const ENABLED_CONFIG_TEXT = JSON.stringify({
  */
 const DISABLED_CONFIG_TEXT = null;
 
+/**
+ * A `decisionLedger` value that is present but NOT a plain object — TSPEC §4.1's
+ * `sectionMalformed` leg, the input that must make `NTC-DECLEDGER-MALFORMED` fire on the run
+ * report while the run itself proceeds on defaults (REQ-DECLEDGER-05's fail-open story).
+ */
+const MALFORMED_CONFIG_TEXT = JSON.stringify({ decisionLedger: "enabled, please" });
+
 const DECISION_LEDGER_THRESHOLDS = { maxEntries: 70, maxBytes: 12500 };
 
 // ─── The harness: an in-memory doc store + a scripted `_git`, following the shape
@@ -443,8 +450,14 @@ describe("decisionLedgerMain — `main()`-driven composition-root wiring (TSPEC 
     // Conjunct (c): the emitted `NTC-DECLEDGER-*` notice set is SET-EQUAL to empty, not merely
     // "contains none" — an absent `decisionLedger` config block emits no notice (TSPEC §2.2), and
     // this pins that positively rather than by containment.
+    // Filtered on the notice's `id`, never `String(n)`: the decision-ledger notices are pushed
+    // as OBJECTS (`{ id, detail }`), and `String({…})` is `"[object Object]"` — a predicate over
+    // the stringified object matches nothing whatever the run emitted, so the conjunct could not
+    // fail (CR F-03). The positive pair for this empty set is the malformed-section case below.
     const offDecledgerNotices = new Set(
-      (off.result.report.notices ?? []).filter((n) => String(n).includes("NTC-DECLEDGER-"))
+      (off.result.report.notices ?? [])
+        .map((n) => String(n?.id ?? n))
+        .filter((id) => id.includes("NTC-DECLEDGER-"))
     );
     expect(offDecledgerNotices).toEqual(new Set());
 
@@ -470,6 +483,66 @@ describe("decisionLedgerMain — `main()`-driven composition-root wiring (TSPEC 
     expect(symmetricDifference).toEqual(new Set(["decisionLedger"]));
     expect(offKeys.has("decisionLedger")).toBe(false);
     expect(onKeys.has("decisionLedger")).toBe(true);
+  });
+
+  // The block must reach REVIEWER dispatches ALONE (REQ G-2, REQ-DECLEDGER-03's "Who"). The
+  // harness already records every dispatch (`dispatched.push({ skill, text })`) and never asserted
+  // on it, so a regression appending the ledger block to the creator or optimizer dispatch was
+  // invisible: the reviewer conjuncts still passed and the flag-off baseline is a different run
+  // (TE CR F-03). Asserted positively — byte-identity of the non-reviewer dispatches across the
+  // paired arms — not as an absence of the block's bytes.
+  test("T-18: flag on — the TSPEC creator and optimizer dispatches are BYTE-IDENTICAL to their flag-off counterparts, while the reviewer prompts differ (REQ G-2, PROP-OFF-01)", async () => {
+    const off = await runPipeline({ configText: DISABLED_CONFIG_TEXT, corpusFiles: [] });
+    const on = await runPipeline({
+      configText: ENABLED_CONFIG_TEXT,
+      corpusFiles: [CORPUS_DECISIONS_PATH],
+    });
+    lastGitCalls = on.gitCalls;
+    assertNoLiveGitWrites(off.gitCalls);
+    expect(off.result.outcome).toBe("success");
+    expect(on.result.outcome).toBe("success");
+
+    const textsMatching = (run, marker) =>
+      run.dispatched.filter((d) => d.skill === "se-author" && d.text.startsWith(marker)).map((d) => d.text);
+
+    const offCreator = textsMatching(off, CREATOR_TSPEC_MARKER);
+    const onCreator = textsMatching(on, CREATOR_TSPEC_MARKER);
+    const offOptimizer = textsMatching(off, OPTIMIZER_TSPEC_MARKER);
+    const onOptimizer = textsMatching(on, OPTIMIZER_TSPEC_MARKER);
+
+    // Non-vacuity: both arms really issued the two non-reviewer dispatches this asserts over.
+    expect(onCreator.length).toBeGreaterThanOrEqual(1);
+    expect(onOptimizer.length).toBeGreaterThanOrEqual(1);
+    expect(onCreator).toEqual(offCreator);
+    expect(onOptimizer).toEqual(offOptimizer);
+
+    // The anchor conjunct: the flag-on run DID inject somewhere, so the byte-identity above is a
+    // statement about routing, not about a run in which nothing happened.
+    expect(on.tPrompts).not.toEqual(off.tPrompts);
+  });
+
+  // The POSITIVE pair for the flag-off empty-notice-set conjunct above (CR F-03). Without it the
+  // notice half of REQ-DECLEDGER-05 is absence-only: `parseDecisionLedgerConfig`'s own unit tests
+  // prove `sectionMalformed` is computed, but nothing drove the parser -> `notices.push` wiring
+  // through `main()`, so a run that emitted no notice at all would have looked identical.
+  test("T-18: a malformed `decisionLedger` section drives NTC-DECLEDGER-MALFORMED onto the run report through main(), and the run still completes on defaults (REQ-DECLEDGER-05)", async () => {
+    const malformed = await runPipeline({ configText: MALFORMED_CONFIG_TEXT, corpusFiles: [] });
+    lastGitCalls = malformed.gitCalls;
+
+    expect(malformed.result.outcome).toBe("success");
+
+    const emitted = new Set(
+      (malformed.result.report.notices ?? [])
+        .map((n) => String(n?.id ?? n))
+        .filter((id) => id.includes("NTC-DECLEDGER-"))
+    );
+    // SET-EQUAL, not "contains": a second, spurious decision-ledger notice fails this too.
+    expect(emitted).toEqual(new Set(["NTC-DECLEDGER-MALFORMED"]));
+
+    // "Proceeds on defaults" — `enabled` defaults false, so the feature stays off and the report
+    // carries no `decisionLedger` key, exactly as the absent-config run does.
+    expect(Object.keys(malformed.result.report).includes("decisionLedger")).toBe(false);
+    expect(malformed.tPrompts).toEqual(EXPECTED_BASELINE_PROMPTS);
   });
 });
 
