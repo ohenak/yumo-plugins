@@ -102,6 +102,75 @@ the opener, not last in the prompt, which contradicts §2.6's "last". The implem
 comment argues (a) is correct; I agree with the reasoning — what is missing is deleting the code the
 reasoning made dead, and correcting the two upstream documents that still name the other locus.
 
+### F-03 (Medium) — nothing pins the block to reviewer dispatches alone
+
+REQ G-2 makes the rule text and index "reviewer-side" and REQ-DECLEDGER-03's Who is "reviewer
+authoring a cross-review"; the flag-off arm proves the *creator* prompt is byte-identical to the
+merge-base recording, but that arm has the feature disabled. On the **flag-on** arm the only prompt
+assertions are over `tPrompts`, the four Phase-T reviewer dispatches
+(`__tests__/decisionLedgerMain.test.js:397`, `:419-421`). The harness already collects every
+dispatch — `dispatched.push({ skill, text })` at `:262`, returned at `:357` — and then never asserts
+on it. A regression that appended `ledgerBlock` to the creator/optimizer dispatch (for example by
+defaulting `ledgerBlock` in `wrapped` to the round's block instead of `""`) is invisible to the
+suite: the reviewer assertions still pass and the flag-off baseline is a different run.
+
+This is the negative half of a positive/negative pair, so it must be positive-asserted, not
+absence-only. **To resolve:** on the same flag-on run, assert (a) the creator dispatch matching
+`CREATOR_TSPEC_MARKER` and the optimizer dispatch matching `OPTIMIZER_TSPEC_MARKER` are
+**byte-identical to their flag-off counterparts** from the paired run already available in the
+`report`-key-set test (`:452-472`), and (b) neither ends with `expectedBlock`. (a) alone is enough
+and is the falsifiable form; (b) alone would be the weak, absence-only form.
+
+### F-04 (Low) — a test that can only pass
+
+`__tests__/decisionLedgerFixtureGuard.test.js:238-240`:
+
+```js
+it("the frozen source commit is recorded as 8c673a09f (Baseline v1.2's Verified-at commit)", () => {
+  expect(EXPECTED_SOURCE_COMMIT).toBe("8c673a09f");
+});
+```
+
+`EXPECTED_SOURCE_COMMIT` is declared as that same literal at `:161`, so the assertion is
+`"8c673a09f" === "8c673a09f"`. It states no fact about the fixture. The rest of this module is
+strong (hand-transcribed per-file digests, a set equality over the 25 paths, and an
+instrument-fires control at `:242-254`), which makes this one row stand out. **To resolve:** either
+drop it, or make it a provenance check with content — e.g. assert that
+`git show ${EXPECTED_SOURCE_COMMIT}:docs/_decisions/DECISIONS-wave-gates.md` hashes to the same
+digest `EXPECTED_DIGESTS` carries for the fixture copy, which is the claim the title actually makes.
+
+### F-05 (Low) — the bounds property has a vacuous escape hatch
+
+`__tests__/decisionLedgerBounds.test.js:148-150` returns `true` for every case where the rendered
+block is `""`. An implementation of `renderDecisionLedgerBlock` that returned `""` unconditionally
+would satisfy the whole `fc.assert` over 200 runs. The example anchors below it (AT-13, `:190+`) do
+cover non-empty rendering, so the risk is contained — but the property that is supposed to be the
+deep oracle is the one carrying the escape. **To resolve:** add a conjunct on the empty branch —
+when `nProject + nFeature > 0` and `thresholds.maxEntries >= 1` and `maxBytes` exceeds the framing
+plus one modelled line, `block` must **not** be `""` (the model already computes the line bytes at
+`modelFormatLine`, so this needs no renderer call).
+
+### F-06 (Low) — the live arm's expected suffix is derived from the code under test
+
+`__tests__/decisionLedgerMain.test.js:405-421` builds `expectedBlock` by calling
+`gatherDecisionCorpus` → `selectDecisions` → `renderDecisionLedgerBlock` over a second copy of the
+same corpus doubles, then asserts `prompt.endsWith(expectedBlock)`. As a *wiring* oracle this is
+legitimate — it proves the served prompt carries whatever the real chain produces, and the header
+argues the point explicitly. The residual is that the bytes themselves are not pinned on this path:
+a chain-wide format regression is consistent with the assertion. It is mitigated (the render and
+corpus modules pin the literal framing and index bytes, and `expectedBlock.length > 0` blocks the
+vacuous case), so this is Low, not Medium. **To resolve, cheaply:** additionally assert the served
+prompt contains the transcribed literal header line
+`--- CLOSED DECISIONS (do not re-open without new evidence) ---` and the transcribed trailer, so the
+live arm carries at least one spec-transcribed anchor of its own.
+
+### F-07 (Low) — a `.DS_Store` binary was committed
+
+`git ls-files docs/.DS_Store` resolves; it entered in `59063c421` on this branch (6,148 bytes). Per
+this repo's own debugging note, stray files under the doc tree interact with the document oracles,
+which walk everything under `root` except `.git/` and `node_modules/`. **To resolve:** untrack it
+(index-only removal, keeping the local file) and add `.DS_Store` to `.gitignore`.
+
 ## Questions
 
 ## Positive Observations
