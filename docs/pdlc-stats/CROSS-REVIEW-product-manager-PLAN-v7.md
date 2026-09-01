@@ -147,16 +147,48 @@ gets built.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Low | delta | local | The new `Status`-column paragraph hard-codes the count word "The three `✅` ticks below". The census is accurate today (T-01, T-08, T-16), but the paragraph's own thesis is that this column is not maintained — so a count word inside it is the one sentence that *would* need maintaining if a tick ever landed, and a stale one there undermines the declaration it sits in. Drop the number: "The `✅` ticks below are incidental and confer no authority" carries the identical meaning with nothing to go stale. Same defect class as the count-word drift the round-4 revision already corrected in T-24. | `## Batches`, status-key paragraph |
+
+FINDING: Low | delta | local | ## Batches, status-key paragraph | The new Status-column paragraph hard-codes "The three ✅ ticks below"; the count is accurate today but is the only maintained sentence inside a paragraph declaring the column unmaintained. Drop the number.
+
+**No High or Medium findings.** No open High finding exists in this document, delta or inherited.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | The `Status` column is now declared authoritative-for-nothing. Is there value in a follow-up that deletes the column outright at DoD time, rather than leaving a decorative column a future reader may still be tempted to sync? Not a finding — the declaration is sufficient for this feature; I raise it only because the column costs a cell in every one of 27 rows and now carries no information. |
 
 ## Positive Observations
 
-_pending_
+- **The erratum diagnosed its own premise instead of quietly deleting it.** v1.4 states that the
+  v1.3 sentence was measured against a `bin/cli.mjs` that no longer exists, names T-17 as the cause,
+  and quotes what the file now carries. A reader who relied on the old claim is told it expired.
+  That is the behaviour I want from an erratum round and it is not the cheap option.
+- **It pushed back on the routed item's proposed remedy, with reasons.** The item asked for
+  comment/string-masked source; the row instead shows the two anchors already discharge both
+  occurrences and records that masking is therefore not owed. I re-measured and agree. A round that
+  implements a remedy it believes unnecessary is worse than one that argues — and the argument here
+  is verifiable in one command, which is what made it cheap for me to check.
+- **The distinction between an incidental property and a normative one is now explicit.** "Its
+  falsifiability rests on the two anchors, never on the file being free of the token" is the
+  generalisable lesson, and the row states it rather than leaving it implicit in a regex.
+- **The `DEC-DOC-01` violation was fixed as a side effect, not defended.** The raw `:262` anchor is
+  gone and the evidence is now carried by symbol name and verbatim quote.
+- **The `Status`-column declaration answers my v6 Low finding durably.** Naming the commit ledger as
+  the authoritative record — which I verified carries 18 task-tagged commits — is strictly better
+  than the hand-sync I would have accepted.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+The routed item is resolved. The PLAN remains a faithful compression of REQ, FSPEC, TSPEC and
+DECISIONS as they stand at HEAD — all four re-hashed, and the clauses T-10 leans on re-read in their
+current form. Nothing previously approved is broken; no task, conjunct, dependency or acceptance-
+criterion mapping moved.
+
+The single **Low** finding is non-gating and needs no round. If the author is editing this file for
+any other reason, drop the count word from the status-key paragraph; otherwise it can ride to DoD.

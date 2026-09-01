@@ -33,3 +33,33 @@ damage rather than re-litigating it — see §Dependencies.
 
 Two findings, both non-gating: one Medium (inherited, nonlocal) and one Low (delta, local).
 No open High, so the confirmation approves.
+
+## Batches
+
+The edit touches exactly one row, `T-10`, and the section preamble above the task table. Nothing
+else in §Batches moved, so the batch DAG, the `[Fake first]` ordering, the red-before-green
+predecessors and the same-new-file authoring guard are all untouched and stay as approved at v6.
+Re-derived nothing beyond confirming the diff is confined to prose inside T-10's `Task` cell: the
+`Batch` (`2`), `Deps` (`T-01, T-02`), `Test File` and `Source File` cells are byte-identical.
+
+**T-10's conjunct is unchanged, and that is the right call.** The assertion is still whole-file,
+still carries no "in the `stats` seam" qualifier (the undelimited qualifier removed at v1.2 for
+te F-02 has not crept back into the row), and still names the boundary-anchored matcher. What
+changed is only the *justification*: from a baseline property of the file ("contains neither token
+anywhere") to a property of the matcher itself. That is the stronger of the two groundings — a
+baseline property expires the moment a task in this very PLAN edits the file, which is exactly what
+T-17 did, whereas the anchors hold for any source that calls `lstatSync` and mentions `statSync` in
+prose. The row now also says masking is not owed and says *why*, so an implementer reading it has a
+decision rather than an unstated assumption.
+
+**Falsifiability survives.** The conjunct can still go red for the reason it exists: a
+`statSync(` call anywhere in the file's source matches both anchors. The one residual is a
+false-**red** — prose writing `statSync(` with the paren inside a comment would match — which is
+the safe direction for a guard oracle and is not worth an edit.
+
+**The `Status` column declaration.** T-01, T-08 and T-16 carry `✅`; the row count matches the
+"three `✅` ticks" the new paragraph claims. Nothing in this document derives a gate, a batch edge
+or a Definition-of-Done checkbox from that column — I grepped §Definition of Done, §Batch gates and
+§Verification for a `Status` dependency and there is none — so declaring it unmaintained removes an
+authority claim without removing an obligation. Given T-02…T-20 have landed on this branch while
+most rows still read `⬚`, the declaration makes the document honest rather than making it weaker.
