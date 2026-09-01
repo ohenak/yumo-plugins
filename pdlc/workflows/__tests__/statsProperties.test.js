@@ -17,6 +17,10 @@
 //     produces `stdout` byte-identical to the sorted-order run, with `byDocType` key order and
 //     human row order both equal to `REVIEW_DOC_TYPE_ROWS` exactly. Stated over a permutation,
 //     not two identical calls, per TSPEC §6.6 (BR-09, BR-13, BR-18).
+//   - PROP-PBT-04 (bounded generators): file-size draws are bounded in length/magnitude, so the
+//     size product feeding the byte ratio always yields a finite computed quotient — an `assume`
+//     conjunct records that boundedness rather than letting an unbounded generator red on an
+//     arithmetic artifact (`Infinity`/`NaN`) that is not the claim under test.
 //
 // PROP-3's generator deliberately excludes malformed `CROSS-REVIEW-` basenames: the `malformed`
 // field is documented (TSPEC §4.1's `ReviewRounds` typedef) to preserve listing order with no
@@ -223,6 +227,46 @@ describe("T-19: PROP-3 (order independence over a generated permutation, TSPEC �
           ...REVIEW_DOC_TYPE_ROWS,
         ]);
       }),
+      { numRuns: 100 },
+    );
+  });
+});
+
+// --- PROP-PBT-04: bounded file-size generator keeps the ratio quotient finite ------------
+
+describe("T-19: PROP-PBT-04 (bounded file-size generator, TSPEC §6.6)", () => {
+  it("draws bounded file sizes and the byte-ratio quotient is always finite, never Infinity/NaN", () => {
+    const basenameAndSizeArb = fc.tuple(
+      anyBasenameArb(FEATURE),
+      fc.integer({ min: 0, max: 10_000 }),
+    );
+
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(basenameAndSizeArb, { selector: ([name]) => name, maxLength: 15 }),
+        (pairs) => {
+          const basenames = pairs.map(([name]) => name);
+          const tree = treeFor(ROOT, basenames);
+          for (const [name, size] of pairs) {
+            tree[`${ROOT}/${name}`] = "x".repeat(size);
+          }
+          const io = fakeStatsIo(tree);
+          const result = computeFeatureStats(io, realParsers(), FEATURE, ROOT);
+
+          const { specBytes, processBytes, ratio, state } = result.byteRatio;
+
+          // Bounded-generator conjunct: both byte totals stay finite by construction, so a
+          // quotient computed from them can never itself be an arithmetic artifact.
+          fc.pre(Number.isFinite(specBytes) && Number.isFinite(processBytes));
+
+          if (state === "measured") {
+            expect(Number.isFinite(ratio)).toBe(true);
+            expect(ratio).toBe(Math.round((processBytes / specBytes) * 100) / 100);
+          } else {
+            expect(ratio).toBeNull();
+          }
+        },
+      ),
       { numRuns: 100 },
     );
   });

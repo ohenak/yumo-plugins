@@ -181,7 +181,76 @@ column width is a decision rather than an accident.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | `parseStatsArgv` returns a `cwd` field (`stats.mjs:174`), but `runStats` never reads it — production resolves cwd separately via `readFlag(argv, "cwd")` in `cmdStats` (`bin/cli.mjs`). The parsing itself is load-bearing (it stops the value token becoming a positional feature name, which `statsArgv.test.js:50` correctly pins), but the returned field has no production consumer. Is the field intended for a future caller, or should the contract return only what is consumed? Raised as an erratum against TSPEC §3.3 rather than a finding, since the implementation matches the specified signature exactly. |
+| Q-02 | F-02 aside, is the empty-malformed-list case (no row emitted at all) an intended part of BR-17's layout contract, or incidental? The fix for F-02 should pin whichever answer is intended. |
+
 ## Positive Observations
 
+- **The production path is genuinely traversed, not simulated.** `stats-read-only.test.js:196-213`
+  and `stats-cli.test.js` drive `main(["node","pdlc","stats",…])` — the real switch arm
+  (`bin/cli.mjs:1361`), the real `statsIo()`, the real `statsParsers()` — over a real tree, and
+  `stats-cli.test.js:186-196` additionally spawns an actual child process where in-process stream
+  capture would have corrupted the "no surrounding text" clause. No metric is proven only through a
+  builder's unit test.
+- **AT-21's read-only oracle is paired, not absence-only.** The tree snapshot equality
+  (`stats-read-only.test.js:134-157`) is set-equality over paths *and* mtimes in both directions —
+  added, removed and changed are each asserted `deepEqual([])` — and it is followed immediately by
+  a positive "the job was done" conjunct: exit 0 plus the exact five-key metric document
+  (`stats-read-only.test.js:207-213`). A no-op command would fail the second half. The
+  `SCRATCH_PREFIXES` guard test (`stats-read-only.test.js:160-192`) closes the obvious hole by
+  asserting the exclusion list is non-empty and matches nothing pre-existing, so the exclusion can
+  never silently become the whole tree.
+- **The structural anti-drift oracles are the strongest part of this change.** The four-classifier
+  bundle is pinned by reference identity against `orchestrate-dev.js`'s real exports
+  (`stats-cli-structure.test.js:447-454`), the construction site is pinned to exactly one
+  occurrence (`:483-499`) so a second bundle cannot void the identity oracle without failing it,
+  and `cmdStats` is proven to pass that same object through rather than rebuild or wrap it
+  (`:456-481`) — which is precisely what stops a test double from becoming the production path.
+  `statsIo`'s key set is asserted by set-equality (`:500-511`), not containment, so a write member
+  cannot be added silently; and the `statSync`/`lstatSync` check is positive-and-negative on the
+  same body (`:512-524`) rather than a bare absence probe.
+- **Set-equality is used where it matters.** Top-level JSON key sets are asserted with
+  `deepEqual`/`Set` equality in both the success and refusal documents
+  (`stats-read-only.test.js:209-213,237-241`), the gap row is pinned to `["gap"]` exactly
+  (`statsOutcome.test.js:281`), and `parseStatsArgv`'s result shape is pinned by sorted key list on
+  both the ok and error branches (`statsArgv.test.js:100,103`). A deleted key fails these.
+- **`NON_FEATURE_DIRS` is transcribed, not imported, in the discovery tests.**
+  `statsDiscovery.test.js:14` builds a local `NON_FEATURE_DIRS_LITERAL` rather than importing the
+  constant under test, so the exclusion set cannot drift and self-approve. The anti-drift file then
+  separately checks the constant against the real `docs/` tree in both directions — superset and
+  subset (`statsAntiDrift.test.js:109-128`) — which is a genuine two-sided oracle, not a
+  containment check.
+- **Property coverage is real and correctly aimed.** `statsProperties.test.js` uses fast-check for
+  order independence over generated permutations, asserting stdout byte-identity *and*
+  `byDocType` key order against `REVIEW_DOC_TYPE_ROWS` — the right shape for BR-09/BR-13/BR-18,
+  since it falsifies any place listing order reaches output rather than merely sampling one
+  ordering.
+- **Fleet isolation is proven behaviorally.** `statsOutcome.test.js:266-282` makes one feature's
+  `listDir` throw and asserts the other features still report normally at exit 0, which is the
+  falsifiable form of EC-21's catch-all rather than a claim about the `try`/`catch` existing.
+- **Branch coverage clears the floor with room to spare** — 95.62% on `lib/stats.mjs`, with the
+  module explicitly present in the gate's `c8.include` list and the gate re-run to exit 0.
+
 ## Recommendation
+
+**Needs revision**
+
+Two High findings, both narrow and both closable with small, additive test changes — no production
+code needs to move:
+
+1. **F-01** — add the positive condition clause to AT-27's human legs so a swapped diagnostic
+   cannot pass. FSPEC AT-27 and PROP-ERR-03 already specify this conjunct in words; the suite just
+   does not implement it.
+2. **F-02** — add one single-feature human render with a non-empty malformed list, asserting the
+   basename appears, closing `stats.mjs:503-504` and EC-05's naming clause.
+
+F-03 and F-04 are worth taking in the same pass (both are one-line oracle tightenings) but are not
+gating. F-05 is a note.
+
+This is high-quality work overall: the production wiring, the read-only oracle and the structural
+anti-drift checks are all built the way this pipeline asks for, and the two gaps are in the
+diagnostic and malformed-reporting corners rather than in any metric. Closing them makes the
+suite say what the specification already says.
 
