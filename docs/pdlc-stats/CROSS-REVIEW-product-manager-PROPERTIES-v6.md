@@ -86,3 +86,46 @@ No findings.
 | ID | Question |
 |----|---------|
 | Q-01 | The table's column header reads "Test file (status at HEAD)" while rows for files that *are* present at HEAD still read `(new)`. The preamble now defines `(new)` as provenance rather than absence, so the document is internally consistent and I raise no finding — but the header and the cell vocabulary pull in different directions for a reader who skips the preamble. Worth a wording pass at harvest, not now. |
+
+## Positive Observations
+
+- **The fix was measured, not narrated.** The preamble does not assert wave 9 ran; it states the
+  method (`git ls-files --error-unmatch` over PLAN's File Ownership Manifest), the population
+  (all sixteen new files) and the three commit anchors. Every one of those reproduced for me
+  exactly. A status claim that carries its own reproduction recipe is the version that stays true
+  — or fails loudly — after the next wave.
+- **The round widened the fix to the defect's real boundary.** Both reviewers named the preamble.
+  The author also found and fixed §Subject under test's stale "absent at HEAD" premise, which
+  neither of us had flagged, and said in the changelog why leaving it would have contradicted the
+  corrected preamble. Fixing the class rather than the instance is what stops this finding
+  recurring in v1.4.
+- **Nothing else moved.** In a frozen round, restraint is a feature. The diff is 34 added and 13
+  removed lines across four prose regions, with zero property, oracle, fixture or trace churn, so
+  the round-5 verification of that material carries forward intact and this confirmation is cheap
+  to trust.
+- **The erroneous count was corrected in place rather than erased.** Marking v1.2's "ten of the
+  fifteen" as wrong, in the v1.2 entry, preserves the audit trail that makes the revision history
+  worth keeping.
+
+## Recommendation
+
+**Approved**
+
+Both halves of the v5 High finding are fixed exactly as requested and verified against HEAD: the
+preamble states wave 9 has run with three correct commit anchors, and T-18's status cell carries
+`(present at HEAD, 9a3a70fd9)`. No open High finding remains anywhere in the document — mine or
+the software engineer's. The revision introduced no defect, contradicts nothing in the repository
+at HEAD, and touched no property, oracle, fixture or trace. Q-01 is non-blocking and belongs to
+harvest.
+
+DEFERRED: replace the per-row `(new)` / `(present at HEAD, {sha})` mix in §PLAN tasks with a single
+dated "status measured at commit X" line above the table, so the table does not need re-truing
+after every implementation wave (carried from v5 Q-01; software-engineer v5 raised the same on
+T-11's row).
+DEFERRED: reconcile the §PLAN tasks column header "status at HEAD" with rows that read `(new)` as
+provenance rather than absence (Q-01).
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
