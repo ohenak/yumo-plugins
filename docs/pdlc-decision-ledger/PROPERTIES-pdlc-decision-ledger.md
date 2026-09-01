@@ -10,7 +10,21 @@
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | te-author | 1.2 | 2026-08-29 |
+| Draft | te-author | 1.3 | 2026-09-01 |
+
+**v1.3 — DoD erratum absorption, F-8** (`CODE_REVIEW-pdlc-decision-ledger-v3.md`). One property re-worded; no
+property added, removed or renumbered, no count, fixture, corpus digest or acceptance criterion changed.
+**PROP-WIRE-08** stated its mechanism as a ninth `reviewerPrompt` parameter and pinned two now-dead line
+anchors (`orchestrate-dev.js:11483`, `:11506`). The shipped threading, settled upstream in `TSPEC` v1.4
+§2.4/§4.5, is a trailing `ledgerBlock` option on `dispatchAndVerify`, handed down through `reviewLoop`'s
+`wrapped` / `runWrapped` closures and concatenated after the pacing-contract clause, the opener and the
+learnings block; `reviewerPrompt` is unchanged and takes no ledger argument. The row now names those
+functions instead of line numbers (DEC-DOC-01) and states the `reviewerPrompt`-unchanged fact explicitly.
+The property's substance and falsifier are untouched — the delivered reviewer prompt of every round must
+end with the block, on both the iteration-1 and iteration-≥2 paths — so the existing oracles in
+`decisionLedgerLoop.test.js`, which assert on the delivered prompt, already discharge it and need no
+change. This is a targeted absorption of `TSPEC` §2.4/§4.5 only, not a full re-pin: the Upstream cell's
+`TSPEC` v1.0 pin and the §Gaps routed items are deliberately left as they stand.
 
 **v1.2 — cross-review round 3, upstream-cascade confirmation** (`CROSS-REVIEW-product-manager-PROPERTIES-v3.md`,
 `CROSS-REVIEW-software-engineer-PROPERTIES-v3.md`). Round 2 was a cascade confirmation that owed no
@@ -341,7 +355,7 @@ root, live** (`main()`).
 | **PROP-WIRE-05** | **Positive presence (live).** The reviewer prompt actually handed to the reviewer dispatch must **end with** the rendered ledger block — not merely "differ from the baseline". | Integration |
 | **PROP-WIRE-06** | The injector call must be **`await`ed**: a non-awaited call must be detectable, since the adapter's implementations are async while the test doubles are sync (this repo's injected-IO rule). Asserted by scripting an async `_git`/`_readFile` pair and requiring the served prompt to carry the block. | Integration |
 | **PROP-WIRE-07** | `buildDecisionLedgerInjector` must return **`null`** iff resolved `enabled` is **not `=== true`**, and with the injector `null`, `reviewLoop` must pass `""` as the `ledgerBlock` argument so the prompt is built by the identical expression it is today. | Contract |
-| **PROP-WIRE-08** | The block must be appended **last**, after `oraclePart` and `findingGrammarPart`, on **both** the iteration-1 and the iteration-≥2 return paths `reviewerPrompt` already has (`orchestrate-dev.js:11483` and `:11506`). | Contract |
+| **PROP-WIRE-08** | The block must be appended **last in the delivered prompt** — after the pacing-contract clause, the per-iteration `opener` and the learnings block that the dispatch wrapper itself appends — for **both** reviewers and on **every** round, iteration-1 and iteration-≥2 alike. The shipped mechanism is a trailing option on the dispatch wrapper, **not** a prompt-builder parameter: `reviewerPrompt` is unchanged and takes **no** ledger argument (its return is only the wrapper's `basePrompt`, so anything folded in there would sit *before* the suffix and could not be last); the round's rendered block is threaded as `dispatchAndVerify`'s trailing `ledgerBlock` option, passed through `reviewLoop`'s `wrapped` / `runWrapped` closures on each reviewer dispatch, and concatenated dead last by `dispatchAndVerify` (`TSPEC` v1.4 §2.4, §4.5). Cite the function names, not line numbers (DEC-DOC-01). Falsified by any *delivered* reviewer prompt of any round that does not **end** with the block. | Contract |
 | **PROP-WIRE-09** ✖ | The index must attach to the review-loop **reviewer** prompt **only** — never to the delta-confirmation prompt or the finding-restatement prompt, both of which forbid re-review in their own text (`TSPEC` §2.5, D-2). Asserted positively and negatively on the same run: the reviewer prompt ends with the block, and the other two prompts are byte-identical to FX-BASELINE's recording of them. | Contract |
 | **PROP-WIRE-10** | The enablement flag must be read by **destructuring** (`const { enabled: decisionLedgerEnabled } = decisionLedgerConfig`), never as a dotted `.enabled` member read, and every new symbol must land **outside** the sentinel-bounded `// === LEARNINGS INJECTION REGION START/END ===` block. `advisoryDisabled.test.js`'s PROP-DIS-06 (`advisoryDisabled.test.js:707–740`) slices that region out via `sourceExcludingParser` (`:717–719`) **before** counting `/\.enabled\b/`, so a symbol landing inside it would be silently exempt and this discipline would have no oracle behind it. PROP-DIS-06 must remain green. | Contract |
 | **PROP-WIRE-11** | `report.decisionLedger` must be set **only** when the injector is non-null and **absent from the report object entirely** otherwise — never spread as `undefined` (the shipped `learningsInjectionField` discipline). | Contract |
