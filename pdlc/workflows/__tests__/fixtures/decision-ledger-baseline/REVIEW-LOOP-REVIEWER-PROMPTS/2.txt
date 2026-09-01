@@ -1,0 +1,31 @@
+Review the document at docs/decledger-review/TSPEC-decledger-review.md for phase T of feature decledger-review. This is iteration 2.
+All commits for this task must land on branch feat-decledger-review. Immediately before each commit run `git rev-parse --abbrev-ref HEAD`; if it prints anything else — especially the default branch — STOP and report instead of committing. Do not run `git checkout` yourself; the orchestrator has already placed the tree on the branch.
+Ground every claim in code, not only in documents: verify claims against the actual repository state, and cite file:line for every claim you make about existing behavior.
+- Every production file and symbol the TSPEC cites — confirm each one exists in the repo.
+- Every claim about current behavior — verify against the cited code, not the TSPEC's prose.
+Convergence is the goal: judge only whether your own blocking findings are resolved and whether the revision broke anything — a narrower scope of attention, not a lower standard. Only High findings block approval; Medium and Low are recorded, not gating.
+This is a re-review — follow the delta re-review protocol:
+1. First read your own previous cross-review file: docs/decledger-review/CROSS-REVIEW-product-manager-TSPEC-v1.md (your reviewer role is "product-manager").
+2. Run `git diff` on docs/decledger-review/TSPEC-decledger-review.md against the commit you last reviewed to see exactly what changed.
+3. Verify each of your previous findings is resolved; scan ONLY the changed sections for new issues. Do not re-review unchanged sections you already approved.
+4. The approval bar: any open High finding anywhere in the document — old or new — means Needs revision. Medium and Low findings do not block; file them and approve with minor changes.
+Write your cross-review to exactly this path: docs/decledger-review/CROSS-REVIEW-product-manager-TSPEC-v2.md. Do not derive a different file type from the artifact under review — this phase's round history is keyed by that exact name, and a file outside it is not counted. End with the standard VERDICT trailer.
+When you review acceptance tests, properties, or unit tests, demand:
+- No implementation echoes: an expectation must never import or derive its expected value from the code under test; expected values are literal transcriptions from the spec.
+- No absence-only oracles: every negative assertion (X does not happen) must be paired with a positive assertion on the same path (what DOES happen instead).
+- Completeness by set-equality, not containment: enumerated contracts (row tables, catalogues) need a set-equality check over the full enumeration, so a deleted case fails.
+If you find a defect in an UPSTREAM document — one this document derives from — do not edit that document yourself, and do not fold the defect into your verdict as if it were a defect of the document in front of you. Emit one line per item in your final message, in exactly this form:
+ERRATUM: {DOCTYPE}: {one-line item}
+where {DOCTYPE} is one of REQ, FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES (uppercase). The orchestrator routes each item to that document's author for a targeted versioned edit and to its approvers for a delta confirmation.
+
+Pacing contract (H-3): lay down the skeleton first, then write ONE top-level section per edit, keep every single write under 12,000 bytes, and commit after each section. A monolithic write is killed by the 180 s stall watchdog and loses everything it had not yet flushed.
+
+This artifact is not on disk yet. Begin by laying out its top-level headings as a skeleton, then fill them one at a time under the pacing contract above.
+
+The completeness gate accepts these top-level sections — canonical title, or any listed accepted alternative — cover every one:
+## Overview (accepted: Overview, Scope, Summary, Context, Introduction)
+## Architecture (accepted: Architecture, Design)
+## Interfaces (accepted: Interfaces, Interface, Protocol, Protocols, Seams, APIs, API)
+## Data Model (accepted: Data Model, Types, State, Schema, Data structures)
+## Test Strategy (accepted: Test Strategy, Testing, Test plan, Verification)
+## Open Questions (accepted: Open Questions, Obligations, Assumptions, Risks, Decisions)

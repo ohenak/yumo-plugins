@@ -194,13 +194,17 @@ lives in the FSPEC's §6 traceability table and PROPERTIES §7; roll-up below.
 
 Upstream: `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`
 (proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move
-M4, §3/§4(c) R3-2). FSPEC not yet authored.
+M4, §3/§4(c) R3-2). FSPEC: `docs/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md`
+(FSPEC-DECLEDGER-01), authored against REQ v1.7 and Baseline
+`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.1.
 
 | User story | Requirements | FSPEC |
 |---|---|---|
-| US-01 | REQ-DECLEDGER-01, REQ-DECLEDGER-03, REQ-DECLEDGER-06 | — (pending) |
-| US-02 | REQ-DECLEDGER-04, REQ-DECLEDGER-07 | — (pending) |
-| US-03 | REQ-DECLEDGER-02, REQ-DECLEDGER-05 | — (pending) |
+| US-01 | REQ-DECLEDGER-01, REQ-DECLEDGER-03, REQ-DECLEDGER-06 | §3.2, §3.4; BR-1–BR-3, BR-5, BR-6, BR-9, BR-11; AT-01–AT-03, AT-06, AT-07, AT-12 |
+| US-02 | REQ-DECLEDGER-04, REQ-DECLEDGER-07 | §3.3; BR-7, BR-8, BR-12, BR-13; E-2–E-4, E-6–E-8; AT-08–AT-10, AT-13–AT-15 |
+| US-03 | REQ-DECLEDGER-02, REQ-DECLEDGER-05, REQ-DECLEDGER-08 | §3.1, §3.2 step 1; BR-4, BR-10, BR-11, BR-14; E-1, E-5; AT-04, AT-05, AT-11, AT-16, AT-17 |
+
+G-4 carries no acceptance criterion by REQ design and therefore no FSPEC row.
 
 ## pdlc-stats (2026-08-30)
 

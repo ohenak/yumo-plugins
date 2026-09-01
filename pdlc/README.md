@@ -134,6 +134,10 @@ block); with a key off, the dispatch stream is byte-identical to a run without t
 Grammar, eligibility rules, and notice ids are documented in `pdlc/OPERATIONS.md`
 (§Review loop mechanics); defaults are mirrored in `.claude/pdlc.config.example.json`.
 
+The optional `decisionLedger` reviewer-prompt block (off by default) is documented in
+`pdlc/OPERATIONS.md` (§Review loop mechanics, "Decision ledger") — see there for the
+recognition rule, bounds, omission reasons and notice ids.
+
 ## Convention contract (what installing pdlc expects of a repo)
 
 - Artifacts live under `docs/{feature}/`: `REQ → FSPEC → TSPEC → PLAN → PROPERTIES`

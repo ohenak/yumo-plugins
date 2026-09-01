@@ -2468,6 +2468,444 @@ function parseDerivativeStopConfig(text) {
   };
 }
 
+// ─── pdlc-decision-ledger TSPEC §4.1 — `decisionLedger` config (REQ C-3/C-5). Direct
+// structural clone of `parseLearningsConfig` above: same `degraded(sectionMalformed)` closure
+// shape, same `text == null` / `JSON.parse` failure / missing-block short-circuits, same
+// `boolField` + `nonNegativeInt` per-key validators. One deliberate divergence (REQ C-5, A-2):
+// `enabled` defaults to `false`, not `true` — this feature ships OFF by default.
+
+const DECISION_LEDGER_DEFAULTS = Object.freeze({
+  enabled: false,
+  maxEntries: 70,
+  maxBytes: 12500,
+});
+
+// TSPEC §4.4 — the two run-level notice ids `decisionLedger` config reads can emit, keyed to
+// their TSPEC-table detail text (§4.4). Never `undefined`-spread: absent-block, the common case,
+// emits neither.
+const DECISION_LEDGER_NOTICES = Object.freeze({
+  "NTC-DECLEDGER-MALFORMED": "the `decisionLedger` value is present but not a plain object",
+  "NTC-DECLEDGER-KEYTYPE":
+    "one or more keys are wrong-typed; each named in the detail, each falling back to its own default",
+});
+
+/**
+ * Parse the repo's `decisionLedger` config section out of the SAME `.claude/pdlc.config.json`
+ * `parseLearningsConfig` reads. Pure and total: never throws, never reads anything, and every
+ * key falls back INDEPENDENTLY.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+function parseDecisionLedgerConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: DECISION_LEDGER_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObject(parsed) || !("decisionLedger" in parsed)) return degraded(false);
+
+  const section = parsed.decisionLedger;
+  if (!isPlainObject(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return DECISION_LEDGER_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return DECISION_LEDGER_DEFAULTS[key];
+  };
+
+  const nonNegativeInt = (key) => {
+    if (!(key in section)) return DECISION_LEDGER_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 0) return v;
+    invalidKeys.push(key);
+    return DECISION_LEDGER_DEFAULTS[key];
+  };
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+      maxEntries: nonNegativeInt("maxEntries"),
+      maxBytes: nonNegativeInt("maxBytes"),
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
+// ─── pdlc-decision-ledger TSPEC §3.1 — corpus scope, a directory glob enumerated through `_git`
+// (T-14). Frozen literal, structurally mirroring `LEARNINGS_CORPUS_ARGV` above: one
+// `ls-files` invocation, `:(glob)` pathspecs, `DECISIONS-*.md` filenames only. Four pathspecs,
+// not one: project-level (`docs/_decisions/`) plus feature-level across `docs/`,
+// `docs/completed/`, and `docs/discarded/` (§3.1's two invented-scope corrections).
+const DECISION_CORPUS_ARGV = Object.freeze([
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "--",
+  ":(glob)docs/_decisions/DECISIONS-*.md",
+  ":(glob)docs/*/DECISIONS-*.md",
+  ":(glob)docs/completed/*/DECISIONS-*.md",
+  ":(glob)docs/discarded/*/DECISIONS-*.md",
+]);
+
+// TSPEC §3.2 — the decision-record heading grammar, five conjuncts: ATX heading levels 2–4,
+// an optional load-bearing ordinal prefix, a namespace-plus-numeric id
+// (`DEC(?:-[A-Z0-9]+)+-\d+`), the id opening the heading (excludes mid-heading
+// back-references), and a `:` / `—` separator followed by a non-empty statement (BR-3).
+const DECISION_HEADING_RE =
+  /^#{2,4}[ \t]+(?:\d+\.[ \t]+)?(DEC(?:-[A-Z0-9]+)+-\d+)[ \t]*[:—-][ \t]*(\S.*?)[ \t]*$/;
+
+/**
+ * TSPEC §4.2, §3.2, §3.3. Pure and total: applies `DECISION_HEADING_RE` line by line, then
+ * resolves duplicate ids within the file to the LAST matching heading (§3.3's last-record-wins
+ * law). Returns `[]` for `text` that is `null`, not a string, empty, or holds no qualifying
+ * heading — an ordinary empty result, never a failure (BR-8/F-9).
+ *
+ * `origin` is derived from `sourcePath` alone (§3.1's scope split): project-level files live
+ * under `docs/_decisions/`, everything else in the corpus is feature-level.
+ *
+ * @param {string|null} text - raw file contents, or null/non-string (never thrown on)
+ * @param {string} sourcePath - the file's repo-relative path (the citation)
+ * @returns {Array<{id: string, statement: string, sourcePath: string, heading: string, origin: "project"|"feature"}>}
+ */
+function recogniseDecisionRecords(text, sourcePath) {
+  if (typeof text !== "string" || text.length === 0) return [];
+
+  const origin = typeof sourcePath === "string" && sourcePath.startsWith("docs/_decisions/") ? "project" : "feature";
+
+  const byId = new Map();
+  for (const line of text.split("\n")) {
+    const match = DECISION_HEADING_RE.exec(line);
+    if (!match) continue;
+    const [, id, statement] = match;
+    byId.set(id, { id, statement, sourcePath, heading: line, origin });
+  }
+  return Array.from(byId.values());
+}
+
+// ─── TSPEC §4.3 — Decision-ledger rendering (pure) ──────────────────────────────────────────
+
+/** TSPEC §4.3, D-9, DEC-DECLEDGER-12. Frozen preamble text. Kept short so the framing —
+ *  header + preamble + rule text + trailer + separating blank lines — stays inside the
+ *  ≤1,200-byte budget alongside DECISION_LEDGER_RULE_TEXT. */
+const DECISION_LEDGER_PREAMBLE =
+  "The decisions below are closed. Re-opening one requires new evidence, not a restatement " +
+  "of the original finding.";
+
+/** TSPEC §4.3, BR-5, BR-6, BR-6/REQ-DECLEDGER-06, D-9/DEC-DECLEDGER-12. Frozen rule text,
+ *  drafted to fit T-06's ≤1,200-byte framing budget alongside DECISION_LEDGER_PREAMBLE and the
+ *  header/trailer sentinel lines (an acceptance condition of this task, not a hope). */
+const DECISION_LEDGER_RULE_TEXT =
+  "A finding may re-open a closed decision only when it is High severity and cites evidence " +
+  "not part of the decision's own record. In-scope: a behavior that changed after the " +
+  "decision was recorded, cited at the changed source. Not-in-scope: a source the decision " +
+  "already cites, re-cited at a different line or later commit with no behavioral change. " +
+  "Decide against the cited record, not the index line. Key a repeat on the decision id, " +
+  "not as a fresh finding.";
+
+/** TSPEC §4.3. This file's own escape contract for a statement carrying an embedded newline or
+ *  carriage return: a `\r\n` pair becomes the two-character literal `\n`, any remaining `\n`
+ *  becomes the two-character literal `\n`, any remaining `\r` becomes the two-character literal
+ *  `\r` — never a real line break, so "one physical line per decision" holds for any input. */
+function escapeDecisionStatement(raw) {
+  return raw.replace(/\r\n/g, "\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+}
+
+function renderDecisionIndexLine(record) {
+  return (
+    `${record.id} — ${escapeDecisionStatement(record.statement)}  ` +
+    `[${record.sourcePath} § ${record.id}]`
+  );
+}
+
+/**
+ * TSPEC §4.3, BR-1/E-6, DEC-DECLEDGER-10/-12. Pure, total. Returns exactly `""` when `selected`
+ * is empty — no header, no preamble, no rule text, no trailer, no whitespace. Otherwise renders
+ * the framed block, prefixed with "\n\n" and closed with the trailer sentinel with no trailing
+ * newline. Order-preserving: the selection step (§3.6) owns the drop/precedence order, this
+ * function only renders whatever order it is given.
+ *
+ * @param {{selected: Array<{id: string, statement: string, sourcePath: string}>}} args
+ * @returns {string}
+ */
+function renderDecisionLedgerBlock({ selected }) {
+  if (!Array.isArray(selected) || selected.length === 0) return "";
+
+  const indexLines = selected.map(renderDecisionIndexLine).join("\n");
+  return (
+    `\n\n--- CLOSED DECISIONS (do not re-open without new evidence) ---\n` +
+    `${DECISION_LEDGER_PREAMBLE}\n\n` +
+    `${indexLines}\n\n` +
+    `${DECISION_LEDGER_RULE_TEXT}\n` +
+    `--- END CLOSED DECISIONS ---`
+  );
+}
+
+// ─── TSPEC §4.2, §3.1, §3.4, §3.6 — Decision selection (pure) ──────────────────────────────
+
+/** TSPEC §5.2. Frozen. The set-equality operand for `selectDecisions`' `omitted[].reason`. */
+const DECISION_LEDGER_OMIT_REASONS = Object.freeze(["RSN-ENTRIES", "RSN-BYTES"]);
+
+const DECISION_LEDGER_PROJECT_PREFIX = "docs/_decisions/";
+
+/** TSPEC §3.1. The single in-scope feature directory, priority order. */
+function decisionLedgerFeatureDirs(feature) {
+  return [`docs/${feature}/`, `docs/completed/${feature}/`, `docs/discarded/${feature}/`];
+}
+
+/**
+ * TSPEC §4.2, §3.1, §3.4, §3.6. Pure, total. Partitions `entries` by origin — §3.1's BOOLEAN
+ * partition alone: an entry under `docs/_decisions/` is project-level, every other entry handed
+ * to this function is feature-level, unconditionally. This step never re-derives the
+ * single in-scope feature directory itself — that narrowing (§3.1's Q-2/F-14 "no directory ⇒
+ * project-level alone" resolution, priority `docs/{feature}/` → `docs/completed/{feature}/` →
+ * `docs/discarded/{feature}/`) is the corpus gatherer's job (T-17), applied to the raw
+ * enumeration before `entries` ever reaches here; a caller that hands this function a corpus
+ * spanning many features' directories at once (as `DEC-DECLEDGER-13`'s whole-fixture assertion
+ * deliberately does) gets every one of them classified "feature", not silently dropped. Applies
+ * §3.4's project-level-wins precedence keyed on origin (never on path order), then §3.6's drop
+ * loop: feature-level before project-level, reverse enumeration order within an origin —
+ * equivalently, drop from the tail of the `[...projectRecords, ...featureRecords]` concatenation
+ * one whole line at a time. The survivors are a front-anchored prefix of that concatenation
+ * except where FSPEC E-8 forbids it: a line that cannot fit `maxBytes` by itself is omitted
+ * line-locally first, wherever it sits, because "its omission does not abort the rest" —
+ * the lines behind a head-position oversized record still render if they fit (CR F-01).
+ * `renderedBytes` is obtained by calling the block renderer on the candidate set at each
+ * step (`DEC-DECLEDGER-11`) — this step never concatenates a line itself. Framing is
+ * charged to `maxBytes` (D-5) because the renderer produces it as part of the same string.
+ * `failedSources` counts entries with `readOk === false`; `emptySources` counts entries that read
+ * but yielded zero records — the two are kept separate (O-7, §6.3).
+ *
+ * @param {{entries: Array<{path: string, text: string|null, readOk: boolean}>, feature: string, thresholds: {maxEntries: number, maxBytes: number}}} args
+ * @returns {{selected: object[], omitted: Array<{id: string, reason: string}>, failedSources: string[], emptySources: string[], renderedBytes: number}}
+ */
+// TSPEC §4.2's `CorpusEntry` is keyed `sourcePath` (the shape the corpus gatherer, T-17,
+// produces); the earlier bounds/corpus test fixtures (T-07/T-09) key the same shape `path`. Both
+// are accepted here rather than forcing every caller onto one name.
+function entryPathOf(entry) {
+  return entry.path ?? entry.sourcePath;
+}
+
+function selectDecisions({ entries, thresholds }) {
+  const failedSources = [];
+  const emptySources = [];
+
+  const projectById = new Map();
+  const featureById = new Map();
+
+  for (const entry of entries) {
+    const path = entryPathOf(entry);
+    if (!entry.readOk) {
+      failedSources.push(path);
+      continue;
+    }
+    const records = recogniseDecisionRecords(entry.text, path);
+    if (records.length === 0) {
+      emptySources.push(path);
+      continue;
+    }
+    for (const record of records) {
+      const byId = record.origin === "project" ? projectById : featureById;
+      if (!byId.has(record.id)) byId.set(record.id, record);
+    }
+  }
+
+  // §3.4: project-level wins on id collision, keyed on origin, never on path order.
+  for (const id of projectById.keys()) featureById.delete(id);
+
+  const fullOrder = [...projectById.values(), ...featureById.values()];
+
+  // FSPEC E-8/BR-13: a line that cannot fit `maxBytes` *by itself* is omitted line-locally,
+  // wherever it sits in the order — its omission must not abort the rest, so it is taken out
+  // before the tail drop rather than being reached through every line behind it (CR F-01).
+  // "By itself" is measured the way D-5 charges bytes: the rendered block containing that line
+  // alone, framing included. This pass can only fire when the full block is already over budget
+  // (block([r]) ≤ block(all) for every r), so a corpus that fits is untouched by it.
+  const omitted = [];
+  let candidates = fullOrder;
+  if (Buffer.byteLength(renderDecisionLedgerBlock({ selected: fullOrder }), "utf8") >
+      thresholds.maxBytes) {
+    const fitsAlone = [];
+    for (const record of fullOrder) {
+      const aloneBytes = Buffer.byteLength(
+        renderDecisionLedgerBlock({ selected: [record] }),
+        "utf8",
+      );
+      if (aloneBytes > thresholds.maxBytes) omitted.push({ id: record.id, reason: "RSN-BYTES" });
+      else fitsAlone.push(record);
+    }
+    candidates = fitsAlone;
+  }
+
+  // §3.6: drop loop, whole line at a time, from the tail of the surviving order.
+  let block = renderDecisionLedgerBlock({ selected: candidates });
+  let renderedBytes = Buffer.byteLength(block, "utf8");
+
+  while (
+    candidates.length > 0 &&
+    (candidates.length > thresholds.maxEntries || renderedBytes > thresholds.maxBytes)
+  ) {
+    const reason = candidates.length > thresholds.maxEntries ? "RSN-ENTRIES" : "RSN-BYTES";
+    const dropped = candidates[candidates.length - 1];
+    omitted.push({ id: dropped.id, reason });
+    candidates = candidates.slice(0, -1);
+    block = renderDecisionLedgerBlock({ selected: candidates });
+    renderedBytes = Buffer.byteLength(block, "utf8");
+  }
+
+  return { selected: candidates, omitted, failedSources, emptySources, renderedBytes };
+}
+
+// ─── TSPEC §4.4 — the decision-ledger IO shell and injector (PLAN T-17) ────────────────────
+
+/** TSPEC §4.4, F-6/F-7. Frozen. The two enumeration-failure `corpusOutcome` values
+ *  `buildDecisionLedgerInjector` sets on a dispatch record — `_git` returning `!ok`/throwing
+ *  (`UNLISTABLE`), or a graceful enumeration that lists zero paths (`EMPTY`). `corpusOutcome`
+ *  stays `null` whenever enumeration itself succeeded with at least one path, even when nothing
+ *  survives selection to render (F-10). */
+const DECISION_LEDGER_CORPUS_OUTCOMES = Object.freeze({
+  UNLISTABLE: "RSN-UNLISTABLE",
+  EMPTY: "RSN-EMPTY",
+});
+
+/** TSPEC §4.4, §6.1/§6.2 (F-6…F-10, F-14). One `_git` call on `DECISION_CORPUS_ARGV`; the
+ *  enumeration is then narrowed to §3.1's in-scope set — every project-level path
+ *  (`docs/_decisions/`), plus the single feature directory belonging to `feature`, priority
+ *  `docs/{feature}/` → `docs/completed/{feature}/` → `docs/discarded/{feature}/`; when none of
+ *  the three exist in the enumeration, the feature-level operand of the union is simply empty and
+ *  project-level records render alone (F-14/Q-2) — an entry belonging to any OTHER feature's
+ *  directory is never carried past this point. Each in-scope path then gets exactly one
+ *  `_readFile` call inside its OWN `try/catch` — a `null`/`undefined` return and a thrown fault
+ *  both degrade that entry alone to `readOk: false` (P-8), never the whole corpus. The outer
+ *  `try/catch` collapses BOTH a graceful `!reply.ok` enumeration reply and an ungraceful thrown
+ *  fault from `_git` itself onto the identical `{unlistable: true}` shape (F-6, AT-08) — this
+ *  function never throws past its own boundary.
+ *  @param {{feature: string, _git: Function, _readFile: Function}} args
+ *  @returns {Promise<{unlistable: true} | {unlistable: false, entries: Array<{sourcePath: string, text: string|null, readOk: boolean}>}>} never throws */
+async function gatherDecisionCorpus({ feature, _git, _readFile }) {
+  try {
+    const reply = await _git(DECISION_CORPUS_ARGV);
+    if (!reply || !reply.ok) return { unlistable: true };
+
+    const allPaths = String(reply.stdout || "")
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    let featureDir = null;
+    for (const dir of decisionLedgerFeatureDirs(feature)) {
+      if (allPaths.some((p) => p.startsWith(dir))) {
+        featureDir = dir;
+        break;
+      }
+    }
+    const paths = allPaths.filter(
+      (p) =>
+        p.startsWith(DECISION_LEDGER_PROJECT_PREFIX) || (featureDir !== null && p.startsWith(featureDir))
+    );
+
+    const entries = [];
+    for (const sourcePath of paths) {
+      let text = null;
+      let readOk = true;
+      try {
+        text = await _readFile(sourcePath);
+        if (text === null || text === undefined) readOk = false;
+      } catch {
+        readOk = false;
+      }
+      entries.push({ sourcePath, text: readOk ? text : null, readOk });
+    }
+
+    return { unlistable: false, entries };
+  } catch {
+    return { unlistable: true };
+  }
+}
+
+/** TSPEC §4.4: `null` iff `config.enabled` is not exactly `true` — no other conjunct gates it.
+ *  Otherwise returns an async closure that, on EVERY call, re-gathers the corpus fresh (AT-03/
+ *  `DEC-DECLEDGER-14`: no in-process memoisation, no snapshot — §2.6/BR-9), selects, renders, and
+ *  pushes exactly one `DecisionLedgerDispatchRecord` (§5.1) onto `sink` — either a plain array
+ *  (pushed onto directly) or a `{dispatches: []}`-shaped object (pushed onto `.dispatches`).
+ *  `corpusOutcome` is set from enumeration failure alone (`RSN-UNLISTABLE`/`RSN-EMPTY`, F-6/F-7)
+ *  and stays `null` whenever enumeration itself succeeded, even when nothing survives to render
+ *  (F-10) — §6.2's "survives, never failed" predicate.
+ *  @param {{config: object, sink: object|Array, _git: Function, _readFile: Function, _log?: Function}} args
+ *  @returns {null | ((args: {feature: string, phaseId?: string, docType?: string, round?: number}) => Promise<string>)} */
+function buildDecisionLedgerInjector({ config, sink, _git, _readFile, _log }) {
+  if (!config || config.enabled !== true) return null;
+
+  const thresholds = { maxEntries: config.maxEntries, maxBytes: config.maxBytes };
+
+  return async function injectDecisionLedger({ feature, phaseId, docType, round } = {}) {
+    const gathered = await gatherDecisionCorpus({ feature, _git, _readFile });
+
+    let selection = {
+      selected: [],
+      omitted: [],
+      failedSources: [],
+      emptySources: [],
+      renderedBytes: 0,
+    };
+    let corpusOutcome = null;
+    if (gathered.unlistable) {
+      corpusOutcome = DECISION_LEDGER_CORPUS_OUTCOMES.UNLISTABLE;
+    } else if (gathered.entries.length === 0) {
+      corpusOutcome = DECISION_LEDGER_CORPUS_OUTCOMES.EMPTY;
+    } else {
+      selection = selectDecisions({ entries: gathered.entries, feature, thresholds });
+    }
+
+    const rows = selection.selected.map((r) => ({
+      id: r.id,
+      sourcePath: r.sourcePath,
+      origin: r.origin,
+    }));
+    const block = renderDecisionLedgerBlock({ selected: selection.selected });
+
+    const record = {
+      feature,
+      phaseId,
+      docType,
+      round,
+      rows,
+      omitted: selection.omitted,
+      renderedBytes: selection.renderedBytes,
+      corpusOutcome,
+      failedSources: selection.failedSources,
+      emptySources: selection.emptySources,
+    };
+
+    if (Array.isArray(sink)) {
+      sink.push(record);
+    } else if (sink && typeof sink === "object") {
+      if (!Array.isArray(sink.dispatches)) sink.dispatches = [];
+      sink.dispatches.push(record);
+    }
+
+    if (typeof _log === "function") _log({ feature, phaseId, docType, corpusOutcome });
+
+    return block;
+  };
+}
+
 // ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
 
 const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
@@ -9245,6 +9683,10 @@ async function reviewLoop({
   // `dispatchAndVerify` by `wrapped`, below — Phase CR's `docType: null` reaches the
   // composition site through this path and no other.
   _injectLearnings = null,
+  // pdlc-decision-ledger TSPEC §4.5 (PLAN T-18). `null | ((args: { feature }) => Promise<string>)`.
+  // Read once per round, immediately before the two `reviewerPrompt` calls that round shares — both
+  // reviewers of a round receive the byte-identical block (§2.6).
+  _injectDecisionLedger = null,
   _recordDocType = () => {},
 }) {
   // The doc type the round record is keyed by. Derived from `doc` when the caller
@@ -9317,8 +9759,13 @@ async function reviewLoop({
    * installed. `dispatchAndVerify`'s signature and logic are untouched: the
    * binding is expressed entirely as the `_agent` closure handed to it, which is
    * `_agent` itself when no transport is installed.
+   *
+   * `ledgerBlock` (pdlc-decision-ledger TSPEC §4.5, PLAN T-18) is an explicit trailing suffix,
+   * default `""`, forwarded straight through to `dispatchAndVerify`, which appends it after its own
+   * pacing-contract/opener suffix — see the comment at this round's `ledgerBlock` computation above
+   * for why it is threaded here rather than baked into `basePrompt`.
    */
-  const wrapped = (skill, basePrompt, targetPath, dispatchKind, sessionKey) =>
+  const wrapped = (skill, basePrompt, targetPath, dispatchKind, sessionKey, ledgerBlock = "") =>
     dispatchAndVerify({
       skill,
       basePrompt,
@@ -9336,6 +9783,7 @@ async function reviewLoop({
       _git,
       _injectLearnings,
       _recordDocType,
+      ledgerBlock,
     });
 
   // An episode that exhausts an authoring budget RETURNS through the loop rather
@@ -9343,10 +9791,10 @@ async function reviewLoop({
   // failed phase does, and `RLH-AT-61-loop` reads the trailer reason off this
   // return. `halted` is the discriminator; `haltDetail` is the operator's text.
   let haltedReturn = null;
-  const runWrapped = async (skill, basePrompt, targetPath, dispatchKind, sessionKey) => {
+  const runWrapped = async (skill, basePrompt, targetPath, dispatchKind, sessionKey, ledgerBlock = "") => {
     if (haltedReturn) return null;
     try {
-      const episode = await wrapped(skill, basePrompt, targetPath, dispatchKind, sessionKey);
+      const episode = await wrapped(skill, basePrompt, targetPath, dispatchKind, sessionKey, ledgerBlock);
       if (episode && episode.trailerReason !== undefined) {
         lastTrailerReason = episode.trailerReason;
       }
@@ -9539,6 +9987,24 @@ async function reviewLoop({
           `(prior approved round: ${priorApprovedRound ?? "none"}, late-round threshold: ${FREEZE_LATE_ROUND}).`
       );
     }
+    // pdlc-decision-ledger TSPEC §4.5 (PLAN T-18). Read ONCE per round, immediately before the two
+    // `reviewerPrompt` calls that round shares, so both reviewers receive the byte-identical block.
+    //
+    // NOT threaded into `reviewerPrompt` itself: `reviewerPrompt`'s return becomes `dispatchAndVerify`'s
+    // `basePrompt`, and that wrapper unconditionally appends its own pacing-contract/opener suffix
+    // AFTER `basePrompt` for every dispatch kind, including "review" (RLH-AT-50) — baking the ledger
+    // block into `basePrompt` would bury it under that suffix instead of leaving it truly last. Threaded
+    // instead as an explicit trailing argument through `runWrapped`/`wrapped`/`dispatchAndVerify`, which
+    // appends it after its own suffix so the byte actually handed to the reviewer ends with the block
+    // (decisionLedgerLoop.test.js / decisionLedgerMain.test.js's baseline-plus-suffix equality).
+    // CODE_REVIEW v1 F-2: threads this round's real phaseId/docType/round from the enclosing
+    // review-loop context — `phase`, `roundDocType`, `iteration` — rather than leaving the
+    // dispatch record's fields `undefined` (TSPEC §5.1's `DecisionLedgerDispatchRecord` declares
+    // `phaseId: string | null`, `docType: string | null`, `round: number`).
+    const ledgerBlock =
+      typeof _injectDecisionLedger === "function"
+        ? await _injectDecisionLedger({ feature, phaseId: phase, docType: roundDocType, round: iteration })
+        : "";
     const reviewerPrompt1 = reviewerPrompt(
       doc,
       phase,
@@ -9569,14 +10035,16 @@ async function reviewLoop({
         reviewerPrompt1,
         reviewTargetPath(reviewers[0], iteration),
         "review",
-        reviewerSessionKey(feature, roundDocType, phase, reviewers[0])
+        reviewerSessionKey(feature, roundDocType, phase, reviewers[0]),
+        ledgerBlock
       ),
       runWrapped(
         reviewers[1],
         reviewerPrompt2,
         reviewTargetPath(reviewers[1], iteration),
         "review",
-        reviewerSessionKey(feature, roundDocType, phase, reviewers[1])
+        reviewerSessionKey(feature, roundDocType, phase, reviewers[1]),
+        ledgerBlock
       ),
     ]);
     if (haltedReturn) return haltedReturn;
@@ -11019,6 +11487,11 @@ async function dispatchAndVerify({
   // no-op so an uninjected run is byte-unchanged (AC-4.3).
   _injectLearnings = null,
   _recordDocType = () => {},
+  // pdlc-decision-ledger TSPEC §4.5 (PLAN T-18). An explicit, already-rendered trailing suffix,
+  // default `""` so an uninjected/disabled run is byte-unchanged. Appended dead last, after the
+  // pacing-contract/opener suffix this function itself adds below — see `reviewLoop`'s `wrapped`
+  // closure for why the caller threads it here instead of folding it into `basePrompt`.
+  ledgerBlock = "",
 }) {
   const emit = typeof _log === "function" ? _log : () => {};
   const artifactClass = artifactClassOf(targetPath);
@@ -11149,7 +11622,7 @@ async function dispatchAndVerify({
     // The learnings block is a suffix, appended AFTER the per-iteration-mutated
     // `opener` — pdlc-learnings-injection TSPEC §A.2 property 2/3 — so a retry
     // iteration carries the same block bytes appended to a possibly different opener.
-    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}${learningsBlock}`;
+    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}${learningsBlock}${ledgerBlock}`;
 
     let faulted = false;
     try {
@@ -11448,6 +11921,15 @@ function reviewerPrompt(
   docType,
   frozen = false,
   findingGrammar = false
+  // pdlc-decision-ledger: this builder deliberately takes NO ledger parameter. `reviewerPrompt`'s
+  // return becomes `dispatchAndVerify`'s `basePrompt`, and that wrapper appends its own
+  // pacing-contract/opener suffix after `basePrompt` for every dispatch kind — a block appended
+  // here would sit BEFORE that suffix and so would not be last in the delivered prompt (§2.6's
+  // "last"). The block is therefore threaded as `dispatchAndVerify`'s own trailing `ledgerBlock`
+  // argument, appended after that suffix (see `runWrapped`/`wrapped` and the per-round
+  // `_injectDecisionLedger` read in `reviewLoop`). A `ledgerBlock` parameter here was unreachable
+  // — no call site ever passed a ninth argument — and was removed in the Phase CR round (TE F-02);
+  // TSPEC §2.4/§4.5 (v1.4) and PROP-WIRE-08 document the shipped threading: the ledger block rides dispatchAndVerify's trailing ledgerBlock option, not this builder.
 ) {
   // DEC-FRZ-01. Rendered here, decided by `freezeInForce` at the call site: the
   // prompt builder never re-derives the trigger, so there is exactly one place
@@ -15105,6 +15587,28 @@ async function main({
   // (REQ-LOOPECON-04/07); a notice fires only when the parser actually reports something.
   const pinCheckConfigParsed = parsePinCheckConfig(learningsConfigText);
   const derivativeStopConfigParsed = parseDerivativeStopConfig(learningsConfigText);
+  // pdlc-decision-ledger TSPEC §4.1/§4.4 — the `decisionLedger` block is threaded through the
+  // SAME already-read `learningsConfigText`, never a second read and never a second path
+  // constant (PLAN T-13). Absent-block is the common case and emits no notice, keeping the
+  // disabled-state run byte-identical; a notice fires only when the parser actually reports
+  // something, on the same run-level `notices` channel every other §4.7 notice rides.
+  const decisionLedgerConfigParsed = parseDecisionLedgerConfig(learningsConfigText);
+  if (decisionLedgerConfigParsed.sectionMalformed) {
+    notices.push({
+      id: "NTC-DECLEDGER-MALFORMED",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s decisionLedger section is malformed; ` +
+        `the run proceeds on TSPEC §4.1 defaults.`,
+    });
+  }
+  if (decisionLedgerConfigParsed.invalidKeys.length > 0) {
+    notices.push({
+      id: "NTC-DECLEDGER-KEYTYPE",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s decisionLedger section has wrong-typed key(s) ` +
+        `(${decisionLedgerConfigParsed.invalidKeys.join(", ")}); each falls back to its default.`,
+    });
+  }
   // Destructured rather than read as a member expression: PROP-DIS-06
   // (`advisoryDisabled.test.js`) pins the source-text count of enablement member reads over
   // this module so that the count covers the ADVISORY config's gates alone. This is a
@@ -15195,6 +15699,48 @@ async function main({
     _injectLearnings: learningsInjectorFn,
     _recordDocType: recordDocTypeFn,
   };
+
+  // === DECISION LEDGER WIRING START ===
+  // pdlc-decision-ledger TSPEC §4.5 (PLAN T-18). Destructured rather than read as a dotted
+  // member expression: PROP-DIS-06 (`advisoryDisabled.test.js`) pins this module's source-text
+  // count of such reads to the ADVISORY config's own gates alone (`DEC-DECLEDGER-09`).
+  const { enabled: decisionLedgerEnabled } = decisionLedgerConfigParsed.config;
+  const decisionLedgerSink = { dispatches: [] };
+  const decisionLedgerInjectorFn = decisionLedgerEnabled
+    ? buildDecisionLedgerInjector({
+        config: decisionLedgerConfigParsed.config,
+        sink: decisionLedgerSink,
+        _git: gitFn,
+        _readFile: readFileFn,
+        // CODE_REVIEW v1 F-1: the run's own emitter, so the per-dispatch observability line is
+        // live in production and not only under test doubles — the same lesson already applied
+        // to the learnings injector above (`:15645-15649`).
+        _log: ({ feature: dispatchFeature, docType: dispatchDocType, phaseId: dispatchPhaseId, corpusOutcome }) =>
+          emit(
+            `decision-ledger: phase ${dispatchPhaseId} ${dispatchDocType ?? "-"} ` +
+              `(feature ${dispatchFeature}) — corpus ${corpusOutcome ?? "OK"}`
+          ),
+      })
+    : null;
+  // Shared by every `reviewLoop` entry through `...wrapperSeams` below — reviewLoop never builds
+  // its own injector, only reads this already-built seam (TSPEC §7.4).
+  wrapperSeams._injectDecisionLedger = decisionLedgerInjectorFn;
+  if (decisionLedgerInjectorFn) {
+    // CODE_REVIEW v1 F-3 (TSPEC §5.1's `DecisionLedgerSink.ruleInputs`): the thresholds actually
+    // in force, built ONCE per run from the parsed config — independent of whether any dispatch
+    // ever calls the injector, mirroring the learnings-injector analogue above (`:15657-15663`).
+    decisionLedgerSink.ruleInputs = {
+      thresholds: {
+        maxEntries: decisionLedgerConfigParsed.config.maxEntries,
+        maxBytes: decisionLedgerConfigParsed.config.maxBytes,
+      },
+    };
+  }
+  // `report.decisionLedger` rides ONLY when the injector is non-null (conditional spread, the
+  // shipped `learningsInjectionField` discipline) — a disabled run must never carry a defined
+  // `decisionLedger` key (TSPEC §7.3/§5.4, PROP-WIRE-12's flag-off half).
+  const decisionLedgerField = decisionLedgerInjectorFn ? decisionLedgerSink : undefined;
+  // === DECISION LEDGER WIRING END ===
 
   /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
   async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId, sessionKey }) {
@@ -16741,6 +17287,7 @@ async function main({
       harvestStatus: "Not run",
       haltReason,
       learningsInjection: learningsInjectionField,
+      decisionLedger: decisionLedgerField,
     });
   }
 
@@ -16758,6 +17305,7 @@ async function main({
       harvestStatus: "Not run",
       haltReason,
       learningsInjection: learningsInjectionField,
+      decisionLedger: decisionLedgerField,
     });
   }
 
@@ -16783,6 +17331,7 @@ async function main({
       harvestStatus: "Not run",
       haltReason,
       learningsInjection: learningsInjectionField,
+      decisionLedger: decisionLedgerField,
     });
   }
   const forcedPhases = forceParse.phases;
@@ -16807,6 +17356,7 @@ async function main({
       harvestStatus: "Not run",
       haltReason,
       learningsInjection: learningsInjectionField,
+      decisionLedger: decisionLedgerField,
     });
   }
 
@@ -18329,6 +18879,7 @@ async function main({
       // A6 diagnostic never has the second overwrite the first.
       haltAdvisory: err && err.advisory ? err.advisory : undefined,
       learningsInjection: learningsInjectionField,
+      decisionLedger: decisionLedgerField,
     });
   }
 
@@ -18364,6 +18915,7 @@ async function main({
     // leaves the field itself absent (see `buildFinalReport`'s own conditional spread).
     advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
     learningsInjection: learningsInjectionField,
+    decisionLedger: decisionLedgerField,
   });
 }
 
@@ -18470,6 +19022,10 @@ function buildFinalReport({
   // config-disabled run must never carry a defined `learningsInjection` key
   // (LI-21's AT-31), so `undefined` here means "omit the key", not "empty".
   learningsInjection = undefined,
+  // pdlc-decision-ledger TSPEC §4.5/§7.3 (PLAN T-18). `decisionLedgerField` from `main()` —
+  // conditionally spread like `learningsInjection`: a config-disabled run must never carry a
+  // defined `decisionLedger` key (PROP-WIRE-12's flag-off half).
+  decisionLedger = undefined,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
@@ -18508,6 +19064,7 @@ function buildFinalReport({
     // `advisory` above so an untouched report's `haltAdvisory` key stays absent, not `undefined`.
     ...(haltAdvisory ? { haltAdvisory } : {}),
     ...(learningsInjection ? { learningsInjection } : {}),
+    ...(decisionLedger ? { decisionLedger } : {}),
   };
   // `report` also rides on its own return, non-circularly (a shallow snapshot of the
   // same fields taken before this key is added) — pdlc-learnings-injection's

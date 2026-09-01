@@ -1,0 +1,549 @@
+---
+feature: pdlc-decision-ledger
+---
+
+# PLAN — pdlc-decision-ledger
+
+| Field | Value |
+|---|---|
+| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` (`REQ-pdlc-decision-ledger.md` **v1.10** `sha256:9bc8bc32…05f10d`, `FSPEC-pdlc-decision-ledger.md` **v1.4** `sha256:48691453…a11256`, `TSPEC-pdlc-decision-ledger.md` **v1.4** `sha256:b8dcac11…46db6d`, `DECISIONS-pdlc-decision-ledger.md` **v1.6** `sha256:48e73a41…880240`) |
+| Downstream | PROPERTIES, IMPL |
+| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
+| Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-PLAN-v{N}.md` |
+| LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
+
+| Status | Author | Version | Date |
+|---|---|---|---|
+| Draft | se-author | 1.2 | 2026-09-01 |
+
+Revision history: **v1.2** is an erratum round absorbing TSPEC's own **v1.3 → v1.4** self-correction; it raises no new design question and lands no reviewer finding. **Re-grounding first (DEC-ERR-03):** all four upstream pins were re-measured with `shasum -a 256` at HEAD. REQ **v1.10** (`sha256:9bc8bc32…05f10d`), FSPEC **v1.4** (`sha256:48691453…a11256`), DECISIONS **v1.6** (`sha256:48e73a41…880240`) and the Baseline (`Version` field reads `1.2 · 2026-08-28`) are byte-identical to the v1.1 header and are not rewritten. **TSPEC moved, and only TSPEC**: the header pin is re-derived to **v1.4** `sha256:b8dcac11…46db6d`. TSPEC v1.4's changelog declares itself two self-corrections *against that document* — the code was right and was left untouched — and mints, retires or re-scopes no `BR-`, `AC-`, `E-`, `M-`, `O-` or `ERR-` id and moves no threshold, byte literal or measured value. Both corrections invert claims this PLAN reproduced, so three loci here were stale on the same axis and are rewritten to the shipped mechanism. **(1) The reuse-surface row** (§HEAD-verified reuse surface) asserted that `reviewLoop` and `reviewerPrompt` each gain a parameter. `reviewerPrompt` is **unchanged** at eight parameters; the row now names `dispatchAndVerify` as the second symbol, records that `reviewerPrompt`'s return becomes `dispatchAndVerify`'s `basePrompt`, and cites TSPEC §2.4 alongside §4.5. **(2) T-18's `[green]` instruction** told the implementer to add a trailing `ledgerBlock = ""` to `reviewerPrompt`, to call `await _injectDecisionLedger({ feature })`, and to append the block on `reviewerPrompt`'s two return paths. The shipped wiring adds the trailing parameter to `dispatchAndVerify`, passes `{ feature, phaseId: phase, docType: roundDocType, round: iteration }` — the four bindings §5.1's `DecisionLedgerDispatchRecord` records — and forwards the block through `reviewLoop`'s `runWrapped` / `wrapped` closures, where `dispatchAndVerify` concatenates it last, after the pacing-contract clause, the opener and `learningsBlock`. The instruction now reproduces that, and the reason the builder-side append was unreachable. **(3) The §Integration points row** named `reviewerPrompt`'s parameter list as the touched surface; it now names `dispatchAndVerify`'s option object and the two dispatch closures that reach it. Verified against `pdlc/workflows/orchestrate-dev.js` at HEAD as well as against TSPEC §2.4/§4.5: `function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, frozen = false, findingGrammar = false)` takes no ledger parameter, and `dispatchAndVerify` builds `` `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}${learningsBlock}${ledgerBlock}` ``. **No other PLAN content moves.** T-18's task id, batch (8), `Deps` (T-10, T-10a, T-11, T-17), Test File and Source File cells and its other invariants (the destructured flag read against PROP-DIS-06, the conditional-spread `report.decisionLedger`, the writes-no-census-constant rule, the delta-coverage obligations and the un-skip list), every other row, the file-ownership manifest, the red-before-green edges table, the §Definition of Done checklist and every measured value are byte-identical to v1.1; the edits are prose and instruction text at exactly the three named loci, plus the header pin, the status row and this entry.
+
+**v1.1** addresses the PLAN v12 delta round — PM F-01 (High), PM F-02 and PM F-03 (Medium), TE F-01…F-03 (Low). **Re-grounding first (DEC-ERR-03):** all four upstream pins were re-measured with `shasum -a 256` at HEAD and are byte-identical to the v1.0 header — REQ v1.10, FSPEC v1.4, TSPEC v1.3, DECISIONS v1.6 — and the Baseline `Version` field still reads `1.2 · 2026-08-28`; no upstream moved since v1.0, so nothing is owed absorption and no pin is rewritten. **(1) T-12a is re-pointed to the module that actually hosts it (PM F-01).** T-12a's Test File column, the §Red-before-green edges table, T-19's Test File column, the file-ownership manifest, the disjointness premise and the multi-owner paragraph all named `documentOracles.test.js`; the disclosure family in fact landed in `pdlc/workflows/__tests__/decisionLedgerConfig.test.js`, because `documentOracles.test.js` is a `SWEPT_SURFACE_MODULES` member of consumerCleanup's skip-join orphan-freedom oracle (TSPEC §5.5), whose sink accepts only capability-gated skips, so a committed planned-work `test.skip` there is an unregistrable orphan. The re-point is bookkeeping, not redesign: the assertions are unchanged, the `T-19: …` block titles are byte-identical, and T-19's un-skip obligation still binds. Because the new host is shared with T-04 (batch 2) and T-13 (batch 3), T-12a gains a real `Deps` edge on T-13 and moves from batch **2** to batch **4** — single-writer-per-batch, serialised by edges rather than prose. No other row's batch moves: T-19 re-derives to 9 because its `max` is still T-18's 8. **(2) The Status column is swept against HEAD (PM F-03, TE F-02).** v1.0 carried a partial flip — four `✅` against twenty `⬚` — which read as though T-19 had shipped ahead of its dependencies. Measured at HEAD: all twelve `decisionLedger*.test.js` modules plus `helpers/decisionLedgerDoubles.js` and both fixture trees exist; `grep -E '^\s*(describe|test|it)\.skip'` over the twelve returns **zero**, so every `[red]` block has been un-skipped by its named `[green]` task; `npm test -- __tests__/decisionLedger` in `pdlc/workflows` reports **12 suites, 236 tests, all pass**; `node --test __tests__/decision-ledger-config-example.test.js` in `pdlc/engine` reports fail 0; the six production symbols T-13…T-18 own are exported from `orchestrate-dev.js` (`parseDecisionLedgerConfig`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `selectDecisions`, `gatherDecisionCorpus`, and the sentinel-bounded `main()` wiring with `wrapperSeams._injectDecisionLedger`); and T-20 has landed — commit `c49527fd4`, `node pdlc/workflows/build-runtime.mjs --check` reports the bundle in-sync and `pdlc/.claude-plugin/plugin.json` reads `0.23.7`, the constrained target the row names. All 24 rows therefore read `✅`, and the ledger no longer understates completion. **(3) The v1.0 entry's scope clause is narrowed (PM F-02).** It claimed *no task row … changes* while the same diff carried four Status flips; it now says no task **instruction** changes, names the four flipped cells and attributes them to implementation commit `724116d75`. **(4) Two stale anchors are retired (TE F-01, TE F-03).** The v1.0 entry's `:66` pointer went stale in the act of being written — the entry's own added lines moved the site to `:68` — and is replaced by a content anchor (*the §Overview mention*) per DEC-DOC-01, which cannot drift. T-00a's *154 files* is re-labelled a pre-feature baseline census rather than a HEAD claim, with the HEAD figure (166) stated alongside; the load-bearing half, exactly `102` after the five namespace exclusions, is unchanged, is what `documentOracles.test.js`'s census oracle asserts, and is green. No requirement, acceptance criterion, batch-safety rule or oracle design changes in this round.
+
+**v1.0** is a re-grounding pass on upstream movement, not a response to a defect in v0.9's task bytes. Both PLAN v10 reviews (`CROSS-REVIEW-{product-manager,test-engineer}-PLAN-v10.md`) are **Approved with zero findings**, so no raised item is owed; what is owed is DEC-ERR-03's re-grounding, because **all four** upstream pins moved after those reviews were written. Re-measured mechanically (`shasum -a 256`) and re-pinned in the header row: REQ **v1.9 → v1.10** `sha256:9bc8bc32…05f10d`, FSPEC **v1.3 → v1.4** `sha256:48691453…a11256`, TSPEC **v1.2 → v1.3** `sha256:2c84d525…1be49b`, DECISIONS **v1.5 → v1.6** `sha256:48e73a41…880240`. Baseline **v1.2** (`Version` field reads `1.2 · 2026-08-28`) is unmoved. **The movement is immaterial to this document's contract, and that is a checked claim rather than an assumption.** Each of the four changelogs declares itself bookkeeping *and nothing else*: REQ v1.10 reworded C-5's slack rationale (both per-line and block framing, which C-5 already scoped the bound to), corrected its own *Cross-Reviews* row and re-sited a v1.9 note from §1 to §2 G-1; FSPEC v1.4 moved its REQ pin and records that it names no TSPEC version anywhere; TSPEC v1.3 re-grounded on REQ v1.10 / FSPEC v1.4 and replaced version numerals with id citations (`E-7` by id, not by version); DECISIONS v1.6 retired two stale `TSPEC v0.7` HEAD recitals. **No `BR-`/`E-`/`AC-` id, no vocabulary row and no measured value moves in any of the four** — `12500 − 1200 = 11,300`, the project-level headroom and `M-6b`'s `441` are the same at TSPEC v1.3 as at v0.7 — so no task **instruction**, batch, dependency, ownership, task-id or count assignment changes in this round — the author's own edits touch the header pin row, the status row and this entry only. (Four task rows' **Status** cells did move in the same diff, `⬚` → `✅` for T-00, T-12, T-12a and T-19, written by implementation commit `724116d75` rather than by this pass; v1.1 sweeps that column completely. PM F-02, v12.) The three body citations of a TSPEC version numeral (the §Overview mention, T-05 and T-06, all reading *promoted at TSPEC v0.8*) are provenance-of-an-edit, which is the history form §7.3 permits, not claims about HEAD. One correction rides along, from the later v11 round's only finding (TE F-01, Low): the v0.9 sweep passage enumerated *the only bound assertion* as `10,859 ≤ maxBytes − 1200`, but T-09 carries **two** subtraction forms — `6,305` as well. Both are the subtraction form, so the conformance verdict the passage reaches is unaffected; only its enumeration was short by one, and it now names both.
+
+**v0.9** is an erratum round landing the one routed item the v8 round left unlanded, plus its bookkeeping tail — PM F-01 and TE F-01 (High, the same finding from two reviewers), TE F-02 (High, the same defect restated in the §Definition of Done checklist), TE F-03, TE F-04 and PM F-02 (Low). **Re-grounding first (DEC-ERR-03):** TSPEC advanced **v1.1 → HEAD v1.2** `sha256:fc57bc56…d4c27504` after both reviewers wrote against v1.1, so the round was re-derived against v1.2 before any raised item was touched, and the header pin is re-measured mechanically (`shasum -a 256`) here. v1.2 does not reverse v1.1; it sharpens two things this document leans on. **(a) The count must be cited with its nouns.** §7.3's *The size of the owned list, stated once* now states that `DECISION_LEDGER_OWNED_DECLS` is **six functions ∪ eight constants = fourteen**, and names the reason the nouns are load-bearing: §7.3's *Forbidden token set* row states a second, numerically identical but membership-different partition — `DECISION_LEDGER_CENSUS_TOKENS`'s six **data-carrying names** ∪ `DECISION_LEDGER_CENSUS_EXEMPT`'s eight **plumbing declarations** — so a bare "six ∪ eight = fourteen" can be wired to the wrong operands. Every site in this document carries the *second* partition (the census companion assertion), and each now names its operands. **(b) The paragraph is the authority, not the only place the numerals appear.** What §7.3 forbids is a downstream document restating the arithmetic as *its own assertion*; citing the paragraph is the required form. v0.8's "stated nowhere else in this document" / "not restated elsewhere in this document" clauses were therefore both stale and self-refuting in the sentences that made them (PM F-02), and are replaced by an explicit citation of that paragraph as the authority. REQ (**v1.9** `sha256:ce6b133f…3c7b7c`), FSPEC (**v1.3** `sha256:2bd5c3ef…5aed39`) and Baseline **v1.2** were re-measured in the same pass and are unmoved. **DECISIONS also advanced after both reviewers wrote** — `sha256:13aba061…4fb89a` (the pin both reviews re-measured and passed) → HEAD **v1.5** `sha256:52580962…584ca0` — so it was re-derived before this entry was closed and the header pin is re-measured mechanically here. Its v1.4 and v1.5 entries both declare *and nothing else*: v1.4 re-grounds three passages on TSPEC's landed propagation, and v1.5 restates `DEC-DECLEDGER-16`'s provenance rule **directionally** (a ceiling may enter only where substituting the true, smaller drafted value preserves the claim) over assertions, pinned expected values and prose stating a figure as a standing fact. This document was swept against the corrected predicate and is conformant without an edit: the only bound assertions it carries are T-09's **two** subtraction forms `6,305 ≤ maxBytes − 1200` and `10,859 ≤ maxBytes − 1200`, no addition form is asserted anywhere, `12,059` is explicitly **not** asserted as an equality, and the `441`-byte margin appears only as the worst-case figure that shrinks one-for-one with any raise of the 1,200 ceiling. No routed item and no count is affected.
+
+What changed. (1) **T-10a's conjunct 3 is re-pinned to TSPEC §7.2's two referents** (PM F-01, TE F-01). The retired pair — `report`'s key set "set-equal to the flag-off key set" (a tautology on the flag-off run, which cannot fail) and `notices` "set-equal to the baseline notices array" (T-02's recording is reviewer-prompt bytes only and holds no notices array, per §7.4's *Recorded stream*) — is replaced by §7.2's forms: the **symmetric difference** between the flag-off and flag-on runs' `report` key sets is exactly `{decisionLedger}`, asserted as a set equality in **both** directions, and the emitted `NTC-DECLEDGER-*` notice set is **set-equal to empty**. Conjunct 3's first clause (prompt byte-identical to T-02's committed recording) is untouched: §7.4 remains correctly cited for the prompt conjunct alone. (2) **The §Definition of Done flag-off bullet is restated to match** (TE F-02) — it carried the same two retired referents, and a fix to T-10a alone would have left the document contradicting itself in the checklist an implementer signs off against. (3) T-11's closing pointer at the end of its row is re-read so it summarises the corrected form (TE F-03). (4) The partition's operands are named and the self-refuting single-siting clauses are replaced by a citation (PM F-02, absorption (a)/(b) above). (5) Only the newest changelog entry opens with the literal `Revision history:`; the earlier entries read as continuations (TE F-04). No batch, dependency, ownership, task-id or count assignment changes in this round.
+
+**v0.8** is an erratum round closing the v8 round's two items, both of which are the same correction from two directions — PM F-01 (High) and TE F-01 (High), with TE F-02 (Medium), TE F-03 (Low) and PM F-02 (Low) as its bookkeeping tail. **Re-grounding first (DEC-ERR-03):** TSPEC moved twice since this document's pin — v0.9 → v1.0 → HEAD **v1.1** `sha256:21c913b4…9c8e49` — and both reviewers wrote against v1.0, so the round was re-derived against v1.1 before any raised item was touched. v1.1 does not reverse v1.0; it single-sites it. Its §7.3 paragraph *The size of the owned list, stated once* declares itself the sole home of the count and states the correction direction explicitly: "a downstream document that carries a *fifteen*-member owned list, or that assigns any of the three census constants a home in `orchestrate-dev.js`, is stale against this section and not a competing design … the correction direction is downstream-to-here, never the reverse." Both items are therefore **still raised at HEAD**, and this document is the stale side. REQ (**v1.9** `sha256:ce6b133f…3c7b7c`), FSPEC (**v1.3** `sha256:2bd5c3ef…5aed39`), DECISIONS (`sha256:13aba061…4fb89a`) and Baseline **v1.2** were re-measured in the same pass and are unmoved.
+
+What changed. (1) **`DECISION_LEDGER_CENSUS_TOKENS` is a test-file constant, not production.** All three census constants are declarations of `decisionLedgerCensus.test.js`, exactly as the precedent's `ANCHOR_TOKENS` is a constant of `loopEconomicsAnchorGuard.test.js`; a test-file constant can never be a member of `DECISION_LEDGER_OWNED_DECLS`, which enumerates *module* top-level declarations. (2) **The partition is six data-carrying names ∪ eight plumbing declarations = fourteen**, cited from TSPEC §7.3 rather than asserted here. The exempt list loses exactly one member — `DECISION_LEDGER_CENSUS_TOKENS` itself — and is otherwise unchanged at eight. No token member moves. (3) **T-18 no longer writes the constant**; its `orchestrate-dev.js` row is the wiring run and the loop/prompt parameters only. (4) The verbatim §7.3 sentence T-11 quoted to justify the membership ("the token strings live inside its own declaration…") is deleted with the membership it justified (TE F-03). (5) Per the `pdlc-wave-resume` lesson on version pins going stale inside one erratum round, in-body citations now read **`TSPEC §7.3`** without a version label; the version pin lives in the header row alone, where it is re-measured (PM F-02, TE F-02).
+
+**v0.7's resolution is superseded.** That entry recorded six ∪ nine = fifteen as standing and named the fourteen-member reading "rejected". It is retained below as history, not as contract: the residual gap it routed as `ERRATUM: TSPEC` — that the constant was specified in §7.3 and in no module-surface section — was answered upstream, and the answer was that there is no module surface to specify because the constant is not module code. No batch, dependency, ownership or task-id assignment changes in this round; the only moved bytes are the census contract's three operands and their citations.
+
+**v0.7** — *superseded in part by v0.8: the count and home this entry records were corrected downstream-to-TSPEC-§7.3; retained as history.* v0.7 closes the one item the v6 round left open, raised by both reviewers about the same clause — PM F-01 (Medium) and TE F-01 (High): v0.6 never said **where** `DECISION_LEDGER_CENSUS_TOKENS` is declared, and the surrounding cues pointed opposite ways (the row opens by cloning the precedent's *test-file* `ANCHOR_TOKENS`, while the partition places `CENSUS_TOKENS` inside `DECISION_LEDGER_OWNED_DECLS`, which §7.3 requires to resolve to a top-level declaration of `orchestrate-dev.js`). The design's intent is production, and the PLAN already carried it — T-18's three-word fragment “Add `DECISION_LEDGER_CENSUS_TOKENS`.” in the row whose source file is `orchestrate-dev.js` — but it named no home and completed no sentence, so TE read the member as homeless and the partition as red by construction. Four sites now say it once and identically: T-11 (the constant is production, written by T-18; the resolves-to-one and non-empty-slice conjuncts are satisfied at T-18's landing, the ordinary red-before-green edge on a `[red]` row T-18 un-skips), T-18 (the fragment completed to a full instruction with its §7.3 rationale), the file-ownership manifest (T-11's row disclaims the third operand; T-18's `orchestrate-dev.js` row claims it) and the §Definition of Done census bullet. **No count moved**: six ∪ nine = fifteen stands, the six token members stand, and no batch, dependency or ownership assignment changed. TE's proposed alternative — dropping the member and restating the partition as six ∪ eight = fourteen — is the **rejected** resolution: it would put the PLAN out of contract with the upstream it just re-pinned, and it would void §7.3's reason for the exclusion, since a production `CENSUS_TOKENS` whose declaration were *not* sliced out would red the census on its own six literals. The residual upstream gap — TSPEC specifies the constant in §7.3 only, in no module-surface section (§3/§4/§5) — is routed as `ERRATUM: TSPEC` rather than decided here.
+
+**v0.6** is a re-grounding pass on upstream movement, not a response to a new
+defect in v0.5's bytes: `TSPEC` advanced **v0.8 → v0.9** (approved, `sha256:eef45ef3…0623c8`) after
+the v0.5 pass, and v0.9 §7.3 rewrote the census contract T-11 compresses. Three consequences are
+landed here. (1) The header `TSPEC` pin is re-derived mechanically (`shasum -a 256`) to v0.9; the
+other three pins were re-measured in the same pass and are unchanged. (2) T-11's **scanned-source**
+operand moves from "source minus three brace-matched declarations plus the wiring run" — the
+hand-picked-three form v0.9 §7.3 diagnoses as red by construction, because `gatherDecisionCorpus`
+and §5.2's catalogues then occur in the remainder on conforming code — to the source minus the body
+of **every** member of the frozen `DECISION_LEDGER_OWNED_DECLS`, sliced the precedent's way, plus
+the sentinel-bounded wiring run. (3) T-11's **companion** assertion moves from set equality against
+the module's decision-ledger exports (also red by construction under §7.3) to the partition
+`DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`,
+the two sub-sets disjoint. Ownership of the two new frozen lists is stated explicitly (they are
+test-file constants of T-11's own `decisionLedgerCensus.test.js`, exactly as the precedent's
+`ANCHOR_TOKENS` is), and the §Definition of Done census bullet is corrected to the same contract.
+The six token members, the `decisionLedger`-is-not-a-token rationale and every batch, dependency
+and ownership assignment are unchanged by v0.9. **v0.5** (operator pass) lands the erratum items the v0.4 delta confirmation
+found unlanded, per POSTMORTEM-PR: the terminal `102` positive control is now explicitly owned by
+T-19 (T-00a's acceptance is one-sided and batch-1-evaluable, with a forward pointer; T-12a's
+disclaimer and the §Definition of Done bullet both name T-19); the `DECISIONS` upstream pin is
+re-derived mechanically from `shasum -a 256` (`…4fb89a`); the census-exemption citation is
+re-pointed from TSPEC §5.5 to §7.3 in T-11 and §Definition of Done; T-11's second census operand
+is restored to a full sentence. **v0.4** is a re-grounding pass, not a response to new findings: every item raised
+by `CROSS-REVIEW-test-engineer-PLAN-v2.md` (F-01…F-05, Q-01, Q-02) and
+`CROSS-REVIEW-product-manager-PLAN-v2.md` (F-01) was already applied at v0.3 and re-verified on disk
+before this edit — the corrected T-03 enumeration was **executed** and yields exactly the 25 / 26 the
+row claims. What moved is **upstream**: TSPEC advanced **v0.7 → v0.8** after v0.2's base, and its
+erratum decided two things this PLAN contradicted. (1) `decisionLedger` is **dropped** from
+`DECISION_LEDGER_CENSUS_TOKENS` as an unsatisfiable token — the shipped `learningsInjectionField`
+analogue threads its report field through `buildFinalReport`, far outside `main()`, so the name
+occurs in T-11's scanned remainder by construction and the census would red for no defect; T-11's
+operand list is now the **six** exported names, and the field's obligation is behavioural, discharged
+by T-10a's live arm. (2) TSPEC §7.5 promotes two invariants from example to property, `P-REC`
+(recognition / last-wins) and `P-LINE` (one physical line per decision); T-05 and T-06 already
+carried both as `fast-check` strategies, so they are cited by id and given O-8's mutation discipline
+rather than restated. TSPEC v0.8's other three items (§7's coverage-gate narrowing, §7.2's live
+composition-root category) were already absorbed at v0.2/v0.3 — they cite this PLAN's T-18 and T-10a,
+not the reverse. **v0.3** addresses `CROSS-REVIEW-test-engineer-PLAN-v2.md` F-01…F-05 and
+`CROSS-REVIEW-product-manager-PLAN-v2.md` F-01 (the same defect, filed by both): T-03's transcribed
+historical enumeration now carries all **four** of `DECISION_CORPUS_ARGV`'s pathspecs and its
+integrity guard is stated as set equality against a hand-transcribed 25-path literal; the
+delta-coverage gate's *timing* corrected (it is a CI/DoD gate, not a wave gate) with a per-wave
+manual run given to T-18; T-00a's positive-control claim corrected to what it proves, with the
+namespace count moved to a terminal conjunct in T-12a; blast-radius path count and one GFM-unsafe
+pipe fixed. **v0.2** addresses `CROSS-REVIEW-test-engineer-PLAN-v1.md` F-01…F-08 and
+`CROSS-REVIEW-product-manager-PLAN-v1.md` F-01…F-05. Three tasks added (`T-00a` census exclusion,
+`T-10a` `main()`-driven wiring arm, `T-12a` documentation disclosure oracle); the coverage-gate
+claim corrected; the file-ownership manifest re-shaped to one bare task id per row so the
+mechanical PLAN lint parses it.
+
+## Overview
+
+**What is being built.** A config-gated *decision ledger*: one line per already-closed decision,
+plus adjacent rule text, appended to the review loop's reviewer-dispatch prompt. Off by default;
+with the flag off the dispatch stream is byte-identical to the committed merge-base baseline
+(REQ-DECLEDGER-02, FSPEC AT-04).
+
+**Where it lands.** All new production symbols go into the single file
+`pdlc/workflows/orchestrate-dev.js` (TSPEC D-6 / `DEC-DECLEDGER-08`; the engine's
+`pdlc/engine/scripts/prepack.mjs` vendors a frozen `MODULE_NAMES` list at line 20, and REQ NG-6
+forbids editing `pdlc/engine/` runtime, so no new `pdlc/workflows/lib/` module is available even
+though `lib/` exists and already holds `document-oracles.mjs`, `escalation-view.mjs`,
+`loop-session.mjs`). **That one-file constraint is the dominant shape of this PLAN:** every green
+task writes the same physical file, so under batch-safety rule 2 the six green tasks are
+serialised one-per-batch by real `Deps` edges.
+
+**Blast radius outside `orchestrate-dev.js` (PM F-04).** Two *production-adjacent config/test*
+files: the tracked `.claude/pdlc.config.example.json` disclosure (FSPEC Q-3, explicitly preserved by
+REQ NG-6) and a new `pdlc/engine/__tests__/decision-ledger-config-example.test.js`. Beyond those:
+three documentation files (`pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` — T-19), two
+generated/manifest files (`pdlc/workflows/dist/pdlc-cli.mjs`, `pdlc/.claude-plugin/plugin.json` —
+T-20), the **existing** `pdlc/workflows/__tests__/documentOracles.test.js` (T-00a's census
+exclusion only — T-12a's disclosure oracle is hosted in `decisionLedgerConfig.test.js`, PM F-01), and **fifteen** new test/fixture paths under
+`pdlc/workflows/__tests__/` (TE F-04: twelve `decisionLedger*.test.js` modules,
+`helpers/decisionLedgerDoubles.js`, and the two fixture trees `fixtures/decision-ledger-baseline/**`
+and `fixtures/decision-corpus/**`; the engine module above is the sixteenth new path overall). The
+file-ownership manifest below is the complete list; this paragraph is its prose summary and must
+agree with it.
+
+**Shipped code this extends, verified at HEAD.**
+
+| Symbol / artefact | Location at HEAD | Role here |
+|---|---|---|
+| `parseLearningsConfig`, `readLearningsConfigSafely` | `pdlc/workflows/orchestrate-dev.js` (inside the sentinel-bounded `// === LEARNINGS INJECTION REGION START/END ===` block) | `parseDecisionLedgerConfig` clones its shape; the config text is already read **once** and shared with `parsePinCheckConfig` / `parseDerivativeStopConfig` — this feature adds a fourth consumer, not a fourth read |
+| `LEARNINGS_CORPUS_ARGV`, `gatherLearningsCorpus`, `selectLearnings`, `renderLearningsBlock`, `buildLearningsInjector` | same module | the corpus/select/render/inject shell `DECISION_CORPUS_ARGV` and friends clone |
+| `reviewLoop` (exported), `dispatchAndVerify` (module-private), `reviewerPrompt` (module-private, called twice from inside `reviewLoop`) | same module | `reviewLoop` gains `_injectDecisionLedger` and `dispatchAndVerify` gains a trailing `ledgerBlock` parameter, both defaulting to the shipped state; `reviewerPrompt` is **unchanged** — its return becomes `dispatchAndVerify`'s `basePrompt`, so the block threads through `reviewLoop`'s `wrapped` / `runWrapped` dispatch closures and is concatenated last in the delivered prompt (TSPEC §2.4, §4.5) |
+| `runCaptureScript` | `scripts/capture-learnings-baseline.mjs` | the byte-identity capture harness, reused unchanged |
+| `loopEconomicsBaselineGuard.test.js` (`EXPECTED_MERGE_BASE_SHA` literal, `git merge-base --is-ancestor` weaker second signal) | `pdlc/workflows/__tests__/` | the guard shape T-02 clones verbatim |
+| `loopEconomicsAnchorGuard.test.js` (`ANCHOR_TOKENS`, `bodyOf`) | `pdlc/workflows/__tests__/` | the declaration-anchored source-census precedent T-11 clones |
+| `advisoryDisabled.test.js`'s `sourceExcludingParser` / PROP-DIS-06 | `pdlc/workflows/__tests__/` | the brace-matching slicer, and the reason the enablement read must be **destructured**, not dotted (`DEC-DECLEDGER-09`) |
+| `loop-config-example.test.js` | `pdlc/engine/__tests__/` | the containment-plus-set-equality disclosure shape; the example file carries exactly eight top-level blocks today (`dispatch`, `advisory`, `implementation`, `learningsInjection`, `cascade`, `review`, `loop`, `merge`) |
+
+**Every file this PLAN names is either verified to exist at HEAD (the table above, plus
+`pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md`, `.claude/pdlc.config.example.json`,
+`pdlc/.claude-plugin/plugin.json` at version `0.23.6`, `pdlc/workflows/dist/pdlc-cli.mjs`) or is
+declared `[new]` in its task row.** No task names a file that exists under a different path.
+
+**Two RED-terminal batches.** Batches 1–2 create fixtures and failing tests only; the **six
+production-file greens** (T-13…T-18, the tasks writing `orchestrate-dev.js`) land in batches 3–8,
+and the two remaining greens — T-19 (documentation and config disclosure) and T-20 (landing) — sit
+in batches 9 and 10 (PM F-05). Per the wave-gate contract already followed by
+`pdlc/engine/__tests__/loop-config-example.test.js`, every `[red]` block is committed **skipped**,
+titled with the id of the `[green]` task that un-skips it, and each block is run un-skipped once
+first and observed to fail for the stated reason before being skipped. Gate wording for batches
+1–2: *new tests are committed skipped with their observed-red reason recorded in the file header,
+and the pre-existing suite is green.*
+
+## Batches
+
+Status key: ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done
+
+`[new]` in the Test File / Source File column means the task creates the file; every other path is
+verified present at HEAD.
+
+| # | Task | Test File | Source File | Batch | Deps | Status |
+|---|---|---|---|---|---|---|
+| T-00 | Pre-flight baseline-symbol gate: assert the eight HEAD symbols this feature builds on are importable from `pdlc/workflows/orchestrate-dev.js` — `parseLearningsConfig`, `readLearningsConfigSafely`, `parsePinCheckConfig`, `parseDerivativeStopConfig`, `LEARNINGS_CORPUS_ARGV`, `gatherLearningsCorpus`, `renderLearningsBlock`, `reviewLoop` — plus `runCaptureScript` from `scripts/capture-learnings-baseline.mjs`. **Existence only**; asserts nothing about the shapes this feature creates. Passes at HEAD. | `pdlc/workflows/__tests__/decisionLedgerPreflight.test.js` `[new]` | — | 1 | — | ✅ |
+| T-00a | **Census exclusion — a batch-1 obligation, not a batch-9 one (TE F-01).** `documentOracles.test.js`'s `*.test.js` census filter pins the count to the literal `102`, excluding only the `learnings`, `waveResume`, `loop` and `escalationView` prefixes; at the pre-feature baseline the directory measured 154 files and exactly 102 after those exclusions (the raw figure is a baseline census, not a HEAD claim — HEAD measures 166 now that this feature's twelve modules have landed; the load-bearing half, exactly `102` after the exclusions, is unchanged and green, TE F-03), so the literal is **saturated**. Batch 1 alone adds three `decisionLedger*`-prefixed modules (T-00, T-02, T-03) and batch 2 adds nine more, reddening a required check before any production code exists — and the batch-1/2 gate demands the pre-existing suite be green. Add `!name.startsWith("decisionLedger")` to the filter with a comment naming **this PLAN's file-ownership manifest** as the owner of that namespace's census, exactly the treatment `learnings*`, `waveResume*`, `loop*` and `escalationView*` already carry. Acceptance is one-sided and evaluable at batch 1: the exclusion lands and the pre-existing suite is green at `102`. The **terminal** re-check — the filtered count still `102` once all twelve of this PLAN's new modules exist — is **owned by T-19** (batch 9, the first point at which it is evaluable) and credited to T-19 by the `102` positive-control bullet in §Definition of Done. **What that positive control does and does not prove (TE F-03):** it pins the *complement* of the excluded namespace, so it falsifies a mistyped prefix or an exclusion that swallows a neighbouring namespace (either moves the count off `102` and reds) — it does **not** and cannot detect a dropped `decisionLedger*` module, since deleting one leaves the complement at `102`. The namespace's own **set census** (set equality against the twelve names, not a count) is a separate terminal obligation and lives in T-12a, un-skipped by T-19 at batch 9, where all twelve modules exist and it can never red mid-feature. **Not** a re-pin of the literal (`documentOracles.test.js`'s own comment block explains why: a manifest landing one file per wave would red the gate mid-feature at every wave). | `pdlc/workflows/__tests__/documentOracles.test.js` (existing) | `pdlc/workflows/__tests__/documentOracles.test.js` (existing) | 1 | — | ✅ |
+| T-01 | `[Fake first]` Shared sync test doubles: `makeDecisionLedgerSeams(overrides)` returning `{ _git, _readFile, _log }` — `_git` scripted to return `{ ok, stdout }`, to return `{ ok: false }`, or to throw; `_readFile` a scripted `path → string` map with designated paths returning `null` and designated paths throwing (TSPEC §7.1, P-8's lesson that the runtime read throws where the double returns `null`); `_log` a collector array — plus `assertNoLiveGitWrites(calls)` for the mandatory `afterEach` leak check (commit `f325016`). Re-exports the fixture loaders T-02/T-03 create. | `pdlc/workflows/__tests__/helpers/decisionLedgerDoubles.js` `[new]` | — | 1 | — | ✅ |
+| T-02 | Capture the **pre-feature byte-identity baseline** from the merge-base worktree via the shipped `runCaptureScript`, case `REVIEW-LOOP-REVIEWER-PROMPTS` driving exported `reviewLoop` and recording the reviewer-prompt stream for a first-pass round and a delta re-review round (TSPEC §7.4, deliberately narrow — a whole-`main()` recording would red on this feature's own intended additions). Author the guard: per-file digest literals **hand-transcribed**, `mergeBaseSha` asserted `=== EXPECTED_MERGE_BASE_SHA` (a hand-transcribed literal, never read from the manifest it checks), `git merge-base --is-ancestor {recorded sha} HEAD` kept only as the documented weaker second signal, case ids by **set equality**. `scenarios.mjs` sits inside the fixture directory (jest's `testPathIgnorePatterns` already excludes `/__tests__/fixtures/`). Three-step mutation proof (flip a recorded byte; delete a case dir; add a spurious case dir), each observed red transcribed into the file header. No red predecessor by construction. | `pdlc/workflows/__tests__/decisionLedgerBaselineGuard.test.js` `[new]` + `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/{scenarios.mjs,MANIFEST.json,REVIEW-LOOP-REVIEWER-PROMPTS/**}` `[new]` | — | 1 | — | ✅ |
+| T-03 | Create the **frozen decision-corpus fixture**: a path-preserving copy of the **25** in-scope `DECISIONS-*.md` files at Baseline v1.2's `Verified at` commit `8c673a09f` (count verified — and **note the command that does not run**, PM F-01: `git ls-tree` rejects `:(glob)` pathspec magic outright (`fatal: … pathspec magic not supported by this command: 'glob'`), so `DECISION_CORPUS_ARGV`'s own pathspecs cannot be handed to it. The reproducible historical enumeration is `git ls-tree -r --name-only 8c673a09f \| grep -E '^(docs/_decisions/DECISIONS-[^/]*\.md\|docs/[^/]+/DECISIONS-[^/]*\.md\|docs/completed/[^/]+/DECISIONS-[^/]*\.md\|docs/discarded/[^/]+/DECISIONS-[^/]*\.md)$'` — **four** alternatives, one per `DECISION_CORPUS_ARGV` pathspec (TSPEC §3.1); a three-alternative form dropping `docs/discarded/` yields 24 and is wrong (TE F-01 / PM F-01). Measured: this command yields **25** at `8c673a09f`, and the same filter over `git ls-files` yields **26** live. Both deltas are named, so neither number is a bare assertion: 24→25 is `docs/discarded/pdlc-rcv-budget-stop/DECISIONS-pdlc-rcv-budget-stop.md` (present at `8c673a09f`, carrying the four `DEC-BUD-*` ids `M-2b` attributes to `pdlc-rcv-budget-stop`), and 25→26 is `DECISIONS-pdlc-decision-ledger.md`, which landed after the Baseline commit — exactly why the copy is frozen. `DECISION_CORPUS_ARGV`'s `:(glob)` form is for `git ls-files` at runtime; T-03 records this reconciliation in its file header as prose *and* discharges it mechanically through the integrity guard below). Addressed only through the `_git` / `_readFile` doubles — no test touches the working tree. Integrity guard, both conjuncts falsifiable and neither derived from the fixture: per-file digest literals hand-transcribed into the test, never recomputed from a manifest; and **set equality between the fixture's path list and a 25-element literal path array transcribed by hand into the test file** — set equality, not a count, and not a list generated at fixture-build time (TE Q-01), so a fixture built from a 24-path enumeration fails at batch 1 on the missing path itself rather than surfacing as an unexplained T-09 red. | `pdlc/workflows/__tests__/decisionLedgerFixtureGuard.test.js` `[new]` + `pdlc/workflows/__tests__/fixtures/decision-corpus/**` `[new]` | — | 1 | — | ✅ |
+| T-12 | `[red]` Engine-side config disclosure (FSPEC Q-3, TSPEC §5.3): `.claude/pdlc.config.example.json` parses; its top-level section set **contains** `decisionLedger` (containment — the file is shared with the eight blocks listed in §Overview); `decisionLedger`'s own key→value map by **set equality** against a hand-transcribed literal of C-5's three keys and defaults (`enabled: false`, `maxEntries: 70`, `maxBytes: 12500`), so a fourth key or a different spelling fails. Transcribed, not imported from `DECISION_LEDGER_DEFAULTS` — `loop-config-example.test.js`'s stated reason. Committed `test.skip`, blocks titled `T-19: …`. Runs under `node:test` on the `Engine tests (ubuntu-latest)` check. | `pdlc/engine/__tests__/decision-ledger-config-example.test.js` `[new]` | — | 1 | — | ✅ |
+| T-12a | `[red]` **Documentation disclosure oracle — the red predecessor T-19's prose half never had (TE F-04, PM F-03).** Three of T-19's four deliverables (`pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md`) currently have no falsifying assertion anywhere in this PLAN: an implementer writing one sentence and one writing the full mechanics both pass. Add a `decisionLedger` disclosure family to `documentOracles.test.js` on the shape the shipped advisory-disclosure family already establishes (`documentOracles.test.js` ~:579–625 derives its count words from `ADVISORY_SEAMS` / `ADVISORY_DEFAULTS` rather than restating them). Assertions, all **derived from the production constants, never transcribed**, and all **set equality** so a deleted item fails: `pdlc/OPERATIONS.md`'s ledger omission-reason list set-equals `DECISION_LEDGER_OMIT_REASONS`; its notice-id list set-equals the keys of `DECISION_LEDGER_NOTICES`; its config-key list set-equals the keys of `DECISION_LEDGER_DEFAULTS`. Plus a **referent** conjunct in `pdlc/README.md` and `CLAUDE.md`: each names `decisionLedger` and defers to `pdlc/OPERATIONS.md` as the catalogue, and **carries no key-by-key restatement** — deliberately preserving the ~:625 confinement discipline that keeps mechanics prose in OPERATIONS.md only (TE F-06). **Plus the terminal namespace census (TE F-03):** one conjunct asserting the set of `pdlc/workflows/__tests__/decisionLedger*.test.js` module names is **set-equal** to the twelve names hand-transcribed from this PLAN's file-ownership manifest. It is a set, not a count — the terminal `102` *count* assertion is **T-19's obligation**, not this task's; it lives here rather than in T-00a because it is only satisfiable once batch 2's modules exist, and un-skipping at batch 9 keeps it from reddening the wave gate mid-feature — the same reasoning `documentOracles.test.js`'s own comment block gives for not re-pinning the `102` literal. Committed skipped, blocks titled `T-19: …`. **Host module (PM F-01, v12).** These blocks live in `decisionLedgerConfig.test.js`, **not** in `documentOracles.test.js`: that file is a `SWEPT_SURFACE_MODULES` member of consumerCleanup's skip-join orphan-freedom oracle (TSPEC §5.5), whose sink accepts only capability-gated skips, so a committed planned-work `test.skip` there is an unregistrable orphan. The host sits inside T-19's twelve-module manifest and outside the swept surface; the `T-19: …` titles are byte-identical either way, so T-19's batch-9 un-skip obligation is unchanged. The host is shared with T-04 (`[red]`, batch 2) and T-13 (un-skip, batch 3), so this row carries a real `Deps` edge on T-13 — single-writer-per-batch, and it also guarantees T-13's un-skip sweep cannot reach blocks written after it. | `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` (existing — T-04's module) | — | 4 | T-00, T-00a, T-13 | ✅ |
+| T-04 | `[red]` `parseDecisionLedgerConfig` pure matrix: each of C-3's three keys × {valid, wrong-typed, absent} with the other two valid, plus the block-level malformation case, asserted as **set equality** over C-3's enumeration (AT-11); `text === null`, non-JSON text, absent block ⇒ defaults and **no** notice (F-1…F-3); non-object block ⇒ `sectionMalformed` + `NTC-DECLEDGER-MALFORMED` (F-4); one wrong-typed key ⇒ that key only defaults, `invalidKeys` names it, `NTC-DECLEDGER-KEYTYPE` (F-5); `nonNegativeInt` accepts `0` on **both** thresholds (E-7, `DEC-DECLEDGER-15`); block independence (a malformed `decisionLedger` leaves `learningsInjection` / `cascade` / `review` at their values); a `fast-check` totality property over arbitrary JSON. Committed skipped, blocks titled `T-13: …`. | `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` `[new]` | — | 2 | T-00, T-01 | ✅ |
+| T-05 | `[red]` `recogniseDecisionRecords` over TSPEC §3.2's five conjuncts, each with its cited Baseline instance: `##`–`####` heading levels; the **optional ordinal prefix** (`## 2. DEC-EDIST-01: …` — without it two directories contribute 0 instead of 10 and 8, and the feature-level total is 82 not `M-2e`'s 100); the namespace-plus-numeric id grammar (excludes `M-4b`'s twelve `DEC-01`…`DEC-10` and `M-4a`'s `DEC-AWG-Q1`); id-opens-the-heading (excludes `M-4d`'s four mid-heading back-references); separator `:` or `—` followed by a **non-empty** statement. Plus §3.3 last-record-wins over a two-opening block, and `null`/empty/no-record text ⇒ `[]` as an ordinary empty result (BR-8, F-9). **Two `fast-check` properties — TSPEC §7.5's `P-REC`, promoted from example to property at TSPEC v0.8 (originally TE F-07; a parser is the archetypal property target and §3.2/§3.3 already state its invariants in quantified form):** (i) over a generated heading line assembled from independently-varied conjunct components (level, ordinal prefix present/absent, id grammar well-/ill-formed, id-opens/mid-heading, separator `:`/`—`/absent, statement empty/non-empty), the recogniser accepts **iff all five conjuncts hold** — this falsifies a conjunct silently dropped or reordered, which no fixed example set can; (ii) over arbitrary file text built from a generated multiset of openings, `recogniseDecisionRecords` returns **at most one record per id** and that record is the **last** opening in the file — §3.3's last-record-wins as a law, not one two-opening example. Also total: never throws on arbitrary input. **`P-REC` carries O-8's discipline (TSPEC §7.5):** the expectation comes from an **independent model**, never the production recogniser, and **four** named falsifying mutations are each applied, observed red, reverted, and the observed failure transcribed into this file's header — admit an out-of-depth heading; admit an empty-statement heading; normalise or trim the statement instead of slicing it verbatim; resolve duplicates first-wins instead of last-wins. Committed skipped, blocks titled `T-14: …`. | `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` `[new]` | — | 2 | T-00, T-01 | ✅ |
+| T-06 | `[red]` `renderDecisionLedgerBlock` and the frozen text constants: exact-`""` for empty `selected` — no header, no preamble, no rule text, no trailer, no whitespace (BR-1, E-6); the `{id} — {statement}  [{sourcePath} § {id}]` line form (`DEC-DECLEDGER-10`); one physical line per decision; project-level lines before feature-level. Rule text: both BR-5 conjuncts stated as a conjunction (AT-06); both BR-6 exemplars, **each labelled with the side it falls on** (AT-07); decide against the **cited record**, not the index line; key a repeat on the decision id (AT-12's text half). **Framing pin (`DEC-DECLEDGER-12`, D-9):** header + preamble + rule text + trailer + separating blank lines render to **≤ 1,200 bytes**, asserted against that literal — an acceptance condition on the drafting task, not a measurement of drafted text. **One `fast-check` property — TSPEC §7.5's `P-LINE`, promoted from example to property at TSPEC v0.8 (originally TE F-07):** for any non-empty `selected` set — statements generated to include embedded `\n`, `\r\n`, pipe and backtick characters — the rendered block contains exactly `selected.length` index lines, each matching the `{id} — {statement}  [{sourcePath} § {id}]` grammar, and the block's total line count equals framing lines + `selected.length`. **One physical line per decision stated as a law is load-bearing arithmetic, not tidiness:** a statement carrying a newline would silently render two lines, desynchronising T-07's `≤ maxEntries` line count and every hand-transcribed byte literal in T-09. No named example generates one. The renderer's contract for such a statement (escape or reject) is fixed here and cited by T-16. **`P-LINE` carries O-8's discipline (TSPEC §7.5):** independent model, never the production renderer, and **three** named falsifying mutations each applied, observed red, reverted, and transcribed into this file's header — render a statement containing `\n` unescaped; join two records onto one line; emit the set in an order other than §3.6's. Committed skipped, blocks titled `T-15: …`. | `pdlc/workflows/__tests__/decisionLedgerRender.test.js` `[new]` | — | 2 | T-00, T-01 | ✅ |
+| T-07 | `[red]` Bounds. (a) O-8's property (`fast-check`), quantified over set size × line sizes × both bounds, with the bounds range spanning `0`, exactly-fitting and generous: the block is exactly `""` or satisfies ≤ `maxEntries` lines, ≤ `maxBytes` bytes, every line byte-identical to the unbounded line, and the rendered set is a **prefix under §3.6's omission order**. The model carries its **own** formatter transcribed from §4.3, never the production renderer (`DEC-DECLEDGER-11`). Four named mutations, each applied, observed red and reverted, transcribed into the file header: `>` for `≥` on the line count; framing not charged; truncate-instead-of-drop; drop from the front. (b) Example anchors AT-13 (a set exceeding `maxEntries`, separately one exceeding `maxBytes`) and AT-15 (one oversized line dropped whole, no fragment, remaining lines render). Committed skipped, blocks titled `T-16: …`. | `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` `[new]` | — | 2 | T-00, T-01 | ✅ |
+| T-08 | `[red]` IO shell and fail-open, all through T-01's doubles: `_git` returning `!ok` **and** `_git` throwing both reach `{unlistable: true}` ⇒ `RSN-UNLISTABLE` ⇒ total leg (F-6, AT-08); zero paths ⇒ `RSN-EMPTY` (F-7); one path whose `_readFile` returns `null` and one that throws each degrade **that entry only** to `readOk: false` while every other source renders (F-8, AT-09's whole-source arm); a source that reads and parses to zero records lands in `emptySources`, **not** `failedSources` (F-9, F-10, AT-10 + O-7's classification conjunct); nothing surviving ⇒ block `""`, same bytes as F-6/F-7; no directory for the feature, and a directory yielding zero records, both resolve to the project-level set alone (F-14, Q-2). **AT-03 freshness:** the scripted `_readFile` returns one text on the first call for a path and a mutated text on the second — the fixture copy is never written (`DEC-DECLEDGER-14`, D-11) — and the second dispatch reflects the change; a snapshot fails. `_log` receives one line per dispatch in production, not only under doubles. Committed skipped, blocks titled `T-17: …`. | `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` `[new]` | — | 2 | T-00, T-01, T-03 | ✅ |
+| T-09 | `[red]` Corpus oracle over T-03's frozen fixture. (a) **AT-01**: two dispatches differing only in the feature under review — `pdlc-advisory-wave-gate` (45 lines) and `pdlc-engineering-loop` (48) — compared as **whole rendered lines**, expected statements and citations hand-transcribed from the fixture's own heading text, never captured from the renderer; `M-4d`'s 8 non-record headings contribute no line, each of `DEC-LOOP-01`…`06` renders once carrying the **second, deciding** opening (`M-3c`); a build rendering all 100 feature-level ids fails. Bounds supplied **explicitly non-binding**, with the reason in the file header (TSPEC §7.6). (b) **AT-02**: parse `sourcePath` and `id` **out of the rendered line's citation field**, re-open the fixture path through the `_readFile` double, find the heading whose captured id equals the parsed id, assert its captured statement equals the rendered statement — **no field of `DecisionRecord` is read anywhere in the chain**. (c) **AT-18**: a synthetic two-file corpus recording one id in both a project-level and a feature-level file — exactly one line carries that id, **and** its statement, `sourcePath` and `origin` are the **project-level** record's (each transcribed from the fixture), with the feature-level statement absent from the whole block (§3.4's positive conjunct; cardinality alone passes under the rejected rule). (d) **`DEC-DECLEDGER-13` shipped-default assertions**, both at `maxEntries: 70`, `maxBytes: 12500`: over the **whole** 141-record fixture — rendered project-level ids set-equal to the transcribed 41, their lines joined by `\n` equal to the transcribed **6,305** bytes, `6,305 ≤ maxBytes − 1200`, and the non-empty `omitted[]` naming **no** project-level id; and over the **`M-6b` slice** (41 project-level + `pdlc-headless-engine`'s 22 = 63) — `omitted[]` **empty**, rendered id set equal to the transcribed 63, index lines equal to the transcribed **10,859** bytes, and `10,859 ≤ maxBytes − 1200` (i.e. `≤ 11,300`, the 441-byte margin). All four literals hand-transcribed from the fixture; the 12,059-byte block total is deliberately **not** asserted as an equality (`DEC-DECLEDGER-16`). Committed skipped, blocks titled `T-17: …`. | `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` `[new]` | — | 2 | T-01, T-03 | ✅ |
+| T-10 | `[red]` Loop integration and driver invariance, against T-02's committed recording. **AT-05**: four not-enabled spellings supplied as four distinct `learningsConfigText` values — absent block, `enabled` absent, `enabled` wrong-typed, malformed section — each run through `parseDecisionLedgerConfig` → `buildDecisionLedgerInjector`, each yielding `null` and hence the identical `""` block and the baseline-identical stream (the arm must **consume** the config text it varies). **AT-14**: zero-decision in-scope set, `maxEntries` `0`, `maxBytes` `0` — all three byte-identical to the baseline, pinning that there is no header without rows and **no rule text standing alone** above a missing index. Enabled path: the block is appended **last**, after `oraclePart` and `findingGrammarPart`, on both the iteration-1 and iteration-≥2 return paths of `reviewerPrompt`, and both reviewers of a round receive the identical block (§2.6). **AT-16**: one recorded fixture of reviewer outputs replayed with the flag `true` and `false` — convergence, the identity-triple dedupe and resulting open-finding ledger, the `review.derivativeStop` flat/non-flat classification, the `DEC-ERRROUTE-01` erratum mint and the fail-closed confirmation-presence read all identical, with the open-finding ledger additionally **anchored to a value transcribed from the fixture**; the dispatch leg differs in exactly one asserted way. **AT-17**: a High finding re-opening an indexed decision is scored, deduped and routed as any other High. **AT-12**'s driver half: `DEC-LOOPECON-06`'s exact-match triple remains the sole dedupe key. Committed skipped, blocks titled `T-18: …`. | `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` `[new]` | — | 2 | T-01, T-02 | ✅ |
+| T-10a | `[red]` **`main()`-driven wiring arm — the one live execution of the composition root (TE F-03, DC-07).** T-18's assembly (config → injector → `wrapperSeams._injectDecisionLedger` → awaited seam → `reviewerPrompt`) is otherwise proved by T-11's source census alone, and a census proves a string is present, never that a line runs: a transposed argument, a seam installed under the wrong key, an un-`await`ed injector, or a wiring block placed after the last `reviewerPrompt` call would leave every other task green. Drive the default export `main()` (`import mainDev, * as dev from "../orchestrate-dev.js"`, the shape `advisoryDisabled.test.js`, `advisoryWaveGateMain.test.js`, `anchorCascade.test.js`, `branchGuard.test.js` and ~20 further modules already use; `advisoryWaveGateMain.test.js` exists for precisely this reason). Three arms: (1) **flag on** with scripted `_readFile`/`_git` — a call-count spy asserts `gatherDecisionCorpus`'s `_git` seam is invoked **≥ 1** on the served reviewer flow, the conjunct a fake of the outer interface cannot satisfy; (2) **flag on, positive presence** — the reviewer prompt actually handed to a reviewer dispatch **ends with** the rendered ledger block, not merely "differs from baseline"; (3) **flag off, three positive conjuncts** — the reviewer prompt is byte-identical to **T-02's committed merge-base recording**, not to a string computed by subtracting the block from the flag-on prompt (TE Q-02: the subtraction form would define the flag-off prompt by the code under test, an implementation echo; the committed recording is the independent referent REQ-DECLEDGER-02 / AT-04 actually name), the **symmetric difference** between this arm's own flag-off and flag-on `report` key sets is exactly `{decisionLedger}`, asserted as a set equality in **both** directions (so `"decisionLedger" not in report` is paired with a positive, and a key spuriously *added* or *dropped* on **either** arm fails), and the emitted `NTC-DECLEDGER-*` notice set is **set-equal to empty**, not merely "contains no `NTC-DECLEDGER-*`" (TE F-05, re-pinned to TSPEC §7.2's referent split). The referent for both clauses is the paired flag-off/flag-on runs inside this arm, never a stored artefact: §7.4's recording is a narrow `reviewLoop` case capturing reviewer-prompt streams only, so it holds no `report` key set and no baseline notices array and is cited here for the prompt clause alone. This is the home file for T-18's `report.decisionLedger` assertion, which had none. Does **not** disturb TSPEC §7.4: the narrow `reviewLoop` recording and this live execution are different obligations, and §7.4 forbids only the former being whole-`main()`. `assertNoLiveGitWrites` in `afterEach`. Committed skipped, blocks titled `T-18: …`. | `pdlc/workflows/__tests__/decisionLedgerMain.test.js` `[new]` | — | 2 | T-01, T-02, T-03 | ✅ |
+| T-11 | `[red]` Source census for BR-11 / REQ NG-4 (TSPEC §7.3), cloning `loopEconomicsAnchorGuard.test.js`'s `ANCHOR_TOKENS` / `bodyOf` declaration-anchored slicing. Operands: the frozen `DECISION_LEDGER_CENSUS_TOKENS` — **six** members, the *distinctive, unambiguous top-level declaration names* this feature introduces that carry or produce decision-record **data** (`selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`), — and two further frozen lists. **All three are declarations of this task's own test file**, exactly as the precedent's `ANCHOR_TOKENS` is a top-level constant of `loopEconomicsAnchorGuard.test.js` rather than of the module that test scans (TSPEC §7.3, *Where the three census constants live*). None of the three is production code, and none is a member of `DECISION_LEDGER_OWNED_DECLS`, which enumerates *module* top-level declarations — every member must resolve to exactly one top-level declaration of `orchestrate-dev.js`, so a test-file constant can never be a member of it, and the census never scans the file the three are declared in. The other two lists are: `DECISION_LEDGER_CENSUS_EXEMPT`, the **eight** plumbing declarations that carry no record data, each with its reason (`parseDecisionLedgerConfig`, `buildDecisionLedgerInjector`, `DECISION_LEDGER_DEFAULTS`, `DECISION_HEADING_RE`, `DECISION_CORPUS_ARGV`, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, `DECISION_LEDGER_NOTICES`), and `DECISION_LEDGER_OWNED_DECLS`, the **fourteen** top-level declarations this feature introduces — all fourteen declared in `pdlc/workflows/orchestrate-dev.js` by a `[green]` task of batches 3–8 (T-13…T-18), so no member of the frozen list is homeless. T-11 is still committed skipped in batch 2 and un-skipped by T-18 in batch 8, because the owned members it resolves against are written across batches 3–8; that is the ordinary red-before-green edge and is unchanged by this round. **Companion assertion (TSPEC §7.3): `DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`, the two sub-sets disjoint — `CENSUS_TOKENS`'s **six data-carrying names** ∪ `CENSUS_EXEMPT`'s **eight plumbing declarations** = the owned list's **fourteen**, the operands named inline because §7.3 states a second, numerically identical but membership-different partition (the owned list's own six functions ∪ eight constants); cited from §7.3's *The size of the owned list, stated once*, which is the authority for the count** — still an exact set equality, so a symbol added later must be classified into one list or the other or the test reddens, but the partition is stated rather than assumed. Set equality against *all* of the module's decision-ledger exports is the **rejected** form: §7.3 names it red by construction, since fourteen are declared and only six are data-carrying. Plus §7.3's red-on-rename conjunct: **each member of `DECISION_LEDGER_OWNED_DECLS` resolves to exactly one top-level declaration at HEAD**, so a rename or deletion reddens rather than silently shrinking the exclusion. The owned list is enumerated, never derived from a `/Decision/i` name pattern — the shipped module already declares `MERGE_MAX_DECISION_STEPS`, `renderDecisionEntry`, `escalationDecision`, `erratumGateDecision` and `parseDecisionsWarranted` (`pdlc/workflows/orchestrate-dev.js`), which such a rule would wrongly exclude and blind the census. **`decisionLedger` is deliberately not a member (TSPEC §7.3, which grounds it in §5.4):** the report field is threaded through `buildFinalReport` exactly as the shipped `learningsInjectionField` analogue is, at sites far outside `main()`'s sentinel-bounded region, so the bare name occurs in the scanned remainder **by construction** — including it would red this census for a conforming implementation. Carving `buildFinalReport` out of the scan is the rejected alternative (it would blind a far larger surface than the token buys); and since `decisionLedger` is a `report` field rather than a declaration, it is absent from `DECISION_LEDGER_OWNED_DECLS` too, so the partition check above is unaffected in both directions. The field's obligation is **behavioural, not census**: T-10a asserts `report.decisionLedger` on a real `main()`-driven run, and the flag-off arm pairs its absence with the both-directions set equality that the symmetric difference of the flag-off and flag-on `report` key sets is exactly `{decisionLedger}` (T-10a conjunct 3, TSPEC §7.2). The census's second operand (TSPEC §7.3): `orchestrate-dev.js`'s source **minus** (a) the body of **every** member of `DECISION_LEDGER_OWNED_DECLS` — not a hand-picked three; slicing every owned declaration is what makes the census satisfiable, since otherwise `gatherDecisionCorpus`'s own declaration and §5.2's catalogue names occur in the remainder on conforming code — and (b) the `main()` wiring run bounded by the literal `// === DECISION LEDGER WIRING START ===` / `... END ===` sentinels (that run only, not the whole of `main()`, so unrelated `main()` code stays inside the census). Slices are taken the precedent's way — from a declaration's own line to the **next top-level declaration of any name**, boundaries from *all* of the module's top-level declarations rather than the owned subset, i.e. `loopEconomicsAnchorGuard.test.js`'s `bodyOf` over `allTopLevelDecls` (`pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js`, `bodyOf` / `allTopLevelDecls`). **The precedent's declaration regex must be widened, not cloned verbatim** (TSPEC §7.3, absorbed this round): that file's `DECL_RE` is anchored to `function` declarations only — sufficient there, whose census set is all functions — whereas **eight of this feature's fourteen owned declarations are top-level `const`s**, so a verbatim clone would find no boundary at any catalogue's declaration line, leave that catalogue's body in the scanned remainder, and red the census on its own literals. The cloned regex must recognise top-level `const` and `let` bindings (`export`-prefixed or not) alongside `function`. **Each slice asserted non-empty before counting**, so the census cannot go vacuous — and that conjunct, with resolves-to-exactly-one, is what catches a regex that missed a declaration form, since a name the regex cannot see reddens rather than silently widening the census. Assertion: zero occurrences of any member in the scanned remainder. Also pins that this feature's sentinels are **not** the learnings region's, so PROP-DIS-06's slicer does not see them (TSPEC §2.3). Committed skipped, blocks titled `T-18: …`. | `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` `[new]` | — | 2 | T-00, T-01 | ✅ |
+| T-13 | `[green]` Config layer: `DECISION_LEDGER_DEFAULTS` (`enabled: false`, `maxEntries: 70`, `maxBytes: 12500`), `parseDecisionLedgerConfig` as a one-level descent cloning `parseLearningsConfig` (`degraded(sectionMalformed)` closure, `text == null` / `JSON.parse` / missing-block short-circuits, `boolField` + `nonNegativeInt`), and the frozen `DECISION_LEDGER_NOTICES` (`NTC-DECLEDGER-MALFORMED`, `NTC-DECLEDGER-KEYTYPE`) with its set-equality test. Threaded off the **single existing** `readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH)` read in `main()` — no second read, no second path constant. Un-skips T-04. | `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | `pdlc/workflows/orchestrate-dev.js` | 3 | T-02, T-04 | ✅ |
+| T-14 | `[green]` Recognition: the frozen `DECISION_CORPUS_ARGV` (four `:(glob)` pathspecs) and `DECISION_HEADING_RE`, plus `recogniseDecisionRecords(text, sourcePath)` returning `DecisionRecord[]` with §3.3's last-record-wins in-file resolution. Pure, total, never throws, never reads. Un-skips T-05. | `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` | `pdlc/workflows/orchestrate-dev.js` | 4 | T-05, T-13 | ✅ |
+| T-15 | `[green]` Rendering: `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT` (**drafted to fit T-06's ≤1,200-byte framing budget — an acceptance condition of this task, not a hope**; exceeding it re-opens §3.6's arithmetic rather than raising the literal) and `renderDecisionLedgerBlock({ selected })` with its exact-`""` contract. Un-skips T-06. | `pdlc/workflows/__tests__/decisionLedgerRender.test.js` | `pdlc/workflows/orchestrate-dev.js` | 5 | T-06, T-14 | ✅ |
+| T-16 | `[green]` Selection and bounds: `selectDecisions({entries, feature, thresholds})` — origin partition per §3.1, §3.4 project-level-wins precedence keyed on **origin never on path order**, then §3.6's drop loop (feature-level before project-level; within an origin, reverse enumeration order; whole lines only, never truncated, never aborted). `renderedBytes` is obtained by **calling `renderDecisionLedgerBlock`** on the candidate set at each step (`DEC-DECLEDGER-11`) — `selectDecisions` never concatenates a line itself. Framing **is** charged to `maxBytes` (`DEC-DECLEDGER-07`). Returns `omitted[]` with the frozen `DECISION_LEDGER_OMIT_REASONS`, plus the **separate** `failedSources` / `emptySources` fields O-7 requires. Un-skips T-07. | `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | `pdlc/workflows/orchestrate-dev.js` | 6 | T-07, T-15 | ✅ |
+| T-17 | `[green]` IO shell and injector: `gatherDecisionCorpus({feature, _git, _readFile})` — one `_git` call on `DECISION_CORPUS_ARGV`, then one `_readFile` per path **inside its own `try/catch`**, never throwing, an outer catch yielding `{unlistable: true}`; the frozen `DECISION_LEDGER_CORPUS_OUTCOMES`; and `buildDecisionLedgerInjector` returning **`null` iff the flag is not `true`**, otherwise an async closure that re-gathers, selects, renders and pushes one `DecisionLedgerDispatchRecord` onto the sink on **every** call (no memoisation, no snapshot). Un-skips T-08 and T-09. | `pdlc/workflows/__tests__/decisionLedgerInjector.test.js`, `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | `pdlc/workflows/orchestrate-dev.js` | 7 | T-08, T-09, T-16 | ✅ |
+| T-18 | `[green]` Wiring: in `main()`, between the literal `// === DECISION LEDGER WIRING START ===` / `... END ===` sentinels, read the flag by **destructuring** (`const { enabled: decisionLedgerEnabled } = decisionLedgerConfig` — a dotted `.enabled` read reddens PROP-DIS-06, `DEC-DECLEDGER-09`), build the injector, set `wrapperSeams._injectDecisionLedger`, and set `report.decisionLedger` **only when the injector is non-null** (conditional spread, the shipped `learningsInjectionField` discipline). Add `_injectDecisionLedger = null` to `reviewLoop` and the trailing `ledgerBlock = ""` parameter to `dispatchAndVerify` — `reviewerPrompt` is **unchanged** and deliberately takes no ledger parameter, because its return becomes `dispatchAndVerify`'s `basePrompt` and the wrapper appends its own pacing-contract/opener suffix after it (TSPEC §2.4). Per round, `const ledgerBlock = typeof _injectDecisionLedger === "function" ? await _injectDecisionLedger({ feature, phaseId: phase, docType: roundDocType, round: iteration }) : ""` **awaited** immediately before the two `reviewerPrompt` calls, then forwarded to both reviewer dispatches as the trailing `ledgerBlock` argument of `reviewLoop`'s `runWrapped` / `wrapped` closures, which hand it to `dispatchAndVerify`; it is concatenated **last** there — after the pacing-contract clause, the opener and `learningsBlock` — so "appended last" is true of the delivered prompt rather than of one builder's return value. This task writes **no census constant**: TSPEC §7.3 homes all three (`DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT`, `DECISION_LEDGER_OWNED_DECLS`) in `decisionLedgerCensus.test.js` as test operands, and forbids a test-file constant from being a member of the owned list, so there is no production declaration to add here (v8 PM F-01 / TE F-01; this reverses the v0.7 instruction). T-11 still stays red until this task lands, because the fourteen owned members it resolves against are the declarations batches 3–8 write. **Delta-coverage ownership (TE F-02):** these wiring lines are the ones structurally at risk under `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` — despite its name it is not wave-resume-specific, its `SUBJECT` is hard-coded to `pdlc/workflows/orchestrate-dev.js`, its `resolveBase()` prefers the live `merge-base HEAD origin/main` (this feature's own merge base), and it fails on **any** uncovered line inside the post-image hunk ranges T-13…T-18 introduce. T-10a's `main()`-driven arm is what executes these lines; T-17's per-path `try/catch` arms are the second risk site. This task's acceptance includes `node pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` reporting **0 uncovered lines** in this feature's introduced ranges. **Per-wave manual run (TE F-02):** the wave gate's `implementation.testCommand` is plain `npm test` and does **not** include this script, so it would otherwise first fire at PR CI, batch-8-era. T-18 therefore owns an explicit instruction to the implementer of **each** of batches 3–8: commit that batch's `orchestrate-dev.js` edit, then run the script by hand before the wave closes. **Commit, then run:** the script only *warns* when `orchestrate-dev.js` has uncommitted changes, because its ranges are HEAD line numbers while c8 measured the working tree — an implementer running it mid-edit gets an offset result, not a failure. Un-skips T-10, T-10a and T-11. | `pdlc/workflows/__tests__/decisionLedgerLoop.test.js`, `pdlc/workflows/__tests__/decisionLedgerMain.test.js`, `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | `pdlc/workflows/orchestrate-dev.js` | 8 | T-10, T-10a, T-11, T-17 | ✅ |
+| T-19 | `[green]` Disclosure and documentation: add `"decisionLedger": {"enabled": false, "maxEntries": 70, "maxBytes": 12500}` to `.claude/pdlc.config.example.json`; document the block and the ledger's mechanics in `pdlc/OPERATIONS.md`'s review-loop-mechanics section (recognition rule, the two bounds and the omission order, the two fail-open legs, the notices ids); add a one-line pointer in `pdlc/README.md` and `CLAUDE.md`'s deep-dive paragraph so the config catalogue is not stale (the `pdlc-loop-economics` F-6 lesson). **No SKILL.md edits** (REQ NG-6, `DEC-DECLEDGER-05` — the wiring is dispatch construction). **The prose is written to satisfy T-12a's derived oracle**, not to a word count: OPERATIONS.md carries the omission reasons, notice ids and config keys in enumerable form; README.md and CLAUDE.md carry a **pointer**, not a restatement of the mechanics — a README that enumerates them trips the same confinement discipline `documentOracles.test.js` ~:625 already applies to the advisory family (TE F-06). **Re-pinning budget, named at authoring time rather than discovered at batch 9 (TE F-06):** these three documents are already load-bearing inputs to shipped oracles — `documentOracles.test.js` D-1 over `CLAUDE.md`'s "Workflow scripts and the runtime build" section, D-3 over `pdlc/README.md`, the ~:625 confinement assertion; and on the engine side `pdlc/engine/__tests__/ci-arrangement.test.js` (derives `CLAUDE.md`'s required-check table from FSPEC §5.1) and `docs-uniqueness.test.js` (install-command literals and line-pinned plugin-install sites, the recurring wave-halt trap in this project's learnings). Acceptance includes re-running all three suites after the edits and re-pinning any line-anchored site the insertion moved. **Terminal `102` positive control (T-00a's deferred conjunct, owned here):** with all twelve `decisionLedger*` modules on disk, `documentOracles.test.js`'s `*.test.js` census still counts `102` — the exclusion's complement pin, first evaluable at this batch, credited to this task by the §Definition of Done bullet. Un-skips T-12 and T-12a. | `pdlc/engine/__tests__/decision-ledger-config-example.test.js`, `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` (T-12a's disclosure blocks; the terminal `102` positive control is re-run in `documentOracles.test.js` without re-pinning its literal) | `.claude/pdlc.config.example.json`, `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` | 9 | T-12, T-12a, T-18 | ✅ |
+| T-20 | Landing: run `node pdlc/workflows/build-runtime.mjs`, confirm `--check` is clean, stage `pdlc/workflows/dist/` in the same commit; bump `pdlc/.claude-plugin/plugin.json` `version` from `0.23.6` **to `0.23.7`** — a patch bump, and the target is **constrained, not free** (PM F-02): `pdlc/engine/package.json` declares `"pdlcPluginCompat": "^0.23.0"`, and `documentOracles.test.js`'s post-sweep AT-1.6 / DEC-09 handshake check asserts the shipped plugin version is bumped past the post-sweep baseline **and** satisfies that range. A `0.24.0` bump therefore reds batch 10 — the last task, after all six serialised production batches have landed. The constraint travels with the task so it is not rediscovered there. Re-run `npm run test:coverage` in `pdlc/workflows` (all four clauses, including the delta-coverage gate) and `npm test` in `pdlc/engine`. | — | `pdlc/workflows/dist/pdlc-cli.mjs` (generated — never hand-edited), `pdlc/.claude-plugin/plugin.json` | 10 | T-19 | ✅ |
+
+### Batch column re-derivation
+
+Mechanically, `batch == max(batch of deps) + 1`, sources = batch 1:
+
+T-00, T-00a, T-01, T-02, T-03, T-12 have no deps ⇒ **1**. T-04, T-05, T-06, T-07, T-11 on T-00(1),
+T-01(1) ⇒ **2**; T-08 on T-00(1), T-01(1), T-03(1) ⇒ **2**; T-09 on T-01(1), T-03(1) ⇒ **2**; T-10
+on T-01(1), T-02(1) ⇒ **2**; T-10a on T-01(1), T-02(1), T-03(1) ⇒ **2**. T-13 on T-02(1), T-04(2) ⇒ **3**. T-14 on T-05(2), T-13(3) ⇒ **4**;
+T-12a on T-00(1), T-00a(1), T-13(3) ⇒ **4**.
+T-15 on T-06(2), T-14(4) ⇒ **5**. T-16 on T-07(2), T-15(5) ⇒ **6**. T-17 on T-08(2), T-09(2),
+T-16(6) ⇒ **7**. T-18 on T-10(2), T-10a(2), T-11(2), T-17(7) ⇒ **8**. T-19 on T-12(1), T-12a(4),
+T-18(8) ⇒ **9** (T-12a's move from batch 2 to batch 4 does not move it: `max` is still T-18's 8). T-20 on T-19(9) ⇒ **10**.
+
+The three v0.2 tasks change no other row's batch: T-00a is a source, and T-10a and T-12a sit in
+batch 2 under greens (T-18, T-19) that already sat above batch 2.
+
+The dependency graph is acyclic: every edge points from a lower-numbered batch to a higher one, and
+batch numbers strictly increase along every edge by construction of the rule above.
+
+### Per-phase file-ownership manifest
+
+**Row shape is a machine contract, not a style choice.** The engine's `parsePlanOwnership` reads
+the owner cell **whole** — it does not split a list or strip a trailing parenthetical — so a cell
+reading `T-02 (batch 1)` or `T-13, T-14, …` parses as a task id that no task table contains, and
+the task it meant to name reads as unowned. Every row therefore carries **exactly one bare task
+id**; a file with several owners gets several rows; the batch travels in its own column, which the
+parser ignores by design.
+
+| File | Owning task | Batch |
+|---|---|---|
+| `pdlc/workflows/__tests__/decisionLedgerPreflight.test.js` | T-00 | 1 |
+| `pdlc/workflows/__tests__/documentOracles.test.js` | T-00a | 1 (census exclusion) |
+| `pdlc/workflows/__tests__/helpers/decisionLedgerDoubles.js` | T-01 | 1 |
+| `pdlc/workflows/__tests__/decisionLedgerBaselineGuard.test.js` | T-02 | 1 |
+| `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/**` | T-02 | 1 |
+| `pdlc/workflows/__tests__/decisionLedgerFixtureGuard.test.js` | T-03 | 1 |
+| `pdlc/workflows/__tests__/fixtures/decision-corpus/**` | T-03 | 1 |
+| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` | T-12 | 1 |
+| `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-04 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` | T-05 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerRender.test.js` | T-06 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | T-07 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` | T-08 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-09 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` | T-10 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerMain.test.js` | T-10a | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` (the sole home of **all three** frozen census lists — `DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` — which TSPEC §7.3 declares to be declarations of the census test file itself, never of `orchestrate-dev.js`) | T-11 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-12a | 4 (disclosure oracle, skipped — hosted outside the swept surface, PM F-01) |
+| `pdlc/workflows/orchestrate-dev.js` | T-13 | 3 |
+| `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-13 | 3 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-14 | 4 |
+| `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` | T-14 | 4 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-15 | 5 |
+| `pdlc/workflows/__tests__/decisionLedgerRender.test.js` | T-15 | 5 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-16 | 6 |
+| `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | T-16 | 6 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-17 | 7 |
+| `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-17 | 7 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` (the sentinel-bounded `main()` wiring run and the `reviewLoop` / `reviewerPrompt` parameters; it declares **no** census constant — all three are test-file constants owned by T-11, TSPEC §7.3) | T-18 | 8 |
+| `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` `pdlc/workflows/__tests__/decisionLedgerMain.test.js` `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-18 | 8 (un-skip) |
+| `.claude/pdlc.config.example.json` | T-19 | 9 |
+| `pdlc/OPERATIONS.md` `pdlc/README.md` `CLAUDE.md` | T-19 | 9 |
+| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-19 | 9 (un-skip of the `T-19: …` blocks; the terminal `102` positive control stays in `documentOracles.test.js`, whose census filter T-00a owns) |
+| `pdlc/workflows/dist/pdlc-cli.mjs` | T-20 | 10 (generated — never hand-edited) |
+| `pdlc/.claude-plugin/plugin.json` | T-20 | 10 |
+
+**Disjointness premise, batch by batch.** Batch 1 writes six pairwise-disjoint file sets — T-00,
+T-01, T-02, T-03, T-12 on their own new paths, plus T-00a on the **existing**
+`documentOracles.test.js`, which no other batch-1 task touches. Batch 2 writes nine distinct new
+test files (T-04…T-11 plus T-10a's `decisionLedgerMain.test.js`), pairwise disjoint. Batches 3–8 each
+write exactly one production file — the same one — plus the test file(s) of a batch-1 or batch-2
+task they un-skip, and no two tasks share a batch, so no batch contains two writers of any file;
+batch 4's second writer is T-12a, whose disclosure blocks go into `decisionLedgerConfig.test.js`,
+which T-14 (the other batch-4 task) does not touch.
+Batch 9 writes four documentation/config files plus two un-skipped test files; batch 10 writes the
+generated bundle and the plugin manifest.
+
+The multi-owner files are: the ten test files whose `[red]` author and `[green]` un-skipper sit in
+different batches; `orchestrate-dev.js`, whose six owners sit in six distinct batches connected by
+the real edge chain T-13 → T-14 → T-15 → T-16 → T-17 → T-18; and
+`decisionLedgerConfig.test.js`, whose three owners sit in batches **2** (T-04, the `[red]` matrix),
+**3** (T-13, the un-skip of the `T-13: …` blocks) and **4** (T-12a, the skipped disclosure blocks,
+un-skipped in turn by T-19 at batch **9**), serialised by the real edges T-04 → T-13 → T-12a → T-19.
+`documentOracles.test.js` keeps a single owner, T-00a at batch **1** (the census exclusion), plus
+T-19's batch-9 re-run of the terminal `102` positive control, which re-pins no literal. Owners
+several batches apart is fine — waves are what separate writers, and these are separated.
+
+## Dependencies
+
+### Ordering constraints that are not code dependencies
+
+- **T-02 must complete before any production change (TSPEC §7.4, §9.3 T-1).** The byte-identity
+  baseline is only valid if captured at a point where `pdlc/workflows/orchestrate-dev.js` is
+  byte-identical between the merge base and branch HEAD. This is enforced as a **real `Deps` edge**,
+  not a prose note: T-13 carries `T-02`, and every later green inherits it transitively through the
+  serial chain T-13 → T-14 → T-15 → T-16 → T-17 → T-18. T-10 also carries `T-02` because it compares
+  against the recording. This is the same requirement, for the same reason, that
+  `PLAN-pdlc-loop-economics.md` §2 records for its own `T-02`.
+- **T-03 must complete before any corpus assertion.** T-08 and T-09 carry `T-03` explicitly. The
+  fixture is a **frozen copy at `8c673a09f`**, never the live tree: the live enumeration already
+  returns 26 in-scope files against the fixture's 25, because this feature's own
+  `DECISIONS-pdlc-decision-ledger.md` landed after the Baseline commit. A live read would redden on
+  the next feature that records a decision — the `coveredViolations` whole-tree-walk failure class
+  recorded in `CLAUDE.md`.
+- **T-06 before T-15 is a budget edge, not only a red/green edge.** T-06 pins the framing at
+  ≤ 1,200 bytes; T-15 drafts `DECISION_LEDGER_RULE_TEXT` **to fit** it. If the drafted text does not
+  fit, the correct response is to shorten the text or re-open §3.6's arithmetic deliberately —
+  **never** to raise the literal, because §3.6's ~4,995-byte project-level headroom and `M-6b`'s
+  441-byte margin shrink one-for-one with any raise (`DEC-DECLEDGER-12`).
+- **T-16 depends on T-15 for a structural reason, not just ordering.** `DEC-DECLEDGER-11` makes
+  `renderDecisionLedgerBlock` the single producer of ledger bytes, and `selectDecisions` obtains
+  `renderedBytes` by calling it. The renderer must therefore exist before the selector.
+
+### Red-before-green edges
+
+Every `[green]` task lists its `[red]` task in `Deps` and names the same test file:
+
+| Red | Green | Shared test file |
+|---|---|---|
+| T-04 | T-13 | `decisionLedgerConfig.test.js` |
+| T-05 | T-14 | `decisionLedgerRecognise.test.js` |
+| T-06 | T-15 | `decisionLedgerRender.test.js` |
+| T-07 | T-16 | `decisionLedgerBounds.test.js` |
+| T-08, T-09 | T-17 | `decisionLedgerInjector.test.js`, `decisionLedgerCorpus.test.js` |
+| T-10, T-10a, T-11 | T-18 | `decisionLedgerLoop.test.js`, `decisionLedgerMain.test.js`, `decisionLedgerCensus.test.js` |
+| T-12, T-12a | T-19 | `decision-ledger-config-example.test.js`, `decisionLedgerConfig.test.js` |
+
+**Both of T-19's test files now have a red predecessor (TE F-04).** In v0.1 `documentOracles.test.js`
+appeared in T-19's Test File column and in the ownership manifest but in no red row and in neither
+coverage table, so three of T-19's four deliverables stood on a manual DoD checkbox alone — an
+absence-only guarantee. T-12a supplies the red half. Since v1.1 that red half is hosted in
+`decisionLedgerConfig.test.js` rather than `documentOracles.test.js` (PM F-01); the predecessor
+relation and the `T-19: …` block titles are unchanged by the move, only the file is.
+
+T-00, T-00a, T-01, T-02 and T-03 have no red predecessor by construction: T-00 pins the existence of
+HEAD symbols and passes at HEAD; T-00a is a **green-at-both-ends** census edit whose positive control
+(count still `102`) passes before and after and would fail on a dropped exclusion; T-01 creates
+doubles; T-02 and T-03 create fixtures and their integrity guards, which pass against the artefacts
+they capture.
+
+### RED-terminal batch gate wording
+
+Batches 1 and 2 end **red by design** — the production symbols do not exist yet. A blanket "full
+suite green after every batch" is unsatisfiable there, so the gate for those two batches is:
+
+> The new tests are committed **skipped**, each block titled with the id of the `[green]` task that
+> un-skips it, each block having been run un-skipped once and observed to fail for the reason
+> transcribed into the test file's header; **and** the pre-existing suite is green.
+
+Batches 3–10 carry the ordinary gate: the full suite green after the batch.
+
+### Integration points
+
+| Integration point | Where | Touched by |
+|---|---|---|
+| The single `.claude/pdlc.config.json` read in `main()` (`readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH)`) | `pdlc/workflows/orchestrate-dev.js` | T-13 — adds a **fourth consumer** of the already-read text, never a fourth read |
+| `wrapperSeams` | same module | T-18 — adds `_injectDecisionLedger` alongside the shipped `_injectLearnings` |
+| `reviewLoop`'s parameter list | same module | T-18 — one optional seam, defaulting `null` |
+| `dispatchAndVerify`'s option object (module-private) — reached through `reviewLoop`'s `wrapped` / `runWrapped` dispatch closures, which gain the same trailing argument. `reviewerPrompt`'s parameter list is **unchanged** (TSPEC §2.4) | same module | T-18 — one trailing `ledgerBlock` option, defaulting `""` |
+| The run-level `notices` channel | same module | T-13 — two ids, on the established `NTC-{BLOCK}-{KIND}` convention; **no notice on the missing-block common case**, so a disabled run's report stays byte-identical |
+| The report object | same module | T-18 — `report.decisionLedger` present **only** when the injector is non-null |
+| `.claude/pdlc.config.example.json` (eight top-level blocks at HEAD) | repo root | T-19 — a ninth block; the engine disclosure test asserts **containment**, never set equality, over the top level |
+| `pdlc/workflows/dist/pdlc-cli.mjs` | generated | T-20 — rebuilt and staged **in the same commit** as the workflow-source change, per `CLAUDE.md`; the wave gate's `postWaveCommand` does the same after every wave that touches `pdlc/workflows/*.js` |
+
+### What this PLAN deliberately does not touch
+
+`MAX_REVIEW_ROUNDS`, `MAX_LIFETIME_ROUNDS`, `MAX_ERRATUM_FOLLOWUP_ROUNDS` (NG-5); any reviewer or
+author `SKILL.md` (NG-6, `DEC-DECLEDGER-05`); any file under `pdlc/engine/` other than the new
+`__tests__/decision-ledger-config-example.test.js` (NG-6); the delta-confirmation and
+finding-restatement prompt builders (`DEC-DECLEDGER-04`); and `DEC-LOOPECON-06`'s identity triple
+(BR-11 — pinned unchanged by T-10 and by T-11's census).
+
+## Verification
+
+### Suite layout, verified at HEAD
+
+Two suites carry this feature's tests, and both are already required checks:
+
+| Suite | Command | Gate check |
+|---|---|---|
+| `pdlc/workflows/__tests__/` (jest) | `cd pdlc/workflows && npm test`; coverage via `npm run test:coverage` | `Unit tests (ubuntu-latest, node 20)` |
+| `pdlc/engine/__tests__/` (`node:test`, **64 `*.test.js` modules** at HEAD) | `cd pdlc/engine && npm ci && npm test` | `Engine tests (ubuntu-latest)` |
+
+The directory holds 73 *entries* — 64 test modules, 7 `_`-prefixed helper modules (`_run-suite.mjs`,
+`_bootstrap.mjs`, `_assert-suite-wide.mjs`, `_corpus.mjs`, `_doubles.mjs`, `_replay-double.mjs`,
+`_tspec-packed-set.mjs`) and 2 directories (`fixtures/`, `live/`). v0.1 said "73 files", which in a
+sentence about a test suite reads as a module count and is off by nine (TE F-08). No assertion in
+this PLAN transcribes the figure.
+
+Verified layout facts this PLAN relies on: `pdlc/workflows/package.json`'s jest
+`testPathIgnorePatterns` is `["/node_modules/", "/__tests__/helpers/", "/__tests__/fixtures/"]`, so
+T-01's helper and T-02/T-03's fixtures — including `scenarios.mjs` — are never collected as tests;
+and `pdlc/workflows/__tests__/fixtures/` already holds sibling fixture directories
+(`learnings-baseline/`, `loop-economics-baseline/`), so T-02 and T-03 add two more of a shipped kind.
+
+### The coverage gate — corrected (TE F-02)
+
+v0.1 said flatly *"the coverage gate is not evidence for this feature, and this PLAN does not lean on
+it."* The premise was right and the conclusion was wrong, because it was drawn from reading two of
+the gate's clauses. `pdlc/workflows/package.json`'s `test:coverage` has **four**:
+
+```
+c8 npm test -- --runInBand
+  && c8 report --reporter=json
+  && node scripts/check-wave-resume-delta-coverage.mjs
+  && c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0
+```
+
+**Clause 4 is genuinely not evidence here**, for the stated reason: the c8 `include` list names
+`**/pdlc/workflows/orchestrate-dev.js` as a single file, every symbol this feature adds lands in that
+~817 KB file, and the new branches average into a ratio dominated by shipped code — TSPEC §6.1's
+fourteen failure rows could be entirely uncovered and the per-file number would not move. That is
+why the row-to-task mapping below exists.
+
+**Clause 3 is the strictest evidence in the repository, and it already applies to this feature with
+no wiring required.** `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` is not
+wave-resume-specific despite its name; its own header calls itself the compensating control for
+exactly the largeness clause 4 cannot see through. Mechanically: `SUBJECT` is hard-coded to
+`pdlc/workflows/orchestrate-dev.js` — this feature's only production file; `resolveBase()` prefers
+the **live** `merge-base HEAD origin/main`, which on `feat-pdlc-decision-ledger` is this feature's own
+merge base; `introducedRanges()` takes the post-image hunk ranges of `git diff -U0 <base> HEAD --
+SUBJECT`, i.e. **the lines T-13…T-18 add**; and it exits 1 if **any** uncovered line falls inside
+them.
+
+**Where it actually runs — corrected (TE F-02).** v0.2 said it "runs at every wave gate from batch 3
+onward". It does not. The wave gate runs `implementation.testCommand`, and in
+`.claude/pdlc.config.json` (identically in `.claude/pdlc.config.example.json`) that is
+`(cd pdlc/engine && npm test) && cd pdlc/workflows && npm test -- --testPathIgnorePatterns …` —
+plain `npm test`, which contains no clause 3. The gate therefore fires in exactly two places: the
+required CI check `Unit tests (ubuntu-latest, node 20)`, which runs `test:coverage`
+(`.github/workflows/pr-tests.yml`), and the Definition of Done's own `npm run test:coverage` bullet.
+Widening `testCommand` to close the gap is **out of scope** — it would apply clause 3 to unrelated
+work in the same wave (the T17 gate-widening hazard).
+
+The consequence of the corrected timing is the *opposite* of what v0.2 drew: an uncovered branch
+introduced by T-13 at batch 3 does **not** surface at batch 3, it surfaces at PR time as a
+batch-8-era remediation across six greens. The close is a per-wave manual run, now an explicit
+instruction in T-18's row: after **each** of batches 3–8, commit the `orchestrate-dev.js` edit and
+run `node pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` by hand, so the feedback
+arrives one wave after the line that caused it. **T-18 owns the outcome** (its row names the script, and the DoD
+carries an explicit bullet). T-18's `main()` wiring is the structurally-at-risk site — nothing
+executed it in v0.1, so its lines were uncovered by construction and this gate would have reddened
+them at batch 8; T-10a's live arm is what closes both that and TE F-03. T-17's per-path `try/catch`
+arms are the second risk site. Caveat carried into T-18's row: the script *warns* rather than fails
+when `orchestrate-dev.js` has uncommitted changes, since its ranges are HEAD line numbers while c8
+measured the working tree — **commit, then run**.
+
+### Failure-row coverage — every row of TSPEC §6.1 has a named owner
+
+| Row | Scenario | Owning task |
+|---|---|---|
+| F-1 | config file absent / unreadable | T-04 → T-13 |
+| F-2 | config file not valid JSON | T-04 → T-13 |
+| F-3 | `decisionLedger` block absent (no notice) | T-04 → T-13 |
+| F-4 | block present but not a plain object (`NTC-DECLEDGER-MALFORMED`) | T-04 → T-13 |
+| F-5 | one key wrong-typed (`NTC-DECLEDGER-KEYTYPE`, other keys keep operator values) | T-04 → T-13 |
+| F-6 | `git ls-files` `!ok` **or** `_git` throws ⇒ `RSN-UNLISTABLE` | T-08 → T-17 |
+| F-7 | enumeration returns zero paths ⇒ `RSN-EMPTY` | T-08 → T-17 |
+| F-8 | one source unreadable (`null` **and** throwing arms) ⇒ `failedSources` | T-08 → T-17 |
+| F-9 | source reads, zero records ⇒ `emptySources`, not a failure | T-08 → T-17 |
+| F-10 | nothing survives, for any mixture of F-8/F-9 ⇒ total leg | T-08 → T-17 |
+| F-11 | either bound exceeded ⇒ drop loop in omission order | T-07 → T-16 |
+| F-12 | a single line alone exceeds `maxBytes` ⇒ dropped whole | T-07 → T-16 |
+| F-13 | either threshold resolves to `0` | T-04 (validator), T-10 (byte-identity outcome) |
+| F-14 | feature has no directory, or its directory yields zero records | T-08 → T-17 |
+
+### Acceptance-test coverage — every FSPEC AT has a named owner
+
+| AT | Owning task | Level |
+|---|---|---|
+| AT-01, AT-02, AT-18 | T-09 → T-17 | corpus oracle over the frozen fixture |
+| AT-03 | T-08 → T-17 | injector, scripted `_readFile` mutation (`DEC-DECLEDGER-14`) |
+| AT-04 | T-02 | committed merge-base baseline guard |
+| AT-05, AT-14, AT-16, AT-17 | T-10 → T-18 | loop integration against T-02's recording |
+| AT-04, AT-05 (live half) | T-10a → T-18 | `main()`-driven composition root: `_git` call-count spy, positive block-presence, flag-off report/notices set equality (TE F-03, F-05) |
+| FSPEC Q-3 / disclosure prose | T-12 → T-19 (engine config example), T-12a → T-19 (`OPERATIONS.md` / `README.md` / `CLAUDE.md` derived oracle) | config + documentation disclosure |
+| AT-06, AT-07 | T-06 → T-15 | pure unit on the rule-text constants |
+| AT-08, AT-09, AT-10 | T-08 → T-17 | fail-open legs + O-7's `failedSources`/`emptySources` split |
+| AT-11 | T-04 → T-13 | pure unit, set equality over C-3 |
+| AT-12 | T-10 (driver half) → T-18, T-06 (text half) → T-15, T-11 (census) | integration + source census |
+| AT-13, AT-15 | T-07 → T-16 | property, plus retained example anchors |
+
+### Anti-echo commitments
+
+Three places where an expectation could be derived from the code under test, and the task that is
+required not to:
+
+1. **T-09** transcribes expected statements, citations, the 41 project-level ids, `6,305`, the 63
+   `M-6b` ids and `10,859` **by hand from the fixture** — never captured from the renderer, never
+   read from a manifest (`DEC-DECLEDGER-16`). If T-09 reddens, the correct response is **never** to
+   trim the expected set to whatever the renderer emitted.
+2. **T-07**'s property model carries its **own** formatter transcribed from TSPEC §4.3; reusing the
+   production renderer would make the no-truncation conjunct true by construction.
+3. **T-02** asserts `mergeBaseSha` against a hand-transcribed `EXPECTED_MERGE_BASE_SHA`, never
+   against the manifest it is checking, and never against a `git merge-base origin/main HEAD`
+   computed at test time (which would depend on a current local `origin/main` and could red on an
+   unrelated push to `main`).
+
+### Definition of Done
+
+- [ ] All 24 tasks ✅; every `[red]` block un-skipped by its named `[green]` task, none left skipped.
+- [ ] `cd pdlc/workflows && npm run test:coverage` exits 0; `cd pdlc/engine && npm ci && npm test`
+      exits 0; `bash -n` clean over tracked `*.sh`; the fixture-machine leg green — the four
+      required checks named in `CLAUDE.md`.
+- [ ] `node pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` reports **0 uncovered lines**
+      inside this feature's introduced ranges in `pdlc/workflows/orchestrate-dev.js` — run on a clean
+      tree (**commit, then run**: the script warns rather than fails on uncommitted changes, because
+      its ranges are HEAD line numbers while c8 measured the working tree). Owned by T-18.
+- [ ] `main()` is driven live with the flag on and the flag off (T-10a): the `_git` seam is invoked
+      ≥ 1 on the served reviewer flow, the served reviewer prompt **ends with** the rendered block,
+      and `report.decisionLedger` is asserted on a real composition-root run — not by source census
+      alone (DC-07).
+- [ ] `documentOracles.test.js`'s `*.test.js` census excludes the `decisionLedger` namespace (landed
+      by T-00a at batch 1) and still counts `102` with all twelve modules on disk (the terminal
+      positive control, owned by T-19); the decision-ledger disclosure family in
+      `decisionLedgerConfig.test.js` (T-12a) is green with every expectation **derived** from `DECISION_LEDGER_OMIT_REASONS`,
+      `DECISION_LEDGER_NOTICES` and `DECISION_LEDGER_DEFAULTS` rather than restated.
+- [ ] Flag off ⇒ reviewer-prompt stream byte-identical to T-02's committed merge-base recording
+      (AT-04), and all four not-enabled spellings collapse to it (AT-05).
+- [ ] Flag off ⇒ the report object carries **no** `decisionLedger` field and **no** notice — each
+      absence **paired with its positive** on the same `main()`-driven path (TE F-05, TSPEC §7.2):
+      the **symmetric difference** between the flag-off and flag-on runs' `report` key sets is
+      exactly `{decisionLedger}`, asserted as a set equality in **both** directions, and the emitted
+      `NTC-DECLEDGER-*` notice set is **set-equal to empty**. Set equality in both directions is what
+      makes a key spuriously added *or* dropped on either arm fail; "contains no `NTC-DECLEDGER-*`"
+      alone does not. The referent is the arm's own paired runs, not a stored artefact — §7.4's
+      recording holds reviewer-prompt bytes only.
+- [ ] Every row of TSPEC §6.1 and every FSPEC AT has a passing test, per the two tables above.
+- [ ] Every named mutation applied, observed red, reverted, and the observed failure transcribed into
+      the respective test file's header: T-07's four, T-02's three, and — under TSPEC §7.5's O-8
+      discipline, each checked against an **independent model** rather than the production function —
+      `P-REC`'s four (T-05) and `P-LINE`'s three (T-06).
+- [ ] `DECISION_LEDGER_RULE_TEXT` + preamble + header + trailer render to ≤ 1,200 bytes, asserted
+      against that literal (`DEC-DECLEDGER-12`).
+- [ ] The census (T-11) is green with every slice asserted non-empty; its scanned source is
+      `orchestrate-dev.js` minus the body of **every** member of `DECISION_LEDGER_OWNED_DECLS` plus
+      the sentinel-bounded wiring run, and its companion assertion is the partition
+      `DECISION_LEDGER_CENSUS_TOKENS` (**six data-carrying names**) ∪ `DECISION_LEDGER_CENSUS_EXEMPT`
+      (**eight plumbing declarations**) = `DECISION_LEDGER_OWNED_DECLS` (**fourteen**), the two
+      sub-sets disjoint, with each owned member resolving to exactly one top-level declaration at
+      HEAD (TSPEC §7.3's *The size of the owned list, stated once*, the authority for the count;
+      the operands are named inline because §7.3 states a second, numerically identical but
+      membership-different partition — the owned list's own six functions ∪ eight constants). All fourteen owned
+      members are declarations in `orchestrate-dev.js` written by a `[green]` task of batches 3–8;
+      all three of `DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT` and
+      `DECISION_LEDGER_OWNED_DECLS` are test-file constants of `decisionLedgerCensus.test.js`, and
+      none is production code or a member of the owned list. The precedent's declaration regex is
+      widened to recognise top-level `const` and `let` alongside `function`, since eight of the
+      fourteen owned declarations are `const`s. Set equality against
+      all of the module's decision-ledger exports is the rejected form — §7.3 names it red by
+      construction. `decisionLedger` is **not** a token (TSPEC §7.3: the report field is
+      threaded through `buildFinalReport` outside `main()`, so the token is unsatisfiable, and being
+      a field rather than a declaration it is absent from `DECISION_LEDGER_OWNED_DECLS` too, leaving
+      the partition unaffected); its obligation is discharged behaviourally by T-10a's live arm, not
+      by the census.
+- [ ] The enablement flag is read by **destructuring**; PROP-DIS-06 in `advisoryDisabled.test.js` is
+      still green.
+- [ ] `.claude/pdlc.config.example.json` carries the `decisionLedger` block; `pdlc/OPERATIONS.md`,
+      `pdlc/README.md` and `CLAUDE.md` name it — **mechanically asserted by T-12a** in
+      `decisionLedgerConfig.test.js`, not by this
+      checkbox alone; `README.md` and `CLAUDE.md` carry a pointer rather than a restatement, keeping
+      the ~:625 confinement discipline; no `SKILL.md` and no `pdlc/engine/` runtime file changed.
+- [ ] After T-19's document edits, `documentOracles.test.js`, `pdlc/engine/__tests__/docs-uniqueness.test.js`
+      and `pdlc/engine/__tests__/ci-arrangement.test.js` are re-run and any line-anchored site the
+      insertion moved is re-pinned (TE F-06).
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/workflows/dist/` is staged in
+      the same commit as the workflow-source change; `pdlc/.claude-plugin/plugin.json` version bumped
+      from `0.23.6` **to `0.23.7`**, satisfying `pdlc/engine/package.json`'s
+      `"pdlcPluginCompat": "^0.23.0"` and the AT-1.6 / DEC-09 handshake check.
+- [ ] `recogniseDecisionRecords` and `renderDecisionLedgerBlock` each carry at least one
+      `fast-check` property (TE F-07), including the **one-physical-line-per-decision** law that
+      T-07's line count and T-09's `6,305` / `10,859` byte literals silently assume.
+- [ ] No test reads the live `docs/` tree; no test writes to the working tree or to a fixture file.

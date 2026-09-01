@@ -44,3 +44,4 @@ coverage/
 #     what untracks the six paths. These rules only stop a re-add.
 /.claude/workflows/
 /.claude/pdlc-wave-state.json
+.DS_Store
