@@ -105,6 +105,26 @@ lose the protection masking gives against a future `statSync(` appearing inside 
 
 ## Fixtures
 
+No fixture, generator or test-data row in PROPERTIES is reachable from this erratum, and I checked
+rather than assumed.
+
+- §Fixtures' **test doubles** (PLAN T-02, `statsDoubles.js`) — the erratum does not touch T-02, and
+  T-10's equivalence conjunct ("T-02's `realStatsIo()` uses the identical four-call set") survives
+  the rewrite verbatim. `fakeStatsIo`'s stated inability to distinguish `lstat` from `stat`, which
+  PROP-RATIO-04 depends on, is unaffected.
+- §Fixtures' **constructed fixtures** over `fakeStatsIo` — untouched; the erratum moves no metric,
+  no grammar and no `BR-` row.
+- §Fixtures' **real-path fixtures, measured at HEAD, 2026-08-31** — this is the block most exposed to
+  upstream drift, since it pins live repository paths. The erratum changes no path and no count, and
+  the TSPEC v1.8 movement discussed in §Overview closes an erratum item without moving a real-path
+  literal. I re-confirmed the block's dating still matches the day of measurement.
+- §Fixtures' **process-level harness** — PROP-RATIO-11 and PROP-CLI-02…-08 run through
+  `main([...])`. T-10 is a source-structural task and contributes no fixture here.
+
+One consequence of F-01 worth naming in fixture terms: the disagreement is about the *input* the
+structural oracle reads (masked versus raw source), not about any fixture on disk. No fixture needs
+to change under either reading, which is part of why F-01 is Medium and not High.
+
 ## Delta-Confirmation Findings
 
 ## Questions
