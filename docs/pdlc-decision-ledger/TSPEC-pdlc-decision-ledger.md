@@ -14,7 +14,46 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.3 | 2026-08-31 |
+| Draft | se-author | 1.4 | 2026-09-01 |
+
+**v1.4 erratum — the spec caught up to the shipped seam and the shipped ledger threading.**
+Both items land *against this document*: the code is right and was left untouched. Upstream
+re-grounding at HEAD found **nothing moved** — REQ **v1.10** (`5efd4fd3…`), FSPEC **v1.4**
+(`cccaae60…`), Baseline **v1.2** are exactly the pins the header already names, no new `BR-`,
+`E-` or `AC-` id, no moved measured value — so **nothing is absorbed** and the header pin stands
+as written.
+
+**Item 1 (CODE_REVIEW v2 F-6) — the injector seam declared a narrower payload than it ships.**
+§4.4 and §4.5 typed `_injectDecisionLedger` as `(args: { feature: string }) => Promise<string>`
+and §4.5's call-site snippet read `await _injectDecisionLedger({ feature })`, while `e707bb119`
+(the F-2 remediation, DoD-verified in round 2) has the production call site inside `reviewLoop`
+pass `{ feature, phaseId: phase, docType: roundDocType, round: iteration }` — real bindings, with
+`docType` `null` on the Phase CR dispatches. §5.1's `DecisionLedgerDispatchRecord` already declared
+`phaseId: string | null`, `docType: string | null`, `round: number`, so the document contradicted
+itself and read false to the next implementer. Five loci now carry the shipped payload
+(`{ feature, phaseId?, docType?, round? }`): the two §2.1 call-graph nodes, §4.4's
+`buildDecisionLedgerInjector` return type, §4.5's seam declaration and §4.5's call-site snippet.
+The three fields beyond `feature` are typed optional — they are what the closure copies onto the
+record, and rendering-only unit callers may omit them — while the production site supplies all
+four. §5.1 was already correct and is unchanged.
+
+**Item 2 (already-routed erratum, flagged again in CODE_REVIEW v1's remediator notes) — the
+ninth `reviewerPrompt` parameter that no longer exists.** §1.2, §2.1, §2.4 and §4.5 still specified
+the block as a ninth `reviewerPrompt` argument. That parameter was unreachable — no call site ever
+passed it, because `reviewerPrompt`'s return becomes `dispatchAndVerify`'s `basePrompt` and the
+wrapper appends its own pacing-contract/opener suffix *after* it, so a builder-side append would
+not be last in the **delivered** prompt — and it was removed in the Phase CR round (TE F-02). The
+shipped block threads instead through `reviewLoop`'s `wrapped` / `runWrapped` dispatch closures as
+a trailing `ledgerBlock` argument, into `dispatchAndVerify`'s own trailing `ledgerBlock` parameter,
+where it is concatenated last. §2.4 is rewritten to state that mechanism, §2.1's diagram gains the
+`wrapped` → `dispatchAndVerify` hop, §4.5 declares `reviewerPrompt` **unchanged** plus the new
+`dispatchAndVerify` option, and §1.2's reuse row and §2.3's flag-off recital name the new hop.
+§2.5's scope claim and §9.1's D-2 are re-worded from "attaches to `reviewerPrompt`" to "attaches to
+the review-loop reviewer dispatch" — the same scope, stated at the hop that actually carries it.
+
+No `BR-`, `AC-`, `E-`, `M-`, `O-` or `ERR-` id is minted, retired or re-scoped; no threshold, byte
+literal or measured value moves; §3, §5, §6, §7 and §8 are untouched. Sections touched: the header,
+§1.2, §2.1, §2.3, §2.4, §2.5, §4.4, §4.5, §9.1's D-2 row and this changelog.
 
 **v1.3 erratum — the upstream re-grounding, and the version numerals that went stale with it.**
 Round 12's raised items were already discharged in v1.2 (PM F-02, PM F-03, TE F-01); this edit adds
