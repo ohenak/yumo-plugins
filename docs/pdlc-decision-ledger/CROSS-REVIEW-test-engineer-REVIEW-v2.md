@@ -82,6 +82,12 @@ Why this stays **Low** and not higher: no false-green ships. The suite as a whol
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The F-02 remediation deleted `reviewerPrompt`'s parameter and left an eleven-line comment (`orchestrate-dev.js:11905–11916`) explaining why the locus is `dispatchAndVerify` instead. That reasoning is correct and I agree with it, but it now lives only in a code comment while `TSPEC` §4.5 and PROP-WIRE-08 still name the deleted parameter. I have routed both as errata. Confirm the errata land before Phase PUB — otherwise the next reader reconciling spec to code re-introduces the dead parameter. |
+| Q-02 | v1 Q-02 stands unanswered: the feature's ~530 new lines are measured only inside `orchestrate-dev.js`'s ~15k-line whole under `--per-file --branches 85`, so no delta-coverage floor binds on this feature specifically. The E-8 pass added this round is new branching that no delta gate observes. Is a decision-ledger delta-coverage check in scope as a follow-up, or explicitly deferred? |
+| Q-03 | The new line-local pass records `RSN-BYTES` omissions *before* the tail-drop loop appends its own, so `omitted[]`'s ordering is no longer enumeration order when a head-position line is oversized. Nothing in `PROPERTIES` pins `omitted[]` ordering, and I file no finding. Is that intentionally unpinned, or worth one conjunct? |
+
 ## Positive Observations
 
 ## Recommendation
