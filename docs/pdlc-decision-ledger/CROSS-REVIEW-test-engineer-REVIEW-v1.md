@@ -31,7 +31,7 @@ Every claim below was checked against the repository, not against the documents:
 | ID | Severity | Scope | Finding | Section ref |
 |----|----------|-------|---------|------------|
 | F-01 | High | Local | `DECISION_LEDGER_CORPUS_OUTCOMES` has no oracle at all: deleting a member leaves the whole decision-ledger suite green, and no production line reads it. PROP-FAIL-09 requires set equality against it. | `orchestrate-dev.js:2750-2753`; PROPERTIES PROP-FAIL-09; TSPEC §5.2 |
-| F-02 | Medium | Local | `reviewerPrompt`'s new `ledgerBlock` parameter is dead: no caller ever passes it, so `ledgerPart` is unreachable. Deleting it from both return paths leaves 231/231 green. Delivery actually happens in `dispatchAndVerify`. | `orchestrate-dev.js:11888`, `:11932`, `:11961`, `:11587`; TSPEC §4.5; PROP-WIRE-08 |
+| F-02 | Medium | Local | `reviewerPrompt`'s new `ledgerBlock` parameter is dead: no caller ever passes it, so `ledgerPart` is unreachable. Deleting it from both return paths leaves 231/231 green. Delivery actually happens in `dispatchAndVerify`. | `orchestrate-dev.js:11891`, `:11938`, `:11962`, `:11587`; TSPEC §4.5; PROP-WIRE-08 |
 | F-03 | Medium | Local | No oracle constrains the block to reviewer dispatches only: `decisionLedgerMain.test.js` captures every dispatch in `dispatched` but never asserts on it, so a creator/optimizer prompt carrying the block passes. | `__tests__/decisionLedgerMain.test.js:262`, `:357`; REQ G-2; PROP-OFF-01 |
 | F-04 | Low | Local | Tautological assertion — `expect(EXPECTED_SOURCE_COMMIT).toBe("8c673a09f")` compares a constant with its own literal; the test can only pass. | `__tests__/decisionLedgerFixtureGuard.test.js:238-240` |
 | F-05 | Low | Local | The bounds property's `if (block === "") return true;` early-out makes the property vacuously satisfiable by a renderer that always returns `""`. | `__tests__/decisionLedgerBounds.test.js:148-150` |
@@ -77,8 +77,8 @@ dead-constant class entirely; if the census forbids that, the two-sided test abo
 
 TSPEC §4.5 fixes the shape as "`reviewerPrompt` gains one trailing parameter … `ledgerBlock = ""`",
 and PROP-WIRE-08 pins the block "appended last, after `oraclePart` and `findingGrammarPart`, on both
-… return paths of `reviewerPrompt`". The parameter exists (`orchestrate-dev.js:11888`) and both
-return paths append `ledgerPart` (`:11932`, `:11961`) — but the only two call sites,
+… return paths of `reviewerPrompt`". The parameter exists (`orchestrate-dev.js:11891`) and both
+return paths append `ledgerPart` (`:11938`, `:11962`) — but the only two call sites,
 `orchestrate-dev.js:9970` and `:9980`, pass eight arguments and stop at `derivativeStopEnabled`.
 `reviewerPrompt` is module-private, so no test can reach the ninth argument either. The block is in
 fact delivered by `dispatchAndVerify` (`:11587`,
@@ -177,7 +177,7 @@ which walk everything under `root` except `.git/` and `node_modules/`. **To reso
 |----|---------|
 | Q-01 | F-02: which locus do you want to be the tested one — `dispatchAndVerify` (my reading of §2.6, and what ships) or `reviewerPrompt` (what TSPEC §4.5 and PROP-WIRE-08 say)? I have routed the document half as errata; the code half is F-02. |
 | Q-02 | The delta's branch coverage is not separately gated: `package.json`'s stage-2 `--per-file --branches 85` measures `orchestrate-dev.js` as one ~15k-line module, so this feature's ~530 new lines cannot fall below the floor visibly (only `check-wave-resume-delta-coverage.mjs` does a delta check, and it is scoped to that other feature). F-02's dead branch is direct evidence that uncovered new code passes the gate. Is a decision-ledger delta-coverage check in scope here, or is that a follow-up? |
-| Q-03 | `selectDecisions` accepts and ignores `feature` (`orchestrate-dev.js:2703`) while every caller passes it, and it accepts entries keyed either `path` or `sourcePath` (`entryPathOf`, `:2699`). Both are documented, but a dual-keyed input shape is a place a caller typo silently degrades to `undefined`. Would you accept a guard test asserting an entry with neither key throws rather than yielding a `undefined`-pathed record? |
+| Q-03 | `selectDecisions` accepts and ignores `feature` (`orchestrate-dev.js:2693`) while every caller passes it, and it accepts entries keyed either `path` or `sourcePath` (`entryPathOf`, `:2689`). Both are documented, but a dual-keyed input shape is a place a caller typo silently degrades to `undefined`. Would you accept a guard test asserting an entry with neither key throws rather than yielding a `undefined`-pathed record? |
 
 
 ## Positive Observations
