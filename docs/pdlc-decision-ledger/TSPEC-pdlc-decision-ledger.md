@@ -499,8 +499,9 @@ returns **exactly `""`** when `selected` is empty, the same total-emptiness cont
 
 ### 2.5 Scope of "review dispatch": the review loop's reviewer prompt only
 
-`orchestrate-dev.js` builds several reviewer-facing prompts. The index attaches to
-`reviewerPrompt` — the review-loop reviewer dispatch — and to no other. The delta-confirmation
+`orchestrate-dev.js` builds several reviewer-facing prompts. The index attaches to the
+review-loop reviewer dispatch — the two `runWrapped` calls that carry a `reviewerPrompt` body
+(§2.4) — and to no other. The delta-confirmation
 prompt and the finding-restatement prompt are explicitly **not** re-reviews (the confirmation
 prompt says "Do not re-review the whole document"; the restatement prompt says "Do NOT re-review
 anything. Do NOT change your verdict, and do not raise anything new"), so an index inviting the
@@ -995,8 +996,18 @@ export function buildDecisionLedgerInjector(args: {
   _git: Function;
   _readFile: Function;
   _log?: (info: object) => void;
-}): null | ((args: { feature: string }) => Promise<string>);
+}): null | ((args: {
+  feature: string;
+  phaseId?: string | null;
+  docType?: string | null;
+  round?: number;
+}) => Promise<string>);
 ```
+
+The three fields beyond `feature` are what the closure copies onto the `DecisionLedgerDispatchRecord`
+it pushes (§5.1). They are optional in the type — the injector renders the same block without them,
+and unit-level callers that only exercise rendering may omit them — but the production call site
+supplies all four (§4.5).
 
 The per-path `try/catch` is the shipped `gatherLearningsCorpus` discipline and it is what makes
 FSPEC E-3's partial leg structural: the runtime `rtReadFile` throws where the test double
@@ -1007,14 +1018,24 @@ whole corpus.
 
 ```ts
 // reviewLoop gains one optional seam, defaulting to the shipped state.
-_injectDecisionLedger: null | ((args: { feature: string }) => Promise<string>) = null;
+_injectDecisionLedger: null | ((args: {
+  feature: string;
+  phaseId?: string | null;
+  docType?: string | null;
+  round?: number;
+}) => Promise<string>) = null;
 
-// reviewerPrompt gains one trailing parameter, defaulting to the shipped state.
+// reviewerPrompt is UNCHANGED — no ledger parameter (§2.4).
 function reviewerPrompt(
   doc, phase, feature, iteration, reviewer, docType,
-  frozen = false, findingGrammar = false,
-  ledgerBlock = ""      // NEW
+  frozen = false, findingGrammar = false
 ): string;
+
+// dispatchAndVerify gains one trailing option, defaulting to the shipped state.
+async function dispatchAndVerify({
+  /* …existing options… */
+  ledgerBlock = ""      // NEW
+}): Promise<Episode>;
 ```
 
 Both defaults are chosen so that every existing call site and every existing test keeps HEAD's
@@ -1026,13 +1047,22 @@ Inside `reviewLoop`, per round:
 ```js
 const ledgerBlock =
   typeof _injectDecisionLedger === "function"
-    ? await _injectDecisionLedger({ feature })
+    ? await _injectDecisionLedger({ feature, phaseId: phase, docType: roundDocType, round: iteration })
     : "";
 ```
 
 `await`ed, per this repo's injected-IO rule — the adapter's implementations are async, the test
 doubles are sync. The single `await` per round is placed immediately before the two
 `reviewerPrompt` calls, so both reviewers of a round receive the identical block.
+
+All four arguments are the enclosing review-loop context's own bindings: `phase`, `roundDocType`
+(`null` on the Phase CR dispatches, which carry no document type) and `iteration`. Passing them
+here is what makes §5.1's `DecisionLedgerDispatchRecord` fields — `phaseId: string | null`,
+`docType: string | null`, `round: number` — carry real values rather than `undefined`.
+
+The block itself is then forwarded to both reviewer dispatches as `runWrapped`'s trailing
+`ledgerBlock` argument, which `wrapped` passes to `dispatchAndVerify` (§2.4); it is not folded into
+either `reviewerPrompt` return value.
 
 ## 5. Data Model
 
@@ -1832,7 +1862,7 @@ what remains genuinely open.
 | Id | Decision | Alternative rejected, and why |
 |---|---|---|
 | **D-1** | In-file duplicate resolution keys on the **last** record (§3.3) | Keying on the heading **separator** (`:` = decision, `—` = question). It works on the sole HEAD instance and is unfalsifiable elsewhere, makes the statement field's correctness depend on punctuation no author was instructed to use, and silently drops any record using the other separator. Keying on the **first** record is rejected outright: `M-3c` records that the first opening states the question, so it violates BR-3 |
-| **D-2** | The index attaches to `reviewerPrompt` only, not to the delta-confirmation or finding-restatement prompts (§2.5) | Attaching to every reviewer-facing prompt. Both confirmation prompts forbid re-review in their own text, so an index inviting the reader not to re-open closed decisions has nothing to act on; attaching there enlarges the byte-identity surface for no behavioural gain |
+| **D-2** | The index attaches to the review-loop reviewer dispatch only, not to the delta-confirmation or finding-restatement prompts (§2.5) | Attaching to every reviewer-facing prompt. Both confirmation prompts forbid re-review in their own text, so an index inviting the reader not to re-open closed decisions has nothing to act on; attaching there enlarges the byte-identity surface for no behavioural gain |
 | **D-3** | Wiring goes through **dispatch construction**, not a `SKILL.md` edit (FSPEC O-2) | Editing the reviewer `SKILL.md` files. A `SKILL.md` edit routes through the consolidation contract's `CONSOLIDATION-PROPOSAL` review, and — decisively — `SKILL.md` text cannot be config-gated, so REQ C-2's byte-identical disabled path would be unachievable. Dispatch construction is where the shipped `findingGrammarClause` gate already lives |
 | **D-4** | Ids are read, never minted; uniqueness is **not** enforced across namespaces (FSPEC O-3) | Introducing a mint or a global uniqueness check. `M-1a` records that no id repeats within `docs/_decisions/` and `M-5a` that no id is recorded in two files anywhere at HEAD, so there is nothing to fix; a uniqueness *gate* would be a new operator-facing failure class, which G-3 forbids. §3.4's precedence rule is the total resolution for the collision that does not yet exist |
 | **D-5** | Framing bytes (header, preamble, rule text, trailer) **are** charged against `maxBytes` (§4.2) | Excluding framing, as `renderLearningsBlock` does. BR-12 bounds "the bytes of the index block as it appears in the prompt", and the rule text is inside that block; excluding it would let a low `maxBytes` be satisfied while the block is arbitrarily larger than the operator asked for |
