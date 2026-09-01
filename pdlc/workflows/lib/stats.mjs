@@ -515,10 +515,21 @@ function ratioToken(byteRatio) {
 
 // --- BR-17: single-feature human layout -----------------------------------
 
+// The label column width shared by the review-rounds rows and the halt rows.
+// BR-17's illustrative block fixes it at 12 for the review block; the halt rows
+// adopt the same width by decision rather than by accident (CR-v1 TE F-05), so
+// the two blocks align and a phase token longer than the longest one the
+// pipeline emits today still renders with a separating gap instead of running
+// into its resolution word.
+const LABEL_COLUMN_WIDTH = 12;
+
+
 function renderReviewRoundsBlock(reviewRounds) {
   const lines = ["Review rounds"];
   for (const docType of REVIEW_DOC_TYPE_ROWS) {
-    lines.push(`  ${docType.padEnd(12)}${docTypeToken(reviewRounds.byDocType[docType])}`);
+    lines.push(
+      `  ${docType.padEnd(LABEL_COLUMN_WIDTH)}${docTypeToken(reviewRounds.byDocType[docType])}`,
+    );
   }
   if (reviewRounds.malformed.length > 0) {
     lines.push(`  malformed: ${reviewRounds.malformed.join(", ")}`);
@@ -528,7 +539,7 @@ function renderReviewRoundsBlock(reviewRounds) {
 
 function renderHaltsBlock(halts) {
   if (halts.length === 0) return "Halts           none";
-  const rows = halts.map((h) => `  ${h.phase.padEnd(4)}${h.resolution}`);
+  const rows = halts.map((h) => `  ${h.phase.padEnd(LABEL_COLUMN_WIDTH)}${h.resolution}`);
   return ["Halts", ...rows].join("\n");
 }
 

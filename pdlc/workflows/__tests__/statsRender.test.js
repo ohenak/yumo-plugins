@@ -371,13 +371,36 @@ describe("T-15: renderHuman / renderJson over hand-built StatsReport values", ()
       expect(humanLines).toEqual(expect.arrayContaining(["DoD rounds      2"]));
       expect(json.dodRounds.rounds).toBe(2);
       // Halts: phase + resolution shown, and recoverable literally from JSON.
-      expect(humanLines).toEqual(expect.arrayContaining(["Halts", "  D   resolved"]));
+      expect(humanLines).toEqual(expect.arrayContaining(["Halts", "  D           resolved"]));
       expect(json.halts).toEqual([{ phase: "D", resolution: "resolved" }]);
       // Byte ratio: the human two-decimal rendering matches the JSON number exactly (BR-15).
       expect(humanLines).toEqual(
         expect.arrayContaining(["Byte ratio      1.42  (process 123456 B / spec 87000 B)"]),
       );
       expect(json.byteRatio.ratio).toBe(1.42);
+    });
+
+    it("single-feature: a halt phase token as long as the review block's labels still renders with a separating gap (CR-v1 TE F-05)", async () => {
+      const { renderHuman } = await import("../lib/stats.mjs");
+      const report = buildSingleReport({
+        halts: [
+          { phase: "PROP", resolution: "open" },
+          { phase: "D", resolution: "resolved" },
+        ],
+      });
+
+      const humanLines = renderHuman(report).split("\n");
+
+      // The halt rows share the review block's 12-character label column, so a
+      // 4-character phase token is separated from its resolution rather than
+      // abutting it, and the two blocks line up.
+      expect(humanLines).toEqual(
+        expect.arrayContaining([
+          "  REQ         3",
+          "  PROP        open",
+          "  D           resolved",
+        ]),
+      );
     });
 
     it("single-feature: the human metric set and the JSON top-level key set (minus schemaVersion) are set-equal (REQ-STATS-02, R-5)", async () => {

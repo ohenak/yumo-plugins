@@ -22,7 +22,7 @@
 // exported from `../orchestrate-dev.js`), so it is imported at top level — only the `lib/stats.mjs`
 // half of each oracle is deferred.
 
-import { readdirSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -131,5 +131,38 @@ describe("T-08: exclusion-set equality (TSPEC §4.4, §6.4)", () => {
       (name) => !isFeatureDirectoryByArtifactWitness(name)
     );
     expect(nonWitnessedNonExcluded).toEqual([]);
+  });
+});
+
+// ─── REQ-STATS-08's "runs no `git` command" conjunct, over the module that
+//     actually executes (CR-v1 PM F-06) ─────────────────────────────────────
+//
+// PROP-RO-05 pins `statsIo()`'s key set in `bin/cli.mjs`, which proves the seam
+// handed to `runStats` carries no write member — but not that `lib/stats.mjs`
+// refrains from reaching outside that seam on its own. The empirical read-only
+// snapshot cannot close the hole either: it excludes `.git/`, the one directory a
+// `git` write would touch. This oracle is structural and total over the module's
+// own source: `lib/stats.mjs` declares no imports at all, so it has no way to
+// spawn a process, run `git`, or open a socket — every capability it uses arrives
+// through the injected `StatsIo`/`StatsParsers`.
+
+describe("T-08: lib/stats.mjs reaches outside its injected seams for nothing (REQ-STATS-08, REQ C-1/R-3)", () => {
+  const STATS_SOURCE_PATH = join(__dirname, "..", "lib", "stats.mjs");
+
+  it("declares no import and no require — no child_process, no fs, no network capability", () => {
+    const source = readFileSync(STATS_SOURCE_PATH, "utf8");
+    // Strip line and block comments so a capability named in prose never trips this.
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+
+    // Positive conjunct: the file really was read and really is the module under
+    // test — otherwise an empty/misresolved read would pass every negative below.
+    expect(code).toEqual(expect.stringContaining("export function runStats"));
+
+    expect(code).not.toMatch(/^\s*import\b/m);
+    expect(code).not.toMatch(/\bimport\s*\(/);
+    expect(code).not.toMatch(/\brequire\s*\(/);
+    for (const capability of ["child_process", "execSync", "spawnSync", "node:fs", "fetch(", "git "]) {
+      expect(code).not.toEqual(expect.stringContaining(capability));
+    }
   });
 });
