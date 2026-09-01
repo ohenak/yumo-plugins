@@ -24,7 +24,11 @@ tracked** — the fifteen new test files plus `pdlc/workflows/lib/stats.mjs` —
 (`statsRealPaths.test.js` `9a3a70fd9`, `statsProperties.test.js` `ca8031311`,
 `stats-vendoring.test.js` `1846a8a96`). The preamble now states that, and T-18's status cell carries
 the commit anchor form already used by T-09 and T-10. No property, oracle, fixture or trace changed:
-both reviewers recorded that the v1.2 property material verified against code and stands.
+both reviewers recorded that the v1.2 property material verified against code and stands. One
+cross-round inconsistency the fix exposed was corrected with it — §Subject under test still said
+`pdlc/workflows/lib/stats.mjs` "is absent at HEAD" and that `FLAGS_BY_COMMAND` carries no `stats`
+row; both landed at `308afef94` and `pdlc/engine/bin/cli.mjs:190`, and leaving them would have
+contradicted the corrected preamble in the same document.
 
 **v1.2 (round 3 revisions).** PROP-RATIO-11 added: the shipped-seam behavioural leg for EC-19 that
 PLAN v1.2 gave T-09, at `process` level over an `F-CLI-SYMLINK` temp root, with T-09's trace row,
@@ -74,9 +78,12 @@ falsifiable form; where the upstream is silent, §Gaps and Open Items says so ra
 `computeFeatureStats`, `runStats`, `renderHuman`, `renderJson`; `REVIEW_DOC_TYPE_ROWS`,
 `NON_FEATURE_DIRS`), and four additive edits to `pdlc/engine/bin/cli.mjs` (TSPEC §3.4: a
 `FLAGS_BY_COMMAND` row, a `case` in `main()`'s `switch`, a `USAGE` line, and the
-`cmdStats` / `statsIo` / `statsParsers` functions). Neither file exists in the `stats` form yet:
-`pdlc/workflows/lib/stats.mjs` is absent at HEAD, and `pdlc/engine/bin/cli.mjs:168`'s
-`FLAGS_BY_COMMAND` carries exactly four rows (`dev`, `queue`, `doctor`, `decide`) with no `stats`.
+`cmdStats` / `statsIo` / `statsParsers` functions). Neither existed in the `stats` form when this
+document was first written — `pdlc/workflows/lib/stats.mjs` was absent and `FLAGS_BY_COMMAND`
+carried exactly four rows (`dev`, `queue`, `doctor`, `decide`) with no `stats`. Both have since
+landed on this branch: `stats.mjs` at `308afef94` (T-12), and `FLAGS_BY_COMMAND`'s fifth row
+`stats: ["json", "cwd"]` at `pdlc/engine/bin/cli.mjs:190`. The properties below are stated against
+that subject either way; what moved is the implementation's status, not the surface under test.
 
 **Verified premises.** Everything this document assumes about shipped code was checked at HEAD, not
 read from a document:
