@@ -208,5 +208,11 @@ touched, and the four inherited ones are unchanged carry-forwards that do not ga
 
 ## Verdict
 
-VERDICT: Approved minor changes
+VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 4}
+
+APPROVAL-HASH: sha256:b8dcac11a521bc199d223a0547d3bd7d672640f5f6598d5b6103b2031246db6d
+APPROVAL-HASH-NORMALIZED: sha256:6970093e3d880f7169d8f73a76bee4f5030adfa7f570fb30e68520c940e5c164
+REVIEWED-COMMIT: 648a05255df3be3806bc279420a84a82f60f9dbe
+UPSTREAM-STATE: REQ sha256:9bc8bc32d69845b0f221c77ba48f919b8b0f6266a98f7c6eab73d1b5cc05f10d
+UPSTREAM-STATE: FSPEC sha256:48691453921c28407a5265cfadaef8e58483fbf26ef629962f0929999da11256
