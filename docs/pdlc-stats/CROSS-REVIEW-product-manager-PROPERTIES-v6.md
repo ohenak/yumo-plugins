@@ -61,3 +61,28 @@ misdirecting.
 the fifteen files" is not deleted; it is marked wrong and pointed at v1.3 (`:41-46`). A reader
 reconstructing the round history is told the count was wrong, not shown a clean record that never
 was. That is the right call for a document whose value is traceability.
+
+## Standards applied to the changed material
+
+The three standards I hold every round — no implementation echoes, no absence-only oracles,
+completeness by set-equality — have no new surface to bite on this round: the revision changed no
+property, no oracle and no fixture. I re-confirmed that by diff rather than by assumption
+(`git diff 1be839ea8 HEAD -- docs/pdlc-stats/PROPERTIES-pdlc-stats.md` touches only the four prose
+regions above). The v1.2 material that satisfied those standards in round 5 — PROP-ERR-10's
+hand-transcribed reason catalogue, PROP-RATIO-11's paired positive/negative assertion on the same
+path, PROP-RATIO-05's literal regex — is unchanged and stands.
+
+Scope compliance: the revision added no product behaviour, no new property and no new claim about
+what the feature must do. It corrected repository-status prose only. There is no scope creep here
+to flag, and nothing REQ or FSPEC requires was narrowed or dropped — the property count and the
+per-level distribution are untouched.
+
+## Delta-Confirmation Findings
+
+No findings.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The table's column header reads "Test file (status at HEAD)" while rows for files that *are* present at HEAD still read `(new)`. The preamble now defines `(new)` as provenance rather than absence, so the document is internally consistent and I raise no finding — but the header and the cell vocabulary pull in different directions for a reader who skips the preamble. Worth a wording pass at harvest, not now. |
