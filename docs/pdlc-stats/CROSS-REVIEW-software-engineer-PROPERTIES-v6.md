@@ -85,3 +85,42 @@ swept the whole document for surviving absence language and found none that is s
 DEFERRED: `lib/stats.mjs`'s anchor `308afef94` is accurate as the adding commit, but that commit's subject is `docs(pdlc-stats): se PROPERTIES v3 scope section` — a production module landed inside a docs commit, so the document's "(T-12)" attribution is true of the content and not of the commit message; worth a note at harvest rather than an edit here.
 DEFERRED: T-19's and T-20's rows still read `(new)` while their files are tracked, which is consistent with the preamble's restated definition of `(new)` as provenance, but inconsistent in *precision* with T-18, T-09 and T-10, which now carry commit anchors.
 DEFERRED: my v5 DEFERRED items are unchanged and still stand — T-11's "(both new)", PROP-RATIO-05's literal regex versus the shipped call-set oracle, and PLAN T-10's stale pre-implementation baseline note.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v5, still open and still not a PROPERTIES defect: with wave 9 landed, is PROP-RATIO-11 expected to arrive as an amendment to T-09's already-shipped `stats-cli.test.js` rather than as part of a first red wave? The T-09 row's caveat (verified true again this round: no `lstat`/`symlink` in that file) states the gap precisely; the sequencing is an orchestration matter. |
+
+## Positive Observations
+
+- The revision fixed the finding *and* the inconsistency the fix exposed. Correcting the §PLAN
+  preamble without correcting §Subject under test would have left the document self-contradictory
+  in a way neither reviewer had filed. Noticing the second half is the part I would have been most
+  likely to miss as an author.
+- Every status claim now carries a commit anchor rather than a bare assertion. That is the form
+  that made the T-09 and T-10 rows re-checkable in v5, and extending it to T-18 and to
+  `lib/stats.mjs` means the next reviewer re-measures in one `git log` per claim instead of
+  reasoning about what "wave 9" implies.
+- The v1.2 changelog sentence was corrected rather than quietly dropped, and it says the count it
+  originally gave was wrong. A changelog that records its own error is worth more than one that
+  reads clean.
+- The blast radius was held to status prose. I diffed rather than trusted, and the claim "no
+  property, oracle, fixture or trace changed" is exactly true — which is the right shape for a
+  round whose only job was a bookkeeping correction under a decision freeze.
+
+## Recommendation
+
+**Approved with minor changes**
+
+My v5 High (F-01) is resolved in both halves and re-verified against the repository, not against
+the document. One Medium remains — the preamble's quantifier is wider than the sixteen files it
+enumerates, because PLAN's manifest declares a seventeenth `new` row (T-26's evidence document)
+that is legitimately absent. It misleads no reader about the test set, gates nothing, and can be
+fixed in one word whenever this document is next touched. No property, oracle, fixture or trace
+needs to change.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
