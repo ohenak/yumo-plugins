@@ -117,9 +117,9 @@ no prior High finding remains open.
 v1's AT-15 derived its budget from the oversized line itself
 (`maxBytes: Buffer.byteLength(oversizedLine) - 1`). The revision replaces that with
 `const thresholds = { maxEntries: 100, maxBytes: 2000 };` in both the tail arrangement
-(`decisionLedgerBounds.test.js:288`) and the new head arrangement (`:313`), with the oversized
+(`decisionLedgerBounds.test.js:289`) and the new head arrangement (`:315`), with the oversized
 statement grown to 5,000 characters. The test is correct today and the accompanying comment
-(`:284-287`) explains the intent — the budget must clear framing plus both short lines — but `2000`
+(`:285-288`) explains the intent — the budget must clear framing plus both short lines — but `2000`
 itself encodes an assumption about `DECISION_LEDGER_PREAMBLE` + `DECISION_LEDGER_RULE_TEXT` +
 sentinel framing (~1.2 KB at HEAD, per my probe's `bytes: 1222`) that nothing in the file states.
 An author who later grows the frozen rule text toward its ≤1,200-byte budget gets a red with no
