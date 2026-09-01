@@ -43,7 +43,81 @@ delta scan below covers behavior as well as oracles.
 
 ## Disposition of v1 Findings
 
-<!-- pending -->
+| v1 ID | Severity | Status | Evidence |
+|---|---|---|---|
+| F-01 | High | **Resolved** | `statsOutcome.test.js:287,290,339-340` |
+| F-02 | High | **Resolved** | `statsRender.test.js` AT-06/EC-05 case; `stats.mjs:503-504` now covered |
+| F-03 | Medium | **Resolved** | `statsRender.test.js:490` — `malformed=2` cell |
+| F-04 | Medium | **Resolved** | `statsProperties.test.js:237-252,276-300` |
+| F-05 | Low | **Resolved** | `stats.mjs:517-524` `LABEL_COLUMN_WIDTH`; `statsRender.test.js:383-404` |
+
+### F-01 — the positive condition conjunct now exists, and it is falsifiable
+
+The `rootScenario` rows now carry the clause AT-27 asks for, and the matrix asserts it:
+
+```js
+{ label: "absent", clause: /docs root not found:/, buildIo: () => fakeStatsIo({}) },
+{ label: "unreadable", clause: /docs root unreadable:/, ... }
+...
+expect(outcome.stderr).toMatch(root.clause);
+expect(outcome.stderr).not.toMatch(/feature not found:/);
+```
+
+I re-ran the exact mutation from v1 — swapping the two branch bodies in `docsRootStatus`
+(`stats.mjs:388-398`) so the absent path emits the unreadable message — and the matrix now
+goes **red** on `toMatch(root.clause)`, where in v1 it stayed green. That is the falsification
+the finding asked for.
+
+The second half of PROP-ERR-03 is closed too: `not.toMatch(/feature not found:/)` is the
+human-mode counterpart of the JSON legs' `reason` assertion, so "no message is EC-01's
+not-found message" is now proven on both surfaces rather than one. Note this negative is
+correctly *paired* — it sits alongside the positive `toMatch(root.clause)` on the same path,
+so it is not an absence-only oracle.
+
+### F-02 — the single-feature malformed row is now rendered and asserted verbatim
+
+The new AT-06/EC-05 case renders the row and pins the whole line, both directions:
+
+```js
+expect(human).toEqual(expect.arrayContaining([
+  "  malformed: CROSS-REVIEW-pm-REQ-v01.md, CROSS-REVIEW-pm-FSPEC-v01.md",
+]));
+expect(emptyHuman).not.toEqual(expect.stringContaining("malformed"));
+```
+
+This is the right shape on three counts: the basename appears **verbatim** as EC-05 requires
+rather than as a substring match; the empty-list leg pins BR-17's "omitted entirely when none",
+which answers v1's Q-02 in the affirmative; and the expected string is a literal transcription
+of the FSPEC block, not a value derived from the report object. Deleting `stats.mjs:503` now
+fails the suite. c8 confirms lines `503-504` moved from uncovered to covered.
+
+### F-03 — the malformed conjunct can now fail on its own
+
+`statsRender.test.js:490` asserts the rendered cell `malformed=2` rather than the bare
+substring `"2"`, and the fixture was changed so the halt count (3) differs from the malformed
+count (2) — `Halts=3 (1 resolved)`. The two reductions can no longer alias, which was the
+substance of the finding rather than the literal edit I suggested.
+
+### F-04 — the property's oracle is now independent of the code under test
+
+Both totals are re-derived inside the test from the sizes the generator chose and from BR-14's
+transcribed basename grammars (`SPEC_BASENAMES_LITERAL`, `isProcessBasenameLiteral`), then
+asserted against the reported totals. The ratio is expressed as BR-15 states it —
+`|ratio - process/spec| <= 0.005` plus 2dp representability — instead of as a copy of `round2`'s
+body. The circularity is gone: a mutation moving a basename between the two sides now moves the
+expected totals but not the reported ones, so the property goes red.
+
+### F-05 — the column width is now a named decision with a test
+
+`LABEL_COLUMN_WIDTH = 12` is shared by both blocks (`stats.mjs:517-524,542`), and the new test
+pins exact spacing including a phase token at the review block's own label length:
+
+```js
+expect.arrayContaining(["  REQ         3", "  PROP        open", "  D           resolved"])
+```
+
+Pinning literal spacing is the right call — it makes cross-block alignment an asserted contract
+rather than a coincidence.
 
 ## Findings
 
