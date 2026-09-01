@@ -213,3 +213,28 @@ these are wording repairs, not re-openings of a decision.
   fails if the row is missing or renamed, instead of comparing a constant to its own literal.
 
 ## Recommendation
+
+**Approved with minor changes**
+
+My v1 High finding (F-01) is resolved at the root and proven on the served artifact: over-budget
+omission is line-local, the head-position arrangement now renders the lines behind the oversized
+record, and both the source module and the regenerated `dist/pdlc-cli.mjs` carry the fix. Both v1
+Mediums are closed — one by giving a dead constant a production caller plus a two-sided
+set-equality, the other by making a vacuous conjunct able to fail and adding the positive
+`main()`-driven pair it lacked. Nothing in the delta narrows a criterion, adds out-of-scope
+behaviour, or leaves a new seam without a production caller; the one change that could have
+unwired the feature (dropping `reviewerPrompt`'s parameter) demonstrably did not.
+
+Two Low findings are recorded and do not gate: F-01 (AT-15's `2000` budget literal should be derived
+or precondition-checked) and F-02 (the workflows suite flaked once in four full runs, including a
+decision-ledger suite — worth watching before a CI red is read as a regression).
+
+Five upstream wording repairs are routed as errata, not folded into this verdict. Two of them —
+TSPEC §3.6/§7.5's prefix property and PROP-BND-04's prefix conjunct — matter most, because they
+currently assert the behaviour my v1 High finding asked to be removed; leaving them unedited invites
+someone to "restore" the defect.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
