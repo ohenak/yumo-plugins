@@ -511,12 +511,14 @@ Three REQ ids carry no property row, by design rather than by omission: **A-3** 
 Every row of PLAN §Batches' task table, with the properties it discharges and the test file it
 writes. All fifteen new test files were confirmed **absent** when this table was first written, so
 each is planned-new rather than assumed-existing; the five files this feature *amends* were
-confirmed **present**. `(new)` therefore means **created by this feature**, not absent today: the
-first implementation waves have since landed several of them (the workflows `stats*` suites, and
-`stats-cli.test.js` / `stats-cli-structure.test.js` at `2fc6d9b57` and `df1441b76`), and the rows
-below say so where the distinction carries a claim. No row names a file that is neither shipped nor
-declared new in PLAN's File Ownership Manifest — `statsRealPaths.test.js` is legitimately absent
-because wave 9 has not run.
+confirmed **present**. `(new)` therefore means **created by this feature**, not absent today.
+Measured at HEAD with `git ls-files --error-unmatch` over PLAN's File Ownership Manifest: **every
+new file the manifest declares is tracked** — all sixteen, the fifteen new test files plus
+`pdlc/workflows/lib/stats.mjs` (`308afef94`). Wave 9 **has run**: `statsRealPaths.test.js`
+(`9a3a70fd9`, T-18), `statsProperties.test.js` (`ca8031311`, T-19) and `stats-vendoring.test.js`
+(`1846a8a96`, T-20) are all present. No row names a file that is neither shipped nor declared new in
+that manifest; rows carry a commit anchor where the shipped-versus-planned distinction bears on a
+property's evidence, and `(new)` on the remaining rows records provenance, not absence.
 
 | Task | Test file (status at HEAD) | Properties |
 |---|---|---|
@@ -537,7 +539,7 @@ because wave 9 has not run.
 | T-15 green: renderers | amends T-06's file | turns the T-06 set green |
 | T-16 green: `runStats` | amends T-07's file | turns the T-07 set green |
 | T-17 green: `bin/cli.mjs` | amends T-09/T-10/T-11 files; edits `pdlc/engine/bin/cli.mjs` (exists) | turns the T-09…T-11 sets green |
-| T-18 real-path tests | `pdlc/workflows/__tests__/statsRealPaths.test.js` (new) | PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04; PROP-DISC-04 |
+| T-18 real-path tests | `pdlc/workflows/__tests__/statsRealPaths.test.js` (present at HEAD, `9a3a70fd9`) | PROP-RR-03, -05, -10; PROP-DOD-01; PROP-HALT-01, -02, -04, -06, -08; PROP-RATIO-04; PROP-DISC-04 |
 | T-19 property-based | `pdlc/workflows/__tests__/statsProperties.test.js` (new) | PROP-PBT-01…-04 |
 | T-20 vendoring oracle | `pdlc/engine/__tests__/stats-vendoring.test.js` (new) | PROP-DRIFT-05 (lands deliberately red) |
 | T-21 co-change cluster | amends `pdlc/engine/__tests__/run.test.js`, `pdlc/workflows/__tests__/learningsPremises.test.js` (both exist); edits `prepack.mjs`, `pdlc/README.md`, `docs/_constraints/DOMAIN-CONSTRAINTS.md` | PROP-DRIFT-05 |
