@@ -120,7 +120,30 @@ graph, and no task was re-prioritised, deferred or dropped by this edit.
 
 ## Verification
 
-_pending_
+Every claim I relied on was measured at HEAD. Recording the measurements so the next reviewer need
+not repeat them.
+
+| # | Claim under test | How measured | Result |
+|---|---|---|---|
+| 1 | The matcher yields zero matches over the whole source at HEAD | `/(?<![A-Za-z])statSync\s*\(/g` run over `pdlc/engine/bin/cli.mjs` in Node | **0 matches** — conjunct holds |
+| 2 | The naive alternative would be unfalsifiable | `source.includes("statSync")` | **`true`** — so the row's warning is live, not theoretical |
+| 3 | The token really does occur twice, as the row now says | line scan for `statSync` | exactly two occurrences: the doc-comment prose `` `lstatSync`, never `statSync` `` and the call `nodeFs.lstatSync(absPath).size` |
+| 4 | `(?<![A-Za-z])` rejects the call site | inspection of the matched context | preceded by `l` — rejected, as stated |
+| 5 | `\s*\(` rejects the comment | inspection of the comment | the token is followed by a backtick, not `(` — rejected, as stated |
+| 6 | The v1.3 premise was genuinely false at HEAD | claims 3–5 | confirmed false; the erratum's own diagnosis is correct |
+| 7 | T-17 has landed, as the changelog asserts | `git log main..HEAD` | `41aa0edba feat(pdlc-stats): T-17 — 🟢 bin/cli.mjs edits, all additive` |
+| 8 | `statsIo()`'s shape still matches T-10's other conjuncts | read `statsIo()` in source | exactly `listDir`, `fileSize`, `readFile`, `exists` — no write capability, as the row requires |
+| 9 | Upstream still says what T-10 cites | TSPEC §2.4, §3.1 interface comment, FSPEC EC-19 at HEAD | present and unchanged; `lstat().size — never follows a link` verbatim |
+| 10 | The commit ledger substitutes for the `Status` column | `git log main..HEAD` | **18** `feat(pdlc-stats): T-NN` commits, each carrying its task id and marker |
+| 11 | The new paragraph's "three `✅` ticks" count | tick census over the task tables | exactly three in task rows (T-01, T-08, T-16) — accurate today; see F-01 |
+
+**No acceptance-criterion coverage changed.** The AC coverage table, the anti-drift table and the
+Residual risks table are byte-identical to the version I approved at v6; the diff does not reach
+them. Every P0 and P1 requirement that had a task before this edit still has the same task.
+
+**Nothing previously approved is broken.** The delta is strictly additive prose plus the deletion of
+one false sentence and one bad anchor. There is no site at which v1.4 says less than v1.3 about what
+gets built.
 
 ## Delta-Confirmation Findings
 
