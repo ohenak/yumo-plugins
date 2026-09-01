@@ -357,7 +357,7 @@ explicitly preserves.
 | Obligation | Shipped precedent, cited | How this feature reuses it |
 |---|---|---|
 | Per-key independent config fallback, fail-open | `parsePinCheckConfig` / `parseDerivativeStopConfig` in `pdlc/workflows/orchestrate-dev.js`, both structural clones of `parseLearningsConfig`, sharing the module-private `descendSection` two-level descent | `parseDecisionLedgerConfig` is a **one-level** descent, so it clones `parseLearningsConfig`'s shape directly (`degraded(sectionMalformed)` closure, `text == null` / `JSON.parse` failure / missing-block short-circuits, `boolField` / `nonNegativeInt` field validators) |
-| A gated clause appended to the reviewer prompt, contributing **zero bytes** with the flag off | `reviewerPrompt`'s `findingGrammarPart` — `const findingGrammarPart = findingGrammar ? "\n" + findingGrammarClause() : ""` — threaded from `reviewLoop`'s `derivativeStopEnabled` | The index block and rule text are appended by the identical mechanism: one extra parameter on `reviewerPrompt`, empty string when off |
+| A gated clause appended to the reviewer prompt, contributing **zero bytes** with the flag off | `reviewerPrompt`'s `findingGrammarPart` — `const findingGrammarPart = findingGrammar ? "\n" + findingGrammarClause() : ""` — threaded from `reviewLoop`'s `derivativeStopEnabled` | The index block and rule text are appended by the identical mechanism — one extra trailing string parameter, empty when off — but one hop later, on `dispatchAndVerify` rather than on `reviewerPrompt`, so the block lands after the wrapper's pacing-contract/opener suffix and is genuinely last in the delivered prompt (§2.4) |
 | An injector closure built once per run, called per dispatch, re-reading its corpus fresh each call, pushing a record onto a report sink | `buildLearningsInjector` / `gatherLearningsCorpus` / `renderLearningsBlock` in `orchestrate-dev.js`, wired at `main()` through `wrapperSeams._injectLearnings` | `buildDecisionLedgerInjector` / `gatherDecisionCorpus` / `renderDecisionLedgerBlock`, wired through `wrapperSeams._injectDecisionLedger` and threaded into `reviewLoop` |
 | A committed byte-identity baseline captured from the merge base, guarded by hand-transcribed digests | `pdlc/workflows/__tests__/loopEconomicsBaselineGuard.test.js` with `__tests__/fixtures/loop-economics-baseline/{scenarios.mjs,MANIFEST.json}`, captured by `scripts/capture-learnings-baseline.mjs`'s `runCaptureScript` | The same harness and the same two-job guard shape, against a new fixture directory (§7.4, answering O-4) |
 | Config-block disclosure in the example config with a matching engine-side test | `pdlc/engine/__tests__/learnings-config-example.test.js`, `loop-config-example.test.js`, `advisory-config-example.test.js` — one file per block, so an example edit cannot redden an unrelated engine concern | `pdlc/engine/__tests__/decision-ledger-config-example.test.js`, same shape (FSPEC Q-3) |
@@ -386,17 +386,20 @@ main()
  ├─ readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH)   [SHIPPED, reused — one read]
  │    └─ parseDecisionLedgerConfig(text)                            [NEW, pure]
  ├─ buildDecisionLedgerInjector({config, sink, _git, _readFile, _log})  [NEW]
- │    └─ (returns) injectDecisionLedger({feature}) ──┐
- └─ wrapperSeams._injectDecisionLedger ──────────────┘
+ │    └─ (returns) injectDecisionLedger({feature, phaseId, docType, round}) ──┐
+ └─ wrapperSeams._injectDecisionLedger ───────────────────────────────────────┘
       └─ reviewLoop({..., _injectDecisionLedger})    [SHIPPED, one new param]
            └─ (per round, before reviewer dispatch)
-                injectDecisionLedger({feature})
+                injectDecisionLedger({feature, phaseId, docType, round})
                  ├─ gatherDecisionCorpus({feature, _git, _readFile})  [NEW, IO]
                  ├─ selectDecisions({entries, feature, thresholds})   [NEW, pure]
                  │    └─ recogniseDecisionRecords(text, path)         [NEW, pure — §3]
                  └─ renderDecisionLedgerBlock({selected})             [NEW, pure]
            └─ reviewerPrompt(doc, phase, feature, iteration, reviewer,
-                             docType, frozen, findingGrammar, ledgerBlock)  [SHIPPED + 1 param]
+                             docType, frozen, findingGrammar)  [SHIPPED, unchanged]
+           └─ wrapped(skill, basePrompt, targetPath, dispatchKind,
+                      sessionKey, ledgerBlock)                 [SHIPPED + 1 trailing arg]
+                └─ dispatchAndVerify({..., ledgerBlock})       [SHIPPED, one new param]
 ```
 
 The shape is a deliberate clone of the shipped learnings-injection shell: a pure recogniser and a
@@ -460,8 +463,9 @@ what §2.3 requires, while §7.3's own census excludes it. A future reader meeti
 
 `buildDecisionLedgerInjector` returns `null` when the flag is not `true`. That is the gate
 (FSPEC §3.2 step 1, BR-4): with the injector `null`, `wrapperSeams._injectDecisionLedger` is
-`null`, `reviewLoop` passes `""` as the ninth `reviewerPrompt` argument, and the prompt is
-constructed by the identical expression it is today.
+`null`, `reviewLoop` passes `""` as the trailing `ledgerBlock` argument of its `wrapped` /
+`runWrapped` dispatch closures — which forward it to `dispatchAndVerify`'s own trailing
+`ledgerBlock` parameter — and the prompt is constructed by the identical expression it is today.
 
 **`=== true`, not truthiness.** Every fail-open shape — absent block, wrong-typed value,
 unparseable file, malformed section — resolves `enabled` to the `false` default, and the read
@@ -470,11 +474,21 @@ site compares with `=== true`, so all four spellings of "not enabled" collapse t
 
 ### 2.4 Where the block is placed in the prompt
 
-`reviewerPrompt` gains one parameter, `ledgerBlock` (a string, `""` when the feature contributes
-nothing). It is rendered as `const ledgerPart = ledgerBlock ? "\n" + ledgerBlock : ""` and
-appended **last**, after `oraclePart` and `findingGrammarPart`, on both the iteration-1 and the
-iteration-≥2 return paths — the two paths `reviewerPrompt` already has. Appending last matches
-the shipped `findingGrammarPart` placement and keeps the diff to two string concatenations.
+`reviewerPrompt` is **unchanged** and deliberately takes no ledger parameter. Its return value
+becomes `dispatchAndVerify`'s `basePrompt`, and the wrapper appends its own pacing-contract clause
+and opener *after* `basePrompt`, so a block folded into the builder's return would not be last in
+the **delivered** prompt. The block is therefore threaded as `dispatchAndVerify`'s own trailing
+`ledgerBlock` parameter (a string, `""` when the feature contributes nothing), passed through
+`reviewLoop`'s `wrapped` / `runWrapped` dispatch closures from the per-round
+`_injectDecisionLedger` read. `dispatchAndVerify` appends it **last**, after the pacing-contract
+clause, the opener and `learningsBlock`, in the single prompt expression it builds — which is what
+makes "appended last" true of the delivered prompt rather than of one builder's return value, and
+keeps the diff to one trailing argument plus one string concatenation.
+
+*(Corrected in v1.4: v1.0–v1.3 specified a ninth `reviewerPrompt` parameter here. It was
+carried briefly, proved unreachable — no call site ever passed a ninth argument — and was removed
+in the Phase CR round (TE F-02). The threading above is shipped reality, not a redesign; nothing
+about where the block lands in the delivered prompt changed.)*
 
 The **rule text is part of the same block**, emitted by `renderDecisionLedgerBlock` immediately
 after the index lines and inside the same header/trailer framing. This is what makes FSPEC BR-1
