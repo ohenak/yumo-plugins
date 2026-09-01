@@ -182,7 +182,7 @@ Hard prerequisites, checkable at gate time:
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
 | BL-01 | `pdlc-phase-g` — the tier's Phase G round budget has a phase to budget | Feature merged to `main` (queue row 30, `docs/pdlc-phase-g/REQ-pdlc-phase-g.md`) | Must exist at HEAD before FSPEC authoring |
-| BL-02 | `pdlc-decision-ledger` — S and M record decisions as ledger rows instead of a DECISIONS document (G-3), so the ledger must be the place decisions can live | Feature merged to `main` (`docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`; developed as a direct single-feature run, so it carries no queue row of its own — `docs/_queue/QUEUE.md` records this under row 30's dependency note) | Must exist at HEAD before FSPEC authoring; transitively implied by BL-01, whose `Depends-On` cell names it |
+| BL-02 | `pdlc-decision-ledger` — S and M record decisions as ledger rows instead of a DECISIONS document (G-3), so the ledger must be the place decisions can live | Feature merged to `main` (`docs/completed/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`; developed as a direct single-feature run, so it carries no queue row of its own — `docs/_queue/QUEUE.md` records this under row 30's dependency note) | Must exist at HEAD before FSPEC authoring; transitively implied by BL-01, whose `Depends-On` cell names it |
 | BL-03 | Queue row 31 (`pdlc-size-tiers`, `depends-on: pdlc-phase-g`) exists in `docs/_queue/QUEUE.md` and is the row this REQ runs under | Queue row present | Checked at intake; already present at authoring time |
 
 BL-02 is load-bearing for G-3's "ledger rows only" cells rather than decorative: without a

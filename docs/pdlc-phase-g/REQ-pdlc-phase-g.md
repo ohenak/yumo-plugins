@@ -162,7 +162,7 @@ already write to, resolved by the existing `pdlc decide` command (`pdlc/OPERATIO
 
 **C-7** Phase G's per-question outputs align with the decision-record shape the
 `pdlc-decision-ledger` feature consumes: id, one-line statement, the phase/round it closed in,
-and its citation (`docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`, `REQ-DECLEDGER-01`).
+and its citation (`docs/completed/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`, `REQ-DECLEDGER-01`).
 That REQ's `NG-1` anticipates this feature as an additional *source* for its index; this REQ
 therefore uses its vocabulary — *closed decision*, *decision id*, *citation* — rather than
 minting a parallel one.
