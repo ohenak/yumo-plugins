@@ -30,3 +30,17 @@
 
 **Evidence.**
 - (none)
+## 1788231226824 — A3 — escalated
+
+| Field | Value |
+|---|---|
+| Seam | A3 |
+| Confidence | n/a |
+| Envelope | n/a |
+| Disposition | escalated — budget-exhausted |
+| Model | fable |
+
+**Diagnosis.** no verdict was produced
+
+**Evidence.**
+- (none)
