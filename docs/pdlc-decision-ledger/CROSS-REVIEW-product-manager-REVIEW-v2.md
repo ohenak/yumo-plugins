@@ -173,9 +173,9 @@ these are wording repairs, not re-openings of a decision.
 
 | ID | Question |
 |----|---------|
-| Q-01 | *(carried, still open)* `omitted[]` now carries a mix of line-local `RSN-BYTES` omissions and tail-drop omissions, in that order — but no run-report surface names it (`orchestrate-dev.js:2874`). An operator whose long decision is silently absent from the index has nothing to read. Deliberate for v1, or worth one line on the report? |
+| Q-01 | *(carried, still open)* `omitted[]` now carries a mix of line-local `RSN-BYTES` omissions and tail-drop omissions, in that order — but no run-report surface names it (`orchestrate-dev.js:2880`). An operator whose long decision is silently absent from the index has nothing to read. Deliberate for v1, or worth one line on the report? |
 | Q-02 | *(carried)* `gatherDecisionCorpus` resolves the feature directory by first hit across `docs/{feature}/` → `docs/completed/{feature}/` → `docs/discarded/{feature}/`. For a feature mid-move, only the first contributes. Product intent, or should the union render? |
-| Q-03 | With the line-local pre-pass in place, a decision whose statement is long enough to blow `maxBytes` alone is now permanently un-indexable at any corpus size — previously it could at least appear when it was the only record. That is the right trade (E-8 says so), but is there a product expectation that authors be told their DECISIONS statement is too long to be indexed? Today the signal is invisible on both sides. |
+| Q-03 | A decision whose statement alone blows `maxBytes` is un-indexable at any corpus size — before and after this fix (E-8 and E-6 both say so, and that is the right trade). But nothing tells the DECISIONS author their statement is too long to be indexed, and nothing tells the reviewer the decision exists. Is a length signal at authoring time in scope for a later iteration? |
 
 ## Positive Observations
 
