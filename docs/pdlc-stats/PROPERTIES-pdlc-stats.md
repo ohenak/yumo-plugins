@@ -13,7 +13,30 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | te-author | 1.1 | 2026-08-31 |
+| Draft | te-author | 1.2 | 2026-08-31 |
+
+**v1.2 (round 3 revisions).** PROP-RATIO-11 added: the shipped-seam behavioural leg for EC-19 that
+PLAN v1.2 gave T-09, at `process` level over an `F-CLI-SYMLINK` temp root, with T-09's trace row,
+the `EC-19` and `AT-15` matrix rows and the level distribution moved with it (product-manager F-01).
+PROP-RATIO-05 restated whole-file with the boundary-anchored matcher, dropping the `stats`-seam
+qualifier PLAN T-10 dropped (product-manager F-02). PROP-ERR-10's falsifier restated honestly and
+widened with a `throwOn`-seam sweep, with the matching §Oracles row and a new G-8 recording the
+residual (product-manager F-03). PROP-DISC-10's Traces reconciled to `PLAN T-05/T-07`, matching
+§PLAN tasks (product-manager F-04), and `F-EXCLUDED-ONLY` restated as directory entries rather than
+"a real directory" (product-manager F-05). PROP-RATIO-03's neither-list picked up FSPEC v1.7's
+out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` member, and PROP-RATIO-06 — which already
+pinned that behaviour — was added to the `AT-15` and `BR-16` matrix rows with `BR-16, AT-15` in its
+Traces (software-engineer F-01). The §PLAN tasks preamble now says what `(new)` means, since the
+first implementation waves have landed ten of the fifteen files.
+
+**Absorbed without an edit (software-engineer F-02).** The finding asks for a §Gaps row marking
+PROP-RATIO-08 leg 4 provisional on a REQ-versus-FSPEC dispute over the out-of-catalogue basename.
+That dispute no longer exists at upstream HEAD: REQ v1.7's erratum withdraws REQ-STATS-06's
+"a grammatical basename outside the driver's catalogue is a survivor" clause outright — "a basename
+the catalogue does not recognise counts as no file of its family remaining, so a feature carrying
+only those reports **harvested**" — which is the reading PROPERTIES, FSPEC BR-16 and TSPEC §4.3
+already assert. PROP-RATIO-08's `REQ-STATS-06` citation is therefore accurate at HEAD and stands,
+and a G-row recording a live dispute would now be false. No provisional marking is owed.
 
 **v1.1 (round 1 revisions).** PROP-DISC-10 added for AT-18's excluded-directories-only root and
 EC-20's empty report, with the `F-EXCLUDED-ONLY` fixture and the `EC-20`/`AT-18` matrix rows
