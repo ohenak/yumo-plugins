@@ -11929,7 +11929,7 @@ function reviewerPrompt(
   // argument, appended after that suffix (see `runWrapped`/`wrapped` and the per-round
   // `_injectDecisionLedger` read in `reviewLoop`). A `ledgerBlock` parameter here was unreachable
   // — no call site ever passed a ninth argument — and was removed in the Phase CR round (TE F-02);
-  // TSPEC §4.5 and PROP-WIRE-08 still name this builder as the locus and are routed as errata.
+  // TSPEC §2.4/§4.5 (v1.4) and PROP-WIRE-08 document the shipped threading: the ledger block rides dispatchAndVerify's trailing ledgerBlock option, not this builder.
 ) {
   // DEC-FRZ-01. Rendered here, decided by `freezeInForce` at the call site: the
   // prompt builder never re-derives the trigger, so there is exactly one place
