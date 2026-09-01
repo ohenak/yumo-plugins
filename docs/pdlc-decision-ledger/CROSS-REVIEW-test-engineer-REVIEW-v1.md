@@ -182,6 +182,39 @@ which walk everything under `root` except `.git/` and `node_modules/`. **To reso
 
 ## Positive Observations
 
+- **The live composition root is genuinely driven.** `decisionLedgerMain.test.js` runs the
+  default-exported `main()` with no seam standing in for `gatherDecisionCorpus`, `selectDecisions`,
+  `renderDecisionLedgerBlock` or the `wrapperSeams._injectDecisionLedger` assignment, and proves the
+  seam is *reached* with a call-count spy on the `_git` listing call rather than with a fake of the
+  outer interface (`:24-27`, `:377-387`). This is the DC-07 builder-not-wired oracle done properly —
+  a fake of `_injectDecisionLedger` could not satisfy it.
+- **The flag-off proof is a committed merge-base recording, not a subtraction.** `off.tPrompts`
+  is compared to the four committed `REVIEW-LOOP-REVIEWER-PROMPTS/*.txt` (`:441`), so the byte-identity
+  claim is anchored outside the code under test; the report-key delta is a **both-directions** set
+  equality on symmetric difference (`:470-472`), and the flag-off notice set is set-equal to empty
+  (`:449`), not merely free of `NTC-DECLEDGER-*`.
+- **The prompt rule text is falsifiably pinned, semantically.** Mutation: `"High severity"` →
+  `"Medium severity"` in `DECISION_LEDGER_RULE_TEXT` reddens 1 test; deleting the "key a repeat on
+  the decision id" sentence reddens 1 test. The conjunct-per-obligation regex form
+  (`decisionLedgerRender.test.js:180-220`) is the right choice for prose — it survives harmless
+  rewording (`re-open` → `reopen` stays green) while catching every contentful change.
+- **Cross-file precedence is guarded.** Mutation: deleting
+  `for (const id of projectById.keys()) featureById.delete(id);` reddens the suite.
+- **AT traceability is complete.** All eighteen FSPEC ATs are named in the test modules; the
+  fixture guard pins FX-CORPUS by 25-path set equality plus hand-transcribed per-file digests, with
+  an explicit instrument-fires control (`decisionLedgerFixtureGuard.test.js:242-254`).
+- **AT-05 was made non-vacuous.** PROPERTIES flagged that PLAN's assignment of AT-05 to the
+  `reviewLoop`-level recording could not distinguish the four not-enabled spellings; the shipped
+  `decisionLedgerLoop.test.js:166-214` runs each spelling through the real
+  `parseDecisionLedgerConfig` → `buildDecisionLedgerInjector` gate and compares against the
+  no-seam baseline stream. That is the arm the property asked for.
+- **`fast-check` is used where the input space is parameterisable** (bounds, `decisionLedgerBounds.test.js`),
+  with an independent model formatter rather than the production renderer — PROP-BND-07's discipline
+  observed.
+- **Live-git-write guards are on every module** (`assertNoLiveGitWrites` in `afterEach`, over the
+  calls actually made rather than a static empty array), which is the `f325016` lesson applied.
+
+
 ## Recommendation
 
 ## Verdict
