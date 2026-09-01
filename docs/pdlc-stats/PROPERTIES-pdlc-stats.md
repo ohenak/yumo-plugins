@@ -13,7 +13,18 @@ feature: pdlc-stats
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | te-author | 1.2 | 2026-08-31 |
+| Draft | te-author | 1.3 | 2026-08-31 |
+
+**v1.3 (round 5 revisions).** One finding, filed identically by both reviewers (product-manager
+F-01, software-engineer F-01): the §PLAN tasks preamble this document rewrote in v1.2 asserted that
+wave 9 had not run and that `statsRealPaths.test.js` was absent. Both halves were false at HEAD, and
+so was v1.2's own changelog sentence about "ten of the fifteen files". Measured with
+`git ls-files --error-unmatch` over PLAN's File Ownership Manifest, **all sixteen new files are
+tracked** — the fifteen new test files plus `pdlc/workflows/lib/stats.mjs` — wave 9 included
+(`statsRealPaths.test.js` `9a3a70fd9`, `statsProperties.test.js` `ca8031311`,
+`stats-vendoring.test.js` `1846a8a96`). The preamble now states that, and T-18's status cell carries
+the commit anchor form already used by T-09 and T-10. No property, oracle, fixture or trace changed:
+both reviewers recorded that the v1.2 property material verified against code and stands.
 
 **v1.2 (round 3 revisions).** PROP-RATIO-11 added: the shipped-seam behavioural leg for EC-19 that
 PLAN v1.2 gave T-09, at `process` level over an `F-CLI-SYMLINK` temp root, with T-09's trace row,
@@ -26,8 +37,9 @@ residual (product-manager F-03). PROP-DISC-10's Traces reconciled to `PLAN T-05/
 "a real directory" (product-manager F-05). PROP-RATIO-03's neither-list picked up FSPEC v1.7's
 out-of-catalogue `CROSS-REVIEW-{role}-REVIEW-v{N}.md` member, and PROP-RATIO-06 — which already
 pinned that behaviour — was added to the `AT-15` and `BR-16` matrix rows with `BR-16, AT-15` in its
-Traces (software-engineer F-01). The §PLAN tasks preamble now says what `(new)` means, since the
-first implementation waves have landed ten of the fifteen files.
+Traces (software-engineer F-01). The §PLAN tasks preamble now says what `(new)` means, since
+implementation waves have landed files the table was written before (the count this paragraph
+originally gave was wrong and is corrected in v1.3).
 
 **Absorbed without an edit (software-engineer F-02).** The finding asks for a §Gaps row marking
 PROP-RATIO-08 leg 4 provisional on a REQ-versus-FSPEC dispute over the out-of-catalogue basename.
