@@ -47,6 +47,39 @@ M7 is the decisive one: it reproduces precisely the regression class v1 F-03 nam
 
 ## Findings
 
+No High findings. Both rows below are v1 Lows that the round did not take up; neither is a regression from the delta, and neither gates.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | The BND property's `if (block === "") return true;` escape hatch survives; empirically confirmed vacuous — a renderer returning `""` for every input leaves the property GREEN, which is exactly what `PROPERTIES`:270–272 and `TSPEC`:1616–1617 assert must fail. Contained by five example anchors that do red. | `__tests__/decisionLedgerBounds.test.js:157–159`; PROP-BND-04 |
+| F-02 | Low | Local | The live composition-root arm still derives its expected suffix by calling the production renderer under test, so a chain-wide format change would move both sides of the comparison together. | `__tests__/decisionLedgerMain.test.js:424–428`; PROP-WIRE-05 |
+
+### F-01 (Low) — the bounds property's empty-block escape hatch is demonstrably vacuous
+
+v1 filed this as a contained risk. This round it is measured rather than argued. Mutation **M8** replaced `renderDecisionLedgerBlock`'s body with an unconditional `return ""` and re-ran `decisionLedgerBounds.test.js`:
+
+```
+✓ PROP-BND-01…04, 12: for any set × line sizes × bounds, the block is "" or satisfies all four conjuncts …
+✕ a set exceeding maxEntries alone is truncated to maxEntries lines, prefix-ordered
+✕ a set exceeding maxBytes alone (separately) is truncated to fit the byte bound, prefix-ordered
+✕ one line alone exceeding maxBytes is absent in full; the other lines still render
+✕ the oversized line is FIRST in the order: it alone is omitted, the lines behind it render (E-8, CR F-01)
+✕ where the oversized line is the only line, the block is exactly ""
+Tests: 5 failed, 1 passed, 6 total
+```
+
+The property is the one test in the file that stays green. `PROPERTIES`:270–272 states the opposite in as many words — *"A renderer returning `""` for every input satisfies PROP-BND-01, -02 and -03 trivially. Only the prefix conjunct fails it"* — and `TSPEC`:1616–1617 repeats it. The stated obligation is therefore not discharged by the shipped property; it is discharged by the example anchors beside it.
+
+Why this stays **Low** and not higher: no false-green ships. The suite as a whole kills M8 five times over, and PROP-BND-04's *own* named mutation ("the loop drops from the front") does red the property — **M4** confirms that, taking the property and three anchors down together. The gap is between the property's stated reach and its actual reach, not between the suite and reality.
+
+**To resolve** (unchanged from v1 F-05, one conjunct): on the `block === ""` branch, return `false` when the case had something to render — `nProject + nFeature > 0`, `thresholds.maxEntries >= 1`, and `maxBytes` at least framing plus one modelled line. The model already computes framing and line bytes from `modelFormatLine` at `:236–242`, so the conjunct needs no renderer call and does not breach PROP-BND-07.
+
+### F-02 (Low) — the live arm's expected suffix is still derived from the code under test
+
+`decisionLedgerMain.test.js:424` builds `expectedBlock` via `dev.renderDecisionLedgerBlock({ selected })` and asserts `prompt.endsWith(expectedBlock)` at `:428`. The `expectedBlock.length > 0` floor at `:425` rules out the empty-string degenerate case, and the sibling render suite pins the block's text against hand-transcribed literals, so the format is anchored *somewhere*. But within this arm the expectation and the artifact share a producer: a chain-wide format change moves both sides together and the arm stays green.
+
+**To resolve:** assert one spec-transcribed anchor on the observed prompt in this arm — the trailer `--- CLOSED DECISIONS (do not re-open without new evidence) ---` is already a hand-transcribed literal elsewhere in the suite and costs one line here.
+
 ## Questions
 
 ## Positive Observations
