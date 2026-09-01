@@ -9997,8 +9997,14 @@ async function reviewLoop({
     // instead as an explicit trailing argument through `runWrapped`/`wrapped`/`dispatchAndVerify`, which
     // appends it after its own suffix so the byte actually handed to the reviewer ends with the block
     // (decisionLedgerLoop.test.js / decisionLedgerMain.test.js's baseline-plus-suffix equality).
+    // CODE_REVIEW v1 F-2: threads this round's real phaseId/docType/round from the enclosing
+    // review-loop context — `phase`, `roundDocType`, `iteration` — rather than leaving the
+    // dispatch record's fields `undefined` (TSPEC §5.1's `DecisionLedgerDispatchRecord` declares
+    // `phaseId: string | null`, `docType: string | null`, `round: number`).
     const ledgerBlock =
-      typeof _injectDecisionLedger === "function" ? await _injectDecisionLedger({ feature }) : "";
+      typeof _injectDecisionLedger === "function"
+        ? await _injectDecisionLedger({ feature, phaseId: phase, docType: roundDocType, round: iteration })
+        : "";
     const reviewerPrompt1 = reviewerPrompt(
       doc,
       phase,
@@ -15706,11 +15712,30 @@ async function main({
         sink: decisionLedgerSink,
         _git: gitFn,
         _readFile: readFileFn,
+        // CODE_REVIEW v1 F-1: the run's own emitter, so the per-dispatch observability line is
+        // live in production and not only under test doubles — the same lesson already applied
+        // to the learnings injector above (`:15645-15649`).
+        _log: ({ feature: dispatchFeature, docType: dispatchDocType, phaseId: dispatchPhaseId, corpusOutcome }) =>
+          emit(
+            `decision-ledger: phase ${dispatchPhaseId ?? "-"} ${dispatchDocType ?? "-"} ` +
+              `(feature ${dispatchFeature ?? "-"}) — corpus ${corpusOutcome ?? "OK"}`
+          ),
       })
     : null;
   // Shared by every `reviewLoop` entry through `...wrapperSeams` below — reviewLoop never builds
   // its own injector, only reads this already-built seam (TSPEC §7.4).
   wrapperSeams._injectDecisionLedger = decisionLedgerInjectorFn;
+  if (decisionLedgerInjectorFn) {
+    // CODE_REVIEW v1 F-3 (TSPEC §5.1's `DecisionLedgerSink.ruleInputs`): the thresholds actually
+    // in force, built ONCE per run from the parsed config — independent of whether any dispatch
+    // ever calls the injector, mirroring the learnings-injector analogue above (`:15657-15663`).
+    decisionLedgerSink.ruleInputs = {
+      thresholds: {
+        maxEntries: decisionLedgerConfigParsed.config.maxEntries,
+        maxBytes: decisionLedgerConfigParsed.config.maxBytes,
+      },
+    };
+  }
   // `report.decisionLedger` rides ONLY when the injector is non-null (conditional spread, the
   // shipped `learningsInjectionField` discipline) — a disabled run must never carry a defined
   // `decisionLedger` key (TSPEC §7.3/§5.4, PROP-WIRE-12's flag-off half).

@@ -450,6 +450,28 @@ describe("buildDecisionLedgerInjector — _log receives one line per dispatch", 
 
     expect(injector).toBeNull();
   });
+
+  // CODE_REVIEW v1 F-4/F-5, leg (b): the object-sink branch's own defensive
+  // `dispatches`-array pre-initialisation. `main()` always constructs its sink as
+  // `{ dispatches: [] }` (`:15693`), so that specific init line never runs through a
+  // `main()`-driven path — it is reachable ONLY via a caller that hands the injector an
+  // object sink lacking a `dispatches` array in the first place, which this direct unit test
+  // does, needing no production change.
+  test("T-17: an object sink with no pre-existing `dispatches` array gets one created before the first push", async () => {
+    const { buildDecisionLedgerInjector } = await import("../orchestrate-dev.js");
+
+    const text = decisionText(["DEC-OBJSINK-01", "an object-sink statement"]);
+    const _git = makeGitDouble(gitReply(PROJECT_PATH));
+    const _readFile = makeReadFileDouble({ [PROJECT_PATH]: text });
+    lastGitCalls = _git.calls;
+    const sink = {};
+    const injector = buildDecisionLedgerInjector({ config: ENABLED_CONFIG, sink, _git, _readFile });
+
+    await injector({ feature: FEATURE });
+
+    expect(Array.isArray(sink.dispatches)).toBe(true);
+    expect(sink.dispatches.length).toBe(1);
+  });
 });
 
 // ─── DECISION_LEDGER_CORPUS_OUTCOMES — TSPEC §5.2's set-equality operand (CR F-01/F-02) ─────────

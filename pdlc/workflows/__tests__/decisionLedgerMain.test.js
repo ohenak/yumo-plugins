@@ -544,5 +544,95 @@ describe("decisionLedgerMain — `main()`-driven composition-root wiring (TSPEC 
     expect(Object.keys(malformed.result.report).includes("decisionLedger")).toBe(false);
     expect(malformed.tPrompts).toEqual(EXPECTED_BASELINE_PROMPTS);
   });
+
+  // CODE_REVIEW v1 F-4/F-5 (PROP-CFG-08's F-5 leg): the sibling wrong-typed-key leg of the
+  // malformed-section test above. `NTC-DECLEDGER-MALFORMED` fires when the section itself isn't
+  // a plain object; `NTC-DECLEDGER-KEYTYPE` fires when the section IS a plain object but one of
+  // its keys is wrong-typed — a distinct branch in `main()` (`:15589-15596`) that the malformed
+  // test above never reaches. `enabled: false` keeps the run on the disabled path (byte-identical
+  // baseline prompts), isolating the notice-emission assertion from the flag-on dispatch machinery.
+  test("T-18: a wrong-typed `decisionLedger` key drives NTC-DECLEDGER-KEYTYPE onto the run report through main(), and the run still completes on per-key defaults (PROP-CFG-08's F-5 leg)", async () => {
+    const keytypeConfigText = JSON.stringify({
+      decisionLedger: { enabled: false, maxEntries: "seventy" },
+    });
+    const keytype = await runPipeline({ configText: keytypeConfigText, corpusFiles: [] });
+    lastGitCalls = keytype.gitCalls;
+
+    expect(keytype.result.outcome).toBe("success");
+
+    const emitted = new Set(
+      (keytype.result.report.notices ?? [])
+        .map((n) => String(n?.id ?? n))
+        .filter((id) => id.includes("NTC-DECLEDGER-"))
+    );
+    // SET-EQUAL, not "contains": a spurious NTC-DECLEDGER-MALFORMED alongside it fails this too.
+    expect(emitted).toEqual(new Set(["NTC-DECLEDGER-KEYTYPE"]));
+
+    // The wrong-typed key is named in the notice detail (TSPEC §4.4).
+    const keytypeNotice = (keytype.result.report.notices ?? []).find(
+      (n) => String(n?.id ?? n) === "NTC-DECLEDGER-KEYTYPE"
+    );
+    expect(String(keytypeNotice?.detail ?? "")).toContain("maxEntries");
+
+    // Enabled falls back to its own default (`false`), so the run stays on the disabled path.
+    expect(Object.keys(keytype.result.report).includes("decisionLedger")).toBe(false);
+    expect(keytype.tPrompts).toEqual(EXPECTED_BASELINE_PROMPTS);
+  });
+
+  // CODE_REVIEW v1 F-1: the run's own `_log` emitter must be threaded onto the decision-ledger
+  // injector so the per-dispatch observability line is live in production, not only under test
+  // doubles that construct `buildDecisionLedgerInjector` directly (mirrors the learnings-injector
+  // lesson at `:15645-15649`).
+  test("T-18: flag on — the per-dispatch decision-ledger log line fires through main()'s own `_log` on a served reviewer dispatch (CODE_REVIEW v1 F-1)", async () => {
+    const { result, logs, gitCalls } = await runPipeline({
+      configText: ENABLED_CONFIG_TEXT,
+      corpusFiles: [CORPUS_DECISIONS_PATH],
+    });
+    lastGitCalls = gitCalls;
+
+    expect(result.outcome).toBe("success");
+
+    const ledgerLogs = logs.filter((line) => line.startsWith("decision-ledger:"));
+    expect(ledgerLogs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // CODE_REVIEW v1 F-2: the sole production call site (`reviewLoop`'s `await
+  // _injectDecisionLedger({ feature })`) must thread real `phaseId`/`docType`/`round` values from
+  // the enclosing review-loop context, not leave them `undefined` — TSPEC §5.1's
+  // `DecisionLedgerDispatchRecord` declares `phaseId: string | null`, `docType: string | null`,
+  // `round: number`.
+  test("T-18: flag on — the production dispatch row's phaseId/docType/round are all non-undefined (CODE_REVIEW v1 F-2)", async () => {
+    const { result, gitCalls } = await runPipeline({
+      configText: ENABLED_CONFIG_TEXT,
+      corpusFiles: [CORPUS_DECISIONS_PATH],
+    });
+    lastGitCalls = gitCalls;
+
+    expect(result.outcome).toBe("success");
+    const dispatches = result.report.decisionLedger.dispatches;
+    expect(dispatches.length).toBeGreaterThanOrEqual(1);
+    for (const record of dispatches) {
+      expect(record.feature).not.toBeUndefined();
+      expect(record.phaseId).not.toBeUndefined();
+      expect(record.docType).not.toBeUndefined();
+      expect(record.round).not.toBeUndefined();
+    }
+  });
+
+  // CODE_REVIEW v1 F-3: `decisionLedgerSink.ruleInputs.thresholds` (TSPEC §5.1) must be populated
+  // once per run from the parsed config, independent of whether any dispatch ever calls the
+  // injector — mirroring the learnings-injector analogue at `:15657-15663`.
+  test("T-18: flag on — report.decisionLedger.ruleInputs.thresholds discloses the config's own maxEntries/maxBytes (CODE_REVIEW v1 F-3)", async () => {
+    const { result, gitCalls } = await runPipeline({
+      configText: ENABLED_CONFIG_TEXT,
+      corpusFiles: [CORPUS_DECISIONS_PATH],
+    });
+    lastGitCalls = gitCalls;
+
+    expect(result.outcome).toBe("success");
+    expect(result.report.decisionLedger.ruleInputs).toEqual({
+      thresholds: DECISION_LEDGER_THRESHOLDS,
+    });
+  });
 });
 
