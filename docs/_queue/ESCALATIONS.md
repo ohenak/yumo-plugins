@@ -111,3 +111,21 @@
 - (none)
 
 **Pipeline state.** I — halted
+## 2026-09-01T00:54:30.019Z — pdlc-decision-ledger — A4
+
+**Decide:** whether to take the A4 proposal for pdlc-decision-ledger yourself (no well-formed proposal) — the advisory tier refused it as budget-exhausted and changed nothing
+
+| Field | Value |
+|---|---|
+| Feature | pdlc-decision-ledger |
+| Seam | A4 |
+| Refusal reason | budget-exhausted |
+
+**Diagnosis.** no verdict was produced
+
+**Proposed action.** (none)
+
+**Evidence.**
+- (none)
+
+**Pipeline state.** DOD — halted

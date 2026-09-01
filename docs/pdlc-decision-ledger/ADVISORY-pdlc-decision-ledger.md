@@ -46,3 +46,17 @@
 
 **Evidence.**
 - (none)
+## 1788224070019 — A4 — escalated
+
+| Field | Value |
+|---|---|
+| Seam | A4 |
+| Confidence | n/a |
+| Envelope | n/a |
+| Disposition | escalated — budget-exhausted |
+| Model | fable |
+
+**Diagnosis.** no verdict was produced
+
+**Evidence.**
+- (none)
