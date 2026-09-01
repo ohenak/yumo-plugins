@@ -223,6 +223,19 @@ describe("T-13: computeFeatureStats (TSPEC §4.3)", () => {
       expect(result.dodRounds).toEqual({ state: "harvested", rounds: null });
     });
 
+    it("BR-11: a surviving `CODE_REVIEW-{feature}-v0.md` is measured at 0, never harvested — the harvested state never displaces evidence the metric read", async () => {
+      const io = ioFor({
+        [`LEARNINGS-${FEATURE}.md`]: "x",
+        [`CODE_REVIEW-${FEATURE}-v0.md`]: "y",
+      });
+
+      const result = await compute(io, realParsers());
+
+      // `deriveDodRoundIndex` returns `max + 1` = 1 here, so the derived index alone
+      // is indistinguishable from "no file present"; BR-11 branches on presence.
+      expect(result.dodRounds).toEqual({ state: "measured", rounds: 0 });
+    });
+
     it("AT-28: a non-matching CODE_REVIEW-*-draft.md basename is silent, not malformed", async () => {
       const io = ioFor({
         [`CODE_REVIEW-${FEATURE}-v2.md`]: "x",

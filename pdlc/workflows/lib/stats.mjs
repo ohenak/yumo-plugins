@@ -245,9 +245,21 @@ function computeReviewRounds(basenames, parsers, harvested) {
 
 // --- DoD rounds (BR-10, BR-11) -------------------------------------------
 
-function computeDodRounds(basenames, parsers, feature, harvested) {
-  const n = parsers.deriveDodRoundIndex(basenames, feature) - 1;
-  if (n > 0) return { state: "measured", rounds: n };
+// BR-11's version grammar for a DoD review file. Shared with `computeByteRatio`
+// so the two metrics can never disagree about whether such a file is present.
+function dodReviewNames(basenames, escapedFeature) {
+  const pattern = new RegExp(`^CODE_REVIEW-${escapedFeature}-v(\\d+)\\.md$`);
+  return basenames.filter((b) => pattern.test(b));
+}
+
+function computeDodRounds(basenames, parsers, feature, dodReviews, harvested) {
+  // BR-11 branches on file PRESENCE, not on the derived index: "a surviving file
+  // is measured, highest version wins — the harvested state never displaces
+  // evidence the metric actually read". A lone `…-v0.md` derives index 1 (rounds
+  // 0), which is indistinguishable from "no file at all" on the index alone.
+  if (dodReviews.length > 0) {
+    return { state: "measured", rounds: parsers.deriveDodRoundIndex(basenames, feature) - 1 };
+  }
   if (harvested) return { state: "harvested", rounds: null };
   return { state: "measured", rounds: 0 };
 }
@@ -274,15 +286,13 @@ function computeHalts(basenames, io, parsers, dir, escapedFeature) {
 
 // --- Byte ratio (BR-14...BR-16) -------------------------------------------
 
-function computeByteRatio(basenames, io, parsers, feature, escapedFeature, dir, harvested) {
+function computeByteRatio(basenames, io, parsers, feature, escapedFeature, dir, dodReviews, harvested) {
   const specNames = REVIEW_DOC_TYPE_ROWS.map((t) => `${t}-${feature}.md`).filter((name) =>
     basenames.includes(name),
   );
   const crossReviews = basenames.filter((b) => parsers.parseReviewFilename(b).ok);
   const postMortemPattern = new RegExp(`^POSTMORTEM-([^-]+)-${escapedFeature}\\.md$`);
   const postMortems = basenames.filter((b) => postMortemPattern.test(b));
-  const dodPattern = new RegExp(`^CODE_REVIEW-${escapedFeature}-v(\\d+)\\.md$`);
-  const dodReviews = basenames.filter((b) => dodPattern.test(b));
 
   const processNames = new Set([...crossReviews, ...postMortems, ...dodReviews]);
   const sizeOf = (name) => io.fileSize(joinChild(dir, name));
@@ -316,9 +326,20 @@ export function computeFeatureStats(io, parsers, feature, dir) {
   const harvested = basenames.includes(`LEARNINGS-${feature}.md`);
 
   const reviewRounds = computeReviewRounds(basenames, parsers, harvested);
-  const dodRounds = computeDodRounds(basenames, parsers, feature, harvested);
+  const dodReviews = dodReviewNames(basenames, escapedFeature);
+
+  const dodRounds = computeDodRounds(basenames, parsers, feature, dodReviews, harvested);
   const halts = computeHalts(basenames, io, parsers, dir, escapedFeature);
-  const byteRatio = computeByteRatio(basenames, io, parsers, feature, escapedFeature, dir, harvested);
+  const byteRatio = computeByteRatio(
+    basenames,
+    io,
+    parsers,
+    feature,
+    escapedFeature,
+    dir,
+    dodReviews,
+    harvested,
+  );
 
   return { feature, dir, reviewRounds, dodRounds, halts, byteRatio };
 }
