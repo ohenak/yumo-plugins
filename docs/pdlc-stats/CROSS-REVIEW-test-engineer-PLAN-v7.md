@@ -100,3 +100,46 @@ HEAD verbatim, so T-10's parenthetical citation still resolves.
 
 No ordering edge, integration point or prior-phase baseline in §Dependencies was touched by the
 delta.
+
+## Verification
+
+Every factual claim the delta makes was re-measured at HEAD rather than taken on the document's
+word. Commands and results:
+
+**1. The matcher yields zero matches over the whole source.**
+
+```
+node -e 'const s=require("fs").readFileSync("pdlc/engine/bin/cli.mjs","utf8");
+         console.log((s.match(/(?<![A-Za-z])statSync\s*\(/g)||[]).length)'
+→ 0
+```
+
+**2. Both occurrences the delta names are present, and are the only ones.** Every line of
+`pdlc/engine/bin/cli.mjs` matching `/statSync/i` at HEAD:
+
+- `pdlc/engine/bin/cli.mjs:1288` — `* \`lstatSync\`, never \`statSync\` — a symbolic link
+  contributes its own size,` (doc comment above `statsIo()`)
+- `pdlc/engine/bin/cli.mjs:1302` — `return nodeFs.lstatSync(absPath).size;` (the `fileSize` body)
+
+Exactly the two the row describes, in the two roles it assigns them. The anchor analysis holds
+mechanically: `1302`'s token is preceded by `l`, which `(?<![A-Za-z])` rejects; `1288`'s token is
+followed by `` ` `` and an em-dash, which `\s*\(` rejects. So the zero at (1) is produced *by the
+anchors*, not by the file happening to be free of the token — which is precisely the claim the
+delta now makes and the old text could not.
+
+**3. The withdrawn `:262` anchor.** `fs.existsSync` sits at `pdlc/engine/bin/cli.mjs:267` at HEAD,
+five lines off the retired citation, and a second `nodeFs.existsSync` now exists at `:1308` that
+the old "its only `fs` predicate" phrasing did not contemplate. Removing the anchor rather than
+re-stamping it is the right repair: a raw line anchor over a file this feature's own tasks edit is
+a `DEC-DOC-01` misuse that would expire again on the next wave.
+
+**4. The shipped T-10 test is green against the row's semantics.** `T-10` has landed
+(`df1441b76`). Its whole-file conjunct in `pdlc/engine/__tests__/stats-cli-structure.test.js`
+extracts every `<word>Sync(` call name from the masked source and asserts `statSync` is not a
+member, which yields the same zero as (1) for the same two reasons. The row and the landed test
+therefore agree in effect. They do not agree in *form* — see F-02.
+
+**5. Test-strategy surface unchanged.** The AT coverage table, the anti-drift and property-coverage
+table, the mutation obligations and the `--branches 85` floor in §Definition of Done are all
+byte-identical across the delta. No AT lost an owner, no oracle lost a falsifier, no red row lost
+its green successor.
