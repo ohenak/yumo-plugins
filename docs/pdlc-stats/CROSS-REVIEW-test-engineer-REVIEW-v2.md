@@ -182,7 +182,55 @@ sees), leaving the property to carry the invariant and the example to carry the 
 
 ## Questions
 
-<!-- pending -->
+| ID | Question |
+|----|---------|
+| Q-01 | v1's Q-02 is now answered by test (empty malformed list → no row). v1's Q-01 stands unchanged: `parseStatsArgv` returns a field no production caller consumes, pinned only by `statsArgv.test.js`. Still not an erratum — the implementation matches the TSPEC signature exactly — but a future round may want to decide whether the field earns its pin. |
+
+## Positive Observations
+
+- **The production change is a genuine spec-conformance fix, not a test-driven fudge.** The
+  BR-11 rewrite branches on file **presence** rather than on the derived index, which is what
+  FSPEC BR-11 actually says: *"if a file survives, it is measured, highest version wins — the
+  harvested state never displaces evidence the metric actually read."* The lone `-v0.md` case
+  (`statsMetrics.test.js:226`) is exactly the input where the old index-only branch was
+  indistinguishable from "no file at all", and it is now pinned to
+  `{ state: "measured", rounds: 0 }`. Fixing production code rather than bending the oracle is
+  the right instinct.
+- **`dodReviewNames` is shared without violating metric independence.** BR-11 and BR-14 now read
+  one derivation instead of two copies of the same regex, so the two metrics cannot disagree
+  about whether a DoD review is present. This does not breach FSPEC §3.1's independence rule —
+  a shared *derivation over `basenames`* is not one metric consuming another's *result*, and the
+  comment at `stats.mjs:246-247` says so explicitly.
+- **Fleet mode is now proven through the production caller, closing the last builder-only
+  surface.** `stats-cli.test.js` drives `main(["node","pdlc","stats","--cwd",root])` over a real
+  temporary tree with three deliberately different directories — a healthy feature, a
+  `chmod 0` unreadable one, and a leading-underscore non-feature dir — and asserts a full metric
+  row, a gap row whose reason text is non-empty, and an `unclassified` row. Previously
+  `renderFleetHuman` was reachable only through `runStats` with a `fakeStatsIo`; nothing stopped
+  `cmdStats` from failing to forward a null feature. That hole is closed.
+- **The gap-row oracle avoids the obvious cheat.** It does not merely assert `/gap: /` matches;
+  it strips the prefix and asserts the remaining reason text has non-zero length, so an empty
+  reason cannot pass as a gap.
+- **AT-21's read-only proof was extended to the surfaces that were missing it.** Both the
+  human-mode single-feature leg and the fleet leg now snapshot the tree before and after and
+  pair the unchanged-tree assertion with a positive "the job was done" conjunct — exit 0 plus
+  every one of BR-17's four metric labels present, and for fleet, the real repository's own
+  feature appearing in `doc.features`. A no-op command still cannot pass the second half.
+- **The human/JSON set-equality test is the right shape.** `METRIC_LABEL_TO_JSON_KEY` is
+  transcribed from BR-17/BR-21, and the assertion is two-directional `Set` equality plus a count
+  check against the full catalogue — so a metric printed in one mode only, or a dropped metric,
+  goes red. This is set-equality over the enumeration, not containment.
+- **`malformed=2` versus `Halts=3 (1 resolved)`.** Choosing fixture values that differ so the two
+  cells can never alias again is a better fix than the literal one I suggested; it removes the
+  class of bug, not the instance.
+- **Coverage moved the right way for the right reason.** 95.62% → 96.27% branch on
+  `lib/stats.mjs`, with the improvement landing precisely on the lines the finding named
+  (`503-504`), and the full `npm run test:coverage` gate exiting 0. The one remaining uncovered
+  pair (`443-444`) is a workflows-suite artifact, not a gap — the single-feature
+  `unreadable_feature` path is covered by `stats-cli.test.js:279-307` in the engine suite.
+- **The runtime bundle was rebuilt in the same change.** `build-runtime.mjs --check` reports
+  in-sync, so the BR-11 fix actually reaches `pdlc/workflows/dist/pdlc-cli.mjs` — the artifact
+  operators run — rather than living only in the source the tests import.
 
 ## Positive Observations
 
@@ -190,4 +238,23 @@ sees), leaving the property to carry the invariant and the example to carry the 
 
 ## Recommendation
 
-<!-- pending -->
+**Approved with minor changes**
+
+Both v1 High findings are resolved, and resolved in the falsifiable way rather than the
+minimal one: I re-ran the exact `docsRootStatus` swap mutation from F-01 and the suite now goes
+red where it previously stayed green, and F-02's deleted-row mutation now fails too. The two
+Medium findings and the Low are closed as well. Nothing in the delta regressed — both suites
+green (5121 and 925 passing), branch coverage up, the gate command at exit 0, and the runtime
+bundle in sync.
+
+The revision also went beyond the findings in a way worth naming: the BR-11 defect it uncovered
+was a real production bug — a lone `CODE_REVIEW-…-v0.md` reported `harvested` instead of
+`measured 0` — found by taking the specification seriously rather than by making a test pass.
+
+The two remaining findings are Low and non-gating. Neither needs to block: F-01 is redundancy
+sitting on top of an already-total proof, and F-02 is a deliberate and defensible trade made to
+remove an implementation echo. Both can be picked up opportunistically or deferred to harvest.
+
+**No erratum items.** Every upstream document I checked against — FSPEC BR-11, BR-15, BR-17,
+EC-05, AT-27, PROP-ERR-03 — was correct as written; this round's defects were all in the
+implementation, and the specs were what diagnosed them.
