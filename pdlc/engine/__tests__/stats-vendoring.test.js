@@ -17,19 +17,13 @@
 // `MODULE_NAMES` (TSPEC §6.4, "The vendoring oracle's invariant is `+ 1`,
 // not equality" paragraph).
 //
-// RED at landing (T-20): no enumeration names `lib/stats.mjs` yet — that
-// lands across batch 10: `prepack.mjs`'s `MODULE_NAMES` in T-21,
-// `_tspec-packed-set.mjs`'s `WORKFLOW_MEMBERS` in T-22, and
-// `publish-preflight.mjs`'s / `fixture-machine.mjs`'s enumerations together
-// in T-25. Per SKILLS.md SKIPS, each membership oracle below is committed
-// `test.skip`, titled with its owning task's id — un-skip exactly that
-// block when its task lands, run it, and confirm it fails for the right
-// reason (a real assertion mismatch, not a missing export) before editing
-// the enumeration.
+// All four enumerations name `lib/stats.mjs` (or its vendored
+// `vendor/workflows/lib/stats.mjs` spelling), and the membership oracles
+// below pin that: drop the module from any one of the four and exactly that
+// oracle goes red, which is the whole point of the co-change row.
 //
-// The derived-size invariant is NOT membership-dependent — it holds today
-// (4 + 1 === 5) and must keep holding after batch 10 (5 + 1 === 6), so it
-// runs unskipped from T-20 onward and is exactly the regression detector
+// The derived-size invariant is NOT membership-dependent — it holds across
+// every change to the vendored set, and is exactly the regression detector
 // `pdlc-loop-economics` LEARNINGS F-4 asks for: a hand-written literal that
 // drifts from the enumeration it was transcribed from.
 

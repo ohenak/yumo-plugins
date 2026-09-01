@@ -1,19 +1,18 @@
 // `pdlc stats` CLI structural anti-drift oracles (TSPEC §6.4, engine half) —
 // PLAN T-10 (pdlc-stats).
 //
-// RED at T-10: `pdlc/engine/bin/cli.mjs` carries no `stats` surface at all yet
-// (no `statsParsers`, no `statsIo`, no `cmdStats`) — that lands in T-17
-// (batch 8), which also turns T-09 and T-11 green. Every oracle here whose
-// subject is `bin/cli.mjs`'s stats seam is therefore committed `test.skip`,
-// titled "T-17: …", per the wave-gate discipline (SKILLS.md SKIPS) — un-skip
-// each block exactly when T-17 lands, run it, and confirm it fails for the
-// right reason before touching `bin/cli.mjs`.
+// Delivered surface: `pdlc/engine/bin/cli.mjs` carries the stats seam —
+// `statsParsers`, `statsIo` and `cmdStats` (TSPEC §3.4) — and every oracle
+// in this file runs against it. The oracles read `bin/cli.mjs`'s source and
+// its exports directly, so they fail on structural drift (a re-implemented
+// parser, a second construction site, a `statSync` call) that a behavioural
+// test over the CLI's stdout would not notice.
 //
-// One exception: the **classifier-purity** oracle (TSPEC §6.4's fourth row)
-// exercises `pdlc/workflows/orchestrate-dev.js`'s four driver exports
-// directly — no CLI wiring involved — so it runs, unskipped, today and stays
-// green throughout the feature. It is the mechanical detector `DEC-STATS-03`
-// names for "a driver export acquires state" and is worth having early.
+// One oracle has a different subject: the **classifier-purity** oracle
+// (TSPEC §6.4's fourth row) exercises `pdlc/workflows/orchestrate-dev.js`'s
+// four driver exports directly — no CLI wiring involved. It is the
+// mechanical detector `DEC-STATS-03` names for "a driver export acquires
+// state".
 //
 // Structural conjuncts (construction-site count, no-write capability, the
 // `lstat`-not-`stat` seam, and the parser-identity pass-through conjunct) are
@@ -433,15 +432,14 @@ function objectLiteralTopLevelKeys(masked, openBraceIndex) {
   return keys;
 }
 
-// ── T-17-owned: bin/cli.mjs's stats seam does not exist yet ───────────────
+// ── bin/cli.mjs's stats seam: statsParsers, statsIo, cmdStats ─────────────
 //
-// `statsParsers`, `statsIo` and `cmdStats` all land in T-17 (TSPEC §3.4).
-// Every oracle below fails today for that one reason — the named function or
-// export is simply absent — never for a wrong-implementation reason, so each
-// is committed `test.skip`, titled "T-17: …". Un-skip each block exactly
-// when T-17 lands `bin/cli.mjs`'s stats additions, run it, and confirm it
-// fails for the right reason (a real assertion mismatch, not a missing
-// symbol) before writing anything.
+// The oracles below pin the shape of the three stats functions `bin/cli.mjs`
+// exports (TSPEC §3.4): that `statsParsers()`'s four members are `===` the
+// driver's exports rather than re-implementations, that `cmdStats` hands
+// `runStats` that same bundle unwrapped, that the bundle has exactly one
+// construction site, and that `statsIo()` uses `lstatSync` — never
+// `statSync` — for file sizes.
 
 describe("CLI structural anti-drift oracles owned by T-17 (bin/cli.mjs)", () => {
   test("T-17: statsParsers()'s four members are === orchestrate-dev.js's four exports (TSPEC §2.5/§6.4)", async () => {

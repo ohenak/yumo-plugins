@@ -6,12 +6,10 @@
 // legs (B5's read failure and EC-21's catch-all); AT-26's fleet zero-state row; AT-27's fleet
 // half plus its eight root-failure runs; and that `exitCode` is only ever `0` or `1`.
 //
-// `pdlc/workflows/lib/stats.mjs` does not exist yet — T-16 creates it and turns this file
-// green. Every test loads `runStats` via a dynamic `await import` inside the test body (never
-// a top-level import) so this file still loads — and the `.skip` wrappers below take effect —
-// before that module exists. Every leaf test below is `it.skip`, titled "T-16: ...", per the
-// owning task; T-16's first action is to remove exactly these wrappers, run them, observe them
-// fail, then implement until they pass.
+// `pdlc/workflows/lib/stats.mjs` ships `runStats`, and every test here runs against it. Each
+// loads `runStats` via a dynamic `await import` inside the test body rather than a top-level
+// import, so a load-time failure in the module surfaces as failing tests rather than as an
+// uncollectable file.
 //
 // AT-27's single-feature half (the unreadable-feature leg run under single-feature mode) is
 // T-09's CLI-process suite, not this file's — T-07 owns AT-27's fleet half and the eight

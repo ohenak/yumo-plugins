@@ -6,9 +6,10 @@
 // outcome (AT-19's fixture leg / PROP-DISC-07), and the empty-feature-directory-is-a-row
 // discipline (AT-26 / PROP-ERR-07).
 //
-// `pdlc/workflows/lib/stats.mjs` does not exist yet — T-14 creates it and turns this file
-// green. The module is loaded via a dynamic `await import` inside each test body so the
-// file still loads (and the `.skip` wrappers below take effect) before that module exists.
+// `pdlc/workflows/lib/stats.mjs` ships `discoverFeatures`, and every test here runs against
+// it. The module is loaded via a dynamic `await import` inside each test body rather than a
+// top-level import, so a load-time failure in the module surfaces as failing tests rather
+// than as an uncollectable file.
 import { fakeStatsIo } from "./helpers/statsDoubles.js";
 
 const NON_FEATURE_DIRS_LITERAL = Object.freeze([

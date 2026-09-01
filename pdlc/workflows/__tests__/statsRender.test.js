@@ -20,12 +20,10 @@
 //     outside `features`.
 //   - AT-23: the error JSON document is exactly three keys, `error` exactly `{reason,message}`.
 //
-// `pdlc/workflows/lib/stats.mjs` does not exist yet — T-15 creates `renderHuman`/`renderJson`
-// and turns this file green (T-12/T-13/T-14 land the other exports first but do not touch the
-// renderers). Every test loads the module via a dynamic `await import` inside the test body
-// (never a top-level import) so this file still loads — and the `describe.skip` wrapper below
-// takes effect — before that module exists. The whole file is one `describe.skip` block because
-// every test inside is owned by the single task T-15.
+// `pdlc/workflows/lib/stats.mjs` ships `renderHuman` and `renderJson`, and every test here
+// runs against them. Each loads the module via a dynamic `await import` inside the test body
+// rather than a top-level import, so a load-time failure in the module surfaces as failing
+// tests rather than as an uncollectable file.
 
 // ─── literal fixtures (never derived from the module under test) ─────────
 

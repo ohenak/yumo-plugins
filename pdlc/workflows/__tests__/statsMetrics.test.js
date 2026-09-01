@@ -24,12 +24,10 @@
 // declared size and cannot distinguish `lstatSync` from `statSync`. Its falsifying test is
 // T-18's real-fs leg, with T-10's structural conjunct naming the call (TSPEC §2.4/§6.1).
 //
-// `pdlc/workflows/lib/stats.mjs` does not exist yet — T-13 creates `computeFeatureStats` and
-// turns this file green (T-12 lands the module shell and `parseStatsArgv` first but does not
-// touch this export). Every test loads the module via a dynamic `await import` inside the test
-// body (never a top-level import) so this file still loads — and the `describe.skip` wrapper
-// below takes effect — before that module exists. The whole file is one `describe.skip` block
-// because every test inside is owned by the single task T-13.
+// `pdlc/workflows/lib/stats.mjs` ships `computeFeatureStats`, and every test here runs
+// against it. Each loads the module via a dynamic `await import` inside the test body rather
+// than a top-level import, so a load-time failure in the module surfaces as failing tests
+// rather than as an uncollectable file.
 
 import { fakeStatsIo, recordingParsers, buildArtifactTree } from "./helpers/statsDoubles.js";
 import {

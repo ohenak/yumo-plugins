@@ -1,21 +1,19 @@
 // `pdlc stats [feature] [--json] [--cwd <path>]` — CLI process-level tests
 // (PLAN T-09, feature pdlc-stats; TSPEC §3.4, §5, §6.2 "Process" row).
 //
-// RED at T-09: `stats` is not yet a case in `bin/cli.mjs`'s `main()` switch
-// (TSPEC §3.4's "Four edits, all additive" have not landed), so today every
-// invocation below falls through to the `default` branch — `USAGE` plus
-// "Unknown command: stats" on stderr, exit 1. That happens to share exit
-// code 1 and empty stdout with several of the real refusals this file
-// pins, so every assertion below also pins the SPECIFIC stderr content
-// (the offending flag token, the feature name, the JSON error shape) that
-// only the real `cmdStats`/`runStats` wiring can produce — never a bare
-// exit-code/empty-stdout check alone, which the `default` branch already
-// satisfies today and would false-green this file at HEAD.
+// Delivered surface: `bin/cli.mjs` carries TSPEC §3.4's "Four edits, all
+// additive" — `FLAGS_BY_COMMAND.stats`, the `case "stats"` arm of `main()`'s
+// switch, `cmdStats`, and the `USAGE` line — and the tests below drive that
+// wiring through `main()` end to end.
 //
-// T-17 lands `FLAGS_BY_COMMAND.stats`, the `case "stats"` arm, `cmdStats`
-// and the `USAGE` line (turning T-09, T-10, T-11 green together per the
-// PLAN's batch table). Until then every test in this file fails for that
-// one reason — command not recognised — not for a wrong/absent metric.
+// Every assertion pins the SPECIFIC stderr content (the offending flag token,
+// the feature name, the JSON error shape) that only the real
+// `cmdStats`/`runStats` wiring can produce — never a bare exit-code/empty-
+// stdout check alone. That discipline is load-bearing rather than
+// stylistic: `main()`'s `default` branch (`USAGE` plus "Unknown command",
+// exit 1) shares exit code 1 and empty stdout with several of the real
+// refusals pinned here, so a bare check would keep passing if the
+// `case "stats"` arm were deleted.
 //
 // Process-level tests run `main(["node","pdlc","stats",...])` IN-PROCESS,
 // per TSPEC §6.2's "Process" row and the `captureRun` precedent it cites in
@@ -97,12 +95,12 @@ async function captureRun(fn) {
  * the static `USAGE` banner both `checkFlags` and `main`'s `default` branch
  * print ahead of it. `USAGE` itself mentions `--plugin-root`, `--cwd` and
  * `--dry-run` (they are real flags of other commands), so a naive
- * `assert.match(stderr, /--plugin-root/)` would pass on the `default:
- * Unknown command` branch today for the wrong reason — matching the banner,
- * not an offending-token message that does not exist yet. Isolating the
+ * `assert.match(stderr, /--plugin-root/)` would match that banner rather
+ * than the offending-token message, and so would also pass on `main`'s
+ * `default: Unknown command` branch — for the wrong reason. Isolating the
  * last non-empty line sidesteps that: `checkFlags` writes `USAGE` then the
  * one-line error as two separate `console.error` calls, so the error is
- * always the final line, and today's `default` branch's final line is
+ * always the final line, whereas the `default` branch's final line is
  * `Unknown command: stats`, which names none of these tokens.
  */
 function lastStderrLine(stderr) {

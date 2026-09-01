@@ -1,9 +1,9 @@
 // T-03: `parseStatsArgv` reds (PLAN T-03; TSPEC §3.3; FSPEC AT-24 parser half).
 //
-// `pdlc/workflows/lib/stats.mjs` does not exist yet — it is created green by T-12. Every test
-// here loads it via a dynamic `import()` inside the test body (never a top-level import, so the
-// file itself keeps loading and skipping) and is wrapped in `.skip` until T-12 lands, at which
-// point the owning task un-skips this exact block (never writes a new test beside it).
+// `pdlc/workflows/lib/stats.mjs` ships `parseStatsArgv`, and every test here runs against it.
+// Each loads the module via a dynamic `import()` inside the test body rather than a top-level
+// import, so a load-time failure in the module surfaces as one failing test rather than as an
+// uncollectable file.
 //
 // Scope per PLAN's AT-10 split: T-03 owns the *parser* half of AT-24 — `parseStatsArgv`'s own
 // total, pure, closed-surface contract (TSPEC §3.3's `parseStatsArgv` type) and the two-positionals

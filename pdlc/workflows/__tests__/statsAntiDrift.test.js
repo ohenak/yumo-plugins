@@ -1,10 +1,10 @@
 // T-08: anti-drift reds (PLAN T-08; TSPEC §6.4, workflows half).
 //
-// `pdlc/workflows/lib/stats.mjs` does not exist yet — it is created green by T-12. Every test
-// here that needs `REVIEW_DOC_TYPE_ROWS` or `NON_FEATURE_DIRS` loads `lib/stats.mjs` via a
-// dynamic `import()` inside the test body (never a top-level import, so the file itself keeps
-// loading and skipping) and is wrapped in `.skip` until T-12 lands, at which point the owning
-// task un-skips this exact block (never writes a new test beside it).
+// `pdlc/workflows/lib/stats.mjs` ships both frozen constants, and every oracle here runs
+// against them. Each test that needs `REVIEW_DOC_TYPE_ROWS` or `NON_FEATURE_DIRS` loads
+// `lib/stats.mjs` via a dynamic `import()` inside the test body rather than a top-level
+// import, so a load-time failure in the module surfaces as one failing oracle rather than as
+// an uncollectable file.
 //
 // This task owns exactly two of §6.4's seven anti-drift oracles:
 //
