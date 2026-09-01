@@ -99,10 +99,52 @@ The flag-off notice conjunct filters on the notice's `id`
 emitted decision-ledger notice-id set is **set-equal** to `{NTC-DECLEDGER-MALFORMED}` (`:541`),
 that the run still reports `success` (`:532`), that `report.decisionLedger` is absent (`:545`) and
 that the reviewer prompts equal the committed flag-off baseline (`:547`). That is the
-parser → `notices.push` wiring (`orchestrate-dev.js:15561-15576`) driven through the composition
+parser → `notices.push` wiring (`orchestrate-dev.js:15581-15597`) driven through the composition
 root, which is the operator-visible half of REQ-DECLEDGER-05's fail-open story.
 
 ## Findings
+
+Two new findings, both Low, neither gating. No new High or Medium finding arises from the delta, and
+no prior High finding remains open.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | Both AT-15 arrangements now set `maxBytes` to the bare literal `2000` rather than deriving it from the framing budget + the two short lines, so the budget's relation to what the test proves is no longer stated anywhere in the file | REQ-DECLEDGER-07; FSPEC E-8, AT-15 |
+| F-02 | Low | Process | One full-suite run in four went red (21 tests, 7 suites, including `decisionLedgerLoop.test.js:404`); three consecutive re-runs of the same tree were green, so the delta is green but the suite is load-flaky and a CI red will be ambiguous to read | REQ-DECLEDGER-08; brief's "verify against actual repository state" |
+
+### F-01 (Low, Local) — AT-15's budget is a magic literal, not a derived one
+
+v1's AT-15 derived its budget from the oversized line itself
+(`maxBytes: Buffer.byteLength(oversizedLine) - 1`). The revision replaces that with
+`const thresholds = { maxEntries: 100, maxBytes: 2000 };` in both the tail arrangement
+(`decisionLedgerBounds.test.js:288`) and the new head arrangement (`:313`), with the oversized
+statement grown to 5,000 characters. The test is correct today and the accompanying comment
+(`:284-287`) explains the intent — the budget must clear framing plus both short lines — but `2000`
+itself encodes an assumption about `DECISION_LEDGER_PREAMBLE` + `DECISION_LEDGER_RULE_TEXT` +
+sentinel framing (~1.2 KB at HEAD, per my probe's `bytes: 1222`) that nothing in the file states.
+An author who later grows the frozen rule text toward its ≤1,200-byte budget gets a red with no
+pointer to why. This fails loudly rather than silently, which is why it is Low and not Medium.
+
+**What to change.** Derive the budget the way the model already knows how:
+`framing + shortLineBytes(a) + shortLineBytes(b) + 1` computed from `modelFormatLine` and the
+observed empty-vs-one-line framing delta, or at minimum add a conjunct asserting
+`2000 > framing + both short lines` so the literal's precondition is itself checked.
+
+### F-02 (Low, Process) — the workflows suite is load-flaky, which makes a CI red ambiguous
+
+Four full `npm test` runs on this tree: run 1 red — `Test Suites: 7 failed, 159 passed`,
+`Tests: 21 failed, 70 skipped, 5237 passed`, with a trace at `decisionLedgerLoop.test.js:404` (the
+AT-16 replay-invariance block) and an `AT-4.1` failure in `consumerCleanup.test.js`; runs 2, 3 and 4
+green at `166 passed / 5,258 passed / 70 skipped`, tree clean, `build-runtime.mjs --check` in-sync
+throughout. `decisionLedgerLoop` alone was re-run three times and is green each time. The
+`consumerCleanup` `AT-4.1` leg is a known dist-race flake in this repo; a decision-ledger suite
+joining the flaky set is new information and worth recording before merge, because an operator
+reading a red PR check cannot currently tell a real regression from this.
+
+This is filed `Process`, not `Local`: nothing in the delta is demonstrably wrong, and I could not
+reproduce the failure in isolation. The product cost is diagnostic, not behavioural — but
+REQ-DECLEDGER-08's whole claim is that the driver behaves identically under both flag settings, and
+that claim is asserted by exactly the suite that flaked.
 
 ## Carried-forward upstream items (routed as errata, not findings)
 
