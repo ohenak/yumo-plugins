@@ -137,6 +137,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 31 | blocked | pdlc-size-tiers | docs/pdlc-size-tiers/REQ-pdlc-size-tiers.md | pdlc-phase-g |  |
 | 32 | blocked | pdlc-two-axis-dod | docs/pdlc-two-axis-dod/REQ-pdlc-two-axis-dod.md | pdlc-size-tiers |  |
 | 33 | pending | pdlc-init | docs/pdlc-init/REQ-pdlc-init.md | — |  |
+| 34 | blocked | pdlc-erratum-delivery-gate | docs/pdlc-erratum-delivery-gate/REQ-pdlc-erratum-delivery-gate.md | pdlc-review-tightenings |  |
 
 **Rows 27–33 added 2026-08-30 from `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` (§8
 rollout order).** They sequence the minimal-loop redesign: measurement first (27), then the
@@ -147,6 +148,12 @@ against the base branch during Phase-0 readiness triage once its PR merges, per 
 above. Row 32 additionally carries `ready: false` in its REQ: it contradicts a standing operator
 decision (see the REQ's gating precondition) and must not be picked up until that re-decision is
 recorded. Row 33 is independent of the rest and may run whenever picked.
+
+**Row 34 (`pdlc-erratum-delivery-gate`) added 2026-09-01 to bind the engine-side debts
+`pdlc-decision-ledger` surfaced** (`POSTMORTEM-PR` recommendations 4–6 and the advisory tier's
+four zero-signal escalations). Blocked on row 28: both features change what the review-round
+dispatch path admits as a completed round, so running them in parallel would put two REQs into a
+rework loop over the same clauses.
 
 **Row 26 (`pdlc-loop-automation-followups`) added 2026-08-25 to bind `pdlc-engineering-loop`'s
 prose-only deferrals (CODE_REVIEW-pdlc-engineering-loop-v2 §4(b), B-03…B-08).** REQ §8 defers five
