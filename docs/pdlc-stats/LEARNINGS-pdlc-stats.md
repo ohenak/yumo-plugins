@@ -119,7 +119,7 @@ These are plain items — no failure-mode IDs were assigned by the handing dispa
 2. **The dispatch-side TSPEC pin (`f2261510…`) is retired by nothing in the pipeline** — carried
    `DEFERRED` for four consecutive TSPEC rounds, closed on the document's side only. No mechanism
    exists that retires a stale downstream routing clause; te-DECISIONS v10 records this unchanged.
-3. **`harvest-learnings/SKILL.md` self-inconsistency** (`:59` / `:77` / `:126`, NG-6 at `:79-80`) —
+3. **`harvest-learnings/SKILL.md` self-inconsistency** (`:59` / `:77` / `:126`, NG-6 at `:79`) —
    produced two falsified premises during this feature's review rounds. Source fix, not a per-feature
    workaround.
 4. **Phase CR doc-type token split** (`IMPLEMENTATION` vs `REVIEW`) — pick one, or teach the sweeps
