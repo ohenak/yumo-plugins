@@ -161,6 +161,48 @@ upstream as `ERRATUM: FSPEC` rather than a code change; no implementation edit i
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | REQ-DECLEDGER-07's boundary enumeration is silent on **which** line is the oversized one. Was the head-position case (F-01) considered and consciously traded away for TSPEC §3.6's prefix property, or is the prefix property an artefact of drafting the drop loop tail-first? The answer decides whether F-01's fix is in the code or in FSPEC E-8. |
+| Q-02 | `gatherDecisionCorpus` resolves the feature directory by **first hit** across `docs/{feature}/` → `docs/completed/{feature}/` → `docs/discarded/{feature}/` (`orchestrate-dev.js:2782-2789`). For a feature mid-move — records in both `docs/{feature}/` and `docs/completed/{feature}/` — only the first contributes, and the rest are silently out of scope. Is that the product intent, or should the union render? G-1 says "those of the feature whose document is under review" without ruling either way. |
+| Q-03 | With the flag on and a corpus at today's size, does the operator have any way to see *which* decisions were omitted for budget? `omitted[]` rides the dispatch record (`:2857`) but no run-report surface names it; an operator wondering why a decision was re-litigated has nothing to read. Deliberate for v1? |
+
+## Positive Observations
+
+- **The wiring is genuinely wired, and proven at the composition root.** `decisionLedgerMain.test.js`
+  drives `mainDev` end to end with no seam standing in for `gatherDecisionCorpus`,
+  `selectDecisions`, `renderDecisionLedgerBlock` or the `wrapperSeams._injectDecisionLedger`
+  assignment, and pins the seam's traversal with a **call-count on the inner `_git` double** rather
+  than a fake of the outer interface (`:17-23`). That is exactly the DC-07 shape the builder-not-wired
+  sweep asks for, applied without being asked twice.
+- **REQ-DECLEDGER-02's byte-identity is anchored to a committed recording, not a computed string.**
+  `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/` holds four reviewer-prompt streams
+  with SHA-256 digests and `mergeBaseSha: 72b3c0579…` — which is the actual merge-base of this branch
+  (verified with `git merge-base main HEAD`). The flag-off prompt is compared against those bytes, not
+  against "flag-on minus the block", closing the implementation-echo hole the TE round flagged.
+- **REQ-DECLEDGER-03's exemplars are transcribed, not paraphrased.** `DECISION_LEDGER_RULE_TEXT`
+  (`orchestrate-dev.js:2605-2612`) carries both boundary exemplars the criterion names — in: "*a
+  behavior that changed after the decision was recorded, cited at the changed source*"; out: "*a
+  source the decision already cites, re-cited at a different line or later commit with no behavioral
+  change*" — plus REQ-DECLEDGER-06's id-as-repeat-key sentence, in one frozen constant inside the
+  ≤1,200-byte budget.
+- **REQ-DECLEDGER-08 is asserted, not assumed.** `decisionLedgerLoop.test.js:326-400` replays one
+  fixed reviewer-output fixture under both flag settings and compares convergence, the
+  identity-triple ledger, derivative-stop classification and erratum minting — with an anchor
+  conjunct (`:367`) so a driver broken identically in both arms still fails. Invariance-only would
+  have passed vacuously; this does not.
+- **REQ-DECLEDGER-05's key set is enumerated end to end.** `.claude/pdlc.config.example.json` gains
+  exactly `{"decisionLedger":{"enabled":false,"maxEntries":70,"maxBytes":12500}}`, matching
+  `DECISION_LEDGER_DEFAULTS` (`:2468-2472`), and `decisionLedgerConfig.test.js:409-414` set-equals the
+  documented key list against the defaults' keys — so a fourth key cannot ship undocumented.
+- **Documentation lands where the operator will look, without duplication.** `pdlc/OPERATIONS.md`
+  gains the catalogue section; `pdlc/README.md` and `CLAUDE.md` name the flag and defer to it, and a
+  test forbids either file restating the tokens (`decisionLedgerConfig.test.js:416-430`) — a genuinely
+  good answer to the docs-drift trap this repo keeps hitting.
+- **Default-off is honoured at every layer.** `enabled` defaults `false` (`:2469`), the injector is
+  `null` unless `config.enabled === true` (`:2820`), and `report.decisionLedger` rides only when the
+  injector exists (`:15688`) — so an operator who does nothing sees nothing change.
+
 ## Positive Observations
 
 ## Recommendation
