@@ -131,10 +131,10 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |
 | 26 | blocked | pdlc-loop-automation-followups | docs/pdlc-loop-automation-followups/REQ-pdlc-loop-automation-followups.md | pdlc-engineering-loop |  |
 | 27 | done | pdlc-stats | docs/completed/pdlc-stats/REQ-pdlc-stats.md | — | PR #81 merged ee38bde4a 2026-09-01 |
-| 28 | blocked | pdlc-review-tightenings | docs/pdlc-review-tightenings/REQ-pdlc-review-tightenings.md | pdlc-stats |  |
-| 29 | blocked | pdlc-queue-autoresolve | docs/pdlc-queue-autoresolve/REQ-pdlc-queue-autoresolve.md | pdlc-stats |  |
-| 30 | blocked | pdlc-phase-g | docs/pdlc-phase-g/REQ-pdlc-phase-g.md | pdlc-decision-ledger, pdlc-stats |  |
-| 31 | blocked | pdlc-size-tiers | docs/pdlc-size-tiers/REQ-pdlc-size-tiers.md | pdlc-phase-g |  |
+| 28 | pending | pdlc-review-tightenings | docs/pdlc-review-tightenings/REQ-pdlc-review-tightenings.md | pdlc-stats |  |
+| 29 | pending | pdlc-queue-autoresolve | docs/pdlc-queue-autoresolve/REQ-pdlc-queue-autoresolve.md | pdlc-stats |  |
+| 30 | pending | pdlc-phase-g | docs/pdlc-phase-g/REQ-pdlc-phase-g.md | pdlc-decision-ledger, pdlc-stats |  |
+| 31 | pending | pdlc-size-tiers | docs/pdlc-size-tiers/REQ-pdlc-size-tiers.md | pdlc-phase-g |  |
 | 32 | blocked | pdlc-two-axis-dod | docs/pdlc-two-axis-dod/REQ-pdlc-two-axis-dod.md | pdlc-size-tiers |  |
 | 33 | pending | pdlc-init | docs/pdlc-init/REQ-pdlc-init.md | — |  |
 | 34 | blocked | pdlc-erratum-delivery-gate | docs/pdlc-erratum-delivery-gate/REQ-pdlc-erratum-delivery-gate.md | pdlc-review-tightenings |  |
