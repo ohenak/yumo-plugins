@@ -6,10 +6,10 @@ feature: pdlc-stats
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` (`docs/pdlc-stats/REQ-pdlc-stats.md`, `FSPEC-pdlc-stats.md`, `TSPEC-pdlc-stats.md`, `DECISIONS-pdlc-stats.md`) |
+| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` (`docs/completed/pdlc-stats/REQ-pdlc-stats.md`, `FSPEC-pdlc-stats.md`, `TSPEC-pdlc-stats.md`, `DECISIONS-pdlc-stats.md`) |
 | Downstream | PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{role}-PLAN[-v{N}].md` |
-| LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
+| LEARNINGS | `docs/completed/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
@@ -122,7 +122,7 @@ assertions target, and carry `—` where they target nothing yet on disk.
 | T-23 | 🟢 `K-8`: `loop-distribution.test.js`'s **nine** assertion edits — `D1_BASELINE`, `D2_D3_BASELINE`, `D5_BASELINE` re-based onto HEAD's post-state; `NEW_LIB_MEMBERS_BARE` / `NEW_LIB_MEMBERS_VENDORED` reduced to this feature's single member; `tspecPackedCount`'s literal and the derived `assert.equal(vendoredClassSize, 5, …)`; and `vendoredClassWord`'s ternary replaced by a number-word map so `6 → "six"` matches the word T-22 writes into the sibling documents. The ninth site is P7-02's conjunct (d): `postFixMembers` concatenates `WORKFLOW_MEMBERS.filter(…)` with `NEW_LIB_MEMBERS_VENDORED`, so once T-22 adds `vendor/workflows/lib/stats.mjs` to `WORKFLOW_MEMBERS` the member is double-counted — harmless to the assertion, but the concatenation and `assertAdditiveOnly`'s hard-coded message — the `label` template literal in that function's closing `assert.equal`, verbatim `` `${label}: delta over baseline must be exactly the two new members, got …` `` (`loop-distribution.test.js`; at the pre-change baseline the literal is line `77` and the `assert.equal(` statement spans `74-78`) — both go stale and are edited here. The importability conjunct iterates the **post-state** member set, not the delta. | `pdlc/engine/__tests__/loop-distribution.test.js` (exists) | — | 10 | T-20 | ⬚ |
 | T-24 | 🟢 `K-3`: append `"**/pdlc/workflows/lib/stats.mjs"` to `c8.include` in `pdlc/workflows/package.json` **and** to `coverageInstrumentation.test.js`'s P9-02 literal at the same index (the shipped assertion is `toEqual` — array equality, position-sensitive), correcting the stale count words in P9-02's title and comment; edit the **second** P9-02 test as well — the resolution oracle whose title is, verbatim at the pre-change baseline, `P9-02: the shipped c8 config resolves the two new lib/ modules too (F4)` — the source string carries no backticks around `lib/`, and the count word `two` is one of the stale words this task corrects (`coverageInstrumentation.test.js`, the second `P9-02` test), whose generated driver `import()`s `loop-session.mjs` and `escalation-view.mjs` by name: its driver import list, its title and its comment are the artifact to change, so the real c8 run's `json-summary` is asserted to name the module, so a declared-but-unresolving glob is caught. Carries the per-file coverage obligation: `lib/stats.mjs` must clear branches ≥ 85. | `pdlc/workflows/__tests__/coverageInstrumentation.test.js` (exists) | `pdlc/workflows/package.json` (exists) | 10 | T-20 | ⬚ |
 | T-25 | 🟢 Publication-path enumerations: add `vendor/workflows/lib/stats.mjs` to `publish-preflight.mjs`'s `WORKFLOW_MEMBERS` and `lib/stats.mjs` to `fixture-machine.mjs`'s `WORKFLOW_MODULE_NAMES`. `publish-preflight.mjs` is the production-side copy a `__tests__/`-scoped sweep does not reach (RK-1). | `pdlc/engine/__tests__/stats-vendoring.test.js` | `pdlc/engine/scripts/publish-preflight.mjs` (exists), `pdlc/engine/scripts/fixture-machine.mjs` (exists) | 10 | T-20 | ⬚ |
-| T-26 | 🟢 Mutation evidence: run TSPEC §6.6's four mutants — drop `- 1` from each of the two driver-index conversions, swap `unmeasurable`/`harvested`, swap BR-16's harvested test against BR-15's zero-denominator test — and record the **named** killing test for each. A surviving mutant is blocking work, not a note. **T-26 authors no test file**: its `Test File` column names the suites it *runs*, both owned by T-04 and T-18, so the File Ownership Manifest keeps their single-owner rows; a mutant that survives is remediated as blocking work inside the owning task's file (the `unmeasurable`/`harvested` killer is T-04's named `LEARNINGS`-sibling fixture). | `pdlc/workflows/__tests__/statsMetrics.test.js`, `…/statsRealPaths.test.js` | `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | 11 | T-18, T-19, T-21 | ⬚ |
+| T-26 | 🟢 Mutation evidence: run TSPEC §6.6's four mutants — drop `- 1` from each of the two driver-index conversions, swap `unmeasurable`/`harvested`, swap BR-16's harvested test against BR-15's zero-denominator test — and record the **named** killing test for each. A surviving mutant is blocking work, not a note. **T-26 authors no test file**: its `Test File` column names the suites it *runs*, both owned by T-04 and T-18, so the File Ownership Manifest keeps their single-owner rows; a mutant that survives is remediated as blocking work inside the owning task's file (the `unmeasurable`/`harvested` killer is T-04's named `LEARNINGS`-sibling fixture). | `pdlc/workflows/__tests__/statsMetrics.test.js`, `…/statsRealPaths.test.js` | `docs/completed/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | 11 | T-18, T-19, T-21 | ⬚ |
 | T-27 | 🟢 Operator documentation: `pdlc/OPERATIONS.md` gains `pdlc stats`'s full flag semantics, its exit codes (`0` / `1` only, never the halt `2`), and its read-only stance — the file `pdlc/README.md` defers to for flag detail. | — | `pdlc/OPERATIONS.md` (exists) | 11 | T-21 | ⬚ |
 
 ### Batch gates
@@ -199,7 +199,7 @@ feature should add a column, never decorate a path.
 | `pdlc/workflows/__tests__/coverageInstrumentation.test.js` | 10 | T-24 | exists |
 | `pdlc/engine/scripts/publish-preflight.mjs` | 10 | T-25 | exists |
 | `pdlc/engine/scripts/fixture-machine.mjs` | 10 | T-25 | exists |
-| `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | 11 | T-26 | new |
+| `docs/completed/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | 11 | T-26 | new |
 | `pdlc/OPERATIONS.md` | 11 | T-27 | exists |
 
 **The one multi-owner file is `pdlc/workflows/lib/stats.mjs`**, and it is serialized rather than
@@ -413,7 +413,7 @@ Named so the DoD reviewer inherits them rather than discovering them. None is cl
 - [ ] PROP-1, PROP-2 and PROP-3 pass; PROP-3 is stated over a **generated permutation**, not over a
       repeated call.
 - [ ] All four mutants of TSPEC §6.6 are killed, each by a **named** test, recorded in
-      `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md`.
+      `docs/completed/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md`.
 - [ ] No production code writes anywhere: `StatsIo` has four read members and no fifth; no task adds
       a `git`, network or write capability to any seam.
 - [ ] No task edited `pdlc/workflows/orchestrate-dev.js`, and no grammar was re-implemented — REQ

@@ -6,10 +6,10 @@ feature: pdlc-stats
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-stats/REQ-pdlc-stats.md` (v1.7) |
+| Upstream | `docs/completed/pdlc-stats/REQ-pdlc-stats.md` (v1.7) |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{role}-FSPEC[-v{N}].md` |
-| LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
+| LEARNINGS | `docs/completed/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
@@ -110,7 +110,7 @@ only in rendering.
 
 ## 2. Linked Requirements
 
-This FSPEC links exactly one requirements document: `docs/pdlc-stats/REQ-pdlc-stats.md`.
+This FSPEC links exactly one requirements document: `docs/completed/pdlc-stats/REQ-pdlc-stats.md`.
 
 ### 2.1 Acceptance criteria coverage
 
