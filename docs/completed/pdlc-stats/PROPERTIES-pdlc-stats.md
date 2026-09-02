@@ -6,10 +6,10 @@ feature: pdlc-stats
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES**` (`docs/pdlc-stats/REQ-pdlc-stats.md`, `FSPEC-pdlc-stats.md`, `TSPEC-pdlc-stats.md`, `DECISIONS-pdlc-stats.md`, `PLAN-pdlc-stats.md`) |
+| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES**` (`docs/completed/pdlc-stats/REQ-pdlc-stats.md`, `FSPEC-pdlc-stats.md`, `TSPEC-pdlc-stats.md`, `DECISIONS-pdlc-stats.md`, `PLAN-pdlc-stats.md`) |
 | Downstream | IMPL tests (PLAN T-03…T-11, T-18, T-19, T-20, T-26) |
 | Cross-Reviews | `CROSS-REVIEW-{role}-PROPERTIES[-v{N}].md` |
-| LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
+| LEARNINGS | `docs/completed/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
@@ -327,7 +327,7 @@ than left to the implementer. Each row names the failure mode it closes.
 |---|---|---|
 | **Parser identity** | assert `Object.values(await statsParsers())` members are `===` the corresponding named exports of a freshly-imported `orchestrate-dev.js`, against the **exported** `statsParsers` from `bin/cli.mjs`; second conjunct captures the bundle `cmdStats` hands `runStats` and asserts the same identities | a grammar is re-implemented locally, or a wrapper is slipped between the construction site and production (PROP-DRIFT-01, PROP-DRIFT-02) |
 | **Doc-type catalogue agreement** | probe `parseReviewFilename("CROSS-REVIEW-software-engineer-{T}-v1.md")` over a candidate set — the six rows plus every other all-caps token the pipeline's vocabulary carries (`REVIEW`, `IMPLEMENTATION`, `LEARNINGS`, `POSTMORTEM`, `CODE_REVIEW`, `QUEUE`, `DOD`, `HANDOFF`) — collect the `ok:true` results and assert **set-equality** with `REVIEW_DOC_TYPE_ROWS`, in both directions and in order | the driver's private catalogue grows or shrinks without the FSPEC edit §7.4 A-3 requires. A fixed six-accepted/one-rejected probe cannot detect a *seventh* accepted type, which is the drift this oracle is the sole mitigation for. The role slug is load-bearing: `se-review` is a key of the role map, not a value, so a probe built from it returns `bad_role` for every doc type and both halves pass for the wrong reason (PROP-RR-13) |
-| **Exclusion-set equality** | list `docs/` at the real repository root, keep directories only, assert (1) every name in `NON_FEATURE_DIRS` is present as a directory, and (2) every directory *not* in it satisfies an **independent artifact-naming witness** — it carries at least one file whose basename ends `-{dirname}.md`, or it carries no files at all | a ninth non-feature directory appears. Verified green at HEAD: the `docs/` root holds twenty-one directories, of which the eight excluded names are exactly the non-feature directories present, and all thirteen live feature directories — this feature's own `docs/pdlc-stats/` among them — satisfy the witness. The witness is deliberately **not** §4.4's leading-underscore predicate — an oracle partitioning with the predicate under test agrees with any predicate, including a wrong one (DC-14) (PROP-DISC-05) |
+| **Exclusion-set equality** | list `docs/` at the real repository root, keep directories only, assert (1) every name in `NON_FEATURE_DIRS` is present as a directory, and (2) every directory *not* in it satisfies an **independent artifact-naming witness** — it carries at least one file whose basename ends `-{dirname}.md`, or it carries no files at all | a ninth non-feature directory appears. Verified green at HEAD: the `docs/` root holds twenty-one directories, of which the eight excluded names are exactly the non-feature directories present, and all thirteen live feature directories — this feature's own `docs/completed/pdlc-stats/` among them — satisfy the witness. The witness is deliberately **not** §4.4's leading-underscore predicate — an oracle partitioning with the predicate under test agrees with any predicate, including a wrong one (DC-14) (PROP-DISC-05) |
 | **Construction-site count** | read `bin/cli.mjs`'s own source and assert the four-classifier object literal occurs exactly once | a second construction site appears (PROP-DRIFT-03) |
 | **No-write capability** | assert `Object.keys(statsIo())` is set-equal to `["listDir","fileSize","readFile","exists"]` | a fifth seam is added (PROP-RO-05) |
 | **Reason-catalogue equality** | collect the distinct `error.reason` strings over **two** sweeps — every refusal row of FSPEC §5's table driven through `runStats` under `--json`, **and** each of `fakeStatsIo`'s four `throwOn` seams (`listDir`, `fileSize`, `readFile`, `exists`) made to throw at the `docs/` root and at the feature path — then assert set-equality with the hand-transcribed literal `["not_found","no_docs_root","unreadable_feature"]` in both directions. The superset direction is exactly as strong as the union of those two sweeps and no stronger; the residual is G-8 | a fourth reason reachable from a decided scenario or from a seam fault ships without an FSPEC edit, or one of the three is deleted and the case-by-case assertions of PROP-ERR-01/-04/-05 leave the enum itself unpinned (PROP-ERR-10) |
@@ -339,7 +339,7 @@ than left to the implementer. Each row names the failure mode it closes.
 ### Mutation kill map
 
 Each mutation must turn a **named** test red; "some test goes red" is not a checkable claim. Evidence
-lands in `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` (PLAN T-26).
+lands in `docs/completed/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` (PLAN T-26).
 
 | Mutation | Killed by | Why that test and not another |
 |---|---|---|
@@ -402,7 +402,7 @@ a derivation in its place would agree with a wrong implementation.
 | `docs/completed/pdlc-loop-economics/` | exactly `CODE_REVIEW-pdlc-loop-economics-v1.md` and `-v2.md`; carries `_evidence/` subdirectory | DoD rounds `2` (not `3`, not a count) | PROP-DOD-01 |
 | `docs/completed/pdlc-wave-resume/`, **copied into a temp root** with `POSTMORTEM-P-some-other-feature.md` added to the copy | `POSTMORTEM-PR-pdlc-wave-resume.md` carries the line-leading `RESOLVED: yes` on its third line | halt set exactly `[{phase:"PR", resolution:"resolved"}]`; the foreign-feature file contributes nothing | PROP-HALT-01, PROP-HALT-04 |
 | the same copy with the marker rewritten `RESOLVED: no` | — | `[{phase:"PR", resolution:"open"}]` | PROP-HALT-02 |
-| this repository's `docs/` root | twenty-one directories: the eight excluded (`_constraints`, `_decisions`, `_queue`, `completed`, `design`, `discarded`, `ideas`, `requirements`) and thirteen feature directories (this feature's own `docs/pdlc-stats/` among them); one loose file `docs/PLAN-pdlc-integration-boundary-gates.md`; `docs/completed/` carries loose `REQ-completed.md` and `QUEUE-HISTORY-rows-0-1.md`; `docs/pdlc-halt-hardening/` holds only `PLAN-pdlc-halt-hardening.md` | **invariants, not counts**: every feature directory appears exactly once; `docs/pdlc-halt-hardening/` among them; no row named `completed`; the three loose files yield no row | PROP-DISC-04, PROP-DISC-05, PROP-DISC-06, PROP-DISC-08 |
+| this repository's `docs/` root | twenty-one directories: the eight excluded (`_constraints`, `_decisions`, `_queue`, `completed`, `design`, `discarded`, `ideas`, `requirements`) and thirteen feature directories (this feature's own `docs/completed/pdlc-stats/` among them); one loose file `docs/PLAN-pdlc-integration-boundary-gates.md`; `docs/completed/` carries loose `REQ-completed.md` and `QUEUE-HISTORY-rows-0-1.md`; `docs/pdlc-halt-hardening/` holds only `PLAN-pdlc-halt-hardening.md` | **invariants, not counts**: every feature directory appears exactly once; `docs/pdlc-halt-hardening/` among them; no row named `completed`; the three loose files yield no row | PROP-DISC-04, PROP-DISC-05, PROP-DISC-06, PROP-DISC-08 |
 
 The fleet fixture is deliberately stated as invariants: a feature-count literal is falsified by every
 routine archival and buys nothing this feature needs, while "exactly once" and "never `completed`"
@@ -566,7 +566,7 @@ property's evidence, and `(new)` on the remaining rows records provenance, not a
 | T-23 distribution baselines | amends `pdlc/engine/__tests__/loop-distribution.test.js` (exists) | PROP-DRIFT-05 |
 | T-24 coverage config | amends `pdlc/workflows/package.json` + `coverageInstrumentation.test.js` (both exist) | PROP-DRIFT-06 |
 | T-25 publication path | edits `publish-preflight.mjs`, `fixture-machine.mjs`; asserted by T-20's file | PROP-DRIFT-05 |
-| T-26 mutation evidence | amends T-04's and T-18's files; writes `docs/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | §Oracles' kill map — PROP-DOD-01, PROP-RR-03, PROP-RR-11, PROP-RATIO-09 |
+| T-26 mutation evidence | amends T-04's and T-18's files; writes `docs/completed/pdlc-stats/MUTATION-EVIDENCE-pdlc-stats.md` | §Oracles' kill map — PROP-DOD-01, PROP-RR-03, PROP-RR-11, PROP-RATIO-09 |
 | T-27 operator documentation | writes no test file (PLAN's own declaration) | none — see §Gaps G-4 |
 
 ### Test-level distribution

@@ -208,10 +208,10 @@ G-4 carries no acceptance criterion by REQ design and therefore no FSPEC row.
 
 ## pdlc-stats (2026-08-30)
 
-Upstream: `docs/pdlc-stats/REQ-pdlc-stats.md` (design source:
+Upstream: `docs/completed/pdlc-stats/REQ-pdlc-stats.md` (design source:
 `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §4, §5.2; proposal source:
 `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §5).
-FSPEC: `docs/pdlc-stats/FSPEC-pdlc-stats.md` (`FSPEC-STATS-01`); per-AC mapping in its §2.1.
+FSPEC: `docs/completed/pdlc-stats/FSPEC-pdlc-stats.md` (`FSPEC-STATS-01`); per-AC mapping in its §2.1.
 
 | User story | Requirements | FSPEC |
 |---|---|---|

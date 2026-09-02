@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Feature | pdlc-stats |
-| REQ | `docs/pdlc-stats/REQ-pdlc-stats.md` |
+| REQ | `docs/completed/pdlc-stats/REQ-pdlc-stats.md` |
 | Date Completed | 2026-09-01 |
 | Total Iterations | REQ: 9, FSPEC: 12, TSPEC: 11, PLAN: 7, PROPERTIES: 7, DECISIONS: 12, IMPL (Phase CR): 3 (se) / 2 (pm) / 2 (te), DOD: 4 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → PROPERTIES → IMPL |

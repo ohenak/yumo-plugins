@@ -174,7 +174,7 @@ describe("T-17: AT-24: pdlc stats's flag set is closed; a usage error writes not
 
 // ─── AT-04 — stdout is exactly one JSON document (FSPEC §6.2, TSPEC §4.2.1) ─
 //
-// Given a reportable feature (this repo's own `docs/pdlc-stats/`, real,
+// Given a reportable feature (this repo's own `docs/completed/pdlc-stats/`, real,
 // live at HEAD), `pdlc stats pdlc-stats --json` must produce stdout that
 // `JSON.parse`s as a single document with no surrounding text, with any
 // diagnostic output on stderr instead, exit 0. At HEAD `stats` is

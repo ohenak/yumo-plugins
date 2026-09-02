@@ -130,7 +130,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
 | 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |
 | 26 | blocked | pdlc-loop-automation-followups | docs/pdlc-loop-automation-followups/REQ-pdlc-loop-automation-followups.md | pdlc-engineering-loop |  |
-| 27 | done | pdlc-stats | docs/pdlc-stats/REQ-pdlc-stats.md | — | PR #81 merged ee38bde4a 2026-09-01 |
+| 27 | done | pdlc-stats | docs/completed/pdlc-stats/REQ-pdlc-stats.md | — | PR #81 merged ee38bde4a 2026-09-01 |
 | 28 | blocked | pdlc-review-tightenings | docs/pdlc-review-tightenings/REQ-pdlc-review-tightenings.md | pdlc-stats |  |
 | 29 | blocked | pdlc-queue-autoresolve | docs/pdlc-queue-autoresolve/REQ-pdlc-queue-autoresolve.md | pdlc-stats |  |
 | 30 | blocked | pdlc-phase-g | docs/pdlc-phase-g/REQ-pdlc-phase-g.md | pdlc-decision-ledger, pdlc-stats |  |

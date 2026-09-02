@@ -6,10 +6,10 @@ feature: pdlc-stats
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-stats/REQ-pdlc-stats.md`, `docs/pdlc-stats/FSPEC-pdlc-stats.md`) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/completed/pdlc-stats/REQ-pdlc-stats.md`, `docs/completed/pdlc-stats/FSPEC-pdlc-stats.md`) |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{role}-TSPEC[-v{N}].md` |
-| LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
+| LEARNINGS | `docs/completed/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|

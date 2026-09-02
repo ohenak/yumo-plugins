@@ -11,7 +11,7 @@ depends-on:
 | Upstream | **REQ** (root). Design source: `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` §4 (CLI surface), §5.2 (measurement closes the loop). Proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §5, "Measurement plan" |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v{N}.md`, `CROSS-REVIEW-test-engineer-REQ-v{N}.md` (harvested to LEARNINGS at Phase H) |
-| LEARNINGS | `docs/pdlc-stats/LEARNINGS-pdlc-stats.md` |
+| LEARNINGS | `docs/completed/pdlc-stats/LEARNINGS-pdlc-stats.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
