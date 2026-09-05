@@ -2,7 +2,7 @@
 //
 // Phase CR round 2, TE F-09: `scripts/check-wave-resume-delta-coverage.mjs` is
 // the only executable this feature adds that is wired into a REQUIRED CI check
-// (`Unit tests (ubuntu-latest, node 20)` runs `npm run test:coverage`, which
+// (`Unit tests (ubuntu-latest, node 24)` runs `npm run test:coverage`, which
 // `&&`-chains it), and round 1 shipped it covered only by a wiring assertion —
 // "the file exists and package.json names it". None of its exit paths had a
 // falsifying test, and the one that mattered most was wrong: an empty

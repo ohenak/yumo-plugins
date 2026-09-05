@@ -435,7 +435,12 @@ function listTarballMembers(tarballPath) {
  */
 export function tarballPathFromPackResult(packResultPath) {
   const packInfo = readJson(packResultPath);
-  const entry = Array.isArray(packInfo) ? packInfo[0] : packInfo;
+  // npm 12 changed `npm pack --json` from an array to an object keyed by package name.
+  const entry = Array.isArray(packInfo)
+    ? packInfo[0]
+    : typeof packInfo.filename === "string"
+      ? packInfo
+      : Object.values(packInfo)[0];
   const destDir = path.dirname(path.resolve(packResultPath));
   const verbatimPath = path.join(destDir, entry.filename);
   if (existsSync(verbatimPath)) return verbatimPath;

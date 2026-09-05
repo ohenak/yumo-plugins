@@ -513,7 +513,14 @@ function setUpTempPrefixInstall() {
   } finally {
     rmSync(buildRoot, { recursive: true, force: true });
   }
-  const [{ filename }] = JSON.parse(packOut);
+  const packInfo = JSON.parse(packOut);
+  // npm 12 changed `npm pack --json` from an array to an object keyed by package name.
+  const packEntry = Array.isArray(packInfo)
+    ? packInfo[0]
+    : typeof packInfo.filename === "string"
+      ? packInfo
+      : Object.values(packInfo)[0];
+  const { filename } = packEntry;
   const tarball = path.join(packDir, filename);
 
   // Build and pack a *second* scratch tree whose manifest version genuinely
@@ -538,7 +545,14 @@ function setUpTempPrefixInstall() {
   } finally {
     rmSync(upgradeBuildRoot, { recursive: true, force: true });
   }
-  const [{ filename: upgradeFilename }] = JSON.parse(upgradePackOut);
+  const upgradePackInfo = JSON.parse(upgradePackOut);
+  // npm 12 changed `npm pack --json` from an array to an object keyed by package name.
+  const upgradePackEntry = Array.isArray(upgradePackInfo)
+    ? upgradePackInfo[0]
+    : typeof upgradePackInfo.filename === "string"
+      ? upgradePackInfo
+      : Object.values(upgradePackInfo)[0];
+  const { filename: upgradeFilename } = upgradePackEntry;
   const upgradeTarball = path.join(packDir, upgradeFilename);
 
   const env = {

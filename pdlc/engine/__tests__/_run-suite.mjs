@@ -4,20 +4,24 @@
 //   1. mint one PDLC_TEST_RUN_ID and derive PDLC_TEST_RUN_DIR from it
 //   2. create that run directory EMPTY, removing any prior contents
 //   3. spawn `node --test`, preloading the bootstrap module found under
-//      this same __tests__/ directory, with that id in its environment,
-//      stdio inherited
+//      this same __tests__/ directory, over an explicitly enumerated list
+//      of test files gathered from that same directory (Node >=21 treats a
+//      bare directory positional as a glob pattern rather than recursing
+//      into it, so the list is walked and passed explicitly instead — see
+//      https://nodejs.org/api/test.html#test-runner-execution-model), with
+//      that id in its environment, stdio inherited
 //   4. on success only, spawn the suite-wide assertion script found under
 //      this same __tests__/ directory, with the same environment, and
 //      exit on its status
 //
 // Any of this runner's own unrecognised argv is forwarded through to the
 // spawned `node --test` invocation, in node-option position (before the
-// `__tests__/` path argument) — so `npm test -- --experimental-test-coverage`
-// is a hermetic coverage run rather than a second, bootstrap-less spelling
-// of the suite.
+// enumerated list of test-file path arguments) — so
+// `npm test -- --experimental-test-coverage` is a hermetic coverage run
+// rather than a second, bootstrap-less spelling of the suite.
 
 import { spawnSync } from "node:child_process";
-import { rmSync, mkdirSync } from "node:fs";
+import { rmSync, mkdirSync, readdirSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -25,6 +29,25 @@ import { fileURLToPath } from "node:url";
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url));
 const engineRoot = path.dirname(testsDir);
+
+// Recursively walks `dir`, collecting every file matching node's own
+// test-file convention (`*.test.js` / `*.test.mjs` / `*.test.cjs`), skipping
+// nothing else — this reproduces exactly what Node 20's `node --test <dir>`
+// directory form used to collect on its own, including `__tests__/live/`
+// (whose tests self-skip without PDLC_LIVE=1). Paths are returned relative
+// to `baseDir` so they match the `cwd: engineRoot` the child is spawned in.
+function collectTestFiles(dir, baseDir) {
+  const files = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectTestFiles(full, baseDir));
+    } else if (entry.isFile() && /\.test\.[cm]?js$/.test(entry.name)) {
+      files.push(path.relative(baseDir, full));
+    }
+  }
+  return files;
+}
 
 // ─── step 1: mint the run id before any child exists ───────────────────────
 
@@ -39,15 +62,17 @@ mkdirSync(PDLC_TEST_RUN_DIR, { recursive: true });
 const env = { ...process.env, PDLC_TEST_RUN_ID, PDLC_TEST_RUN_DIR };
 
 // The runner's own unrecognised argv is forwarded verbatim, in node-option
-// position — before the `__tests__/` path list — never appended after it
-// (node reads a flag after a path as a path, not an option).
+// position — before the enumerated test-file path list — never appended
+// after it (node reads a flag after a path as a path, not an option).
 const forwardedArgs = process.argv.slice(2);
+
+const testFiles = collectTestFiles(testsDir, engineRoot).sort();
 
 // ─── step 3: spawn the test run, importing the bootstrap into every child ──
 
 const testRun = spawnSync(
   process.execPath,
-  ["--test", ...forwardedArgs, "--import=./__tests__/_bootstrap.mjs", "__tests__/"],
+  ["--test", ...forwardedArgs, "--import=./__tests__/_bootstrap.mjs", ...testFiles],
   { cwd: engineRoot, env, stdio: "inherit" },
 );
 

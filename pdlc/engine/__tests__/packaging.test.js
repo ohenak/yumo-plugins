@@ -135,7 +135,14 @@ function packRealTarball() {
       0,
       `npm pack failed: ${packResult.stderr || packResult.stdout}`,
     );
-    const [{ filename }] = JSON.parse(packResult.stdout);
+    const packInfo = JSON.parse(packResult.stdout);
+    // npm 12 changed `npm pack --json` from an array to an object keyed by package name.
+    const packEntry = Array.isArray(packInfo)
+      ? packInfo[0]
+      : typeof packInfo.filename === "string"
+        ? packInfo
+        : Object.values(packInfo)[0];
+    const { filename } = packEntry;
     const tarballPath = path.join(destDir, filename);
     const listResult = spawnSync("tar", ["-tzf", tarballPath], {
       encoding: "utf8",
