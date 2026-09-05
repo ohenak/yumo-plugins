@@ -64,7 +64,7 @@ The record is only ever honoured when it names **this** feature and hashes to **
 
 The required-check table — four checks across `.github/workflows/pr-tests.yml` and `.github/workflows/fixture-machine.yml`, whose membership is decided by each file's `on:` trigger rather than its name — lives in `CLAUDE.md`'s `### Continuous integration` section, which is the oracle-covered citation of FSPEC §5.1. This section carries only the rationale behind those rows.
 
-- `Unit tests (ubuntu-latest, node 20)` runs the workflows suite under c8 with the declared floor enforced in aggregate and branch ≥85% enforced per module. There is deliberately no macOS job (operator decision, 2026-08-10): bash-3.2 portability of the shipped scripts is the maintainer's local concern, and a second platform job doubled CI wall time without ever failing independently.
+- `Unit tests (ubuntu-latest, node 24)` runs the workflows suite under c8 with the declared floor enforced in aggregate and branch ≥85% enforced per module. There is deliberately no macOS job (operator decision, 2026-08-10): bash-3.2 portability of the shipped scripts is the maintainer's local concern, and a second platform job doubled CI wall time without ever failing independently.
 - `Engine tests (ubuntu-latest)` runs through the package script, so the `--import` bootstrap and the suite-wide assertion step are inherited.
 - `Shell scripts parse` is a syntax-only (`bash -n`) pass over every tracked `*.sh`.
 - `Fixture machine (install/upgrade, launcher, container, two-repo)` is path-filtered over `pdlc/engine/**`, so it is skipped-as-success on PRs that touch neither the engine nor that workflow file.

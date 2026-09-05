@@ -70,7 +70,7 @@ const EXPECTED_AUTHORED_BY_JOB = {
 const EXPECTED_AUTHORED = GATE_JOB_IDS.map((id) => EXPECTED_AUTHORED_BY_JOB[id]);
 
 const EXPECTED_RENDERED_BY_JOB = {
-  "unit-tests": "Unit tests (ubuntu-latest, node 20)",
+  "unit-tests": "Unit tests (ubuntu-latest, node 24)",
   "engine-tests": "Engine tests (ubuntu-latest)",
   "script-syntax": "Shell scripts parse",
   "fixture-machine": "Fixture machine (install/upgrade, launcher, container, two-repo)",
@@ -848,7 +848,7 @@ const POST_SWEEP_PR_GATE_FILES = {
   "fixture-machine.yml": POST_SWEEP_FIXTURE_MACHINE_JOB_IDS,
 };
 const POST_SWEEP_EXPECTED_RENDERED_BY_JOB = {
-  "unit-tests": "Unit tests (ubuntu-latest, node 20)",
+  "unit-tests": "Unit tests (ubuntu-latest, node 24)",
   "engine-tests": "Engine tests (ubuntu-latest)",
   "script-syntax": "Shell scripts parse",
   "fixture-machine": "Fixture machine (install/upgrade, launcher, container, two-repo)",

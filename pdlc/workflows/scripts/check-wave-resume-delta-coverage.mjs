@@ -32,7 +32,7 @@
 // so it never disappears.
 //
 // LIFETIME (Phase CR round 2, TE F-08 / Q-03). This gate is wired into a
-// PERMANENT required check (`Unit tests (ubuntu-latest, node 20)` runs
+// PERMANENT required check (`Unit tests (ubuntu-latest, node 24)` runs
 // `npm run test:coverage`), so it must stay green on `main` and on unrelated
 // branches after this feature merges. Once the feature is on `main` the
 // merge-base already contains its lines and the diff is legitimately empty:

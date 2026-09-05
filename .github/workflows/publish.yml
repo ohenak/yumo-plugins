@@ -49,7 +49,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: pdlc/workflows/package-lock.json
 
@@ -142,7 +142,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: PF-1 / PF-2 — tag version and plugin-compat range
         run: node pdlc/engine/scripts/publish-preflight.mjs preflight "${{ github.ref_name }}"
@@ -170,7 +170,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Write the pairing record (O-6, AC-1.5, single writer)

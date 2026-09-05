@@ -579,6 +579,30 @@ test(
 );
 
 test(
+  "T49-followup: tarballPathFromPackResult resolves an on-disk tarball when npm pack --json reports the npm 12 name-keyed object shape",
+  async () => {
+    const { tarballPathFromPackResult } = await loadPreflight();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pdlc-tarball-npm12-"));
+    try {
+      const onDiskName = "kaneho-pdlc-engine-0.1.0.tgz";
+      fs.writeFileSync(path.join(dir, onDiskName), "fake tarball bytes");
+      const packResultPath = path.join(dir, "pack-result.json");
+      // npm 12 prints `npm pack --json` as an object keyed by package name, not an array.
+      fs.writeFileSync(
+        packResultPath,
+        JSON.stringify({ "@kaneho/pdlc-engine": { filename: onDiskName } }),
+      );
+
+      const resolved = tarballPathFromPackResult(packResultPath);
+      assert.equal(resolved, path.join(dir, onDiskName));
+      assert.equal(existsSync(resolved), true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
   "T49-followup: tarballPathFromPackResult fails loudly naming both tried paths when neither exists on disk",
   async () => {
     const { tarballPathFromPackResult } = await loadPreflight();

@@ -38,7 +38,7 @@ jobs:
         # (bash 3.2 — no associative arrays, no `${var^^}`, no `mapfile`, no `stat -c`)
         # and on Linux CI (bash 5). Testing both is what keeps the 3.2 constraints honest.
         os: [ubuntu-latest]
-        node: ['20']
+        node: ['24']
 
     steps:
       - uses: actions/checkout@v4
@@ -115,7 +115,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: pdlc/engine/package-lock.json
 

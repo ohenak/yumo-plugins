@@ -88,7 +88,8 @@ test("TSPEC §7.0/§7.1: __tests__/_bootstrap.mjs exists as the preloaded bootst
 // `_run-suite.mjs` does four things IN ORDER and nothing else (TSPEC §7.0):
 //   1. mint `PDLC_TEST_RUN_ID`, derive `PDLC_TEST_RUN_DIR`
 //   2. create that directory EMPTY, removing prior contents
-//   3. spawn `node --test --import=./__tests__/_bootstrap.mjs __tests__/`
+//   3. spawn `node --test --import=./__tests__/_bootstrap.mjs` over an
+//      explicitly enumerated list of test files gathered from __tests__/
 //   4. on success only, spawn `_assert-suite-wide.mjs` and exit on its status
 //
 // The mint step must precede every spawn (PROP-SUITE-2: minted before any
@@ -124,6 +125,11 @@ test("PROP-SUITE-1/2/5: _run-suite.mjs mints the run id and empties the run dir 
 // `a.test.js` and `_helper.mjs` reports `# pass 1` and never executes the
 // helper." A helper that silently ran twice (once as itself, once because
 // node's collector mistook it for a test file) is exactly what this guards.
+// The directory is collected via `cwd: dir` with no positional argument —
+// node's own default test-file patterns then find `a.test.js` and exclude
+// `_helper.mjs`, the same collection node 20's bare-directory positional
+// form used to perform directly (node >=21 treats a directory positional as
+// an unsupported glob rather than recursing into it).
 
 test("PROP-SUITE-9: node --test never collects a leading-underscore file (TSPEC §7.0's own experiment)", () => {
   const dir = newScratchDir("pdlc-suite-spine-underscore-");
@@ -138,7 +144,7 @@ test("PROP-SUITE-9: node --test never collects a leading-underscore file (TSPEC 
       `import test from "node:test";\nimport assert from "node:assert/strict";\ntest("a", () => assert.ok(true));\n`,
     );
 
-    const r = spawnSync(process.execPath, ["--test", dir], { encoding: "utf8", env: childEnv() });
+    const r = spawnSync(process.execPath, ["--test", "--test-reporter=tap"], { encoding: "utf8", cwd: dir, env: childEnv() });
     const out = `${r.stdout ?? ""}${r.stderr ?? ""}`;
 
     assert.match(out, /# pass 1/, out);
@@ -176,7 +182,7 @@ test("PROP-SUITE-3: _bootstrap.mjs fails loudly (non-zero, naming PDLC_TEST_RUN_
 
     const r = spawnSync(
       process.execPath,
-      ["--test", `--import=${BOOTSTRAP}`, dir],
+      ["--test", `--import=${BOOTSTRAP}`, path.join(dir, "**/*.test.js")],
       { encoding: "utf8", cwd: engineRoot, env },
     );
     const out = `${r.stdout ?? ""}${r.stderr ?? ""}`;
@@ -194,7 +200,8 @@ test("PROP-SUITE-3: _bootstrap.mjs fails loudly (non-zero, naming PDLC_TEST_RUN_
 // deliberately separate test file, so node --test gives each its own child
 // process), sets PDLC_TEST_RUN_ID/DIR directly on the parent env the way
 // `_run-suite.mjs` will, and spawns `node --test --import=<real
-// _bootstrap.mjs>` over that scratch dir directly — bypassing `_run-suite.mjs`
+// _bootstrap.mjs>` over a glob positional matching that scratch dir's test
+// files directly — bypassing `_run-suite.mjs`
 // itself so this test does not depend on step 4's `_assert-suite-wide.mjs`
 // (T19, a later task) to observe the one property it exists to prove: both
 // probes' records land in ONE run directory, and running twice against the
@@ -212,7 +219,7 @@ function runProbesOnce(suiteDir, runDir) {
   const env = childEnv({ PDLC_TEST_RUN_ID: "suite-spine-scratch", PDLC_TEST_RUN_DIR: runDir });
   const r = spawnSync(
     process.execPath,
-    ["--test", `--import=${BOOTSTRAP}`, suiteDir],
+    ["--test", `--import=${BOOTSTRAP}`, path.join(suiteDir, "**/*.test.js")],
     { encoding: "utf8", cwd: engineRoot, env },
   );
   return { ...r, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };

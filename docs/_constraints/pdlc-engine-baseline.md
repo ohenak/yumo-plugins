@@ -196,7 +196,7 @@ and 2 differ between the two columns; rows 3–5 are identical in both.
 
 | # | YAML `name:` as authored | Rendered check name (what GitHub reports) | Job at |
 |---|---|---|---|
-| 1 | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `Unit tests (ubuntu-latest, node 20)` | `pr-tests.yml:28` |
+| 1 | `Unit tests (${{ matrix.os }}, node ${{ matrix.node }})` | `Unit tests (ubuntu-latest, node 24)` | `pr-tests.yml:28` |
 | 2 | `Engine tests (${{ matrix.os }})` | `Engine tests (ubuntu-latest)` | `:78` |
 | 3 | `Generated artifacts are in sync` | `Generated artifacts are in sync` | `:112` |
 | 4 | `Fresh-clone bootstrap works` | `Fresh-clone bootstrap works` | `:138` |

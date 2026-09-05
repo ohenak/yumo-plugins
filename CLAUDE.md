@@ -68,7 +68,7 @@ The gate Phase PUB polls spans **two** PR-triggered workflow files — `.github/
 
 | Check | What it asserts |
 |---|---|
-| `Unit tests (ubuntu-latest, node 20)` | `npm run test:coverage` — the workflows suite under c8 on Linux CI |
+| `Unit tests (ubuntu-latest, node 24)` | `npm run test:coverage` — the workflows suite under c8 on Linux CI |
 | `Engine tests (ubuntu-latest)` | `npm ci` + `npm test` in `pdlc/engine` |
 | `Shell scripts parse` | `bash -n` over every tracked `*.sh` |
 | `Fixture machine (install/upgrade, launcher, container, two-repo)` | `fixture-machine.yml` — install/upgrade, launcher, container and two-repo legs over `pdlc/engine/**` |
