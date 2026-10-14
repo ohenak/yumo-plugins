@@ -1,5 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { raisePrAndVerifyCiChain } from "../orchestrate-dev.js";
+import { checkChainPushWorkflows, chainPushWorkflowName, raisePrAndVerifyCiChain } from "../orchestrate-dev.js";
 import { mkdtempSync, writeFileSync, readFileSync, chmodSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -22,11 +22,46 @@ const git = (heads = [SHA1]) => jest.fn(async (args) => {
 const agent = jest.fn(async (skill) => skill === "ship-pr" ? `PR_URL: ${PR}` : "Repair committed; local tests pass.");
 const base = (extra = {}) => ({
   feature: "feature", _agent: agent, _git: git(), _prView: async () => view(),
-  _listRuns: async () => [run(SHA1, "success")], _log: () => {}, ...extra,
+  _listRuns: async () => [run(SHA1, "success")],
+  _workflowGate: async () => ({ ok: true, names: ["CI"] }),
+  _log: () => {}, ...extra,
 });
 
 describe("chain-only current-head CI", () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it("requires a tracked workflow that runs on the feature branch before opening a PR", async () => {
+    const mainOnly = "name: CI\non:\n  push:\n    branches:\n      - main\n";
+    const featurePush = "name: CI\non:\n  pull_request:\n  push:\n    branches:\n      - 'feat-*'\n";
+    expect(chainPushWorkflowName(mainOnly, "feat-example")).toBeNull();
+    expect(chainPushWorkflowName(featurePush, "feat-example")).toBe("CI");
+    const workflow = await checkChainPushWorkflows({
+      _git: async (args) => ({ ok: true, stdout: args[0] === "branch"
+        ? "feat-example\n" : ".github/workflows/ci.yml\n" }),
+      _listFiles: async () => ({ ok: true, files: ["ci.yml"] }),
+      _readFile: async () => featurePush,
+    });
+    expect(workflow).toEqual({ ok: true, names: ["CI"] });
+    await expect(raisePrAndVerifyCiChain(base({
+      _workflowGate: async () => ({ ok: false, reason: "No CI workflow runs on feature-branch push" }),
+    }))).rejects.toThrow(/feature-branch push/);
+    expect(agent).not.toHaveBeenCalled();
+  });
+
+  it("waits for every expected push workflow before accepting green", async () => {
+    let polls = 0;
+    const result = await raisePrAndVerifyCiChain(base({
+      _workflowGate: async () => ({ ok: true, names: ["CI", "Audit"] }),
+      _listRuns: async () => {
+        polls += 1;
+        return polls === 1 ? [run(SHA1, "success")]
+          : [run(SHA1, "success"), { ...run(SHA1, "success"), name: "Audit", url: `${RUN}-audit` }];
+      },
+      _sleep: async () => {},
+    }));
+    expect(result.ciStatus).toBe("passed");
+    expect(polls).toBe(2);
+  });
   it("accepts a successful push run for the exact PR head", async () => {
     const result = await raisePrAndVerifyCiChain(base());
     expect(result).toMatchObject({ prUrl: PR, headSha: SHA1, runUrl: RUN, ciStatus: "passed", repairCount: 0 });
@@ -66,6 +101,35 @@ describe("chain-only current-head CI", () => {
     expect(repair.mock.calls[0][0]).not.toMatch(/failing job log|quote value|position value/i);
     expect(g.mock.calls.some(([args]) => args[0] === "push")).toBe(true);
   });
+  it("does not attach the failed run verdict to an unverified repair head", async () => {
+    const g = git([SHA1, SHA2]);
+    try {
+      await raisePrAndVerifyCiChain(base({
+        _git: g,
+        _prView: async () => view(g.mock.calls.some(([args]) => args[0] === "push") ? SHA2 : SHA1),
+        _listRuns: async (sha) => [run(sha, sha === SHA1 ? "failure" : null, sha === SHA1 ? "completed" : "in_progress")],
+        completionTimeoutMs: 0,
+      }));
+      throw new Error("expected repair observation to time out");
+    } catch (err) {
+      expect(err.message).toMatch(/did not complete/i);
+      expect(err.chainCiEvidence).toMatchObject({ headSha: SHA2, repairCount: 1,
+        failedRunUrl: RUN, ciStatus: "pending", runUrl: null });
+    }
+  });
+
+  it("refuses to push a repair commit containing private position data paths", async () => {
+    const baseGit = git([SHA1, SHA2]);
+    const guardedGit = jest.fn(async (args) => args[0] === "diff"
+      ? { ok: true, stdout: "positions/packet.json\n" }
+      : baseGit(args));
+    await expect(raisePrAndVerifyCiChain(base({
+      _git: guardedGit,
+      _listRuns: async () => [run(SHA1, "failure")],
+    }))).rejects.toThrow(/private account or position paths/);
+    expect(guardedGit.mock.calls.some(([args]) => args[0] === "push")).toBe(false);
+  });
+
   it("waits for the repaired PR head to appear after the push", async () => {
     const g = git([SHA1, SHA2]);
     let t = 0;
@@ -149,6 +213,7 @@ describe("chain-only current-head CI", () => {
       `const result = await raisePrAndVerifyCiChain({ feature: "feature",`,
       `  _agent: async () => ${JSON.stringify(`PR_URL: ${PR}`)},`,
       `  _git: async () => ({ ok: true, stdout: ${JSON.stringify(`${SHA1}\n`)} }),`,
+      `  _workflowGate: async () => ({ ok: true, names: ["CI"] }),`,
       `  _log: () => {} });`,
       `console.log(JSON.stringify(result));`,
     ].join("\n");

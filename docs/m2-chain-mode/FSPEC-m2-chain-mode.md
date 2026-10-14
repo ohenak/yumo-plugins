@@ -13,3 +13,7 @@ The acceptance source is `REQ-m2-chain-mode.md`, as governed by [Yumo issue #89]
 | REQ-CHAIN-07 | Success report contains the issue URL, artifact statuses, test/DoD statuses, PR URL, branch-head SHA, Actions run URL/result, and repair count. Halt report contains the gate and reason. |
 
 The accepted issue URL identifies the operator's decision record; the URL alone is not proof of acceptance. The explicit `--delivery-mode chain --accepted-issue` invocation states that the operator accepts this handoff.
+
+## Feature-branch CI prerequisite
+
+Before chain mode creates the PR, the feature branch must contain a tracked GitHub Actions workflow with a `push` trigger that covers that branch. Give the workflow a `name:` so the CI gate can wait for every expected push run on the PR head commit. A workflow restricted to `main`, or triggered only by `pull_request`, cannot supply this gate's current-head evidence. Preflight halts before PR creation if no qualifying workflow is present.

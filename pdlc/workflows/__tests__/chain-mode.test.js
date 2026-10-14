@@ -1,9 +1,10 @@
-import main, { dodVerifyLoop, githubOriginRepository, validateChainIssueUrl, validateChainArtifact } from "../orchestrate-dev.js";
+import main, { checkChainPrivatePaths, chainPrivatePathViolations, dodVerifyLoop, githubOriginRepository, parseAcceptedRequirementIds, validateChainIssueUrl, validateChainArtifact } from "../orchestrate-dev.js";
 
 const ISSUE = "https://github.com/ohenak/regime-ledger/issues/1";
 const FEATURE = "chain-fixture";
 const DIR = `docs/${FEATURE}`;
 const REQ = `${DIR}/REQ-${FEATURE}.md`;
+const TRACEABLE = `Source: ${ISSUE}\n| ID | Requirement |\n| --- | --- |\n| REQ-CHAIN-01 | One accepted requirement |`;
 const PLAN = [
   "| Task ID | Description | Batch | Dependencies |",
   "|---|---|---|---|",
@@ -70,6 +71,20 @@ describe("chain mode gates", () => {
     }
   });
 
+  test("pre-PR DoD halts when CODE_REVIEW version listing fails", async () => {
+    const called = [];
+    const result = await dodVerifyLoop({
+      feature: FEATURE, deliveryMode: "chain", acceptedIssueUrl: ISSUE,
+      _listFiles: async () => { throw new Error("listing unavailable"); },
+      _readFile: async () => `Old review for ${ISSUE}`,
+      _agent: async (skill) => { called.push(skill); return "DOD_STATUS: passed"; },
+      _log: () => {},
+    });
+    expect(result).toMatchObject({ passed: false, iterations: 0 });
+    expect(result.reason).toMatch(/cannot list CODE_REVIEW/);
+    expect(called).toEqual([]);
+  });
+
   test("pre-PR DoD names the actual next CODE_REVIEW version after an earlier attempt", async () => {
     const paths = [];
     const result = await dodVerifyLoop({
@@ -114,6 +129,22 @@ describe("chain mode gates", () => {
       .toMatch(/REQ-CHAIN-99/);
     expect(validateChainArtifact("FSPEC", "No trace", ISSUE, ["REQ-CHAIN-01"]).reason)
       .toMatch(/REQ-CHAIN-01/);
+    expect(validateChainArtifact("FSPEC", "REQ-CHAIN-01 and prose REQ-ID", ISSUE, ["REQ-CHAIN-01"]).ok).toBe(true);
+  });
+
+  test("extracts numbered requirement IDs only from REQ table rows", () => {
+    expect(parseAcceptedRequirementIds(`${TRACEABLE}\nText says REQ-ID and REQ-CHAIN-99.\n| REQ-CHAIN-01 | Repeated |`))
+      .toEqual(["REQ-CHAIN-01"]);
+  });
+
+  test("blocks private data paths in the branch diff and staged files", async () => {
+    expect(chainPrivatePathViolations([".env", "data/market.sqlite3", "positions/packet.json", "scripts/position_actions.py"]))
+      .toEqual([".env", "data/market.sqlite3", "positions/packet.json"]);
+    const result = await checkChainPrivatePaths(async (args) => ({ ok: true,
+      stdout: args.includes("--cached") ? "positions/packet.json\n" : "scripts/position_actions.py\n" }));
+    expect(result).toMatchObject({ ok: false });
+    expect(result.reason).not.toContain("packet.json");
+    await expect(checkChainPrivatePaths(async () => ({ ok: false }))).resolves.toMatchObject({ ok: false });
   });
 
   test("rejects an invalid chain handoff or disabled delivery gate before agents", async () => {
@@ -139,7 +170,7 @@ describe("chain mode gates", () => {
       _checkFile: async () => ({ ok: true }),
       _readFile: async (path) => path.endsWith("issue-decisions.md")
         ? "Accepted issue: https://github.com/other/repo/issues/2"
-        : `Source: ${ISSUE}\nREQ-CHAIN-01`,
+        : TRACEABLE,
       _phase: () => {},
     });
     expect(result.outcome).toBe("halted");
@@ -158,7 +189,7 @@ describe("chain mode gates", () => {
         _agent: async () => "unexpected",
         _checkFile: async () => ({ ok: true }),
         _readFile: async (path) => path.includes(badPath) ? badContent
-          : path.includes("PLAN-") ? PLAN : `Source: ${ISSUE}\nREQ-CHAIN-01`,
+          : path.includes("PLAN-") ? PLAN : TRACEABLE,
         _phase: () => {}, _pipeline: async (_label, fn) => fn(),
       });
       expect(result.outcome).toBe("halted");
@@ -175,7 +206,7 @@ describe("chain mode gates", () => {
       _readOrigin: async () => "git@github.com:ohenak/yumo-plugins.git",
       _agent: async (skill) => { called.push(skill); return "unexpected"; },
       _checkFile: async () => ({ ok: true }),
-      _readFile: async () => `Source: ${ISSUE}\nREQ-CHAIN-01`,
+      _readFile: async () => TRACEABLE,
       _phase: () => {},
     });
     expect(result.outcome).toBe("halted");
@@ -190,7 +221,7 @@ describe("chain mode gates", () => {
       _readOrigin: async () => ({ ok: false, stdout: "" }),
       _agent: async (skill) => { called.push(skill); return "unexpected"; },
       _checkFile: async () => ({ ok: true }),
-      _readFile: async () => `Source: ${ISSUE}\nREQ-CHAIN-01`,
+      _readFile: async () => TRACEABLE,
       _phase: () => {},
     });
     expect(result.outcome).toBe("halted");
@@ -240,7 +271,7 @@ describe("chain mode gates", () => {
       _readOrigin: async () => "git@github.com:ohenak/regime-ledger.git",
       _agent: async (skill) => { called.push(skill); return "unexpected"; },
       _checkFile: async (path) => ({ ok: !path.endsWith("/_evidence/seam-map.md"), reason: "file_missing" }),
-      _readFile: async () => `Source: ${ISSUE}\nREQ-CHAIN-01`,
+      _readFile: async () => TRACEABLE,
       _phase: () => {},
       _pipeline: async (_label, fn) => fn(),
     });
@@ -269,7 +300,8 @@ describe("chain mode gates", () => {
       },
       _parallel: (promises) => Promise.all(promises),
       _checkFile: async (path) => ({ ok: !path.includes("/FSPEC-") || fspecPresent }),
-      _readFile: async (path) => path.includes("PLAN-") ? PLAN : `Source: ${ISSUE}\nREQ-CHAIN-01`,
+      _readFile: async (path) => path.includes("PLAN-") ? PLAN : TRACEABLE,
+      _listFiles: async () => ({ ok: true, files: [] }),
       _phase: () => {},
       _pipeline: async (_label, fn) => fn(),
       _mergeWorktree: async () => ({ ok: true }),
@@ -289,7 +321,7 @@ describe("chain mode gates", () => {
       _readOrigin: async () => "git@github.com:ohenak/regime-ledger.git",
       _agent: async (skill) => { called.push(skill); return "Created"; },
       _checkFile: async (path) => ({ ok: !path.includes("/FSPEC-") }),
-      _readFile: async () => `Source: ${ISSUE}\nREQ-CHAIN-01`,
+      _readFile: async () => TRACEABLE,
       _phase: () => {},
       _pipeline: async (_label, fn) => fn(),
     });
@@ -322,11 +354,12 @@ describe("chain mode gates", () => {
       },
       _parallel: (promises) => Promise.all(promises),
       _checkFile: async () => ({ ok: true }),
-      _readFile: async (path) => path.includes("PLAN-") ? PLAN : `Source: ${ISSUE}\nREQ-CHAIN-01`,
+      _readFile: async (path) => path.includes("PLAN-") ? PLAN : TRACEABLE,
       _phase: () => {},
       _pipeline: async (_label, fn) => fn(),
       _mergeWorktree: async () => ({ ok: true }),
       _checkCi: async () => "passed",
+      _listFiles: async () => ({ ok: true, files: [] }),
     });
     expect(called.some((skill) => skill.endsWith("-review"))).toBe(false);
     expect(result.phases.filter((phase) => ["R", "F", "T", "D", "P", "PR", "CR"].includes(phase.phase))
@@ -357,8 +390,9 @@ describe("chain mode gates", () => {
       _checkFile: async () => ({ ok: true }),
       _readFile: async (path) => {
         if (path.includes("CODE_REVIEW-")) throw new Error("review unreadable");
-        return path.includes("PLAN-") ? PLAN : `Source: ${ISSUE}\nREQ-CHAIN-01`;
+        return path.includes("PLAN-") ? PLAN : TRACEABLE;
       },
+      _listFiles: async () => ({ ok: true, files: [] }),
       _phase: () => {}, _pipeline: async (_label, fn) => fn(),
       _mergeWorktree: async () => ({ ok: true }),
     });
