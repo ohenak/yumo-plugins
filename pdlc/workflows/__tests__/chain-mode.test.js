@@ -350,12 +350,22 @@ describe("chain mode gates", () => {
 
   test("uses accepted artifacts without any specification or CR review dispatch", async () => {
     const called = [];
+    const gitCalls = [];
     let dodPrompt = null;
     const result = await main({
       reqPath: REQ,
       deliveryMode: "chain",
       acceptedIssueUrl: ISSUE,
       _readOrigin: async () => "git@github.com:ohenak/regime-ledger.git",
+      _git: async (args) => {
+        gitCalls.push(args);
+        return { ok: true, stdout: args[0] === "rev-parse" ? `feat-${FEATURE}` : "" };
+      },
+      _raisePrAndVerifyCiChain: async () => ({
+        prUrl: "https://github.com/ohenak/regime-ledger/pull/2",
+        headSha: "a".repeat(40), runUrl: "https://github.com/ohenak/regime-ledger/actions/runs/3",
+        ciStatus: "passed", repairCount: 0,
+      }),
       _agent: async (skill, prompt) => {
         called.push(skill);
         if (skill === "guard") return { ok: true };
@@ -379,18 +389,28 @@ describe("chain mode gates", () => {
       _listFiles: async () => ({ ok: true, files: [] }),
     });
     expect(called.some((skill) => skill.endsWith("-review"))).toBe(false);
+    expect(result.haltReason).toBeUndefined();
     expect(result.phases.filter((phase) => ["R", "F", "T", "D", "P", "PR", "CR"].includes(phase.phase))
       .every((phase) => phase.status === "chain-validated")).toBe(true);
     expect(called).toContain("se-implement");
     expect(dodPrompt).toMatch(/defer.*PR.*CI/i);
+    expect(gitCalls.filter((args) => args[0] === "diff")).toEqual(expect.arrayContaining([
+      ["diff", "--name-only", "origin/HEAD...HEAD"],
+      ["diff", "--cached", "--name-only"],
+    ]));
   });
 
   test("halts at the first failed chain DoD verdict when review evidence is unreadable", async () => {
     const called = [];
+    const gitCalls = [];
     let dodCalls = 0;
     const result = await main({
       reqPath: REQ, deliveryMode: "chain", acceptedIssueUrl: ISSUE,
       _readOrigin: async () => "git@github.com:ohenak/regime-ledger.git",
+      _git: async (args) => {
+        gitCalls.push(args);
+        return { ok: true, stdout: args[0] === "rev-parse" ? `feat-${FEATURE}` : "" };
+      },
       _agent: async (skill, prompt) => {
         called.push(skill);
         if (skill === "guard") return { ok: true };
@@ -413,7 +433,12 @@ describe("chain mode gates", () => {
       _phase: () => {}, _pipeline: async (_label, fn) => fn(),
       _mergeWorktree: async () => ({ ok: true }),
     });
+    expect(result.haltReason).toMatch(/Chain pre-PR DoD halted after one verdict/);
     expect(dodCalls).toBe(1);
+    expect(gitCalls.filter((args) => args[0] === "diff")).toEqual(expect.arrayContaining([
+      ["diff", "--name-only", "origin/HEAD...HEAD"],
+      ["diff", "--cached", "--name-only"],
+    ]));
     expect(result.outcome).toBe("halted");
     expect(result.haltReason).toMatch(/Chain pre-PR DoD halted after one verdict: DOD_STATUS failed/);
     expect(result.phases.find((phase) => phase.phase === "DOD")?.status).toBe("❌");
