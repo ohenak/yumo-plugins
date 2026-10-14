@@ -293,9 +293,10 @@ describe("T-19: PROP-PBT-04 (bounded file-size generator, TSPEC §6.6)", () => {
             expect(Number.isFinite(ratio)).toBe(true);
             // BR-15 as stated — process bytes over spec bytes, to two decimal places —
             // rather than a copy of the implementation's rounding expression.
-            expect(Math.abs(ratio - expectedProcessBytes / expectedSpecBytes)).toBeLessThanOrEqual(
-              0.005,
-            );
+            // A binary float can represent a valid half-cent midpoint just above 0.005.
+            const exactRatio = expectedProcessBytes / expectedSpecBytes;
+            const representationError = Number.EPSILON * Math.max(1, Math.abs(exactRatio));
+            expect(Math.abs(ratio - exactRatio)).toBeLessThanOrEqual(0.005 + representationError);
             expect(Number(ratio.toFixed(2))).toBe(ratio);
           } else {
             expect(ratio).toBeNull();
@@ -303,6 +304,22 @@ describe("T-19: PROP-PBT-04 (bounded file-size generator, TSPEC §6.6)", () => {
         },
       ),
       { numRuns: 100 },
+    );
+  });
+  it("accepts a half-cent midpoint with only binary representation error", () => {
+    const specName = `REQ-${FEATURE}.md`;
+    const processName = `POSTMORTEM-P-${FEATURE}.md`;
+    const tree = treeFor(ROOT, [specName, processName]);
+    tree[`${ROOT}/${specName}`] = "x".repeat(40);
+    tree[`${ROOT}/${processName}`] = "x".repeat(3);
+
+    const { state, ratio } = computeFeatureStats(fakeStatsIo(tree), realParsers(), FEATURE, ROOT).byteRatio;
+    const exactRatio = 3 / 40;
+    expect(state).toBe("measured");
+    expect(ratio).toBe(0.08);
+    expect(Math.abs(ratio - exactRatio)).toBeGreaterThan(0.005);
+    expect(Math.abs(ratio - exactRatio)).toBeLessThanOrEqual(
+      0.005 + Number.EPSILON * Math.max(1, Math.abs(exactRatio)),
     );
   });
 });

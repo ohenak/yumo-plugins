@@ -21,6 +21,8 @@ const NON_FEATURE_DIRS_LITERAL = Object.freeze([
   "ideas",
   "discarded",
   "completed",
+  "proposal",
+  "proposal-data",
 ]);
 
 describe("T-14: discoverFeatures (TSPEC §3.3, §4.4)", () => {
