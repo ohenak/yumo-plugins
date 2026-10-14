@@ -6,6 +6,12 @@ const REQ = `docs/${FEATURE}/REQ-${FEATURE}.md`;
 const HEAD = "a".repeat(40);
 const RUN = "https://github.com/ohenak/regime-ledger/actions/runs/123";
 const PR = "https://github.com/ohenak/regime-ledger/pull/2";
+const TRACEABLE = [
+  `Source: ${ISSUE}`,
+  "| ID | Requirement |",
+  "| --- | --- |",
+  "| REQ-REPORT-01 | Verify the report workflow. |",
+].join("\n");
 const PLAN = [
   "| Task ID | Description | Batch | Dependencies |",
   "|---|---|---|---|",
@@ -28,7 +34,12 @@ function fixture(overrides = {}) {
       return "Success";
     },
     _checkFile: async () => ({ ok: true }),
-    _readFile: async (path) => path.includes("/PLAN-") ? PLAN : `Source: ${ISSUE}\nREQ-REPORT-01`,
+    _readFile: async (path) => {
+      if (path.includes("/PLAN-")) return PLAN;
+      if (path === ".github/workflows/test.yml") return "name: Tests\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest";
+      return TRACEABLE;
+    },
+    _listFiles: async (path) => ({ ok: true, files: path === ".github/workflows" ? ["test.yml"] : [] }),
     _phase: () => {},
     _pipeline: async (_label, fn) => fn(),
     _mergeWorktree: async () => ({ ok: true }),
@@ -38,6 +49,8 @@ function fixture(overrides = {}) {
       }
       if (args[0] === "rev-parse" && args[1] === "--abbrev-ref") return { ok: true, stdout: `feat-${FEATURE}` };
       if (args[0] === "rev-parse") return { ok: true, stdout: HEAD };
+      if (args[0] === "branch" && args[1] === "--show-current") return { ok: true, stdout: `feat-${FEATURE}` };
+      if (args[0] === "ls-files" && args[2] === ".github/workflows") return { ok: true, stdout: ".github/workflows/test.yml" };
       if (args[0] === "status") return { ok: true, stdout: "" };
       return { ok: true, stdout: "" };
     },
@@ -125,7 +138,7 @@ describe("chain terminal report", () => {
       _readFile: async (path) => {
         if (path.includes("/PLAN-")) return PLAN;
         if (path.includes("/LEARNINGS-")) return "";
-        return `Source: ${ISSUE}\nREQ-REPORT-01`;
+        return TRACEABLE;
       },
       _raisePrAndVerifyCiChain: async () => { pubCalls++; throw new Error("unexpected PR"); },
     }));
