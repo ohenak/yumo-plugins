@@ -9,7 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";
-import { readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -26,6 +26,128 @@ function run(args, env = {}) {
   });
   return { ...result, out: `${result.stdout}${result.stderr}` };
 }
+
+const HELP_COMMANDS = [
+  ["dev", ["force-phases", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill", "dev"]],
+  ["queue", ["queue-path", "loop", "loop-state", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "max-iterations", "dry-run-skill", "dev", "wait-requested", "wait-actual"]],
+  ["decide", ["entry", "outcome", "by", "rationale", "plugin-root", "cwd", "dev"]],
+  ["stats", ["json", "cwd"]],
+  ["doctor", ["plugin-root", "cwd", "allow-api-key-billing", "dev"]],
+  ["hello", []],
+  ["spike:sdk", []],
+  ["version", ["cwd", "plugin-root", "dev"]],
+];
+
+function runHelp(args, cwd) {
+  const env = { ...process.env, HOME: cwd, XDG_CONFIG_HOME: cwd };
+  for (const key of Object.keys(env)) {
+    if (/^(ANTHROPIC_|CLAUDE_|OPENAI_|PDLC_)/.test(key)) delete env[key];
+  }
+  const result = spawnSync(process.execPath, [BIN, ...args], {
+    encoding: "utf8",
+    cwd,
+    env,
+    timeout: 3000,
+  });
+  return { ...result, out: `${result.stdout || ""}${result.stderr || ""}` };
+}
+
+test("help: both general forms show all commands and exit zero", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "pdlc-help-"));
+  try {
+    const outputs = [["--help"], ["help"]].map((args) => runHelp(args, cwd));
+    for (const r of outputs) {
+      assert.equal(r.status, 0, r.out || String(r.error));
+      assert.match(r.stdout, /Usage:/);
+      assert.equal(r.stderr, "", `general help wrote to stderr: ${r.stderr}`);
+      for (const [command] of HELP_COMMANDS) assert.ok(r.stdout.includes(`pdlc ${command}`), `${command} missing from general help`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("help: every named command shows its syntax and applicable flags", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "pdlc-help-"));
+  try {
+    for (const [command, flags] of HELP_COMMANDS) {
+      const r = runHelp([command, "--help"], cwd);
+      assert.equal(r.status, 0, `pdlc ${command} --help: ${r.out || String(r.error)}`);
+      assert.match(r.stdout, /Usage:/);
+      assert.equal(r.stderr, "", `${command} help wrote to stderr: ${r.stderr}`);
+      assert.ok(r.stdout.includes(`pdlc ${command}`), `missing ${command} syntax: ${r.out}`);
+      for (const flag of flags) assert.ok(r.stdout.includes(`--${flag}`), `${command} help omits --${flag}`);
+      assert.doesNotMatch(r.out, /Unknown command|unknown flag|--- run report ---|\[spike:sdk\] importing/);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("help: mixed and unknown forms retain specific usage errors", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "pdlc-help-"));
+  const cases = [
+    { args: ["dev", "--dry-run", "--help"], error: /unknown flag "--help"/ },
+    { args: ["dev", "x.md", "--help"], error: /unknown flag "--help"/ },
+    { args: ["help", "dev"], error: /Unknown command: help/ },
+    { args: ["bogus", "--help"], error: /Unknown command: bogus/ },
+  ];
+  try {
+    for (const { args, error } of cases) {
+      const r = runHelp(args, cwd);
+      assert.equal(r.status, 1, `${args.join(" ")}: ${r.out || String(r.error)}`);
+      assert.match(r.stderr, error, `${args.join(" ")} lost its specific error`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("help: repeated inputs produce byte-identical output", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "pdlc-help-"));
+  try {
+    for (const args of [["--help"], ["help"], ...HELP_COMMANDS.map(([command]) => [command, "--help"])]) {
+      const first = runHelp(args, cwd);
+      assert.equal(first.status, 0, first.out || String(first.error));
+      const second = runHelp(args, cwd);
+      assert.deepEqual(
+        [first.stdout, first.stderr, first.status],
+        [second.stdout, second.stderr, second.status],
+        `help output changed for ${args.join(" ")}`
+      );
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("help: clean directory needs no credentials or project setup", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "pdlc-help-"));
+  try {
+    const before = readdirSync(cwd);
+    for (const args of [["--help"], ["help"], ...HELP_COMMANDS.map(([command]) => [command, "--help"])]) {
+      const r = runHelp(args, cwd);
+      assert.equal(r.status, 0, `${args.join(" ")}: ${r.out || String(r.error)}`);
+      assert.ok(r.out.includes("pdlc "), `${args.join(" ")} did not print usage`);
+      assert.deepEqual(readdirSync(cwd), before, `${args.join(" ")} wrote project files`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("help: command handlers are not entered", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "pdlc-help-"));
+  try {
+    for (const args of [["--help"], ["help"], ...HELP_COMMANDS.map(([command]) => [command, "--help"])]) {
+      const r = runHelp(args, cwd);
+      assert.equal(r.status, 0, `${args.join(" ")}: ${r.out || String(r.error)}`);
+      assert.doesNotMatch(r.out, /doctor: all checks passed|\[spike:sdk\]|dry run complete|--- run report ---|QUERY THREW|refusing to dispatch/);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
 
 // ─── AC-3.1: the dry-run surface shows the composed prompt ────────────────────
 

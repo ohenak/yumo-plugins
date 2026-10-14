@@ -74,6 +74,32 @@ function fakeFs(paths, dirs = {}) {
 const STORE_HOME = path.join(path.sep, "fake-home", ".pdlc");
 const STORE_ROOT = path.join(STORE_HOME, "versions");
 
+test("help: launcher bypasses version resolution and dispatch", async () => {
+  const { launch, main } = await import(CLI_URL);
+  for (const command of ["dev", "queue"]) {
+    let execCalls = 0;
+    const unreadableStore = {
+      readdirSync: () => { throw new Error("help read the version store"); },
+      readFileSync: () => { throw new Error("help read project configuration"); },
+      existsSync: () => { throw new Error("help inspected project files"); },
+    };
+    const { stdout, stderr, exitCode } = await captureRun(() => launch(
+      ["node", "pdlc", command, "--help"],
+      {
+        fs: unreadableStore,
+        env: { PDLC_HOME: STORE_HOME },
+        homedir: () => STORE_HOME,
+        exec: () => { execCalls += 1; throw new Error("help dispatched a child"); },
+        runMain: main,
+      }
+    ));
+    assert.equal(execCalls, 0, `${command} help must not execute another engine`);
+    assert.equal(exitCode, 0, `${command} help exited nonzero: ${stdout}${stderr}`);
+    assert.ok(stdout.includes(`pdlc ${command}`), `${command} help omitted syntax`);
+    assert.equal(stderr, "", `${command} help wrote to stderr`);
+  }
+});
+
 /** A store `fs` holding exactly `versions`, and nothing else on disk. */
 function storeFs(versions) {
   return fakeFs([], { [STORE_ROOT]: versions });
