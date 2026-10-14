@@ -395,7 +395,7 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
 // coupled sweep must re-derive it — this comment names the coupling rather than leaving it
 // to be inferred, and TSPEC §4.4 (a different feature's document) still reads 99.
 describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 1's four titles, L-6 row 2's host retains PROP-COMPAT-04/05/06", () => {
-  test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals 102 (CODE_REVIEW v1's corrected figure; learnings* and waveResume* namespaces census-excluded), pending the coupled sweep's post-sweep re-derivation", () => {
+  test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals 105 (including three chain suites; learnings* and waveResume* namespaces census-excluded), pending the coupled sweep's post-sweep re-derivation", () => {
     const testDir = resolve(WORKFLOWS, "__tests__");
     // §4.4's literal counts the population the retirement sweep left behind. The
     // pdlc-learnings-injection feature adds suites under its own reserved
@@ -426,7 +426,7 @@ describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 
         !name.startsWith("stats") &&
         !name.startsWith("decisionLedger")
     ).length;
-    expect(count).toBe(102);
+    expect(count).toBe(105);
   });
 
   test("L-6 row 1: orchestrateQueue.test.js carries all four re-homed queue-triage assertion titles", () => {

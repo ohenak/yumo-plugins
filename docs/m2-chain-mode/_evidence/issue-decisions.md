@@ -1,0 +1,12 @@
+# Issue decisions
+
+| Issue | State | Decision and affected REQ clause |
+| --- | --- | --- |
+| [Yumo #89, workflow correction comment](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868) | Open; operator-accepted handoff | Add an opt-in chain path that uses the accepted issue, validates named artifacts once, and avoids repeated cross-review loops. `REQ-CHAIN-01` through `03`. |
+| [Yumo #89, workflow correction comment](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868) | Open; operator-accepted handoff | Preserve PLAN, implementation/test, DoD, PR, current-commit CI, and bounded repair. `REQ-CHAIN-04` through `07`. |
+| [Yumo #89, workflow correction comment](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868) | Open; operator-accepted handoff | Default `pdlc dev` remains available. Chain mode fails closed when no checks register or check success is not tied to the current PR head. `REQ-CHAIN-01`, `05`. |
+| [Yumo #89, operator selection](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173895373) | Open; explicit operator decision | Build the bounded chain path in Yumo first. Keep regime-ledger delivery paused until this path is reviewable. Its accepted issue handoff remains that consumer feature's requirements and design source. `REQ-CHAIN-01` through `07`. |
+| [Yumo #89, exact branch-head CI decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173951462) | Open; explicit operator decision | Match a successful GitHub Actions run `headSha` to PR `headRefOid` on the pushed feature branch; `pull_request` synthetic-merge checks alone do not prove that SHA. Empty, stale, unknown, or timed-out runs halt. One repair push and recheck is allowed. Publish run URL, SHA, gate state, and repair count only. `REQ-CHAIN-05` through `07`. |
+| [Yumo #89, DoD/PR decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6174183309) | Open; explicit operator decision | Require DoD and PR/CI in chain mode; stop after verified PR with automatic Phase MERGE disabled and leave PR open for the operator. `REQ-CHAIN-04`. |
+
+The issue is open because M2 evidence is unfinished. Its accepted handoff and correction are the operative decisions for this feature. The external [regime-ledger issue #1](https://github.com/ohenak/regime-ledger/issues/1) governs the consumer experiment and private evidence, not Yumo's engine API.

@@ -12,6 +12,7 @@ import os from "node:os";
 import { readFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { runDev } from "../lib/run.mjs";
 
 const engineRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.dirname(path.dirname(engineRoot));
@@ -28,7 +29,7 @@ function run(args, env = {}) {
 }
 
 const HELP_COMMANDS = [
-  ["dev", ["force-phases", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill", "dev"]],
+  ["dev", ["force-phases", "delivery-mode", "accepted-issue", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill", "dev"]],
   ["queue", ["queue-path", "loop", "loop-state", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "max-iterations", "dry-run-skill", "dev", "wait-requested", "wait-actual"]],
   ["decide", ["entry", "outcome", "by", "rationale", "plugin-root", "cwd", "dev"]],
   ["stats", ["json", "cwd"]],
@@ -51,6 +52,49 @@ function runHelp(args, cwd) {
   });
   return { ...result, out: `${result.stdout || ""}${result.stderr || ""}` };
 }
+
+test("chain delivery flags must be paired and name an issue", () => {
+  const req = "docs/x/REQ-x.md";
+  const base = ["dev", req, "--dry-run", "--plugin-root", PLUGIN_ROOT];
+  for (const flags of [
+    ["--delivery-mode", "chain"],
+    ["--accepted-issue", "https://github.com/ohenak/yumo-plugins/issues/89"],
+    ["--delivery-mode", "review", "--accepted-issue", "https://github.com/ohenak/yumo-plugins/issues/89"],
+    ["--delivery-mode", "chain", "--accepted-issue", "https://github.com/ohenak/yumo-plugins/pull/89"],
+  ]) {
+    const result = run([...base, ...flags]);
+    assert.equal(result.status, 1, result.out);
+    assert.match(result.out, /chain delivery requires --delivery-mode chain and --accepted-issue/);
+    assert.doesNotMatch(result.out, /--- report ---/);
+  }
+  const accepted = run([...base, "--delivery-mode=chain", "--accepted-issue=https://github.com/ohenak/yumo-plugins/issues/89"]);
+  assert.equal(accepted.status, 0, accepted.out);
+});
+
+test("runDev forwards chain options to the workflow and keeps default mode off", async () => {
+  const calls = [];
+  const importWorkflow = async () => ({ default: async (options) => {
+    calls.push(options);
+    return { outcome: "success" };
+  } });
+  const shared = {
+    reqPath: "docs/x/REQ-x.md",
+    cwd: repoRoot,
+    adapter: { _agent: async () => ({}) },
+    importWorkflow,
+  };
+  await runDev(shared);
+  await runDev({
+    ...shared,
+    deliveryMode: "chain",
+    acceptedIssueUrl: "https://github.com/ohenak/yumo-plugins/issues/89",
+  });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].deliveryMode, null);
+  assert.equal(calls[0].acceptedIssueUrl, null);
+  assert.equal(calls[1].deliveryMode, "chain");
+  assert.equal(calls[1].acceptedIssueUrl, "https://github.com/ohenak/yumo-plugins/issues/89");
+});
 
 test("help: both general forms show all commands and exit zero", () => {
   const cwd = mkdtempSync(path.join(os.tmpdir(), "pdlc-help-"));

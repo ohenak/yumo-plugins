@@ -58,7 +58,7 @@ const pkg = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), 
 
 const USAGE = [
   "Usage:",
-  "  pdlc dev <docs/{feature}/REQ-{feature}.md> [--force-phases <R,F,T,P,D,PR|all>] [--dry-run]",
+  "  pdlc dev <docs/{feature}/REQ-{feature}.md> [--force-phases <R,F,T,P,D,PR|all>] [--delivery-mode chain --accepted-issue <URL>] [--dry-run]",
   "  pdlc queue [--queue-path <path>] [--loop [--max-iterations <n>]] [--dry-run]",
   "  pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [--rationale <text>]",
   "  pdlc stats [feature] [--json] [--cwd <path>]",
@@ -144,6 +144,8 @@ const VALUE_FLAGS = [
   "plugin-root",
   "cwd",
   "force-phases",
+  "delivery-mode",
+  "accepted-issue",
   "queue-path",
   "dry-run-skill",
   "max-iterations",
@@ -168,7 +170,7 @@ const VALUE_FLAGS_SET = new Set(VALUE_FLAGS);
  * carry no row here — `main()` never runs `validateFlags` against them.
  */
 const FLAGS_BY_COMMAND = {
-  dev: ["force-phases", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill", "dev"],
+  dev: ["force-phases", "delivery-mode", "accepted-issue", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "dry-run-skill", "dev"],
   queue: [
     "queue-path",
     "loop",
@@ -747,6 +749,15 @@ async function cmdDev(argv, deps) {
     process.exitCode = 1;
     return;
   }
+  const deliveryMode = readFlag(argv, "delivery-mode");
+  const acceptedIssueUrl = readFlag(argv, "accepted-issue");
+  if (deliveryMode !== null || acceptedIssueUrl !== null) {
+    if (deliveryMode !== "chain" || !/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/[1-9]\d*$/.test(acceptedIssueUrl || "")) {
+      console.error("pdlc dev: chain delivery requires --delivery-mode chain and --accepted-issue <GitHub issue URL> together.");
+      process.exitCode = 1;
+      return;
+    }
+  }
 
   const startup = deps.startupFor(argv);
   if (!startup.ok) {
@@ -774,6 +785,8 @@ async function cmdDev(argv, deps) {
   const { report } = await deps.runDev({
     reqPath,
     forcePhases: readFlag(argv, "force-phases"),
+    deliveryMode,
+    acceptedIssueUrl,
     cwd,
     adapter,
     startup,
