@@ -44,6 +44,7 @@ function fixture(overrides = {}) {
     _raisePrAndVerifyCiChain: async () => ({
       prUrl: PR, ciStatus: "passed", headSha: HEAD, runUrl: RUN, repairCount: 1,
       failedRunUrl: "https://github.com/ohenak/regime-ledger/actions/runs/122",
+      failedHeadSha: "b".repeat(40),
       repairCommit: HEAD,
     }),
     ...overrides,
@@ -96,10 +97,28 @@ describe("chain terminal report", () => {
       acceptedIssueUrl: ISSUE, prUrl: PR, headSha: HEAD, runUrl: RUN,
       ciState: "passed", repairCount: 1,
       failedRunUrl: "https://github.com/ohenak/regime-ledger/actions/runs/122",
+      failedHeadSha: "b".repeat(40),
       repairCommit: HEAD,
     });
     expect(Object.values(result.chain.artifactGates).every((status) => status === "passed")).toBe(true);
     expect(result.chain.artifactGates).not.toHaveProperty("account");
+  });
+
+  test("halts when the authored LEARNINGS artifact is empty and does not open a PR", async () => {
+    let pubCalls = 0;
+    const result = await main(fixture({
+      _readFile: async (path) => {
+        if (path.includes("/PLAN-")) return PLAN;
+        if (path.includes("/LEARNINGS-")) return "";
+        return `Source: ${ISSUE}\nREQ-REPORT-01`;
+      },
+      _raisePrAndVerifyCiChain: async () => { pubCalls++; throw new Error("unexpected PR"); },
+    }));
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/LEARNINGS.*empty/);
+    expect(result.chain.artifactGates.LEARNINGS).toBe("failed");
+    expect(result.chain.prUrl).toBeNull();
+    expect(pubCalls).toBe(0);
   });
 
   test("keeps exact head and failed run evidence when PUB halts after one repair", async () => {
@@ -109,6 +128,7 @@ describe("chain terminal report", () => {
         error.chainCiEvidence = {
           prUrl: PR, headSha: HEAD, runUrl: RUN, ciStatus: "failed", repairCount: 1,
           failedRunUrl: "https://github.com/ohenak/regime-ledger/actions/runs/122",
+          failedHeadSha: "b".repeat(40),
           repairCommit: HEAD,
         };
         throw error;
@@ -117,7 +137,7 @@ describe("chain terminal report", () => {
     expect(result.outcome).toBe("halted");
     expect(result.chain).toMatchObject({
       acceptedIssueUrl: ISSUE, prUrl: PR, headSha: HEAD, runUrl: RUN,
-      ciState: "failed", repairCount: 1,
+      ciState: "failed", repairCount: 1, failedHeadSha: "b".repeat(40),
     });
     expect(result.chain.artifactGates.LEARNINGS).toBe("passed");
     expect(result.chain).not.toHaveProperty("account");

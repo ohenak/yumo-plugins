@@ -15506,6 +15506,7 @@ async function main({
       ciState: chainCiEvidence?.ciStatus ?? "not_run",
       repairCount: chainCiEvidence?.repairCount ?? 0,
       ...(chainCiEvidence?.failedRunUrl ? { failedRunUrl: chainCiEvidence.failedRunUrl } : {}),
+      ...(chainCiEvidence?.failedHeadSha ? { failedHeadSha: chainCiEvidence.failedHeadSha } : {}),
       ...(chainCiEvidence?.repairCommit ? { repairCommit: chainCiEvidence.repairCommit } : {}),
     };
   }
