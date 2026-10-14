@@ -1,9 +1,11 @@
 ---
 feature: pdlc-help
-status: draft
+status: reviewed-for-implementation
 ---
 
 # FSPEC: pdlc help
+
+The gatekeeper reviewed this specification for implementation. The operator's sign-off applies to the REQ, not to a separate approval of this specification.
 
 Source: [approved REQ](REQ-pdlc-help.md), [issue decision record](_evidence/issue-decisions.md), and the operator's [invocation and setup decision](https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163384317), [command output decision](https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163650686), and [M1 sign-off](https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163694833).
 
