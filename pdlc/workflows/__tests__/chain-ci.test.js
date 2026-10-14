@@ -1,5 +1,9 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { raisePrAndVerifyCiChain } from "../orchestrate-dev.js";
+import { mkdtempSync, writeFileSync, readFileSync, chmodSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const SHA1 = "a".repeat(40);
 const SHA2 = "b".repeat(40);
@@ -125,5 +129,117 @@ describe("chain-only current-head CI", () => {
     const list = jest.fn(async () => [run(SHA1, "failure")]);
     await expect(raisePrAndVerifyCiChain(base({ _git: failingGit, _listRuns: list }))).rejects.toThrow(/repair push failed/i);
     expect(list).toHaveBeenCalledTimes(1);
+  });
+  it("queries GitHub for the exact branch and SHA through the production transport", () => {
+    const dir = mkdtempSync(join(tmpdir(), "chain-ci-gh-"));
+    const argsPath = join(dir, "args.txt");
+    const prJson = JSON.stringify(view());
+    const runJson = JSON.stringify([run(SHA1, "success")]);
+    const gh = [
+      "#!/bin/sh",
+      `printf '%s\\n' "$*" >> "$GH_ARGS_FILE"`,
+      `if [ "$1" = pr ]; then echo '${prJson}'; exit 0; fi`,
+      `if [ "$1" = run ]; then echo '${runJson}'; exit 0; fi`,
+      "exit 3",
+    ].join("\n");
+    writeFileSync(join(dir, "gh"), `${gh}\n`);
+    chmodSync(join(dir, "gh"), 0o700);
+    const script = [
+      `const { raisePrAndVerifyCiChain } = await import(${JSON.stringify(new URL("../orchestrate-dev.js", import.meta.url).href)});`,
+      `const result = await raisePrAndVerifyCiChain({ feature: "feature",`,
+      `  _agent: async () => ${JSON.stringify(`PR_URL: ${PR}`)},`,
+      `  _git: async () => ({ ok: true, stdout: ${JSON.stringify(`${SHA1}\n`)} }),`,
+      `  _log: () => {} });`,
+      `console.log(JSON.stringify(result));`,
+    ].join("\n");
+    try {
+      const output = execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+        encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GH_ARGS_FILE: argsPath },
+      });
+      expect(JSON.parse(output)).toMatchObject({ ciStatus: "passed", headSha: SHA1, runUrl: RUN });
+      expect(readFileSync(argsPath, "utf8")).toContain(`run list --commit ${SHA1} --branch feature --event push`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("halts when the PR agent does not provide a URL", async () => {
+    await expect(raisePrAndVerifyCiChain(base({ _agent: async () => "PR_URL: none" }))).rejects.toThrow(/PR creation failed/i);
+  });
+  it("halts when local HEAD cannot be verified", async () => {
+    await expect(raisePrAndVerifyCiChain(base({ _git: async () => ({ ok: true, stdout: "bad-sha" }) }))).rejects.toThrow(/local commit SHA/i);
+  });
+  it("halts on a failed PR head query", async () => {
+    await expect(raisePrAndVerifyCiChain(base({ _prView: async () => { throw Error("offline"); } }))).rejects.toThrow(/PR head query failed/i);
+  });
+  it("polls from missing through pending to a successful current run", async () => {
+    let time = 0;
+    const responses = [[], [run(SHA1, null, "in_progress")], [run(SHA1, "success")]];
+    const list = jest.fn(async () => responses.shift() ?? [run(SHA1, "success")]);
+    const result = await raisePrAndVerifyCiChain(base({
+      _listRuns: list, _now: () => time, _sleep: async (ms) => { time += ms; },
+      pollIntervalMs: 1000, registrationTimeoutMs: 4000,
+    }));
+    expect(result.ciStatus).toBe("passed");
+    expect(list).toHaveBeenCalledTimes(3);
+  });
+  it.each([
+    ["missing URL", { url: null }],
+    ["missing name", { name: null }],
+    ["missing status", { status: null }],
+    ["missing conclusion", { conclusion: null }],
+  ])("halts for %s in a completed run", async (_label, override) => {
+    await expect(raisePrAndVerifyCiChain(base({ _listRuns: async () => [{ ...run(SHA1, "success"), ...override }] }))).rejects.toThrow(/unverifiable/i);
+  });
+  it("does not accept a successful non-push event", async () => {
+    await expect(raisePrAndVerifyCiChain(base({
+      _listRuns: async () => [{ ...run(SHA1, "success"), event: "pull_request" }], registrationTimeoutMs: 0,
+    }))).rejects.toThrow(/no current-head CI/i);
+  });
+  it("repairs a timed-out run", async () => {
+    const g = git([SHA1, SHA2]);
+    const result = await raisePrAndVerifyCiChain(base({
+      _git: g,
+      _prView: async () => view(g.mock.calls.some(([args]) => args[0] === "push") ? SHA2 : SHA1),
+      _listRuns: async (sha) => [run(sha, sha === SHA1 ? "timed_out" : "success")],
+    }));
+    expect(result).toMatchObject({ repairCount: 1, failedHeadSha: SHA1 });
+  });
+  it.each([
+    ["multiple commits", "rev-list", { ok: true, stdout: "2\n" }, /exactly one new commit/i],
+    ["uncommitted changes", "status", { ok: true, stdout: " M app.py\n" }, /uncommitted changes/i],
+  ])("halts a repair with %s", async (_label, command, response, error) => {
+    const g = git([SHA1, SHA2]);
+    const guardedGit = async (args) => args[0] === command ? response : g(args);
+    await expect(raisePrAndVerifyCiChain(base({
+      _git: guardedGit, _listRuns: async () => [run(SHA1, "failure")],
+    }))).rejects.toThrow(error);
+  });
+  it("halts when the agent changes the PR branch before the repair push", async () => {
+    let changed = false;
+    const g = git([SHA1, SHA2]);
+    await expect(raisePrAndVerifyCiChain(base({
+      _git: g,
+      _agent: async (skill) => {
+        if (skill === "ship-pr") return `PR_URL: ${PR}`;
+        changed = true;
+        return "committed";
+      },
+      _prView: async () => ({ ...view(), headRefName: changed ? "other" : "feature" }),
+      _listRuns: async () => [run(SHA1, "failure")],
+    }))).rejects.toThrow(/PR head mismatch/i);
+    expect(g.mock.calls.some(([args]) => args[0] === "push")).toBe(false);
+  });
+  it.each([
+    ["query failure", async () => { throw Error("offline"); }, /query failed after repair push/i],
+    ["unexpected head", async () => view("c".repeat(40)), /changed unexpectedly/i],
+    ["propagation timeout", async () => view(SHA1), /did not reach PR head/i],
+  ])("halts on post-push PR %s", async (_label, postPushView, error) => {
+    const g = git([SHA1, SHA2]);
+    await expect(raisePrAndVerifyCiChain(base({
+      _git: g,
+      _prView: async () => g.mock.calls.some(([args]) => args[0] === "push") ? postPushView() : view(),
+      _listRuns: async () => [run(SHA1, "failure")],
+      registrationTimeoutMs: 0,
+    }))).rejects.toThrow(error);
   });
 });
