@@ -3,14 +3,14 @@
 | Field | Detail |
 |---|---|
 | Feature | `pdlc-help` (M1, queue row 35) |
-| Status | Local implementation verified; [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) open; final current-head CI pending |
+| Status | M1 merged via [PR #87](https://github.com/ohenak/yumo-plugins/pull/87); final PR-head CI passed |
 | Date recorded | 2026-10-14 |
 | Harvested from | The operator's `$deliver-feature-chain` invocation for M1; [issue #86 and its decisions](https://github.com/ohenak/yumo-plugins/issues/86); the gatekeeper's recon, red/green checks, Claude review fixes, and [verification record](_evidence/help-verification.md). |
 | Measurement | Elapsed time: **UNKNOWN**; model calls: **UNKNOWN**; tokens: **UNKNOWN**; cost: **UNKNOWN**. |
 
 ## 1. Non-Convergences
 
-No unresolved requirement or design dispute was recorded. The operator approved the [REQ](REQ-pdlc-help.md) in issue #86 before implementation. Two local evidence gaps were resolved during the run: the first full engine test attempt lacked this worktree's dependencies, and Claude review found missing error-path tests and insufficient output-channel assertions. The final local engine tests passed after those fixes. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open. A later [CI run at `1798afa6e`](https://github.com/ohenak/yumo-plugins/actions/runs/38582490055) failed in workflows unit tests; the next-head CI result is pending.
+No unresolved requirement or design dispute was recorded. The operator approved the [REQ](REQ-pdlc-help.md) in issue #86 before implementation. Two local evidence gaps were resolved during the run: the first full engine test attempt lacked this worktree's dependencies, and Claude review found missing error-path tests and insufficient output-channel assertions. The final local engine tests passed after those fixes. A [CI run at `1798afa6e`](https://github.com/ohenak/yumo-plugins/actions/runs/38582490055) failed in workflows unit tests. Narrow fixes followed; all four checks passed on the final PR head, and [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) merged.
 
 ## 2. Cross-Feature Patterns
 
@@ -32,10 +32,10 @@ The feature followed the chain's red-before-green sequence: six focused help tes
 
 ## 5. Open Items and Consolidation
 
-1. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open. Its initial head was `8a8f625336be9587c7ca9b154f9f18f27f87c840`; [CI at `1798afa6e`](https://github.com/ohenak/yumo-plugins/actions/runs/38582490055) failed, and follow-up fixes came later. Check the [PR checks page](https://github.com/ohenak/yumo-plugins/pull/87/checks) for the next-head result. Do not report local tests as CI evidence or claim the new CI passed yet.
+1. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) merged on 2026-10-14 at 15:29:43 UTC as `4140317630257a74637fd0f6e611dbeda2d17775`. Its final head was `e82d914f916013f90b52b5b5d280089b58085e00`; the [fixture check](https://github.com/ohenak/yumo-plugins/actions/runs/38585075784) and [workflows unit, engine, and shell checks](https://github.com/ohenak/yumo-plugins/actions/runs/38585075369) passed. The earlier failed run remains in the [verification record](_evidence/help-verification.md).
 2. No full `pdlc dev` delivery run was performed for this feature. The engine dry-run was a compatibility check with no dispatch.
 3. Elapsed time, model calls, token use, and cost have no recorded measurements; keep them **UNKNOWN** rather than estimate them.
 
 ## 6. Approval Record
 
-The operator approved the requirement and M1 build in [issue #86's sign-off comment](https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163694833). Claude's no-tools document and code reviews supplied feedback, and the local gatekeeper checked the resulting artifacts and test results. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open. A pull request review, final current-head CI pass, and merge approval are not yet recorded.
+The operator approved the requirement and M1 build in [issue #86's sign-off comment](https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163694833). Claude's no-tools document and code reviews supplied feedback, and the local gatekeeper checked the resulting artifacts and test results. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) merged with all four final-head checks passing. [Issue #86](https://github.com/ohenak/yumo-plugins/issues/86) was open when this tracking update was prepared; GitHub shows its current state.

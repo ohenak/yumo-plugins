@@ -1,6 +1,6 @@
 # M1 `pdlc-help` verification
 
-Recorded 2026-10-14 for [approved REQ](../REQ-pdlc-help.md), [properties](../PROPERTIES-pdlc-help.md), and [PLAN P3](../PLAN-pdlc-help.md). This records local branch evidence and [open PR #87](https://github.com/ohenak/yumo-plugins/pull/87). It does not claim a final current-head CI result or a full PDLC delivery run.
+Recorded 2026-10-14 for [approved REQ](../REQ-pdlc-help.md), [properties](../PROPERTIES-pdlc-help.md), and [PLAN P3](../PLAN-pdlc-help.md). This records local branch evidence and [merged PR #87](https://github.com/ohenak/yumo-plugins/pull/87). It does not claim a full PDLC delivery run.
 
 | Check | Observed result |
 |---|---|
@@ -14,9 +14,10 @@ Recorded 2026-10-14 for [approved REQ](../REQ-pdlc-help.md), [properties](../PRO
 | Existing dry-run path | A dry-run emitted 31,821 bytes and performed no dispatch. This checks that the existing inspection path remains reachable; it is not a full workflow delivery. |
 | Whitespace and patch shape | `git diff --check` passed. |
 | Boundary suite | `tests/boundary/` does not exist in this repository. The help feature adds no cross-product edge, so no boundary-suite result is claimed. |
-| Pull request | [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open against `main`. Its initial head was `8a8f625336be9587c7ca9b154f9f18f27f87c840`. Document updates can change that head; use the [PR checks page](https://github.com/ohenak/yumo-plugins/pull/87/checks) for the eventual current-head result. No final CI outcome is claimed here. |
+| Pull request | [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) merged into `main` on 2026-10-14 at 15:29:43 UTC. Final PR head: `e82d914f916013f90b52b5b5d280089b58085e00`. Merge commit: `4140317630257a74637fd0f6e611dbeda2d17775`. |
 | PR CI at `1798afa6e` | [Run 38582490055](https://github.com/ohenak/yumo-plugins/actions/runs/38582490055) failed: engine tests, fixture checks, and shell parsing passed; the workflows unit job failed. One cause was the new `docs/proposal/` and `docs/proposal-data/` directories missing from `NON_FEATURE_DIRS`. Another was an unrelated half-cent property assertion seeing binary floating-point difference `0.0050000000000000044`. This is a historical failed head, not the final PR result. |
-| Narrow follow-up and local checks | `pdlc/workflows/lib/stats.mjs` now excludes the two proposal directories; `statsDiscovery.test.js` mirrors the list; `statsProperties.test.js` allows binary representation error at a half-cent boundary. Focused local checks passed. The next-head CI result is pending. |
+| Narrow follow-up and local checks | `pdlc/workflows/lib/stats.mjs` now excludes the two proposal directories; `statsDiscovery.test.js` mirrors the list; `statsProperties.test.js` allows binary representation error at a half-cent boundary. Focused local checks passed before the final PR-head CI run. |
+| Final PR-head CI | All four checks passed at `e82d914f916013f90b52b5b5d280089b58085e00`: fixture machine in [run 38585075784](https://github.com/ohenak/yumo-plugins/actions/runs/38585075784), and workflows unit, engine tests, and shell parsing in [run 38585075369](https://github.com/ohenak/yumo-plugins/actions/runs/38585075369). The earlier failed run remains recorded above. |
 
 ## Verification commands and context
 
@@ -42,4 +43,4 @@ Elapsed time: **UNKNOWN**. Model calls: **UNKNOWN**. Model tokens: **UNKNOWN**. 
 
 The focused tests cover REQ-HELP-01 and REQ-HELP-02 through the two global forms; REQ-HELP-03 through all eight named commands and their syntax and applicable flags; REQ-HELP-04 through subprocesses in a temporary non-project directory without credentials or project setup; and REQ-HELP-05 through no-dispatch and no-write checks. The existing error tests cover the REQ's non-help preservation statement. See the [properties table](../PROPERTIES-pdlc-help.md) for individual test names.
 
-The full-suite rerun is local evidence only. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) has a documented failed run at `1798afa6e`; narrow fixes and focused local checks followed it. The next-head CI result is pending. Check the [PR checks page](https://github.com/ohenak/yumo-plugins/pull/87/checks) after the final document commit. No claim is made that the whole PDLC engine delivery workflow completed.
+The local full-suite rerun and the final PR-head CI results are separate evidence. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) merged after all four checks passed on its final head; the earlier failed run at `1798afa6e` remains part of the history. The engine dry-run was a compatibility check with no dispatch, so no claim is made that the whole PDLC delivery workflow completed. [Issue #86](https://github.com/ohenak/yumo-plugins/issues/86) was open when this tracking update was prepared; GitHub shows its current state.
