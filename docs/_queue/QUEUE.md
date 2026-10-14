@@ -138,6 +138,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 32 | blocked | pdlc-two-axis-dod | docs/pdlc-two-axis-dod/REQ-pdlc-two-axis-dod.md | pdlc-size-tiers |  |
 | 33 | pending | pdlc-init | docs/pdlc-init/REQ-pdlc-init.md | — |  |
 | 34 | blocked | pdlc-erratum-delivery-gate | docs/pdlc-erratum-delivery-gate/REQ-pdlc-erratum-delivery-gate.md | pdlc-review-tightenings |  |
+| 35 | in-progress | pdlc-help | docs/pdlc-help/REQ-pdlc-help.md | — |  |
 
 **Rows 27–33 added 2026-08-30 from `docs/design/DESIGN-pdlc-minimal-loop-2026-08-30.md` (§8
 rollout order).** They sequence the minimal-loop redesign: measurement first (27), then the
