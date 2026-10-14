@@ -85,6 +85,19 @@ describe("chain mode gates", () => {
     expect(called).toEqual([]);
   });
 
+  test("pre-PR DoD halts when CODE_REVIEW listing has no file array", async () => {
+    const called = [];
+    const result = await dodVerifyLoop({
+      feature: FEATURE, deliveryMode: "chain", acceptedIssueUrl: ISSUE,
+      _listFiles: async () => ({ ok: false }),
+      _agent: async (skill) => { called.push(skill); return "DOD_STATUS: passed"; },
+      _log: () => {},
+    });
+    expect(result).toMatchObject({ passed: false, iterations: 0 });
+    expect(result.reason).toMatch(/cannot list CODE_REVIEW/);
+    expect(called).toEqual([]);
+  });
+
   test("pre-PR DoD names the actual next CODE_REVIEW version after an earlier attempt", async () => {
     const paths = [];
     const result = await dodVerifyLoop({
@@ -135,6 +148,10 @@ describe("chain mode gates", () => {
   test("extracts numbered requirement IDs only from REQ table rows", () => {
     expect(parseAcceptedRequirementIds(`${TRACEABLE}\nText says REQ-ID and REQ-CHAIN-99.\n| REQ-CHAIN-01 | Repeated |`))
       .toEqual(["REQ-CHAIN-01"]);
+  });
+
+  test("an absent REQ body provides no accepted requirement IDs", () => {
+    expect(parseAcceptedRequirementIds(null)).toEqual([]);
   });
 
   test("blocks private data paths in the branch diff and staged files", async () => {

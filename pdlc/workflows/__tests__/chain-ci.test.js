@@ -30,6 +30,53 @@ const base = (extra = {}) => ({
 describe("chain-only current-head CI", () => {
   beforeEach(() => jest.clearAllMocks());
 
+  it.each([
+    [null, null],
+    ["on: push", null],
+    ["name: CI\njobs: {}", null],
+    ["name: CI\non: [pull_request, push]", "CI"],
+    ["name: CI\non:\n  pull_request:", null],
+    ["name: CI\non:\n  push:\n    paths:\n      - src/**", null],
+    ["name: CI\non:\n  push:", "CI"],
+    ["name: CI\non:\n  push:\n    branches: [main, feat-*]", "CI"],
+    ["name: CI\non:\n  push:\n    branches:\n      - feat-*", "CI"],
+    ["name: CI\non:\n  push:\n    branches:\n      - '!feat-*'", null],
+  ])("parses feature-branch push eligibility from %s", (yaml, expected) => {
+    expect(chainPushWorkflowName(yaml, "feat-example")).toBe(expected);
+  });
+
+  it.each([
+    ["missing branch", async () => ({ ok: false })],
+    ["empty branch", async () => ({ ok: true, stdout: "" })],
+  ])("halts workflow preflight for %s", async (_label, gitResult) => {
+    const result = await checkChainPushWorkflows({ _git: gitResult });
+    expect(result).toMatchObject({ ok: false, reason: expect.stringMatching(/feature branch/) });
+  });
+
+  it("requires a readable tracked workflow and deduplicates valid names", async () => {
+    const git = async (args) => args[0] === "branch"
+      ? { ok: true, stdout: "feature" }
+      : { ok: true, stdout: ".github/workflows/a.yml\n.github/workflows/b.yaml\n" };
+    const files = ["a.yml", "b.yaml", "untracked.yml", "notes.txt"];
+    const read = async () => "name: CI\non: push";
+    await expect(checkChainPushWorkflows({ _git: git, _listFiles: async () => ({ ok: false }), _readFile: read }))
+      .resolves.toMatchObject({ ok: false, reason: expect.stringMatching(/directory/) });
+    await expect(checkChainPushWorkflows({ _git: async (args) => args[0] === "branch" ? git(args) : { ok: false }, _listFiles: async () => ({ ok: true, files }), _readFile: read }))
+      .resolves.toMatchObject({ ok: false, reason: expect.stringMatching(/tracked/) });
+    await expect(checkChainPushWorkflows({ _git: async (args) => args[0] === "branch" ? git(args) : { ok: true }, _listFiles: async () => ({ ok: true, files }), _readFile: read }))
+      .resolves.toMatchObject({ ok: false, reason: expect.stringMatching(/No CI workflow/) });
+    await expect(checkChainPushWorkflows({ _git: git, _listFiles: async () => ({ ok: true, files: ["untracked.yml"] }), _readFile: read }))
+      .resolves.toMatchObject({ ok: false, reason: expect.stringMatching(/No CI workflow/) });
+    await expect(checkChainPushWorkflows({ _git: git, _listFiles: async () => ({ ok: true, files }), _readFile: read }))
+      .resolves.toEqual({ ok: true, names: ["CI"] });
+  });
+
+  it.each([null, { ok: false }, { ok: true, names: [] }])("halts malformed workflow gate %s before PR", async (gate) => {
+    await expect(raisePrAndVerifyCiChain(base({ _workflowGate: async () => gate })))
+      .rejects.toThrow(/feature-branch push CI/);
+    expect(agent).not.toHaveBeenCalled();
+  });
+
   it("requires a tracked workflow that runs on the feature branch before opening a PR", async () => {
     const mainOnly = "name: CI\non:\n  push:\n    branches:\n      - main\n";
     const featurePush = "name: CI\non:\n  pull_request:\n  push:\n    branches:\n      - 'feat-*'\n";
@@ -127,6 +174,18 @@ describe("chain-only current-head CI", () => {
       _git: guardedGit,
       _listRuns: async () => [run(SHA1, "failure")],
     }))).rejects.toThrow(/private account or position paths/);
+    expect(guardedGit.mock.calls.some(([args]) => args[0] === "push")).toBe(false);
+  });
+
+  it("halts before repair push when changed paths cannot be verified", async () => {
+    const baseGit = git([SHA1, SHA2]);
+    const guardedGit = jest.fn(async (args) => args[0] === "diff"
+      ? { ok: false, stderr: "diff unavailable" }
+      : baseGit(args));
+    await expect(raisePrAndVerifyCiChain(base({
+      _git: guardedGit,
+      _listRuns: async () => [run(SHA1, "failure")],
+    }))).rejects.toThrow(/changed paths/);
     expect(guardedGit.mock.calls.some(([args]) => args[0] === "push")).toBe(false);
   });
 

@@ -132,6 +132,36 @@ describe("chain terminal report", () => {
     expect(result.chain).not.toHaveProperty("repairCommit");
   });
 
+  test("halts before DoD when changed paths include private position data", async () => {
+    const base = fixture();
+    let pubCalls = 0;
+    const result = await main(fixture({
+      _git: async (args) => args[0] === "diff"
+        ? { ok: true, stdout: "positions/private.json\n" }
+        : base._git(args),
+      _raisePrAndVerifyCiChain: async () => { pubCalls++; return {}; },
+    }));
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/privacy gate:/);
+    expect(result.haltReason).not.toContain("positions/private.json");
+    expect(result.chain.prUrl).toBeNull();
+    expect(pubCalls).toBe(0);
+  });
+
+  test("halts before DoD verdict when CODE_REVIEW listing is unavailable", async () => {
+    let pubCalls = 0;
+    const result = await main(fixture({
+      _listFiles: async (path) => path.startsWith("docs/")
+        ? { ok: false }
+        : { ok: true, files: ["test.yml"] },
+      _raisePrAndVerifyCiChain: async () => { pubCalls++; return {}; },
+    }));
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/before verdict.*CODE_REVIEW versions/);
+    expect(result.chain.prUrl).toBeNull();
+    expect(pubCalls).toBe(0);
+  });
+
   test("halts when the authored LEARNINGS artifact is empty and does not open a PR", async () => {
     let pubCalls = 0;
     const result = await main(fixture({
