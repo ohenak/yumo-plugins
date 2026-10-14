@@ -1,4 +1,4 @@
-import main, { validateChainIssueUrl, validateChainArtifact } from "../orchestrate-dev.js";
+import main, { dodVerifyLoop, validateChainIssueUrl, validateChainArtifact } from "../orchestrate-dev.js";
 
 const ISSUE = "https://github.com/ohenak/regime-ledger/issues/1";
 const FEATURE = "chain-fixture";
@@ -15,6 +15,59 @@ const PLAN = [
 ].join("\n");
 
 describe("chain mode gates", () => {
+  test("pre-PR DoD checks the accepted scope once and does not remediate a failed verdict", async () => {
+    const calls = [];
+    const result = await dodVerifyLoop({
+      feature: FEATURE,
+      deliveryMode: "chain",
+      acceptedIssueUrl: ISSUE,
+      localTestSummary: "PRIVATE POSITION VALUE",
+      _agent: async (skill, prompt) => {
+        calls.push({ skill, prompt });
+        return "DOD_STATUS: failed\n{\"req_gaps\":1}";
+      },
+      _readFile: async () => `Accepted issue: ${ISSUE}\nTest command: python -m unittest\nResult: failed`,
+      _listFiles: async () => ({ ok: true, files: [] }),
+      _log: () => {},
+    });
+    expect(result).toMatchObject({ passed: false, iterations: 1 });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].skill).toBe("dod-verify");
+    expect(calls[0].prompt).toContain(ISSUE);
+    expect(calls[0].prompt).toMatch(/command.*pass\/fail.*test count/i);
+    expect(calls[0].prompt).not.toContain("PRIVATE POSITION VALUE");
+    expect(calls[0].prompt).toMatch(/defer.*PR.*CI/i);
+  });
+
+  test("pre-PR DoD requires a CODE_REVIEW file even when the verdict says passed", async () => {
+    const result = await dodVerifyLoop({
+      feature: FEATURE,
+      deliveryMode: "chain",
+      acceptedIssueUrl: ISSUE,
+      _agent: async () => "DOD_STATUS: passed",
+      _readFile: async () => null,
+      _listFiles: async () => ({ ok: true, files: [] }),
+      _log: () => {},
+    });
+    expect(result).toMatchObject({ passed: false, iterations: 1 });
+    expect(result.reason).toMatch(/CODE_REVIEW/);
+  });
+
+  test("pre-PR DoD names the actual next CODE_REVIEW version after an earlier attempt", async () => {
+    const paths = [];
+    const result = await dodVerifyLoop({
+      feature: FEATURE,
+      deliveryMode: "chain",
+      acceptedIssueUrl: ISSUE,
+      _agent: async () => "DOD_STATUS: passed",
+      _readFile: async (path) => { paths.push(path); return `Accepted issue: ${ISSUE}\nTest: passed`; },
+      _listFiles: async () => ({ ok: true, files: [`CODE_REVIEW-${FEATURE}-v1.md`] }),
+      _log: () => {},
+    });
+    expect(result).toMatchObject({ passed: true, iterations: 1,
+      reviewPath: `docs/${FEATURE}/CODE_REVIEW-${FEATURE}-v2.md` });
+    expect(paths).toEqual([result.reviewPath]);
+  });
   test("accepts only a GitHub issue URL with an issue number", () => {
     expect(validateChainIssueUrl(ISSUE)).toBe(true);
     expect(validateChainIssueUrl("https://github.com/ohenak/regime-ledger/pull/1")).toBe(false);
@@ -152,6 +205,7 @@ describe("chain mode gates", () => {
 
   test("uses accepted artifacts without any specification or CR review dispatch", async () => {
     const called = [];
+    let dodPrompt = null;
     const result = await main({
       reqPath: REQ,
       deliveryMode: "chain",
@@ -162,7 +216,7 @@ describe("chain mode gates", () => {
         if (skill === "guard") return { ok: true };
         if (skill === "se-implement") return "Tests: 1 passed, 0 failed";
         if (skill === "harvest-learnings") return "LEARNINGS written";
-        if (skill === "dod-verify") return "DOD_STATUS: passed";
+        if (skill === "dod-verify") { dodPrompt = prompt; return "DOD_STATUS: passed"; }
         if (skill === "ship-pr") {
           if (String(prompt).includes("Rebase")) return "REBASE_STATUS: clean";
           if (String(prompt).includes("Raise")) return "PR_URL: https://github.com/acme/repo/pull/1";
@@ -182,5 +236,6 @@ describe("chain mode gates", () => {
     expect(result.phases.filter((phase) => ["R", "F", "T", "D", "P", "PR", "CR"].includes(phase.phase))
       .every((phase) => phase.status === "chain-validated")).toBe(true);
     expect(called).toContain("se-implement");
+    expect(dodPrompt).toMatch(/defer.*PR.*CI/i);
   });
 });

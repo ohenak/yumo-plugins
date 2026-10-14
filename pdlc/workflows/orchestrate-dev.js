@@ -12923,6 +12923,20 @@ function dodVerifyPrompt(featureName, version) {
   );
 }
 
+function chainDodVerifyPrompt(feature, version, acceptedIssueUrl) {
+  return (
+    `Run one pre-PR Definition of Done check for ${feature}. Accepted issue: ${acceptedIssueUrl}. ` +
+    `Read docs/${feature}/REQ-${feature}.md, the issue-decisions evidence, and the PLAN. ` +
+    `Check only the accepted workflow scope and this feature's changed files. ` +
+    `Run the relevant tracked local test suite and record only its command, pass/fail result, and test count. ` +
+    `Confirm that no unrelated or private account, position, or quote files are staged. ` +
+    `Do not copy private values into the review. ` +
+    `Defer PR URL, current-head CI, and controlled red/repair evidence to PUB after the PR exists. ` +
+    `Write redacted findings, accepted issue URL, and test evidence to docs/${feature}/CODE_REVIEW-${feature}-v${version}.md. ` +
+    `Do not remediate or run another review round. End your response with DOD_STATUS: passed or DOD_STATUS: failed.`
+  );
+}
+
 /**
  * Round ≥2 (v2, v3…) delta re-verify prompt. After remediation, the previous
  * round's CODE_REVIEW findings and the remediation diff are the only things worth
@@ -13306,6 +13320,8 @@ export async function rebaseOntoDefault({ feature, _agent = agent, _log = log })
 export async function dodVerifyLoop({
   feature,
   maxIterations = DOD_MAX_ITERATIONS,
+  deliveryMode = null,
+  acceptedIssueUrl = null,
   _agent = agent,
   _log = log,
   _readFile = defaultReadFile,
@@ -13327,9 +13343,31 @@ export async function dodVerifyLoop({
 
     const verifyResult = await _agent(
       "dod-verify",
-      dodVerifyPrompt(feature, version)
+      deliveryMode === "chain"
+        ? chainDodVerifyPrompt(feature, version, acceptedIssueUrl)
+        : dodVerifyPrompt(feature, version)
     );
     const status = parseDodStatus(verifyResult);
+
+    if (deliveryMode === "chain") {
+      const reviewPath = `docs/${feature}/CODE_REVIEW-${feature}-v${version}.md`;
+      let reviewText = null;
+      try { reviewText = await _readFile(reviewPath); } catch { /* missing evidence fails below */ }
+      if (typeof reviewText !== "string" || !reviewText.trim()) {
+        return { passed: false, iterations: 1, lastStatus: status,
+          reviewPath, reason: `Pre-PR DoD missing CODE_REVIEW evidence: ${reviewPath}` };
+      }
+      if (!reviewText.includes(acceptedIssueUrl)) {
+        return { passed: false, iterations: 1, lastStatus: status,
+          reviewPath, reason: `Pre-PR DoD CODE_REVIEW does not cite accepted issue: ${reviewPath}` };
+      }
+      if (status.status === "passed") {
+        _log("Pre-PR DoD verification passed");
+        return { passed: true, iterations: 1, reviewPath };
+      }
+      return { passed: false, iterations: 1, lastStatus: status,
+        reviewPath, reason: `Pre-PR DoD returned ${status.status}; no remediation dispatched` };
+    }
 
     if (status.status === "passed") {
       _log("DoD verification passed");
@@ -18850,6 +18888,7 @@ export default async function main({
         }
         const dodResult = await dodVerifyLoopFn({
           feature: featureName,
+          ...(deliveryMode === "chain" ? { deliveryMode, acceptedIssueUrl } : {}),
           _agent: agentFn,
           _log: emit,
           // The loop reads each round's CODE_REVIEW to route remediation by
@@ -18860,6 +18899,17 @@ export default async function main({
           _listFiles: listFilesFn,
         });
         if (!dodResult.passed) {
+          if (deliveryMode === "chain") {
+            if (dodResult.reviewPath) {
+              try {
+                const reviewText = await readFileFn(dodResult.reviewPath);
+                if (typeof reviewText === "string" && reviewText.trim()) artifactPaths.push(dodResult.reviewPath);
+              } catch { /* Preserve the original DoD failure reason. */ }
+            }
+            recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌",
+              `One pre-PR verdict failed: ${dodResult.reason ?? "DOD_STATUS failed"}`, 1);
+            throw haltError(`Chain pre-PR DoD halted after one verdict: ${dodResult.reason ?? "DOD_STATUS failed"}`);
+          }
           const detail =
             dodResult.lastStatus
               ? `stubs=${dodResult.lastStatus.stubs}, mock_data=${dodResult.lastStatus.mock_data}, unwired=${dodResult.lastStatus.unwired_integrations}, coverage_gap=${dodResult.lastStatus.coverage_below_threshold}, req_gaps=${dodResult.lastStatus.req_gaps}`
@@ -18923,7 +18973,9 @@ export default async function main({
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
         // §7.4 class 8: the CODE_REVIEW-*.md dod-verify wrote for the passing
         // iteration — dod-verify's own loop budget guarantees at least one round.
-        artifactPaths.push(`docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`);
+        artifactPaths.push(deliveryMode === "chain" && dodResult.reviewPath
+          ? dodResult.reviewPath
+          : `docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`);
       }
 
       // ─── Phase H: Harvest ────────────────────────────────────────────────

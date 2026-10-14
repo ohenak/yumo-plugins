@@ -2,11 +2,11 @@
 
 ## 1. Result
 
-Yumo now has an opt-in `pdlc dev <REQ> --delivery-mode chain --accepted-issue <URL>` route. It checks the accepted handoff inputs, creates and gates later SDLC artifacts once, then keeps implementation, tests, DoD, and PR/CI delivery. It reports `chain-validated` without implying cross-review approval. The default `pdlc dev` path remains available. Chain mode leaves the verified PR open for operator review.
+Yumo now has an opt-in `pdlc dev <REQ> --delivery-mode chain --accepted-issue <URL>` route. It checks the accepted handoff inputs, creates and gates later SDLC artifacts once, then keeps implementation, tests, one pre-PR DoD verdict, and PR/CI delivery. Failed DoD halts without remediation; PR/head CI and controlled red/repair evidence follow after a working PR exists. It reports `chain-validated` without implying cross-review approval. The default `pdlc dev` path remains available. Chain mode leaves the verified PR open for operator review.
 
 ## 2. Decision source
 
-[Yumo issue #89](https://github.com/ohenak/yumo-plugins/issues/89) and its [workflow correction](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868), [operator selection](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173895373), [exact branch-head CI decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173951462), and [DoD/PR decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6174183309) remain the requirement and design record. These local artifacts record implementation evidence and trace back to that issue.
+[Yumo issue #89](https://github.com/ohenak/yumo-plugins/issues/89) and its [workflow correction](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868), [operator selection](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173895373), [exact branch-head CI decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173951462), [DoD/PR decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6174183309), and [sequencing clarification](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6175299366) remain the requirement and design record. These local artifacts record implementation evidence and trace back to that issue.
 
 ## 3. Bounded review lesson
 

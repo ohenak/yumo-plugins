@@ -70,9 +70,9 @@ const derivedCensus = allTopLevelDecls
   .filter((d) => /(Prompt|Clause)$/.test(d.name))
   .map((d) => d.name);
 
-/** Hand-transcribed frozen literal (TSPEC §3.2 conjunct 1) — exactly 31 names:
- *  the 30 builders that predate this feature, plus M2's own `pinCheckPrompt`
- *  (TSPEC §3.2, §7.3). */
+/** Hand-transcribed frozen literal (TSPEC §3.2 conjunct 1) — exactly 32 names:
+ *  the 30 builders that predate this feature, M2's `pinCheckPrompt`, and
+ *  the chain path's `chainDodVerifyPrompt` (TSPEC §3.2, §7.3). */
 const FROZEN_CENSUS = [
   "planLintFeedForwardClause",
   "headingFeedForwardClause",
@@ -100,6 +100,7 @@ const FROZEN_CENSUS = [
   "createPrPrompt",
   "rebasePrompt",
   "dodVerifyPrompt",
+  "chainDodVerifyPrompt",
   "dodReVerifyPrompt",
   "dodDocRemediatePrompt",
   "dodRemediatePrompt",
@@ -131,9 +132,9 @@ function bodyOf(name) {
 // ─── Conjunct 1: set equality on the census ─────────────────────────────────
 
 describe("census set equality (TSPEC §3.2 conjunct 1)", () => {
-  it("pins the frozen census at exactly 31 names", () => {
-    expect(FROZEN_CENSUS.length).toBe(31);
-    expect(new Set(FROZEN_CENSUS).size).toBe(31); // frozen list itself has no dupes
+  it("pins the frozen census at exactly 32 names", () => {
+    expect(FROZEN_CENSUS.length).toBe(32);
+    expect(new Set(FROZEN_CENSUS).size).toBe(32); // frozen list itself has no dupes
   });
 
   it("derives a builder set from HEAD source that equals the frozen census — set equality, never containment", () => {
