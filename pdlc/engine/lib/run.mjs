@@ -485,6 +485,8 @@ async function withCwd(dir, fn) {
  * @param {object} args
  * @param {string} args.reqPath consumer-relative REQ path
  * @param {string|null} [args.forcePhases]
+ * @param {"chain"|null} [args.deliveryMode] opt-in bounded delivery path
+ * @param {string|null} [args.acceptedIssueUrl] accepted GitHub issue for that path
  * @param {string} [args.cwd] consumer repo root (AC-2.5)
  * @param {object} args.adapter seams from `createAdapter()`
  * @param {object} [args.startup] `runStartupChecks()` result; a failing one refuses
@@ -495,6 +497,8 @@ async function withCwd(dir, fn) {
 export async function runDev({
   reqPath,
   forcePhases = null,
+  deliveryMode = null,
+  acceptedIssueUrl = null,
   cwd,
   adapter,
   startup = null,
@@ -514,7 +518,7 @@ export async function runDev({
   }
 
   const report = await withCwd(root, () =>
-    devMain({ reqPath, forcePhases, ...injection })
+    devMain({ reqPath, forcePhases, deliveryMode, acceptedIssueUrl, ...injection })
   );
   return { ok: report && report.outcome !== "halted", report, refusal: null };
 }

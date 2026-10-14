@@ -13407,6 +13407,181 @@ export async function dodVerifyLoop({
   return { passed: false, iterations: maxIterations };
 }
 
+// Chain mode uses a branch push run because pull_request workflows normally
+// test a synthetic merge commit. Neither the legacy no-checks pass nor A5's
+// raw-log prompt can establish a private, current-head result here.
+async function chainGhJson(args) {
+  const { execFileSync } = await import("child_process");
+  const raw = execFileSync("gh", args, { encoding: "utf8", stdio: "pipe" });
+  return JSON.parse(raw);
+}
+
+async function chainPrView(prUrl) {
+  return chainGhJson(["pr", "view", prUrl, "--json", "headRefOid,headRefName"]);
+}
+
+async function chainPushRuns(sha, branch) {
+  return chainGhJson([
+    "run", "list", "--commit", sha, "--branch", branch, "--event", "push", "--limit", "100",
+    "--json", "headSha,headBranch,event,status,conclusion,url,name",
+  ]);
+}
+
+function chainRunState(runs, sha, branch) {
+  if (!Array.isArray(runs)) return { state: "unknown" };
+  const current = runs.filter((run) => run && run.headSha === sha && run.headBranch === branch && run.event === "push");
+  if (!current.length) return { state: "none" };
+  const representative = current.find((run) => run.conclusion && run.conclusion !== "success") ?? current[0];
+  const evidence = {
+    runUrl: typeof representative.url === "string" ? representative.url : null,
+    runName: typeof representative.name === "string" ? representative.name : null,
+  };
+  if (current.some((run) => !run.url || !run.name || !run.status)) {
+    return { state: "unknown", ...evidence };
+  }
+  if (current.some((run) => run.status !== "completed")) return { state: "pending", ...evidence };
+  if (current.some((run) => typeof run.conclusion !== "string" || !run.conclusion)) return { state: "unknown", ...evidence };
+  if (current.every((run) => run.conclusion === "success")) return { state: "passed", ...evidence };
+  if (current.some((run) => !["success", "failure", "timed_out"].includes(run.conclusion))) return { state: "blocked", ...evidence };
+  return { state: "failed", ...evidence };
+}
+
+/** Strict, opt-in PR and CI gate for an accepted chain handoff. */
+export async function raisePrAndVerifyCiChain({
+  feature,
+  _agent = agent,
+  _git = defaultGit,
+  _prView = chainPrView,
+  _listRuns = chainPushRuns,
+  _log = log,
+  _now = () => Date.now(),
+  _sleep = sleep,
+  registrationTimeoutMs = CI_NO_CHECKS_TIMEOUT_MS,
+  completionTimeoutMs = CI_COMPLETION_TIMEOUT_MS,
+  pollIntervalMs = CI_POLL_INTERVAL_MS,
+} = {}) {
+  const prResult = await _agent("ship-pr", createPrPrompt(feature));
+  const prUrl = parsePrUrl(prResult);
+  if (!prUrl) throw haltError(`Error: Chain PUB PR creation failed for ${feature}`);
+
+  async function localHead() {
+    const result = await _git(["rev-parse", "HEAD"]);
+    const sha = result && result.ok === true ? String(result.stdout || "").trim() : "";
+    if (!/^[0-9a-f]{40}$/i.test(sha)) throw haltError("Error: Chain PUB cannot verify local commit SHA");
+    return sha;
+  }
+  async function matchingPrHead(sha, branch = null) {
+    let pr;
+    try { pr = await _prView(prUrl); }
+    catch { throw haltError("Error: Chain PUB PR head query failed"); }
+    if (!pr || pr.headRefOid !== sha || typeof pr.headRefName !== "string" || !pr.headRefName || (branch && pr.headRefName !== branch)) {
+      throw haltError("Error: Chain PUB PR head mismatch with pushed local commit");
+    }
+    return pr;
+  }
+  async function waitForPushedHead(previousSha, nextSha, branchName) {
+    const start = _now();
+    while (true) {
+      let pr;
+      try { pr = await _prView(prUrl); }
+      catch { throw haltError("Error: Chain PUB PR head query failed after repair push"); }
+      if (!pr || pr.headRefName !== branchName || (pr.headRefOid !== previousSha && pr.headRefOid !== nextSha)) {
+        throw haltError("Error: Chain PUB PR head changed unexpectedly after repair push");
+      }
+      if (pr.headRefOid === nextSha) return;
+      if (_now() - start >= registrationTimeoutMs) {
+        throw haltError("Error: Chain PUB repair push did not reach PR head within timeout");
+      }
+      await _sleep(pollIntervalMs);
+    }
+  }
+  async function observe(sha, branch) {
+    const start = _now();
+    let registeredAt = null;
+    while (true) {
+      await matchingPrHead(sha, branch);
+      let runs;
+      try { runs = await _listRuns(sha, branch); }
+      catch { throw haltError("Error: Chain PUB CI query failed"); }
+      const result = chainRunState(runs, sha, branch);
+      if (result.state === "unknown") throw haltError("Error: Chain PUB CI query returned unverifiable result");
+      if (result.state === "passed" || result.state === "failed" || result.state === "blocked") {
+        await matchingPrHead(sha, branch);
+        return result;
+      }
+      if (result.state === "pending" && registeredAt === null) registeredAt = _now();
+      if (result.state === "none" && _now() - start >= registrationTimeoutMs) {
+        throw haltError("Error: Chain PUB no current-head CI registered");
+      }
+      if (registeredAt !== null && _now() - registeredAt >= completionTimeoutMs) {
+        throw haltError("Error: Chain PUB current-head CI did not complete within timeout");
+      }
+      await _sleep(pollIntervalMs);
+    }
+  }
+
+  const evidence = { prUrl, repairCount: 0 };
+  try {
+    let sha = await localHead();
+    evidence.headSha = sha;
+    let pr = await matchingPrHead(sha);
+    const first = await observe(sha, pr.headRefName);
+    evidence.runUrl = first.runUrl;
+    evidence.ciStatus = first.state;
+    if (first.state === "failed") evidence.failedHeadSha = sha;
+    if (first.state === "passed") {
+      _log(`Chain PUB current-head CI passed: ${first.runUrl}`);
+      return { prUrl, ciStatus: "passed", headSha: sha, runUrl: first.runUrl, repairCount: 0 };
+    }
+
+    if (first.state === "blocked") {
+      throw haltError("Error: Chain PUB CI conclusion does not permit repair");
+    }
+    // Do not pass failed job logs or application data to the repair agent.
+    const repairPrompt = [
+      `Repair the one failing CI blocker for ${feature}. Reproduce with local tests,`,
+      `make the smallest fix, run the relevant tests, and make exactly one commit.`,
+      `Do not push; the workflow will push once after checking the commit.`,
+      `PR: ${prUrl}; branch commit: ${sha}; CI run: ${first.runUrl || "unavailable"};`,
+      `check: ${first.runName || "unavailable"}; state: failed.`,
+      `Keep account and position data private; report only gate outcomes.`,
+    ].join(" ");
+    await _agent("se-implement", repairPrompt);
+    const repairCommit = await localHead();
+    if (repairCommit === sha) throw haltError("Error: Chain PUB repair made no new commit");
+    // The agent may commit locally, but only this gate is allowed to push.
+    await matchingPrHead(sha, pr.headRefName);
+    const count = await _git(["rev-list", "--count", `${sha}..${repairCommit}`]);
+    if (!count || count.ok !== true || String(count.stdout || "").trim() !== "1") {
+      throw haltError("Error: Chain PUB repair must make exactly one new commit");
+    }
+    const clean = await _git(["status", "--porcelain"]);
+    if (!clean || clean.ok !== true || String(clean.stdout || "").trim()) {
+      throw haltError("Error: Chain PUB repair left uncommitted changes");
+    }
+    const pushed = await _git(["push", "origin", `HEAD:refs/heads/${pr.headRefName}`]);
+    if (!pushed || pushed.ok !== true) throw haltError("Error: Chain PUB repair push failed");
+    evidence.repairCount = 1;
+    evidence.failedRunUrl = first.runUrl;
+    evidence.repairCommit = repairCommit;
+    sha = repairCommit;
+    evidence.headSha = sha;
+    await waitForPushedHead(pr.headRefOid, sha, pr.headRefName);
+    const second = await observe(sha, pr.headRefName);
+    evidence.runUrl = second.runUrl;
+    evidence.ciStatus = second.state;
+    if (second.state !== "passed") throw haltError("Error: Chain PUB repair failed current-head CI");
+    _log(`Chain PUB repair current-head CI passed: ${second.runUrl}`);
+    return {
+      prUrl, ciStatus: "passed", headSha: sha, runUrl: second.runUrl,
+      repairCount: 1, failedRunUrl: first.runUrl, failedHeadSha: evidence.failedHeadSha, repairCommit,
+    };
+  } catch (err) {
+    if (err && typeof err === "object") err.chainCiEvidence = evidence;
+    throw err;
+  }
+}
+
 /**
  * Phase PUB: raise (or reuse) the PR for the feature branch, then poll GHA checks
  * until they pass, fail, or the no-checks window expires. The poll-timing logic
@@ -15136,8 +15311,62 @@ export async function gatherA5Context({ _git }) {
  * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _hashNormalizedFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function, _sessionAgent?: function }} params
  * @returns {Promise<FinalReport>}
  */
+export function validateChainIssueUrl(value) {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "github.com" &&
+      /^\/[^/]+\/[^/]+\/issues\/[1-9]\d*$/.test(url.pathname) &&
+      !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+export function githubOriginRepository(value) {
+  if (typeof value !== "string") return null;
+  const remote = value.trim();
+  const scp = /^git@github\.com:([^/]+)\/([^/]+)$/.exec(remote);
+  let parts;
+  if (scp) {
+    parts = scp.slice(1);
+  } else {
+    try {
+      const url = new URL(remote);
+      if (url.hostname !== "github.com" || !["https:", "ssh:", "git:"].includes(url.protocol)) return null;
+      parts = /^\/([^/]+)\/([^/]+)$/.exec(url.pathname)?.slice(1);
+    } catch {
+      return null;
+    }
+  }
+  if (!parts) return null;
+  const [owner, rawRepo] = parts;
+  const repo = rawRepo.replace(/\.git$/i, "");
+  return repo ? `${owner}/${repo}`.toLowerCase() : null;
+}
+
+export function validateChainArtifact(kind, content, acceptedIssueUrl, requirementIds = []) {
+  if (typeof content !== "string" || !content.trim()) {
+    return { ok: false, reason: `${kind} is empty or unreadable` };
+  }
+  if (kind === "issue-decisions" && !content.includes(acceptedIssueUrl)) {
+    return { ok: false, reason: `issue-decisions does not cite the accepted issue ${acceptedIssueUrl}` };
+  }
+  if (kind === "FSPEC") {
+    const tracedIds = new Set(content.match(/\bREQ-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/g) ?? []);
+    const missing = requirementIds.filter((id) => !tracedIds.has(id));
+    if (missing.length) return { ok: false, reason: `FSPEC does not trace ${missing.join(", ")}` };
+    const acceptedIds = new Set(requirementIds);
+    const unknown = [...tracedIds].filter((id) => !acceptedIds.has(id));
+    if (unknown.length) return { ok: false, reason: `FSPEC adds requirements absent from accepted REQ: ${unknown.join(", ")}` };
+  }
+  return { ok: true };
+}
+
 export default async function main({
   reqPath,
+  deliveryMode = null,
+  acceptedIssueUrl = null,
   forcePhases = null,
   _agent: rawAgentFn = agent,
   _parallel: parallelFn = parallel,
@@ -15160,6 +15389,7 @@ export default async function main({
   _runWaveGateSeam: runWaveGateSeamFn = runWaveGateSeam,
   _readAdvisoryConfig: readAdvisoryConfigFn = readAdvisoryConfigSafely,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
+  _raisePrAndVerifyCiChain: raisePrAndVerifyCiChainFn = raisePrAndVerifyCiChain,
   _checkCi: checkCiFn = checkPrCi,
   _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
   _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
@@ -15170,6 +15400,7 @@ export default async function main({
   _writeFile: writeFileFn = defaultWriteFile,
   _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
+  _readOrigin: readOriginFn = null,
   _recordQueueRow: recordQueueRowFn = defaultRecordQueueRow,
   _ghRun: ghRunFn = defaultGhRun,
   // The three optional probe seams. `null` is the shipped state: a runtime that
@@ -15209,6 +15440,28 @@ export default async function main({
     rawAgentFn(skill, prompt, { model: MODEL_DEFAULT, ...opts });
 
   const phases = [];
+  let chainRequirementIds = [];
+  const chainArtifactGates = deliveryMode === "chain" ? Object.fromEntries(
+    ["REQ", "seam-map", "issue-decisions", "FSPEC", "TSPEC", "DECISIONS", "PLAN", "PROPERTIES", "LEARNINGS"]
+      .map((kind) => [kind, "not_run"])
+  ) : null;
+  let chainCiEvidence;
+  let prUrl;
+  let ciStatus;
+  function chainReport() {
+    if (deliveryMode !== "chain") return undefined;
+    return {
+      acceptedIssueUrl: validateChainIssueUrl(acceptedIssueUrl) ? acceptedIssueUrl : null,
+      artifactGates: { ...chainArtifactGates },
+      prUrl: chainCiEvidence?.prUrl ?? prUrl ?? null,
+      headSha: chainCiEvidence?.headSha ?? null,
+      runUrl: chainCiEvidence?.runUrl ?? null,
+      ciState: chainCiEvidence?.ciStatus ?? "not_run",
+      repairCount: chainCiEvidence?.repairCount ?? 0,
+      ...(chainCiEvidence?.failedRunUrl ? { failedRunUrl: chainCiEvidence.failedRunUrl } : {}),
+      ...(chainCiEvidence?.repairCommit ? { repairCommit: chainCiEvidence.repairCommit } : {}),
+    };
+  }
   let haltReason;
 
   // TSPEC §8.4 (PLAN A-26, OQ-3) — the commit `git rev-parse HEAD` reported the moment Phase
@@ -17174,18 +17427,22 @@ export default async function main({
     const dispatch = PHASE_DISPATCH[phaseId];
     phaseFn(phaseLabelOverride ?? `Phase ${phaseId}: ${dispatch.label}`);
 
-    const gate = await phaseGate({ phaseId, docType, docPath });
+    const chainMode = deliveryMode === "chain";
+    let present = chainMode ? await checkFileFn(docPath) : null;
+    const gate = chainMode ? null : await phaseGate({ phaseId, docType, docPath });
     if (pushArtifact) artifactPaths.push(docPath);
-    if (gate.skip) return { skipped: true };
+    if (gate?.skip) return { skipped: true };
 
-    // The creator. `creator: null` (Phase R) reviews a document this pipeline
-    // did not write, so there is nothing to dispatch.
+    // Both modes use the same creator dispatch. Chain mode only creates a missing artifact.
     let creatorResult = null;
-    if (dispatch.creator) {
+    if (dispatch.creator && (!chainMode || !present.ok)) {
       const basePrompt = creatorPrompt(phaseId, featureName, inputs ?? dispatch.creatorInputs);
+      const prompt = chainMode
+        ? `${basePrompt}\nUse accepted issue ${acceptedIssueUrl} and issue-decisions evidence as scope authority. Produce artifact once; do not run cross-review rounds.`
+        : creatorPromptExtra ? `${basePrompt}\n${creatorPromptExtra}` : basePrompt;
       creatorResult = await wrappedDispatch({
         skill: dispatch.creator,
-        basePrompt: creatorPromptExtra ? `${basePrompt}\n${creatorPromptExtra}` : basePrompt,
+        basePrompt: prompt,
         targetPath: docPath,
         docType,
         dispatchKind: "authoring",
@@ -17197,6 +17454,30 @@ export default async function main({
           `Error: creator agent ${dispatch.creator} failed to produce ${docPath} for phase ${phaseId}`
         );
       }
+      if (chainMode) present = await checkFileFn(docPath);
+    }
+
+    if (chainMode) {
+      if (!present.ok) {
+        chainArtifactGates[docType] = "failed";
+        throw haltError(`Chain artifact gate: ${docPath} missing or empty`);
+      }
+      const validation = validateChainArtifact(docType, await readFileFn(docPath), acceptedIssueUrl, chainRequirementIds);
+      if (!validation.ok) {
+        chainArtifactGates[docType] = "failed";
+        throw haltError(`Chain artifact gate: ${docPath}: ${validation.reason}`);
+      }
+      let suffix;
+      try {
+        suffix = afterConverged ? await afterConverged({ loop: null, creatorResult }) : undefined;
+      } catch (err) {
+        chainArtifactGates[docType] = "failed";
+        throw err;
+      }
+      chainArtifactGates[docType] = "passed";
+      const issueDetail = phaseId === "R" ? `; accepted issue: ${acceptedIssueUrl}` : "";
+      recordPhase(phaseId, dispatch.label, "chain-validated", `Artifact checked; no cross-review${issueDetail}${suffix ?? ""}`);
+      return { skipped: false, creatorResult };
     }
 
     const window = gate.window;
@@ -17277,6 +17558,7 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      chain: chainReport(),
       learningsInjection: learningsInjectionField,
       decisionLedger: decisionLedgerField,
     });
@@ -17295,12 +17577,40 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      chain: chainReport(),
       learningsInjection: learningsInjectionField,
       decisionLedger: decisionLedgerField,
     });
   }
 
   const featureName = match[1];
+  if (deliveryMode === "chain" && forcePhases != null && String(forcePhases).trim()) {
+    haltReason = "Chain mode does not accept forcePhases; every artifact gate must run";
+    return buildFinalReport({ provenance, feature: featureName, outcome: "halted", phases,
+      artifactPaths: [], testSummary: "Not run", harvestStatus: "Not run", haltReason,
+      chain: chainReport(),
+      learningsInjection: learningsInjectionField, decisionLedger: decisionLedgerField });
+  }
+  if ((deliveryMode !== null && deliveryMode !== "chain") ||
+      (deliveryMode === "chain" && !validateChainIssueUrl(acceptedIssueUrl)) ||
+      (deliveryMode !== "chain" && acceptedIssueUrl !== null)) {
+    haltReason = "Chain mode requires deliveryMode=chain and a valid accepted GitHub issue URL";
+    return buildFinalReport({ provenance, feature: featureName, outcome: "halted", phases,
+      artifactPaths: [], testSummary: "Not run", harvestStatus: "Not run", haltReason,
+      chain: chainReport(),
+      learningsInjection: learningsInjectionField, decisionLedger: decisionLedgerField });
+  }
+  if (deliveryMode === "chain" && (!phaseDodEnabled || !phasePubEnabled)) {
+    const disabled = [
+      ...(!phaseDodEnabled ? ["DOD"] : []),
+      ...(!phasePubEnabled ? ["PUB"] : []),
+    ];
+    haltReason = `Chain mode requires enabled ${disabled.join(" and ")} phase${disabled.length === 1 ? "" : "s"}`;
+    return buildFinalReport({ provenance, feature: featureName, outcome: "halted", phases,
+      artifactPaths: [], testSummary: "Not run", harvestStatus: "Not run", haltReason,
+      chain: chainReport(),
+      learningsInjection: learningsInjectionField, decisionLedger: decisionLedgerField });
+  }
 
   // ─── TSPEC §5.7 / §6.2 row 12 — the forcePhases gate ──────────────────────
   //
@@ -17321,6 +17631,7 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      chain: chainReport(),
       learningsInjection: learningsInjectionField,
       decisionLedger: decisionLedgerField,
     });
@@ -17346,6 +17657,7 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      chain: chainReport(),
       learningsInjection: learningsInjectionField,
       decisionLedger: decisionLedgerField,
     });
@@ -17353,11 +17665,51 @@ export default async function main({
 
   // ─── Pipeline ─────────────────────────────────────────────────────────────
 
+  if (deliveryMode === "chain") {
+    for (const [kind, path] of [
+      ["REQ", reqPath],
+      ["seam-map", `docs/${featureName}/_evidence/seam-map.md`],
+      ["issue-decisions", `docs/${featureName}/_evidence/issue-decisions.md`],
+    ]) {
+      const check = await checkFileFn(path);
+      if (!check.ok) {
+        chainArtifactGates[kind] = "failed";
+        haltReason = `Chain prerequisite gate: ${path} is missing or empty`;
+      } else {
+        const content = await readFileFn(path);
+        const validation = validateChainArtifact(kind, content, acceptedIssueUrl);
+        chainArtifactGates[kind] = validation.ok ? "passed" : "failed";
+        if (!validation.ok) haltReason = `Chain prerequisite gate: ${path}: ${validation.reason}`;
+        if (kind === "REQ" && validation.ok) {
+          chainRequirementIds = [...new Set(content.match(/\bREQ-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/g) ?? [])];
+          if (chainRequirementIds.length === 0) {
+            chainArtifactGates.REQ = "failed";
+            haltReason = `Chain prerequisite gate: ${reqPath} has no REQ requirement IDs`;
+          }
+        }
+      }
+      if (haltReason) return buildFinalReport({ provenance, feature: featureName, outcome: "halted", phases,
+        artifactPaths: [], testSummary: "Not run", harvestStatus: "Not run", haltReason,
+        chain: chainReport(),
+        learningsInjection: learningsInjectionField, decisionLedger: decisionLedgerField });
+    }
+    const originResult = readOriginFn
+      ? await readOriginFn()
+      : await gitFn(["remote", "get-url", "origin"]);
+    const originUrl = typeof originResult === "string" ? originResult
+      : originResult?.ok === true ? originResult.stdout : null;
+    const originRepository = githubOriginRepository(originUrl);
+    const issueRepository = new URL(acceptedIssueUrl).pathname.split("/").slice(1, 3).join("/").toLowerCase();
+    if (!originRepository || originRepository !== issueRepository) {
+      haltReason = `Chain prerequisite gate: accepted issue repository ${issueRepository} does not match active git origin ${originRepository ?? "unavailable"}`;
+      return buildFinalReport({ provenance, feature: featureName, outcome: "halted", phases,
+        artifactPaths: [], testSummary: "Not run", harvestStatus: "Not run", haltReason,
+        chain: chainReport(), learningsInjection: learningsInjectionField, decisionLedger: decisionLedgerField });
+    }
+  }
   const artifactPaths = [reqPath];
   let testSummary = "Not run";
   let harvestStatus = "Not run";
-  let prUrl;
-  let ciStatus;
   // TSPEC §10.1/§10.4: set only inside Phase MERGE, itself reachable only past
   // Phase PUB — a run that halts earlier never assigns this, so the success
   // path below always has a real MergeOutcome to read (Phase MERGE never
@@ -17529,7 +17881,10 @@ export default async function main({
       // feature that had correctly been judged not to need one — a new artifact
       // on a run that should have been a no-op.
       let decisionsWarranted;
-      if (tResult.skipped) {
+      if (deliveryMode === "chain") {
+        // The accepted chain artifact set always includes a decisions record.
+        decisionsWarranted = true;
+      } else if (tResult.skipped) {
         // `checkFileFn` is the same existence probe the phase gates use, and it
         // returns `{ok, reason}` — not a boolean. Read `.ok`: the object itself
         // is always truthy, which would make every skip "warranted" and quietly
@@ -18404,6 +18759,11 @@ export default async function main({
       recordPhase("PT", "PROPERTIES Tests", "✅", "All properties tests passing");
 
       // ─── Phase CR: Final Codebase Review ─────────────────────────────────
+    if (deliveryMode === "chain") {
+      phaseFn("Phase CR: Chain handoff");
+      recordPhase("CR", PHASE_DISPATCH.CR.label, "chain-validated",
+        "No cross-review verdict; implementation proceeds to DoD");
+    } else {
       phaseFn("Phase CR: Final Codebase Review");
       const crWindow = await phaseWindow(null);
       const crResult = await reviewLoop({
@@ -18424,6 +18784,7 @@ export default async function main({
       if (Array.isArray(crResult.anchoredPaths)) artifactPaths.push(...crResult.anchoredPaths);
       checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase, featureName, crWindow.startIndex, crWindow.endIndex);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
+    }
 
       // ─── Phase DOD: Definition of Done Verification ─────────────────────
       if (!phaseDodEnabled) {
@@ -18623,7 +18984,12 @@ export default async function main({
           );
         }
 
-        harvestStatus = "Harvested";
+      if (deliveryMode === "chain") {
+        const learningGate = validateChainArtifact("LEARNINGS", learningsText, acceptedIssueUrl);
+        chainArtifactGates.LEARNINGS = learningGate.ok ? "passed" : "failed";
+        if (!learningGate.ok) throw haltError(`Chain artifact gate: ${learningsPath}: ${learningGate.reason}`);
+      }
+      harvestStatus = "Harvested";
         // §7.4 class 7: LEARNINGS is authored outside converge()'s push site
         // (harvest's own wrappedDispatch), so it is pushed here instead.
         artifactPaths.push(learningsPath);
@@ -18639,7 +19005,16 @@ export default async function main({
         recordPhase("PUB", "Raise PR & Verify CI", "⏭", "Skipped — auto-PR disabled");
       } else {
         phaseFn("Phase PUB: Raise PR & Verify CI");
-        const pubResult = await raisePrAndVerifyCiFn({
+      const pubResult = deliveryMode === "chain"
+        ? await raisePrAndVerifyCiChainFn({
+          feature: featureName,
+          _agent: agentFn,
+          _git: gitFn,
+          _log: emit,
+          _now,
+          _sleep,
+        })
+        : await raisePrAndVerifyCiFn({
           feature: featureName,
           _agent: agentFn,
           _checkCi: checkCiFn,
@@ -18651,10 +19026,22 @@ export default async function main({
           ...(advisoryTierOn ? { _runAdvisorySeam: runA5AdvisorySeam } : {}),
           _advisoryRecord: (disposition) => advisoryDispositions.push(disposition),
         });
-        prUrl = pubResult.prUrl;
-        ciStatus = pubResult.ciStatus;
-        // §9.4 S-3 — A5-6's "no check ever registered" is a property of the PHASE, not of any
-        // disposition, so it is carried out of the phase and onto the summary explicitly.
+      prUrl = pubResult.prUrl;
+      ciStatus = pubResult.ciStatus;
+      if (deliveryMode === "chain") {
+        chainCiEvidence = {
+          prUrl: pubResult.prUrl,
+          headSha: pubResult.headSha,
+          runUrl: pubResult.runUrl,
+          ciStatus: pubResult.ciStatus,
+          repairCount: pubResult.repairCount,
+          ...(pubResult.failedRunUrl ? { failedRunUrl: pubResult.failedRunUrl } : {}),
+        ...(pubResult.failedHeadSha ? { failedHeadSha: pubResult.failedHeadSha } : {}),
+          ...(pubResult.repairCommit ? { repairCommit: pubResult.repairCommit } : {}),
+        };
+      }
+      // §9.4 S-3 — A5-6's "no check ever registered" is a property of the PHASE, not of any
+      // disposition, so it is carried out of the phase and onto the summary explicitly.
         advisoryPubOutcome.noChecks = Boolean(pubResult.noChecks);
         const ciDetail =
           ciStatus === "passed"
@@ -18727,7 +19114,7 @@ export default async function main({
         _log: emit,
         _now,
         _sleep,
-        _enabled: phaseMergeEnabled,
+        _enabled: deliveryMode === "chain" ? false : phaseMergeEnabled,
       });
       for (const line of mergeOutcome.escalations) notices.push(line);
       for (const note of mergeOutcome.notes) notices.push(note);
@@ -18759,6 +19146,11 @@ export default async function main({
     // to a run that never had a transport.
     if (err && err.seamUnavailable) throw err;
     haltReason = err.message;
+    if (deliveryMode === "chain" && err && err.chainCiEvidence) {
+      chainCiEvidence = err.chainCiEvidence;
+      prUrl = chainCiEvidence.prUrl;
+      ciStatus = chainCiEvidence.ciStatus;
+    }
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;
     }
@@ -18851,6 +19243,7 @@ export default async function main({
       harvestStatus: harvestStatus === "Not run" ? "Not run" : harvestStatus,
       prUrl,
       ciStatus,
+      chain: chainReport(),
       haltReason,
       haltPhase,
       postmortemStatus,
@@ -18898,6 +19291,7 @@ export default async function main({
     harvestStatus,
     prUrl,
     ciStatus,
+    chain: chainReport(),
     dodVerifiedCommit,
     headSha: await readCurrentHead(),
     // S-1: an enabled tier always reports one row per member of `ADVISORY_SEAMS` — six
@@ -18974,6 +19368,7 @@ function buildFinalReport({
   harvestStatus,
   prUrl,
   ciStatus,
+  chain = undefined,
   haltReason,
   haltPhase = null,
   postmortemStatus = "none",
@@ -19048,6 +19443,7 @@ function buildFinalReport({
     mergeMethod,
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
+    ...(chain !== undefined ? { chain } : {}),
     ...(haltReason ? { haltReason } : {}),
     ...(advisory ? { advisory } : {}),
     // TSPEC §4.5 (PLAN A6-21) — present only when THIS halt carries its own A6 diagnostic

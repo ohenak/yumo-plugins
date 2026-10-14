@@ -1,0 +1,13 @@
+# Decisions: Opt-in M2 chain mode
+
+| ID | Decision | Source |
+| --- | --- | --- |
+| DEC-CHAIN-01 | Use explicit opt-in and preserve existing `pdlc dev` default behavior. | [Yumo #89 correction](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868) |
+| DEC-CHAIN-02 | Treat the accepted GitHub Issue as the design decision source. Local artifacts are delivery evidence and must link back to the issue. | [Yumo #89 correction](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868) |
+| DEC-CHAIN-03 | Check nonempty REQ, seam map, and issue decisions as inputs, then create missing later artifacts and gate each once. Require the accepted issue URL in issue decisions and FSPEC REQ-ID agreement. Record `chain-validated`, not reviewer approval; the deterministic gate does not prove design quality. | [Yumo #89 correction](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868) |
+| DEC-CHAIN-04 | Chain CI requires at least one returned branch `push` run for PR `headRefOid`, and every returned exact-SHA push run must complete successfully. A `pull_request` synthetic-merge check alone is insufficient; no-run, stale-run, and uncertain evidence halt. | [Yumo #89 exact-head decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173951462) |
+| DEC-CHAIN-05 | Permit one CI repair push, then halt on repeated failure. This is the smallest bounded interpretation of M2's repair requirement. | [Yumo M2 plan](../proposal/m02-local-workflow-kernel.html), [Yumo #89](https://github.com/ohenak/yumo-plugins/issues/89) |
+| DEC-CHAIN-06 | Preserve existing implementation, DoD, harvest, and PR stages after artifact validation; do not make a second engine. | [Yumo #89 correction](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173830868) |
+| DEC-CHAIN-07 | Build the bounded Yumo chain path before resuming regime-ledger delivery. Keep the accepted regime-ledger issue handoff as that consumer feature's requirements and design source. | [Yumo #89 operator selection](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173895373) |
+| DEC-CHAIN-08 | Publish only run URL, branch-head SHA, gate state, and repair count; keep account, position, and quote values private. | [Yumo #89 exact-head decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6173951462) |
+| DEC-CHAIN-09 | Require DoD and PR/CI in chain mode. Stop after a verified PR, leave it open, and disable automatic Phase MERGE for M2. | [Yumo #89 DoD/PR decision](https://github.com/ohenak/yumo-plugins/issues/89#issuecomment-6174183309) |

@@ -451,10 +451,10 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
   // The per-class site census (TSPEC §3.3): asserted, not observed, so
   // containment cannot pass vacuously over an empty extraction, and an
   // extractor that silently stops matching turns this red instead of green.
-  // Figures are the post-edit ones TSPEC §3.3 names: 7 / 28 / 1 / 12 = 48
-  // direct sites plus 11 indirect-dispatch positions, split across the two
+  // Figures are the post-edit ones TSPEC §3.3 names: 7 / 28 / 1 / 13 = 49
+  // direct sites plus 16 indirect-dispatch positions, split across the two
   // modules as measured there (class 1: 6 dev + 1 queue; classes 2 and 3:
-  // dev only; class 4: 11 dev + 1 queue; indirect: all 11 in dev).
+  // dev only; class 4: 12 dev + 1 queue; indirect: all 16 in dev).
   test("per-class direct-site census — class 1 (module-level SKILL_*/ADVISORY_RUNG_SKILL/SKILL_TRIAGE constants)", () => {
     const direct = (sites) => sites.filter((s) => s.outcome === "direct").length;
     expect(direct(devSites.class1)).toBe(6);
@@ -475,7 +475,7 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
 
   test("per-class direct-site census — class 4 (dispatch-call first arguments)", () => {
     const direct = (sites) => sites.filter((s) => s.outcome === "direct").length;
-    expect(direct(devSites.class4)).toBe(10);
+    expect(direct(devSites.class4)).toBe(12);
     expect(direct(queueSites.class4)).toBe(1);
   });
 
@@ -502,7 +502,7 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
     expect(queueIndirect).toBe(0);
   });
 
-  test("the site census totals 47 direct sites plus 16 indirect positions across both modules", () => {
+  test("the site census totals 49 direct sites plus 16 indirect positions across both modules", () => {
     const direct = (sites) => sites.filter((s) => s.outcome === "direct").length;
     const indirect = (sites) => sites.filter((s) => s.outcome === "indirect").length;
     const totalDirect =
@@ -523,7 +523,7 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
       indirect(queueSites.class2) +
       indirect(queueSites.class3) +
       indirect(queueSites.class4);
-    expect(totalDirect).toBe(47);
+    expect(totalDirect).toBe(49);
     expect(totalIndirect).toBe(16);
   });
 

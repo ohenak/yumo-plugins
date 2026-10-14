@@ -15,6 +15,14 @@ This skill delegates to `@kaneho/pdlc-engine`. It does not run the pipeline itse
 /pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md
 ```
 
+For an operator-accepted GitHub Issue handoff, use the opt-in chain route:
+
+```text
+pdlc dev docs/{feature}/REQ-{feature}.md --delivery-mode chain --accepted-issue https://github.com/{owner}/{repo}/issues/{number}
+```
+
+The issue and its comments remain the requirements and design decision record; the operator reviews them before invocation. Provide a nonempty REQ, `docs/{feature}/_evidence/seam-map.md`, and `docs/{feature}/_evidence/issue-decisions.md` containing the accepted issue URL. Chain mode checks those inputs, creates missing FSPEC, TSPEC, DECISIONS, PLAN, and PROPERTIES artifacts, and checks each once in order. Its deterministic artifact checks cover nonempty content, the issue URL in issue decisions, and FSPEC REQ-ID agreement; they do not prove substantive design agreement. It reports `chain-validated` without cross-review rounds or reviewer approval. Implementation, tests, DoD, harvest, and PR delivery follow. CI requires at least one returned branch `push` run for the PR's current `headRefOid`, with every returned exact-SHA push run completed successfully; missing or stale evidence halts. One failed run permits one repair push and a new exact-head check. Report only run URL, commit SHA, gate result, and repair count; keep private account and position data out of reports. An invocation without `--delivery-mode chain` keeps the existing `pdlc dev` behavior.
+
 - Input: path must match `docs/{feature}/REQ-{feature}.md` (directory segment and filename segment must agree).
 - Delegates to: `pdlc dev <req-path>`.
 - Returns: the CLI's final pipeline report, relayed verbatim — no intermediate agent outputs.
