@@ -1,6 +1,6 @@
 # M1 `pdlc-help` verification
 
-Recorded 2026-10-14 for [approved REQ](../REQ-pdlc-help.md), [properties](../PROPERTIES-pdlc-help.md), and [PLAN P3](../PLAN-pdlc-help.md). This is local branch evidence. It does not claim a pull request, current-commit CI, or a full PDLC delivery run.
+Recorded 2026-10-14 for [approved REQ](../REQ-pdlc-help.md), [properties](../PROPERTIES-pdlc-help.md), and [PLAN P3](../PLAN-pdlc-help.md). This records local branch evidence and [open PR #87](https://github.com/ohenak/yumo-plugins/pull/87). It does not claim a final current-head CI result or a full PDLC delivery run.
 
 | Check | Observed result |
 |---|---|
@@ -14,6 +14,7 @@ Recorded 2026-10-14 for [approved REQ](../REQ-pdlc-help.md), [properties](../PRO
 | Existing dry-run path | A dry-run emitted 31,821 bytes and performed no dispatch. This checks that the existing inspection path remains reachable; it is not a full workflow delivery. |
 | Whitespace and patch shape | `git diff --check` passed. |
 | Boundary suite | `tests/boundary/` does not exist in this repository. The help feature adds no cross-product edge, so no boundary-suite result is claimed. |
+| Pull request | [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open against `main`. Its initial head was `8a8f625336be9587c7ca9b154f9f18f27f87c840`. Document updates can change that head; use the [PR checks page](https://github.com/ohenak/yumo-plugins/pull/87/checks) for the eventual current-head result. No final CI outcome is claimed here. |
 
 ## Verification commands and context
 
@@ -39,4 +40,4 @@ Elapsed time: **UNKNOWN**. Model calls: **UNKNOWN**. Model tokens: **UNKNOWN**. 
 
 The focused tests cover REQ-HELP-01 and REQ-HELP-02 through the two global forms; REQ-HELP-03 through all eight named commands and their syntax and applicable flags; REQ-HELP-04 through subprocesses in a temporary non-project directory without credentials or project setup; and REQ-HELP-05 through no-dispatch and no-write checks. The existing error tests cover the REQ's non-help preservation statement. See the [properties table](../PROPERTIES-pdlc-help.md) for individual test names.
 
-The full-suite rerun is local evidence only. No pull request or current-commit CI result exists yet in this record, and no claim is made that the whole PDLC engine delivery workflow completed.
+The full-suite rerun is local evidence only. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open, but its final current-head CI result is pending; check the [PR checks page](https://github.com/ohenak/yumo-plugins/pull/87/checks) after the final document commit. No claim is made that the whole PDLC engine delivery workflow completed.

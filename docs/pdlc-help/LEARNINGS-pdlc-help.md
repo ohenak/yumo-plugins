@@ -3,14 +3,14 @@
 | Field | Detail |
 |---|---|
 | Feature | `pdlc-help` (M1, queue row 35) |
-| Status | Local implementation verified; operator PR and current-head CI pending |
+| Status | Local implementation verified; [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) open; final current-head CI pending |
 | Date recorded | 2026-10-14 |
 | Harvested from | The operator's `$deliver-feature-chain` invocation for M1; [issue #86 and its decisions](https://github.com/ohenak/yumo-plugins/issues/86); the gatekeeper's recon, red/green checks, Claude review fixes, and [verification record](_evidence/help-verification.md). |
 | Measurement | Elapsed time: **UNKNOWN**; model calls: **UNKNOWN**; tokens: **UNKNOWN**; cost: **UNKNOWN**. |
 
 ## 1. Non-Convergences
 
-No unresolved requirement or design dispute was recorded. The operator approved the [REQ](REQ-pdlc-help.md) in issue #86 before implementation. Two local evidence gaps were resolved during the run: the first full engine test attempt lacked this worktree's dependencies, and Claude review found missing error-path tests and insufficient output-channel assertions. The final local tests passed after those fixes. This does not settle PR or CI evidence.
+No unresolved requirement or design dispute was recorded. The operator approved the [REQ](REQ-pdlc-help.md) in issue #86 before implementation. Two local evidence gaps were resolved during the run: the first full engine test attempt lacked this worktree's dependencies, and Claude review found missing error-path tests and insufficient output-channel assertions. The final local tests passed after those fixes. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open; its final current-head CI result remains pending.
 
 ## 2. Cross-Feature Patterns
 
@@ -32,10 +32,10 @@ The feature followed the chain's red-before-green sequence: six focused help tes
 
 ## 5. Open Items and Consolidation
 
-1. The operator-owned pull request and current-head CI result remain pending. Do not report local test results as CI evidence.
+1. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open. Its initial head was `8a8f625336be9587c7ca9b154f9f18f27f87c840`; document commits can change the head. Check the [PR checks page](https://github.com/ohenak/yumo-plugins/pull/87/checks) for the final current-head CI result. Do not report local tests as CI evidence.
 2. No full `pdlc dev` delivery run was performed for this feature. The engine dry-run was a compatibility check with no dispatch.
 3. Elapsed time, model calls, token use, and cost have no recorded measurements; keep them **UNKNOWN** rather than estimate them.
 
 ## 6. Approval Record
 
-The operator approved the requirement and M1 build in [issue #86's sign-off comment](https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163694833). Claude's no-tools document and code reviews supplied feedback, and the local gatekeeper checked the resulting artifacts and test results. A pull request review, current-head CI pass, and merge approval are not yet recorded.
+The operator approved the requirement and M1 build in [issue #86's sign-off comment](https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163694833). Claude's no-tools document and code reviews supplied feedback, and the local gatekeeper checked the resulting artifacts and test results. [PR #87](https://github.com/ohenak/yumo-plugins/pull/87) is open. A pull request review, final current-head CI pass, and merge approval are not yet recorded.
