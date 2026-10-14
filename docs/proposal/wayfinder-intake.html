@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Yumo requirements and design with Wayfinder</title>
+<link href="review.css" rel="stylesheet"/>
+</head>
+<body>
+<main>
+<header>
+<nav aria-label="Proposal navigation"><a href="index.html">Review hub</a><a href="m01-readiness.html">M1 readiness</a><a href="lessons-and-milestone-adjustments.html">Past-run lessons</a></nav>
+<p class="eyebrow">Requirements and design · Draft workflow · 2026-10-14</p>
+<h1>Work out requirements and design with Wayfinder</h1>
+<p class="lead">You bring a proposed capability. Wayfinder helps you settle its requirements, design, and decisions. GitHub Issues keeps the record.</p>
+</header>
+<section aria-labelledby="roles">
+<h2 id="roles">What each part does</h2>
+<div class="grid">
+<div class="panel"><h3>You</h3><p>Propose a feature or outcome. Decide its scope, behavior, and trade-offs during the conversation.</p></div>
+<div class="panel"><h3>Wayfinder</h3><p>Checks facts, asks clear questions, and records the resulting requirements, design, and decisions in GitHub Issues.</p></div>
+<div class="panel"><h3>PDLC delivery</h3><p>Builds from the accepted issue record. It links its commits, tests, review, PR, and CI evidence back to that record.</p></div>
+</div>
+<p>This design adapts the decision-map method in <a href="https://github.com/mattpocock/skills/blob/main/skills/engineering/wayfinder/SKILL.md">Wayfinder</a> and the question rounds in <a href="https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md">Grilling</a>. The <a href="../skills/yumo-wayfinder/SKILL.md">draft Yumo skill</a> applies the <a href="../skills/clear-communication/SKILL.md">clear-communication rules</a>.</p>
+</section>
+<section aria-labelledby="flow">
+<h2 id="flow">From a proposed feature to delivery</h2>
+<ol>
+<li><strong>Start with your candidate.</strong> The feature may come from you, an existing issue, or a useful idea from older code. Wayfinder does not choose it for you.</li>
+<li><strong>Check facts and open questions.</strong> Wayfinder reads the target repository and relevant issues. It asks you to decide behavior and trade-offs that facts cannot settle.</li>
+<li><strong>Record requirements and design.</strong> GitHub Issues holds the expected behavior, acceptance checks, design options, chosen approach, and reasons.</li>
+<li><strong>Confirm the handoff.</strong> Wayfinder reads back the result. Your correction or acceptance is recorded in the issue. Open blocking decisions stay visible.</li>
+<li><strong>Build and verify.</strong> PDLC uses the accepted issue record as its source. It may make local working copies for implementation, but links the delivered evidence back to Issues.</li>
+</ol>
+<div class="panel good"><strong>M1 example:</strong> You have proposed <code>pdlc --help</code> as a good candidate. You decided that all three help forms must exit successfully without credentials or project setup. The two general forms show general usage; <a href="https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163650686">command-specific help</a> shows that command's syntax and flags. The <a href="../pdlc-help/REQ-pdlc-help.md">draft requirement</a> still needs operator sign-off, recorded in issue #86, before implementation.</div>
+</section>
+<section aria-labelledby="issues">
+<h2 id="issues">GitHub Issues is the default record</h2>
+<p>Use the feature’s target repository. <a href="https://github.com/ohenak/yumo-plugins/issues/86"><code>pdlc --help</code> issue #86</a> lives in <code>ohenak/yumo-plugins</code>. <a href="https://github.com/ohenak/regime-ledger/issues/1">The report experiment issue #1</a> lives in <code>ohenak/regime-ledger</code>. Link issues across repositories when one decision affects both.</p>
+<p>For a small feature, one issue can hold the requirement, design, decisions, and handoff. For a broad effort, use a short map issue with linked decision issues. Create separate issues only when different questions need different owners or dependencies.</p>
+<p>Track scope, acceptance checks, alternatives, answers, rejected directions, research, and prototype links in Issues. If GitHub is unavailable, keep a pending conversation summary. Do not claim the record is ready or silently move it to local Markdown.</p>
+<p>The <code>gh</code> CLI has access to both target repositories outside this workspace's network-restricted sandbox. The M1 decision is recorded in <a href="https://github.com/ohenak/yumo-plugins/issues/86">yumo-plugins issue #86</a>.</p>
+</section>
+<section aria-labelledby="questions">
+<h2 id="questions">Make the conversation easy to follow</h2>
+<ul>
+<li>Start each round with one sentence about the proposed feature and what is already decided.</li>
+<li>Ask only questions whose prerequisites are settled. Group independent questions when the group remains easy to read.</li>
+<li>Give each question a clear title, a short reason, useful choices, and a recommendation with its trade-off.</li>
+<li>Check repository facts directly. Ask you for decisions, not facts the agent can find.</li>
+<li>After each reply, restate the decisions in plain words and name what remains open.</li>
+<li>Use one term for one concept. Define unfamiliar terms and preserve the difference between “must,” “may,” and “usually.”</li>
+</ul>
+<p>These rules retain Wayfinder's decision-tree method and apply clear-communication to every question, answer summary, and issue update.</p>
+</section>
+<section aria-labelledby="handoff">
+<h2 id="handoff">What the accepted issue record contains</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Why it is needed</th></tr></thead>
+<tbody>
+<tr><td>User outcome and target repository</td><td>States the purpose and where the change belongs.</td></tr>
+<tr><td>Requirements and acceptance checks</td><td>Defines the behavior and how to observe success or failure.</td></tr>
+<tr><td>Agreed design and alternatives</td><td>Explains the chosen approach and important trade-offs.</td></tr>
+<tr><td>Decision links and scope limits</td><td>Shows which answers govern the work and what lies outside it.</td></tr>
+<tr><td>Dependencies and open questions</td><td>Prevents blocked work from appearing ready.</td></tr>
+<tr><td>Your correction or acceptance</td><td>Records agreement once before delivery begins.</td></tr>
+</tbody>
+</table></div>
+</section>
+<section aria-labelledby="milestone">
+<h2 id="milestone">Effect on the milestones</h2>
+<p><a href="m01-audit-and-baseline.html">M1</a> can use <code>pdlc --help</code> in <code>yumo-plugins</code>. The <code>regime-ledger</code> experiment is separate and does not block M1. <a href="m02-local-workflow-kernel.html">M2</a> should deliver a real <code>regime-ledger</code> feature through a PR and CI.</p>
+<p>The draft skill and its communication dependency sit under <code>docs/skills/</code>. Include both in the new Yumo bundle once its package location is settled. These draft files are not installed in the current PDLC plugin.</p>
+</section>
+<footer><a href="index.html">Return to the review hub</a> · <a href="m01-readiness.html">Review M1 readiness</a></footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Yumo M1 readiness</title><link rel="stylesheet" href="review.css"></head>
+<body><main>
+<header><nav><a href="index.html">← Proposal hub</a><a href="m01-audit-and-baseline.html">M1 plan</a><a href="wayfinder-intake.html">Requirements and design</a><a href="lessons-and-milestone-adjustments.html">Past-run lessons</a></nav></header>
+<p class="eyebrow">Milestone 1 · Readiness check · Updated 2026-10-14</p>
+<h1>Prove first delivery with CLI help</h1>
+<p class="lead">Use the user-proposed CLI help feature to test the delivery workflow in <code>yumo-plugins</code>. Keep requirements and decisions in its GitHub issue.</p>
+<div class="panel note"><strong>Build gate:</strong> The user decided the visible behavior in <a href="https://github.com/ohenak/yumo-plugins/issues/86">issue #86</a>. A <a href="../pdlc-help/REQ-pdlc-help.md">draft requirement</a> exists with <code>ready: false</code>. Record operator sign-off in issue #86, then update the requirement's ready flag. The <code>deliver-feature-chain</code> workflow waits at this gate before FSPEC, implementation, or queue advancement.</div>
+
+<section><h2>What the local repositories show</h2><div class="table-wrap"><table><thead><tr><th>Check</th><th>Observed result</th><th>Meaning for M1</th></tr></thead><tbody>
+<tr><td>Source revision</td><td>The <code>yumo-plugins</code> source checkout was at <code>1d4b365f5c69fdbcca9fe9c0fba7cba722c07374</code> when checked. It has unrelated local edits.</td><td>Use a pinned, isolated checkout for the feature.</td></tr>
+<tr><td>CLI baseline</td><td>The local <code>pdlc/engine/bin/cli.mjs</code> exits 1 for <code>--help</code>, <code>help</code>, and <code>doctor --help</code>. It reports unknown command or unknown flag.</td><td>All three requested forms need behavior changes and tests.</td></tr>
+<tr><td>Engine test baseline</td><td>An earlier engine run with <code>NPM_CONFIG_CACHE=/tmp/yumo-m1-npm-cache npm test</code> reported 966 passed, 2 skipped, and 0 failed.</td><td>This is a starting point, not proof for a later feature commit.</td></tr>
+<tr><td>Engine startup</td><td>A local <code>pdlc doctor</code> check passed. <code>pdlc dev ... --dry-run --plugin-root pdlc</code> produced a 31,821-byte preview without dispatch.</td><td>These checks show engine compatibility only; they do not prove a full engine delivery run.</td></tr>
+<tr><td>Historical Yumo code</td><td><code>yumo_bak</code> and the old GitHub Yumo project are deprecated.</td><td>Use only relevant ideas from them. Do not include them in the M1 implementation path.</td></tr>
+<tr><td>External consumer</td><td><code>regime-ledger</code> is a separate local Python project. Its <a href="https://github.com/ohenak/regime-ledger/issues/1">issue #1</a> records a possible external experiment.</td><td>It is not a prerequisite for CLI help or M1 completion.</td></tr>
+</tbody></table></div></section>
+
+<section><h2>Accepted behavior</h2><p>The user chose all three forms: <code>pdlc --help</code>, <code>pdlc help</code>, and <code>pdlc &lt;command&gt; --help</code>. Each must exit successfully without credentials or project setup. The first two show general usage. <a href="https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163650686">The second operator decision</a> says command-specific help shows that command's syntax and flags. The draft requirement turns these decisions into observable checks but still needs sign-off.</p></section>
+
+<section><h2>Next delivery steps</h2><ol>
+<li>Review the draft requirement against issue #86. Record the operator's sign-off in that issue; only then set <code>ready: true</code> in the requirement.</li>
+<li>Continue <code>deliver-feature-chain</code> from the isolated checkout. Map the CLI seam and issue decisions. Write and review FSPEC, TSPEC, DECISIONS, PLAN, and PROPERTIES before test-driven implementation.</li>
+<li>Make each required help form fail a test before implementation. Keep non-help error behavior intact.</li>
+<li>Run scoped and full tests, review the diff, and record the feature-chain commands and results. Keep any full <code>pdlc dev</code> run behind a separate decision, because its automatic pull request phase conflicts with the operator-created pull request boundary.</li>
+<li>The operator creates a pull request. Check required continuous integration on its current head commit SHA.</li>
+</ol></section>
+
+<section><h2>Evidence needed to finish M1</h2><ul>
+<li>Signed-off requirement, issue link, and feature commit.</li>
+<li>Tests and manual checks for all three help forms, including a clean directory without credentials or project setup.</li>
+<li>Exact feature-chain commands, dry-run compatibility result, scoped and full test results, and continuous integration result for the pull request's current head commit SHA.</li>
+<li>Elapsed time, human work, failures, and model use. Mark unavailable measurements <code>UNKNOWN</code>.</li>
+</ul><p><strong>Status:</strong> Requirements are drafted. Implementation and delivery evidence are pending.</p></section>
+<footer><nav><a href="index.html">Proposal hub</a><a href="m01-audit-and-baseline.html">M1 plan</a><a href="m02-local-workflow-kernel.html">Next milestone</a></nav></footer>
+</main></body></html>

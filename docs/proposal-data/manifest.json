@@ -1,0 +1,67 @@
+{
+  "revision": "2.2",
+  "principle": "User proposes capabilities; Wayfinder records requirements and decisions in GitHub Issues; delivery uses accepted issues and tested steps.",
+  "first_usable_mvp": "End of Week 2",
+  "duration_weeks": 10,
+  "reserve_weeks": 2,
+  "milestones": [
+    {
+      "id": 1,
+      "week": "Week 1",
+      "name": "Prove first delivery",
+      "outcome": "Deliver CLI help in yumo-plugins through deliver-feature-chain, with tests and an operator-created pull request. The pdlc dev dry run proves compatibility only; no full-engine delivery is claimed.",
+      "filename": "m01-audit-and-baseline.html"
+    },
+    {
+      "id": 2,
+      "week": "Week 2",
+      "name": "Feature pull request",
+      "outcome": "Deliver a feature in regime-ledger as an external consumer project, and check required CI on the pull request current head commit.",
+      "filename": "m02-local-workflow-kernel.html"
+    },
+    {
+      "id": 3,
+      "week": "Week 3",
+      "name": "Independent model review",
+      "outcome": "Use a separate reviewer to find and verify a real defect on a consumer project pull request.",
+      "filename": "m03-model-provider-and-agent-adapters.html"
+    },
+    {
+      "id": 4,
+      "week": "Week 4",
+      "name": "Cross-provider routing",
+      "outcome": "Record the reviewer, evidence, and resulting decision across selected providers.",
+      "filename": "m04-independent-review-and-evidence.html"
+    },
+    {
+      "id": 5,
+      "week": "Week 5",
+      "name": "Reliable local resume",
+      "outcome": "Resume interrupted pull request and CI work from recorded state without repeating completed side effects.",
+      "filename": "m05-github-pr-and-ci-repair-loop.html"
+    },
+    {
+      "id": 6,
+      "week": "Weeks 6–7",
+      "name": "Controlled release",
+      "outcome": "Use a controlled release path after the core workflow works.",
+      "filename": "m06-terraform-release-controller.html"
+    },
+    {
+      "id": 7,
+      "week": "Week 8",
+      "name": "Personal governance",
+      "outcome": "Show decisions and delivery evidence clearly, with the selected approval policy.",
+      "filename": "m07-human-understanding-dashboard.html"
+    },
+    {
+      "id": 8,
+      "week": "Weeks 9–10; reserve Weeks 11–12",
+      "name": "Pilot and hardening",
+      "outcome": "Run the accepted workflow in another project and address defects found by the pilot.",
+      "filename": "m08-end-to-end-pilot-and-hardening.html"
+    }
+  ],
+  "proposal_repository": "ohenak/yumo-plugins",
+  "proposal_directory": "docs/proposal/"
+}

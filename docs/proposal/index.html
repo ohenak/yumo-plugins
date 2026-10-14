@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Yumo proposal review hub</title><link rel="stylesheet" href="review.css"></head>
+<body><main>
+<header><nav><a href="#milestones">Milestones</a><a href="#sources">Source plan</a></nav></header>
+<p class="eyebrow">Proposal review hub · 2026-10-14</p>
+<h1>Build the engineering workflow in tested steps</h1>
+<p class="lead">You bring a proposed capability. A Wayfinder conversation settles its requirements and design in GitHub Issues. The delivery workflow builds the accepted work and records its evidence.</p>
+<section class="grid" aria-label="Start here">
+<div class="panel"><h2><a href="wayfinder-intake.html">Develop requirements and design</a></h2><p>Record requirements, design decisions, and acceptance checks in the target repository's GitHub Issues.</p></div>
+<div class="panel"><h2><a href="m01-readiness.html">Check M1 readiness</a></h2><p>See the local baseline, the settled help decision, and the evidence still needed for the first delivery.</p></div>
+<div class="panel"><h2><a href="lessons-and-milestone-adjustments.html">Review past-run lessons</a></h2><p>See which observed PDLC problems change the milestone gates.</p></div>
+</section>
+<div class="panel note"><strong>Current status:</strong> The user settled the M1 behavior in <a href="https://github.com/ohenak/yumo-plugins/issues/86">yumo-plugins issue #86</a>. <code>pdlc --help</code> and <code>pdlc help</code> must show general usage. <code>pdlc &lt;command&gt; --help</code> must show <a href="https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163650686">that command's syntax and flags</a>. All three must exit successfully without credentials or project setup. The <a href="../pdlc-help/REQ-pdlc-help.md">draft requirement</a> still says <code>ready: false</code>; record operator sign-off in issue #86 before changing it. The local CLI still rejects these forms. <a href="https://github.com/ohenak/regime-ledger/issues/1">regime-ledger issue #1</a> is a separate external experiment, not an M1 prerequisite.</div>
+<p class="panel"><strong>From M2:</strong> Continue this planning and delivery conversation in the <code>yumo-plugins</code> workspace. Use <code>regime-ledger</code> as the external consumer repository for its own feature experiment.</p>
+<section id="milestones"><h2>Milestones</h2><p>The original proposal has eight milestones across ten weeks. The linked review pages explain the current plan and later adjustments.</p>
+<div class="table-wrap"><table><thead><tr><th>When</th><th>Milestone</th><th>Working result</th></tr></thead><tbody>
+<tr><td>Week 1</td><td><a href="m01-audit-and-baseline.html">M1 · Prove first delivery</a></td><td>Deliver CLI help in <code>yumo-plugins</code> through <code>deliver-feature-chain</code>, with tests and an operator-created pull request.</td></tr>
+<tr><td>Week 2</td><td><a href="m02-local-workflow-kernel.html">M2 · Feature pull request</a></td><td>Deliver a feature in <code>regime-ledger</code> and check continuous integration on the pull request's current commit.</td></tr>
+<tr><td>Week 3</td><td><a href="m03-model-provider-and-agent-adapters.html">M3 · Independent model review</a></td><td>Use a separate reviewer to find and verify a real defect on a consumer project pull request.</td></tr>
+<tr><td>Week 4</td><td><a href="m04-independent-review-and-evidence.html">M4 · Cross-provider routing</a></td><td>Record the reviewer, evidence, and resulting decision.</td></tr>
+<tr><td>Week 5</td><td><a href="m05-github-pr-and-ci-repair-loop.html">M5 · Reliable local resume</a></td><td>Resume an interrupted workflow from recorded state.</td></tr>
+<tr><td>Weeks 6–7</td><td><a href="m06-terraform-release-controller.html">M6 · Controlled release</a></td><td>Use a controlled release path after the core workflow works.</td></tr>
+<tr><td>Week 8</td><td><a href="m07-human-understanding-dashboard.html">M7 · Personal governance</a></td><td>Show decisions and delivery evidence clearly.</td></tr>
+<tr><td>Weeks 9–10</td><td><a href="m08-end-to-end-pilot-and-hardening.html">M8 · Pilot and hardening</a></td><td>Run the accepted workflow in another project.</td></tr>
+</tbody></table></div></section>
+<section id="sources"><h2>Source plan and skill drafts</h2><ul>
+<li><a href="initial-proposal.html">Initial proposal</a> explains the product outcome and original schedule.</li>
+<li><a href="../skills/yumo-wayfinder/SKILL.md">Draft Yumo Wayfinder skill</a> defines the conversation and GitHub Issues record.</li>
+<li><a href="../skills/clear-communication/SKILL.md">Draft bundled clear-communication skill</a> defines the writing rules for that conversation.</li>
+<li><a href="../proposal-data/manifest.json">Machine-readable manifest</a> holds original metadata outside this HTML review directory.</li>
+</ul><p><code>yumo_bak</code> and its GitHub counterpart are deprecated. They provide historical ideas only; neither is an M1 target.</p></section>
+<footer><a href="m01-readiness.html">Next: M1 readiness</a></footer>
+</main></body></html>

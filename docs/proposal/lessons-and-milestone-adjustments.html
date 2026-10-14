@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Yumo past-run lessons and milestone changes</title>
+<link href="review.css" rel="stylesheet"/>
+</head>
+<body>
+<main>
+<header>
+<nav aria-label="Proposal navigation"><a href="index.html">Review hub</a><a href="wayfinder-intake.html">Feature intake</a><a href="m01-readiness.html">M1 readiness</a></nav>
+<p class="eyebrow">Program review · 2026-10-13</p>
+<h1>Use past runs to simplify delivery</h1>
+<p class="lead">Start with a user-proposed capability. Use Wayfinder to settle requirements and design in GitHub Issues. Prove that the delivery engine can complete that work in an external project.</p>
+</header>
+<section aria-labelledby="direction">
+<h2 id="direction">Recommended direction</h2>
+<p>Keep the proposal's milestone order. Move real use in a consumer project into M2. A successful <code>pdlc doctor</code> call only proves startup. M2 must finish a feature and produce a PR with test and CI evidence.</p>
+<p>The <a href="../skills/yumo-wayfinder/SKILL.md">draft Yumo Wayfinder skill</a> gives the user control of feature choice. Its decisions and accepted feature briefs live in GitHub Issues. A delivery agent must not turn its own convenient test idea into a product feature.</p>
+<p>The <code>deliver-feature-chain</code> skill simplifies control: one gatekeeper checks work before it proceeds. It still asks for many documents. Carry its proof checks into the engine. Scale the document set to the feature's risk.</p>
+</section>
+<section aria-labelledby="evidence">
+<h2 id="evidence">Evidence from prior runs</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Observed lesson</th><th>Change to make</th></tr></thead>
+<tbody>
+<tr><td>The <a href="../completed/pdlc-headless-engine/LEARNINGS-pdlc-headless-engine.md">headless engine learning</a> records 84 cross-reviews before an implementation wave halted. The <a href="../completed/pdlc-engineering-loop/LEARNINGS-pdlc-engineering-loop.md">engineering loop learning</a> records 172 review rounds for one feature.</td><td>For a small change, start with an accepted requirement, observable checks, a focused plan, tests, and a compact evidence report. Use deeper specifications when the change needs them. Measure review rounds and cost.</td></tr>
+<tr><td>The <a href="../completed/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md">workflow distribution learning</a> describes a requirement growing from 1,907 to 3,642 lines while blocking findings persisted. The queue later picked halted work again.</td><td>Keep implementation detail out of the requirement. Record a stop reason and next action in run state. Do not silently restart halted work.</td></tr>
+<tr><td>The <a href="../orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md">orchestrate-dev learning</a> found missing checks for behavior branches and three skipped test-infrastructure items.</td><td>Link every acceptance condition to a check. Inspect files and the diff at the gate; a reviewer report alone is insufficient.</td></tr>
+<tr><td>The <a href="../completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md">review-loop learning</a> found stale claims and a test that rebuilt the artifact it was supposed to check for staleness.</td><td>Tie evidence to the current commit. Test the production entry point without repairing the failure condition first.</td></tr>
+<tr><td>The <a href="../completed/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md">wave-gate learning</a> records runtime files entering Git and a clean-tree check broken by a session hook.</td><td>Use isolated consumer checkouts. Keep runtime state out of tracked files. Check the tree after a real run.</td></tr>
+<tr><td>A local dry-run in <code>yumo_bak</code> passed with engine <code>0.2.5</code> and plugin <code>0.23.7</code>. Its 35,585-byte preview put the task instruction at line 379, after a long role definition.</td><td>Measure prompt size and artifact delivery in a real run. Test a short, task-first brief if the prompt causes cost or missed work.</td></tr>
+</tbody>
+</table></div>
+</section>
+<section aria-labelledby="contract">
+<h2 id="contract">Portable small-feature contract</h2>
+<p>An operator should supply a repository, an accepted Wayfinder feature brief, a test command, and branch or PR policy. Startup checks should name the engine and plugin versions, available credentials, missing permissions, planned writes, and external actions.</p>
+<p>Each run should produce one evidence manifest. Record the brief, requirement, commits, PR, agent identities, commands, tests, and CI result. Also record review findings, elapsed time, human minutes, cost or <code>UNKNOWN</code>, and any stop reason.</p>
+<ol>
+<li>If the same blocker fails twice, stop and keep its evidence.</li>
+<li>If a provider, credential, approval, or repository policy is unavailable, do not substitute another one without authorization.</li>
+<li>Before marking work complete, verify that the requested artifact exists and passes its direct check.</li>
+<li>After a repair, check the current commit. Do not reuse an older green result.</li>
+<li>Where repository policy requires human review, keep that gate.</li>
+</ol>
+</section>
+<section aria-labelledby="milestones">
+<h2 id="milestones">Changes to milestone gates</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Milestone</th><th>Added proof</th></tr></thead>
+<tbody>
+<tr><td><a href="m01-audit-and-baseline.html">M1 · Engine proof</a></td><td>Use the endorsed pdlc --help candidate. Settle requirements and design in yumo-plugins issue #86, then run the engine and record cost and manual steps. Historical yumo_bak checks only show startup.</td></tr>
+<tr><td><a href="m02-local-workflow-kernel.html">M2 · Feature PR</a></td><td>Use regime-ledger as the external project. Settle a concrete feature and design in its GitHub Issues, then require a pull request, tests, and CI on the current commit. Record setup work and portability failures.</td></tr>
+<tr><td><a href="m03-model-provider-and-agent-adapters.html">M3 · Independent review</a></td><td>Review a real consumer PR with its diff and executed tests. Bound review to two passes. Seed a defect and verify that review finds it and repair closes it.</td></tr>
+<tr><td><a href="m04-independent-review-and-evidence.html">M4 · Provider routing</a></td><td>Run the same delivery path with each approved provider arrangement. Test denied providers and credentials. Keep model setup separate from project policy.</td></tr>
+<tr><td><a href="m05-github-pr-and-ci-repair-loop.html">M5 · Resume</a></td><td>Persist only state that M1–M4 runs show is needed. Kill a run during PR or CI polling. Resume without a duplicate PR or repeated external action.</td></tr>
+<tr><td><a href="m06-terraform-release-controller.html">M6 · Staging release</a></td><td>Start after consumer delivery and resume pass. Tie Terraform plan, apply, smoke test, and rollback evidence to one revision.</td></tr>
+<tr><td><a href="m07-human-understanding-dashboard.html">M7 · Governance view</a></td><td>Build the view from run evidence and GitHub state. Show blocking findings, approvals, CI commit, and release status. Keep Jira optional.</td></tr>
+<tr><td><a href="m08-end-to-end-pilot-and-hardening.html">M8 · Pilot</a></td><td>Run three user-proposed features through the workflow in external projects. Compare human minutes, elapsed time, cost, failures, and escaped defects.</td></tr>
+</tbody>
+</table></div>
+</section>
+<section aria-labelledby="next">
+<h2 id="next">Next decision</h2>
+<p>Next, settle <a href="https://github.com/ohenak/yumo-plugins/issues/86"><code>pdlc --help</code> issue #86</a>. Use <a href="https://github.com/ohenak/regime-ledger/issues/1">regime-ledger issue #1</a> to test external-project evidence. Both issues are open; neither claims an accepted design yet.</p>
+</section>
+<footer><a href="index.html">Return to the review hub</a> · <a href="wayfinder-intake.html">Read feature intake</a></footer>
+</main>
+</body>
+</html>
