@@ -64,6 +64,7 @@ const USAGE = [
   "  pdlc stats [feature] [--json] [--cwd <path>]",
   "  pdlc doctor",
   "  pdlc hello | pdlc spike:sdk",
+  "  pdlc version",
   "",
   "Common flags: --plugin-root <path>  --cwd <path>  --allow-api-key-billing",
   "              --dry-run-skill <name>  (default: pm-author)",
@@ -189,6 +190,44 @@ const FLAGS_BY_COMMAND = {
   // `--cwd` with no value token is a usage error via validateFlags alone.
   stats: ["json", "cwd"],
 };
+
+const HELP_SYNTAX = {
+  dev: "pdlc dev <docs/{feature}/REQ-{feature}.md> [flags]",
+  queue: "pdlc queue [flags]",
+  decide: "pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [flags]",
+  stats: "pdlc stats [feature] [flags]",
+  doctor: "pdlc doctor [flags]",
+  hello: "pdlc hello",
+  "spike:sdk": "pdlc spike:sdk",
+  version: "pdlc version [flags]",
+};
+
+/** Only the three approved help forms bypass normal command routing. */
+function helpTarget(argv) {
+  const [, , command, ...rest] = argv;
+  if (rest.length === 0 && (command === "--help" || command === "help")) return "general";
+  if (rest.length === 1 && rest[0] === "--help" && Object.hasOwn(HELP_SYNTAX, command)) {
+    return command;
+  }
+  return null;
+}
+
+function printHelp(target) {
+  if (target === "general") {
+    console.log(USAGE);
+    return;
+  }
+  const flags = FLAGS_BY_COMMAND[target] || (target === "version" ? ["cwd", "plugin-root", "dev"] : []);
+  console.log([
+    "Usage:",
+    `  ${HELP_SYNTAX[target]}`,
+    "",
+    "Flags:",
+    ...((flags.length > 0)
+      ? flags.map((flag) => `  --${flag}${VALUE_FLAGS_SET.has(flag) ? " <value>" : ""}`)
+      : ["  (none)"]),
+  ].join("\n"));
+}
 
 /**
  * EC-CLI-5 / EC-CLI-7: total flag-shape validation for one command's argv,
@@ -1334,6 +1373,12 @@ async function cmdStats(argv) {
 }
 
 export async function main(argv = process.argv, deps = defaultDeps) {
+  const help = helpTarget(argv);
+  if (help !== null) {
+    printHelp(help);
+    process.exitCode = 0;
+    return;
+  }
   const [, , cmd, ...rest] = argv;
   switch (cmd) {
     case "hello":
@@ -1417,6 +1462,7 @@ export async function launch(argv = process.argv, io = {}) {
   } = io;
 
   const [, , cmd, ...rest] = argv;
+  if (helpTarget(argv) !== null) return runMain(argv);
   if (cmd !== "dev" && cmd !== "queue") return runMain(argv);
 
   // Already the resolved child: presence alone decides, so a garbled marker
