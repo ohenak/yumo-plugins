@@ -33,14 +33,14 @@
 <li><strong>Confirm the handoff.</strong> Wayfinder reads back the result. Your correction or acceptance is recorded in the issue. Open blocking decisions stay visible.</li>
 <li><strong>Build and verify.</strong> PDLC uses the accepted issue record as its source. It may make local working copies for implementation, but links the delivered evidence back to Issues.</li>
 </ol>
-<div class="panel good"><strong>M1 example:</strong> You have proposed <code>pdlc --help</code> as a good candidate. You decided that all three help forms must exit successfully without credentials or project setup. The two general forms show general usage; <a href="https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163650686">command-specific help</a> shows that command's syntax and flags. The <a href="../pdlc-help/REQ-pdlc-help.md">draft requirement</a> still needs operator sign-off, recorded in issue #86, before implementation.</div>
+<div class="panel good"><strong>M1 example:</strong> You proposed CLI help. Three operator decisions in <a href="https://github.com/ohenak/yumo-plugins/issues/86">issue #86</a> settled the forms, command-specific output, and <a href="https://github.com/ohenak/yumo-plugins/issues/86#issuecomment-6163694833">REQ sign-off</a>. The <a href="../pdlc-help/REQ-pdlc-help.md">REQ</a> is <code>ready: true</code>. Local implementation and tests pass; the operator-created pull request and CI result are pending.</div>
 </section>
 <section aria-labelledby="issues">
 <h2 id="issues">GitHub Issues is the default record</h2>
 <p>Use the feature’s target repository. <a href="https://github.com/ohenak/yumo-plugins/issues/86"><code>pdlc --help</code> issue #86</a> lives in <code>ohenak/yumo-plugins</code>. <a href="https://github.com/ohenak/regime-ledger/issues/1">The report experiment issue #1</a> lives in <code>ohenak/regime-ledger</code>. Link issues across repositories when one decision affects both.</p>
 <p>For a small feature, one issue can hold the requirement, design, decisions, and handoff. For a broad effort, use a short map issue with linked decision issues. Create separate issues only when different questions need different owners or dependencies.</p>
 <p>Track scope, acceptance checks, alternatives, answers, rejected directions, research, and prototype links in Issues. If GitHub is unavailable, keep a pending conversation summary. Do not claim the record is ready or silently move it to local Markdown.</p>
-<p>The <code>gh</code> CLI has access to both target repositories outside this workspace's network-restricted sandbox. The M1 decision is recorded in <a href="https://github.com/ohenak/yumo-plugins/issues/86">yumo-plugins issue #86</a>.</p>
+<p><strong>Access checked 2026-10-14:</strong> The <code>gh</code> CLI could read both target repositories when network access was enabled. The M1 decisions are recorded in <a href="https://github.com/ohenak/yumo-plugins/issues/86">yumo-plugins issue #86</a>.</p>
 </section>
 <section aria-labelledby="questions">
 <h2 id="questions">Make the conversation easy to follow</h2>

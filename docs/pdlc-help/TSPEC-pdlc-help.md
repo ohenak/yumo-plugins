@@ -1,9 +1,11 @@
 ---
 feature: pdlc-help
-status: draft
+status: reviewed-for-implementation
 ---
 
 # TSPEC: pdlc help
+
+The gatekeeper reviewed this specification for implementation. The operator's sign-off applies to the REQ, not to a separate approval of this specification.
 
 ## Real seams and scope
 

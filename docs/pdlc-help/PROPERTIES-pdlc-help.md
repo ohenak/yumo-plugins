@@ -1,9 +1,11 @@
 ---
 feature: pdlc-help
-status: draft
+status: reviewed-for-implementation
 ---
 
 # PROPERTIES: pdlc help
+
+The gatekeeper reviewed these properties for implementation. The operator's sign-off applies to the REQ, not to a separate approval of this file.
 
 Source: [approved REQ](REQ-pdlc-help.md), [FSPEC](FSPEC-pdlc-help.md), [TSPEC](TSPEC-pdlc-help.md), and [PLAN](PLAN-pdlc-help.md). Test names below are the required executable tests for PLAN task P1; they are not claims that tests already pass.
 
