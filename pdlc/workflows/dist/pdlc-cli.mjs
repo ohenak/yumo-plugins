@@ -13340,11 +13340,17 @@ async function dodVerifyLoop({
     let version = iteration;
     try {
       const listing = await _listFiles(`docs/${feature}`);
+      if (deliveryMode === "chain" && (!listing || listing.ok !== true || !Array.isArray(listing.files))) {
+        return { passed: false, iterations: 0, reason: "Pre-PR DoD cannot list CODE_REVIEW versions" };
+      }
       if (listing && listing.ok === true && Array.isArray(listing.files)) {
         const derived = deriveDodRoundIndex(listing.files, feature);
         if (Number.isInteger(derived)) version = derived;
       }
     } catch {
+      if (deliveryMode === "chain") {
+        return { passed: false, iterations: 0, reason: "Pre-PR DoD cannot list CODE_REVIEW versions" };
+      }
       version = iteration;
     }
 
@@ -13474,7 +13480,58 @@ async function chainPushRuns(sha, branch) {
   ]);
 }
 
-function chainRunState(runs, sha, branch) {
+function chainPushWorkflowName(content, branch) {
+  if (typeof content !== "string") return null;
+  const lines = content.split(/\r?\n/);
+  const name = /^name:\s*(.+?)\s*$/m.exec(content)?.[1]?.replace(/^["']|["']$/g, "");
+  if (!name) return null;
+  const onIndex = lines.findIndex((line) => /^(?:on|["']on["']):\s*/.test(line));
+  if (onIndex < 0) return null;
+  const onLine = lines[onIndex];
+  if (/^\S+:\s*(?:push|\[[^\]]*\bpush\b[^\]]*\])\s*(?:#.*)?$/.test(onLine)) return name;
+  const trigger = [];
+  for (let i = onIndex + 1; i < lines.length && (lines[i].trim() === "" || /^\s/.test(lines[i])); i++) trigger.push(lines[i]);
+  const pushIndex = trigger.findIndex((line) => /^\s{2}push:\s*(?:#.*)?$/.test(line));
+  if (pushIndex < 0) return null;
+  const pushLines = [];
+  for (let i = pushIndex + 1; i < trigger.length && (trigger[i].trim() === "" || /^\s{4}/.test(trigger[i])); i++) pushLines.push(trigger[i]);
+  if (pushLines.some((line) => /^\s{4}(?:paths|paths-ignore|branches-ignore):/.test(line))) return null;
+  const branchLine = pushLines.findIndex((line) => /^\s{4}branches:\s*/.test(line));
+  if (branchLine < 0) return name;
+  const inline = /^\s{4}branches:\s*\[([^\]]+)\]/.exec(pushLines[branchLine]);
+  const patterns = inline ? inline[1].split(",") : pushLines.slice(branchLine + 1)
+    .filter((line) => /^\s{6}-\s*/.test(line)).map((line) => line.replace(/^\s{6}-\s*/, ""));
+  const matches = patterns.some((raw) => {
+    const pattern = raw.trim().replace(/^["']|["']$/g, "");
+    if (!pattern || pattern.startsWith("!")) return false;
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\*/g, ".*");
+    return new RegExp(`^${escaped}$`).test(branch);
+  });
+  return matches ? name : null;
+}
+
+async function checkChainPushWorkflows({ _git = defaultGit, _listFiles = defaultListFiles, _readFile = defaultReadFile } = {}) {
+  const branch = await _git(["branch", "--show-current"]);
+  if (!branch || branch.ok !== true || !String(branch.stdout || "").trim()) {
+    return { ok: false, reason: "Cannot identify feature branch for push CI" };
+  }
+  const listing = await _listFiles(".github/workflows");
+  if (!listing || listing.ok !== true || !Array.isArray(listing.files)) {
+    return { ok: false, reason: "No tracked feature-branch push CI workflow directory" };
+  }
+  const tracked = await _git(["ls-files", "--", ".github/workflows"]);
+  if (!tracked || tracked.ok !== true) return { ok: false, reason: "Cannot verify tracked CI workflows" };
+  const trackedPaths = new Set(String(tracked.stdout || "").split(/\r?\n/));
+  const names = [];
+  for (const file of listing.files.filter((name) => /\.ya?ml$/i.test(name) && trackedPaths.has(`.github/workflows/${name}`))) {
+    const content = await _readFile(`.github/workflows/${file}`);
+    const name = chainPushWorkflowName(content, String(branch.stdout).trim());
+    if (name && !names.includes(name)) names.push(name);
+  }
+  return names.length ? { ok: true, names } : { ok: false, reason: "No CI workflow runs on feature-branch push" };
+}
+
+function chainRunState(runs, sha, branch, expectedNames = null) {
   if (!Array.isArray(runs)) return { state: "unknown" };
   const current = runs.filter((run) => run && run.headSha === sha && run.headBranch === branch && run.event === "push");
   if (!current.length) return { state: "none" };
@@ -13488,6 +13545,10 @@ function chainRunState(runs, sha, branch) {
   }
   if (current.some((run) => run.status !== "completed")) return { state: "pending", ...evidence };
   if (current.some((run) => typeof run.conclusion !== "string" || !run.conclusion)) return { state: "unknown", ...evidence };
+  if (current.every((run) => run.conclusion === "success") && expectedNames &&
+      expectedNames.some((name) => !current.some((run) => run.name === name))) {
+    return { state: "none" };
+  }
   if (current.every((run) => run.conclusion === "success")) return { state: "passed", ...evidence };
   if (current.some((run) => !["success", "failure", "timed_out"].includes(run.conclusion))) return { state: "blocked", ...evidence };
   return { state: "failed", ...evidence };
@@ -13500,6 +13561,7 @@ async function raisePrAndVerifyCiChain({
   _git = defaultGit,
   _prView = chainPrView,
   _listRuns = chainPushRuns,
+  _workflowGate = checkChainPushWorkflows,
   _log = log,
   _now = () => Date.now(),
   _sleep = sleep,
@@ -13507,6 +13569,10 @@ async function raisePrAndVerifyCiChain({
   completionTimeoutMs = CI_COMPLETION_TIMEOUT_MS,
   pollIntervalMs = CI_POLL_INTERVAL_MS,
 } = {}) {
+  const workflows = await _workflowGate({ _git });
+  if (!workflows || workflows.ok !== true || !Array.isArray(workflows.names) || !workflows.names.length) {
+    throw haltError(`Error: Chain PUB ${workflows?.reason ?? "cannot verify feature-branch push CI"}`);
+  }
   const prResult = await _agent("ship-pr", createPrPrompt(feature));
   const prUrl = parsePrUrl(prResult);
   if (!prUrl) throw haltError(`Error: Chain PUB PR creation failed for ${feature}`);
@@ -13550,7 +13616,7 @@ async function raisePrAndVerifyCiChain({
       let runs;
       try { runs = await _listRuns(sha, branch); }
       catch { throw haltError("Error: Chain PUB CI query failed"); }
-      const result = chainRunState(runs, sha, branch);
+      const result = chainRunState(runs, sha, branch, workflows.names);
       if (result.state === "unknown") throw haltError("Error: Chain PUB CI query returned unverifiable result");
       if (result.state === "passed" || result.state === "failed" || result.state === "blocked") {
         await matchingPrHead(sha, branch);
@@ -13606,6 +13672,11 @@ async function raisePrAndVerifyCiChain({
     if (!clean || clean.ok !== true || String(clean.stdout || "").trim()) {
       throw haltError("Error: Chain PUB repair left uncommitted changes");
     }
+    const repairDiff = await _git(["diff", "--name-only", `${sha}..${repairCommit}`]);
+    if (!repairDiff || repairDiff.ok !== true) throw haltError("Error: Chain PUB cannot verify repair changed paths");
+    if (chainPrivatePathViolations(String(repairDiff.stdout || "").split(/\r?\n/).filter(Boolean)).length) {
+      throw haltError("Error: Chain PUB repair changed private account or position paths");
+    }
     const pushed = await _git(["push", "origin", `HEAD:refs/heads/${pr.headRefName}`]);
     if (!pushed || pushed.ok !== true) throw haltError("Error: Chain PUB repair push failed");
     evidence.repairCount = 1;
@@ -13613,6 +13684,8 @@ async function raisePrAndVerifyCiChain({
     evidence.repairCommit = repairCommit;
     sha = repairCommit;
     evidence.headSha = sha;
+    evidence.ciStatus = "pending";
+    evidence.runUrl = null;
     await waitForPushedHead(pr.headRefOid, sha, pr.headRefName);
     const second = await observe(sha, pr.headRefName);
     evidence.runUrl = second.runUrl;
@@ -15400,7 +15473,7 @@ function validateChainArtifact(kind, content, acceptedIssueUrl, requirementIds =
     return { ok: false, reason: `issue-decisions does not cite the accepted issue ${acceptedIssueUrl}` };
   }
   if (kind === "FSPEC") {
-    const tracedIds = new Set(content.match(/\bREQ-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/g) ?? []);
+    const tracedIds = new Set(content.match(/\bREQ-(?:[A-Z0-9]+-)*\d+\b/g) ?? []);
     const missing = requirementIds.filter((id) => !tracedIds.has(id));
     if (missing.length) return { ok: false, reason: `FSPEC does not trace ${missing.join(", ")}` };
     const acceptedIds = new Set(requirementIds);
@@ -15408,6 +15481,42 @@ function validateChainArtifact(kind, content, acceptedIssueUrl, requirementIds =
     if (unknown.length) return { ok: false, reason: `FSPEC adds requirements absent from accepted REQ: ${unknown.join(", ")}` };
   }
   return { ok: true };
+}
+
+function parseAcceptedRequirementIds(content) {
+  if (typeof content !== "string") return [];
+  const ids = [];
+  for (const line of content.split(/\r?\n/)) {
+    const match = /^\s*\|\s*(REQ-(?:[A-Z0-9]+-)*\d+)\s*\|/.exec(line);
+    if (match && !ids.includes(match[1])) ids.push(match[1]);
+  }
+  return ids;
+}
+
+function chainPrivatePathViolations(paths) {
+  return paths.filter((path) => {
+    const name = String(path).replace(/\\/g, "/");
+    return /(^|\/)\.env(?:\.|$)/i.test(name) ||
+      /(^|\/)(?:data|captures?|snapshots?|exports?)\//i.test(name) ||
+      /(^|\/)(?:accounts?|positions?|quotes?)\/.*\.(?:json|csv|tsv|db|sqlite3?|parquet|html|log)$/i.test(name) ||
+      /(^|\/)[^/]*(?:account|position|quote)[^/]*\.(?:json|csv|tsv|db|sqlite3?|parquet|html|log)$/i.test(name);
+  });
+}
+
+async function checkChainPrivatePaths(_git) {
+  const paths = [];
+  for (const args of [
+    ["diff", "--name-only", "origin/HEAD...HEAD"],
+    ["diff", "--cached", "--name-only"],
+  ]) {
+    const result = await _git(args);
+    if (!result || result.ok !== true) return { ok: false, reason: "Cannot verify changed paths" };
+    paths.push(...String(result.stdout || "").split(/\r?\n/).filter(Boolean));
+  }
+  const blocked = chainPrivatePathViolations(paths);
+  return blocked.length
+    ? { ok: false, reason: `Private account, position, or capture paths in change set (${blocked.length})` }
+    : { ok: true };
 }
 
 async function main({
@@ -17729,7 +17838,7 @@ async function main({
         chainArtifactGates[kind] = validation.ok ? "passed" : "failed";
         if (!validation.ok) haltReason = `Chain prerequisite gate: ${path}: ${validation.reason}`;
         if (kind === "REQ" && validation.ok) {
-          chainRequirementIds = [...new Set(content.match(/\bREQ-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/g) ?? [])];
+          chainRequirementIds = parseAcceptedRequirementIds(content);
           if (chainRequirementIds.length === 0) {
             chainArtifactGates.REQ = "failed";
             haltReason = `Chain prerequisite gate: ${reqPath} has no REQ requirement IDs`;
@@ -18896,6 +19005,13 @@ async function main({
           }
           // resolved ⇒ the branch is rebased and green; fall through to the DoD loop.
         }
+        if (deliveryMode === "chain") {
+          const privacy = await checkChainPrivatePaths(gitFn);
+          if (!privacy.ok) {
+            recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", privacy.reason);
+            throw haltError(`Chain pre-PR privacy gate: ${privacy.reason}`);
+          }
+        }
         const dodResult = await dodVerifyLoopFn({
           feature: featureName,
           ...(deliveryMode === "chain" ? { deliveryMode, acceptedIssueUrl } : {}),
@@ -18916,9 +19032,13 @@ async function main({
                 if (typeof reviewText === "string" && reviewText.trim()) artifactPaths.push(dodResult.reviewPath);
               } catch { /* Preserve the original DoD failure reason. */ }
             }
-            recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌",
-              `One pre-PR verdict failed: ${dodResult.reason ?? "DOD_STATUS failed"}`, 1);
-            throw haltError(`Chain pre-PR DoD halted after one verdict: ${dodResult.reason ?? "DOD_STATUS failed"}`);
+            const detail = dodResult.iterations === 0
+              ? `Pre-PR DoD could not start: ${dodResult.reason}`
+              : `One pre-PR verdict failed: ${dodResult.reason ?? "DOD_STATUS failed"}`;
+            recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", detail, dodResult.iterations);
+            throw haltError(dodResult.iterations === 0
+              ? `Chain pre-PR DoD halted before verdict: ${dodResult.reason}`
+              : `Chain pre-PR DoD halted after one verdict: ${dodResult.reason ?? "DOD_STATUS failed"}`);
           }
           const detail =
             dodResult.lastStatus
