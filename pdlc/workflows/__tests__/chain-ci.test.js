@@ -168,6 +168,13 @@ describe("chain-only current-head CI", () => {
   it("halts when local HEAD cannot be verified", async () => {
     await expect(raisePrAndVerifyCiChain(base({ _git: async () => ({ ok: true, stdout: "bad-sha" }) }))).rejects.toThrow(/local commit SHA/i);
   });
+  it.each([
+    ["missing git result", null],
+    ["failed git result", { ok: false, stdout: `${SHA1}\n` }],
+    ["missing stdout", { ok: true, stdout: null }],
+  ])("halts for %s while reading local HEAD", async (_label, result) => {
+    await expect(raisePrAndVerifyCiChain(base({ _git: async () => result }))).rejects.toThrow(/local commit SHA/i);
+  });
   it("halts on a failed PR head query", async () => {
     await expect(raisePrAndVerifyCiChain(base({ _prView: async () => { throw Error("offline"); } }))).rejects.toThrow(/PR head query failed/i);
   });
@@ -204,8 +211,24 @@ describe("chain-only current-head CI", () => {
     }));
     expect(result).toMatchObject({ repairCount: 1, failedHeadSha: SHA1 });
   });
+  it("uses unavailable markers for nonstring CI metadata in the repair prompt", async () => {
+    let repairPrompt;
+    await expect(raisePrAndVerifyCiChain(base({
+      _git: git([SHA1, SHA1]),
+      _listRuns: async () => [{ ...run(SHA1, "failure"), url: 7, name: {} }],
+      _agent: async (skill, prompt) => {
+        if (skill === "ship-pr") return `PR_URL: ${PR}`;
+        repairPrompt = prompt;
+        return "No commit";
+      },
+    }))).rejects.toThrow(/no new commit/i);
+    expect(repairPrompt).toMatch(/CI run: unavailable; check: unavailable/);
+  });
   it.each([
     ["multiple commits", "rev-list", { ok: true, stdout: "2\n" }, /exactly one new commit/i],
+    ["missing count result", "rev-list", null, /exactly one new commit/i],
+    ["failed count command", "rev-list", { ok: false, stdout: "1\n" }, /exactly one new commit/i],
+    ["missing count stdout", "rev-list", { ok: true, stdout: null }, /exactly one new commit/i],
     ["uncommitted changes", "status", { ok: true, stdout: " M app.py\n" }, /uncommitted changes/i],
   ])("halts a repair with %s", async (_label, command, response, error) => {
     const g = git([SHA1, SHA2]);

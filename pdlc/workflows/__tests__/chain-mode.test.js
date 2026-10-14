@@ -183,6 +183,21 @@ describe("chain mode gates", () => {
     expect(called).toEqual([]);
   });
 
+  test("halts before agents when the git origin cannot be read", async () => {
+    const called = [];
+    const result = await main({
+      reqPath: REQ, deliveryMode: "chain", acceptedIssueUrl: ISSUE,
+      _readOrigin: async () => ({ ok: false, stdout: "" }),
+      _agent: async (skill) => { called.push(skill); return "unexpected"; },
+      _checkFile: async () => ({ ok: true }),
+      _readFile: async () => `Source: ${ISSUE}\nREQ-CHAIN-01`,
+      _phase: () => {},
+    });
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/active git origin unavailable/);
+    expect(called).toEqual([]);
+  });
+
   test("halts on an accepted REQ with no requirement IDs", async () => {
     const called = [];
     const result = await main({
@@ -318,5 +333,39 @@ describe("chain mode gates", () => {
       .every((phase) => phase.status === "chain-validated")).toBe(true);
     expect(called).toContain("se-implement");
     expect(dodPrompt).toMatch(/defer.*PR.*CI/i);
+  });
+
+  test("halts at the first failed chain DoD verdict when review evidence is unreadable", async () => {
+    const called = [];
+    let dodCalls = 0;
+    const result = await main({
+      reqPath: REQ, deliveryMode: "chain", acceptedIssueUrl: ISSUE,
+      _readOrigin: async () => "git@github.com:ohenak/regime-ledger.git",
+      _agent: async (skill, prompt) => {
+        called.push(skill);
+        if (skill === "guard") return { ok: true };
+        if (skill === "se-implement") return "Tests: 1 passed, 0 failed";
+        if (skill === "ship-pr" && String(prompt).includes("Rebase")) return "REBASE_STATUS: clean";
+        return "Success";
+      },
+      _dodVerifyLoop: async () => {
+        dodCalls += 1;
+        return { passed: false, iterations: 1,
+          reviewPath: `docs/${FEATURE}/CODE_REVIEW-${FEATURE}-v2.md` };
+      },
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: async () => ({ ok: true }),
+      _readFile: async (path) => {
+        if (path.includes("CODE_REVIEW-")) throw new Error("review unreadable");
+        return path.includes("PLAN-") ? PLAN : `Source: ${ISSUE}\nREQ-CHAIN-01`;
+      },
+      _phase: () => {}, _pipeline: async (_label, fn) => fn(),
+      _mergeWorktree: async () => ({ ok: true }),
+    });
+    expect(dodCalls).toBe(1);
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/Chain pre-PR DoD halted after one verdict: DOD_STATUS failed/);
+    expect(result.phases.find((phase) => phase.phase === "DOD")?.status).toBe("❌");
+    expect(called).not.toContain("dod-verify");
   });
 });

@@ -104,6 +104,21 @@ describe("chain terminal report", () => {
     expect(result.chain.artifactGates).not.toHaveProperty("account");
   });
 
+  test("successful PUB without a repair omits failed-run and repair fields", async () => {
+    const result = await main(fixture({
+      _raisePrAndVerifyCiChain: async () => ({
+        prUrl: PR, ciStatus: "passed", headSha: HEAD, runUrl: RUN, repairCount: 0,
+      }),
+    }));
+    expect(result.outcome).toBe("success");
+    expect(result.chain).toMatchObject({
+      prUrl: PR, headSha: HEAD, runUrl: RUN, ciState: "passed", repairCount: 0,
+    });
+    expect(result.chain).not.toHaveProperty("failedRunUrl");
+    expect(result.chain).not.toHaveProperty("failedHeadSha");
+    expect(result.chain).not.toHaveProperty("repairCommit");
+  });
+
   test("halts when the authored LEARNINGS artifact is empty and does not open a PR", async () => {
     let pubCalls = 0;
     const result = await main(fixture({
