@@ -187,7 +187,7 @@ export const REVIEW_DOC_TYPE_ROWS = Object.freeze([
   "DECISIONS",
 ]);
 
-// BR-25's frozen eight non-feature `docs/` directory names (TSPEC §4.4).
+// BR-25's ten non-feature `docs/` directory names (original eight plus proposal docs/data).
 export const NON_FEATURE_DIRS = Object.freeze([
   "_queue",
   "_constraints",
@@ -197,6 +197,8 @@ export const NON_FEATURE_DIRS = Object.freeze([
   "ideas",
   "discarded",
   "completed",
+  "proposal",
+  "proposal-data",
 ]);
 
 // --- TSPEC §4.3: computeFeatureStats ------------------------------------
