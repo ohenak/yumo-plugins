@@ -400,7 +400,7 @@ describe("chain mode gates", () => {
     ]));
   });
 
-  test("halts at the first failed chain DoD verdict when review evidence is unreadable", async () => {
+  test.each(["readable", "unreadable"])("halts at the first failed chain DoD verdict with %s review evidence", async (evidence) => {
     const called = [];
     const gitCalls = [];
     let dodCalls = 0;
@@ -426,7 +426,10 @@ describe("chain mode gates", () => {
       _parallel: (promises) => Promise.all(promises),
       _checkFile: async () => ({ ok: true }),
       _readFile: async (path) => {
-        if (path.includes("CODE_REVIEW-")) throw new Error("review unreadable");
+        if (path.includes("CODE_REVIEW-")) {
+          if (evidence === "unreadable") throw new Error("review unreadable");
+          return `Accepted issue: ${ISSUE}\nTest result: failed`;
+        }
         return path.includes("PLAN-") ? PLAN : TRACEABLE;
       },
       _listFiles: async () => ({ ok: true, files: [] }),
@@ -440,6 +443,9 @@ describe("chain mode gates", () => {
       ["diff", "--cached", "--name-only"],
     ]));
     expect(result.outcome).toBe("halted");
+    expect(result.artifactPaths).toContain(REQ);
+    expect(result.artifactPaths.includes(`docs/${FEATURE}/CODE_REVIEW-${FEATURE}-v2.md`))
+      .toBe(evidence === "readable");
     expect(result.haltReason).toMatch(/Chain pre-PR DoD halted after one verdict: DOD_STATUS failed/);
     expect(result.phases.find((phase) => phase.phase === "DOD")?.status).toBe("❌");
     expect(called).not.toContain("dod-verify");
