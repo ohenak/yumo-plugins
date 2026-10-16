@@ -17,6 +17,14 @@ This skill delegates to `@kaneho/pdlc-engine`. It does not run the pipeline itse
 
 For an operator-accepted GitHub Issue handoff, use the opt-in chain route:
 
+Create a durable feature worktree before writing the feature REQ or starting delivery. Write the REQ in the printed worktree path. The source checkout can be dirty; this command leaves it untouched. By default, worktrees live under `~/.local/share/yumo/worktrees`; choose another durable parent with `--workspace-root`. A relative root is resolved against `--cwd`. Temporary roots such as `/tmp` are refused.
+
+```text
+pdlc workspace {feature} --cwd /path/to/repository [--workspace-root /path/to/durable/worktrees]
+```
+
+Run the following command from the printed path, or pass that path as `--cwd`:
+
 ```text
 pdlc dev docs/{feature}/REQ-{feature}.md --delivery-mode chain --accepted-issue https://github.com/{owner}/{repo}/issues/{number}
 ```

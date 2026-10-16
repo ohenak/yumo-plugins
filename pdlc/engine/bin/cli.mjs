@@ -52,6 +52,7 @@ import { resolveVersion } from "../lib/resolve-version.mjs";
 import { readPluginVersion, checkCompat } from "../lib/handshake.mjs";
 import { buildProvenance } from "../lib/provenance.mjs";
 import { message } from "../lib/catalogue.mjs";
+import { featureWorkspace } from "../lib/workspace.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
@@ -62,6 +63,7 @@ const USAGE = [
   "  pdlc queue [--queue-path <path>] [--loop [--max-iterations <n>]] [--dry-run]",
   "  pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [--rationale <text>]",
   "  pdlc stats [feature] [--json] [--cwd <path>]",
+  "  pdlc workspace <feature> [--workspace-root <path>] [--cwd <path>]",
   "  pdlc doctor",
   "  pdlc hello | pdlc spike:sdk",
   "  pdlc version",
@@ -143,6 +145,7 @@ function gitTreeStatus(cwd, policy) {
 const VALUE_FLAGS = [
   "plugin-root",
   "cwd",
+  "workspace-root",
   "force-phases",
   "delivery-mode",
   "accepted-issue",
@@ -191,6 +194,7 @@ const FLAGS_BY_COMMAND = {
   // `--dry-run` (AT-24). `cwd` is already a shared VALUE_FLAGS member, so
   // `--cwd` with no value token is a usage error via validateFlags alone.
   stats: ["json", "cwd"],
+  workspace: ["workspace-root", "cwd"],
 };
 
 const HELP_SYNTAX = {
@@ -198,6 +202,7 @@ const HELP_SYNTAX = {
   queue: "pdlc queue [flags]",
   decide: "pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [flags]",
   stats: "pdlc stats [feature] [flags]",
+  workspace: "pdlc workspace <feature> [flags]",
   doctor: "pdlc doctor [flags]",
   hello: "pdlc hello",
   "spike:sdk": "pdlc spike:sdk",
@@ -1418,6 +1423,27 @@ export async function main(argv = process.argv, deps = defaultDeps) {
       break;
     case "stats":
       if (checkFlags(rest, "stats")) await cmdStats(rest);
+      break;
+    case "workspace":
+      if (checkFlags(rest, "workspace")) {
+        const args = positionals(rest, VALUE_FLAGS);
+        if (args.length !== 1) {
+          console.error("pdlc workspace: exactly one feature is required");
+          process.exitCode = 1;
+        } else {
+          try {
+            console.log(featureWorkspace({
+              feature: args[0],
+              cwd: readFlag(rest, "cwd") || process.cwd(),
+              workspaceRoot: readFlag(rest, "workspace-root") || undefined,
+            }));
+            process.exitCode = 0;
+          } catch (error) {
+            console.error(`pdlc workspace: ${error.message}`);
+            process.exitCode = 1;
+          }
+        }
+      }
       break;
     case "dev":
       if (checkFlags(rest, "dev")) await cmdDev(rest, deps);
