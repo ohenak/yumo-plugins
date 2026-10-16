@@ -217,6 +217,7 @@ const LIB_MODULES_AT_HEAD = [
   "transport",
 ];
 const LIB_MODULES_FROM_THIS_FEATURE = ["resolve-version", "store", "provenance"];
+const WORKSPACE_MODULES = ["workspace"];
 export const WORKFLOW_MEMBERS = [
   "vendor/workflows/orchestrate-dev.js",
   "vendor/workflows/orchestrate-queue.js",
@@ -239,6 +240,7 @@ function expectedPackedSet({ licenceRecorded: licence }) {
     "bin/cli.mjs",
     ...LIB_MODULES_AT_HEAD.map((m) => `lib/${m}.mjs`),
     ...LIB_MODULES_FROM_THIS_FEATURE.map((m) => `lib/${m}.mjs`),
+    ...WORKSPACE_MODULES.map((m) => `lib/${m}.mjs`),
     ...WORKFLOW_MEMBERS,
     "scripts/postinstall.mjs",
   ];

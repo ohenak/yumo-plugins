@@ -377,6 +377,7 @@ unchanged; earlier changelog rows quote the old `E-nn` member ids as written at 
 | PK-24 | `vendor/workflows/lib/loop-session.mjs` | `files` entry `vendor/workflows/` — **vendored by `pdlc-engineering-loop`** (0.15, D-4) |
 | PK-25 | `vendor/workflows/lib/escalation-view.mjs` | `files` entry `vendor/workflows/` — **vendored by `pdlc-engineering-loop`** (0.15, D-4) |
 | PK-26 | `vendor/workflows/lib/stats.mjs` | `files` entry `vendor/workflows/` — **vendored by `pdlc-stats`** (0.16, `DEC-STATS-01` K-7) |
+| PK-27 | `lib/workspace.mjs` | `files` entry `lib/` — durable feature workspaces (issue #91) |
 
 **PK-17…PK-19 are listed literally because `files` packs a directory, not a file list.** The
 entry `lib/` packs whatever is in the tree at pack time, so the three modules §3.1 creates
@@ -406,13 +407,14 @@ from the decision record instead, the two states are:
 The flip is therefore a visible edit to one record (the same record PF-3 already reads), not
 an inference the oracle makes from the tree it is auditing. The expected set's size is
 **derived here from the `PK-*` rows above, not authored as a second total**: four
-manifest-adjacent and `bin/` members (PK-1, PK-2, PK-4, PK-4b), fifteen `lib/*.mjs`
-(PK-5…PK-19 — V-03's twelve plus §3.1's three), **six** vendored workflow members
+manifest-adjacent and `bin/` members (PK-1, PK-2, PK-4, PK-4b), sixteen `lib/*.mjs`
+(PK-5…PK-19 and PK-27 — V-03's twelve plus §3.1's three and the workspace module),
+**six** vendored workflow members
 (PK-20…PK-22, plus PK-24…PK-25 added by `pdlc-engineering-loop`, 0.15, and PK-26 added by
 `pdlc-stats`, 0.16), `scripts/postinstall.mjs`
 (PK-23), and the licence (PK-3) at 0 before N-2's
-decision is recorded and 1 after — 4 + 15 + 6 + 1 + 0/1, which is **26 members before N-2 and
-27 after**, the same arithmetic FSPEC §5.2 states from its own side.
+decision is recorded and 1 after — 4 + 16 + 6 + 1 + 0/1, which is **27 members before N-2 and
+28 after**, the same arithmetic FSPEC §5.2 states from its own side.
 
 **That shared number carries a reciprocal co-change obligation, so the two copies cannot
 diverge silently.** Per REQ v0.11's AC-1.3 the FSPEC owns the expected set's **classes and
