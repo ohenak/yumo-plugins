@@ -589,13 +589,13 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
 | Package README | named in TSPEC §5.4 (`PK-2`) | the package-level `README.md` this feature authors; the *repo-level* readme is still excluded (below) |
 | Licence | named in TSPEC §5.4 (`PK-3`) | expected **only once N-2's operator licence decision is recorded** in `DECISIONS-plugin-distribution.md`; the expectation is sourced from that record, never from whether `pdlc/engine/LICENSE` happens to exist in the tree (TSPEC §5.4) |
 | CLI entry | named in TSPEC §5.4 (`PK-4`, `PK-4b`) | the executable(s) the `bin` mapping resolves to; the class holds the **2** members counted below, and moving that number is an FSPEC edit |
-| Engine modules | named in TSPEC §5.4 (`PK-5`…`PK-19`) | the class is *every* `lib/*.mjs` module of the engine package; the member names live in TSPEC §5.4's `PK-*` table, and a decomposition change updates that table **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
+| Engine modules | named in TSPEC §5.4 (`PK-5`…`PK-19`, `PK-27`) | the class is *every* `lib/*.mjs` module of the engine package; the member names live in TSPEC §5.4's `PK-*` table, and a decomposition change updates that table **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
 | Install script | named in TSPEC §5.4 (`PK-23`) | the postinstall script the packaged install runs (§9.2 of the TSPEC); unconditional, and a member like any other |
 | Workflow members | named in TSPEC §5.4 (`PK-20`…`PK-22`, `PK-24`…`PK-26`) | the class is TSPEC §5.4's **six vendored workflow members** (`TSPEC:390`), two `.js` modules, a JSON manifest, and three `lib/*.mjs` modules — two vendored by `pdlc-engineering-loop` (0.9, D-4) and one by `pdlc-stats` (0.10, `DEC-STATS-01` K-7). TSPEC §5.4 names the six vendored members under `vendor/workflows/` "and nothing else", unblocking this row and AT-3.8b (SE/TE round-4); O-10 owns *how* they get there (BR-8.2), not *which* they are. At HEAD the engine reaches them outside the package root (`pdlc/engine/lib/run.mjs:53`) |
 
 **The member *count* is owned here, per class and in total** (SE F-01; TE `F-01`, `Q-02`):
-manifest 1, package README 1, CLI entry 2, engine modules 15, workflow members 6, install script
-1, licence 0 before N-2's decision is recorded and 1 after — **26 members before N-2 and 27
+manifest 1, package README 1, CLI entry 2, engine modules 16, workflow members 6, install script
+1, licence 0 before N-2's decision is recorded and 1 after — **27 members before N-2 and 28
 after** (`TSPEC:386-389` carries the same arithmetic). The split is deliberate: this document says
 which classes exist and how many members each holds, TSPEC §5.4's `PK-*` table says which files —
 so REQ AC-1.3's *classes and per-class member counts stated in the FSPEC* (REQ v0.11, `:268`) is satisfied here, and a decomposition change that
