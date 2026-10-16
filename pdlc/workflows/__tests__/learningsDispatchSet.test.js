@@ -669,7 +669,7 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
       "pdlc/skills/consolidate-learnings/SKILL.md": "c579adbb346b1892855d93e71252901c3ff5a432aa6f1f14ff5d2e9b5efb598d",
       "pdlc/skills/dod-verify/SKILL.md": "8be3ac4056afe74aebc9c2a7c1c036720a3105317aebc29c50c50009c4ecaa83",
       "pdlc/skills/harvest-learnings/SKILL.md": "aca0b14757cc71a4986599cbf01d68c635585132e6bf6c3ed3be2d14d835e07b",
-      "pdlc/skills/orchestrate-dev/SKILL.md": "8c5f6081514ec1635383bcf45886b3a8b792a41f6678b819750c76e93c81f8e3",
+    "pdlc/skills/orchestrate-dev/SKILL.md": "44920bf4ed52c814bd22c55f0c2709aa5231408fbce91e0b410cb535ee32dceb",
       "pdlc/skills/orchestrate-dev/WORKFLOW-MIGRATION-PLAN.md": "a1fc0854cef941cf60b7b45c04b5688ca3c602234978391a57f1eff3f5c735ec",
       "pdlc/skills/orchestrate-queue/SKILL.md": "0513580aba153e065f0b39cf431a2b3e7dfc660a58531a5705c89d1eb89f0978",
       "pdlc/skills/pm-author/SKILL.md": "6e1e4884cb90ae323c71d3083c5b34d577529a7ef6e0080b466b5696517a60f8",

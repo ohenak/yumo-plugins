@@ -43,6 +43,8 @@ export const LIB_MODULES_AT_HEAD = [
 
 // §3.1, PK-17…PK-19.
 export const LIB_MODULES_FROM_THIS_FEATURE = ["resolve-version", "store", "provenance"];
+// M2's durable feature workspace command loads this helper from bin/cli.mjs.
+export const WORKSPACE_MODULES = ["workspace"];
 
 // AT-3.8b's Workflow-members class (FSPEC §5.2, "three members and nothing
 // else" — TSPEC §5.4). PK-20…PK-22.
@@ -81,6 +83,7 @@ export function tspecPackedSet({ licence }) {
     "bin/cli.mjs", // PK-4b
     ...LIB_MODULES_AT_HEAD.map((m) => `lib/${m}.mjs`), // PK-5…PK-16
     ...LIB_MODULES_FROM_THIS_FEATURE.map((m) => `lib/${m}.mjs`), // PK-17…PK-19
+    ...WORKSPACE_MODULES.map((m) => `lib/${m}.mjs`),
     ...WORKFLOW_MEMBERS, // PK-20…PK-22, PK-24…PK-25
     "scripts/postinstall.mjs", // PK-23
   ];
@@ -88,7 +91,7 @@ export function tspecPackedSet({ licence }) {
 
 /**
  * The count conjunct (TSPEC §5.4, FSPEC §5.2): 4 manifest-adjacent/`bin/`
- * + 15 `lib/*.mjs` + 5 vendored + 1 install script + 0/1 licence.
+ * + 16 `lib/*.mjs` + 6 vendored + 1 install script + 0/1 licence.
  *
  * Derived from the class sizes rather than from `tspecPackedSet().length`,
  * deliberately: a count computed from the list it is meant to check would
@@ -97,5 +100,5 @@ export function tspecPackedSet({ licence }) {
  * per-class counts — never this file alone.
  */
 export function tspecPackedCount({ licence }) {
-  return 4 + 15 + 6 + 1 + (licence ? 1 : 0);
+  return 4 + 16 + 6 + 1 + (licence ? 1 : 0);
 }

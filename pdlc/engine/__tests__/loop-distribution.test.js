@@ -172,7 +172,7 @@ test("P7-02: D-1, D-2, D-3 and D-5 are additive-only over the pre-existing membe
   );
   assert.equal(
     packedSetNs.tspecPackedCount({ licence: false }),
-    4 + 15 + 6 + 1,
+    4 + 16 + 6 + 1,
     "D-3 (_tspec-packed-set.mjs tspecPackedCount): vendored class size must be 6",
   );
 
@@ -195,9 +195,9 @@ test("P7-02: D-1, D-2, D-3 and D-5 are additive-only over the pre-existing membe
 // live constant, never compared against a literal transcribed here.
 test("P7-02: docs/completed/pdlc-engine-distribution/ TSPEC §5.4, FSPEC §5.2 and AT-3.8b agree with tspecPackedCount's vendored class size", async () => {
   const { tspecPackedCount } = await import("./_tspec-packed-set.mjs");
-  // 4 manifest-adjacent/bin/ + 15 lib/*.mjs + 1 install script; the
+  // 4 manifest-adjacent/bin/ + 16 lib/*.mjs + 1 install script; the
   // remainder of the licence:false count is the vendored class size.
-  const vendoredClassSize = tspecPackedCount({ licence: false }) - (4 + 15 + 1);
+  const vendoredClassSize = tspecPackedCount({ licence: false }) - (4 + 16 + 1);
   // Number-word map, not a single-value ternary: this feature's D-3 grows
   // the vendored class from five to six, and the map must keep agreeing
   // with whichever word the sibling documents (TSPEC §5.4 / AT-3.8b, FSPEC
