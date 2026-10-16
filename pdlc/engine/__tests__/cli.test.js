@@ -33,6 +33,7 @@ const HELP_COMMANDS = [
   ["queue", ["queue-path", "loop", "loop-state", "dry-run", "plugin-root", "cwd", "allow-api-key-billing", "max-iterations", "dry-run-skill", "dev", "wait-requested", "wait-actual"]],
   ["decide", ["entry", "outcome", "by", "rationale", "plugin-root", "cwd", "dev"]],
   ["stats", ["json", "cwd"]],
+  ["workspace", ["workspace-root", "cwd"]],
   ["doctor", ["plugin-root", "cwd", "allow-api-key-billing", "dev"]],
   ["hello", []],
   ["spike:sdk", []],
