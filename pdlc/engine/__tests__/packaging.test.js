@@ -264,7 +264,7 @@ test(
       transcribedCount,
       expectedMemberCount({ licenceRecorded: licence }),
       `count conjunct must be asserted against the transcribed PK-* list's length ` +
-        `(${licence ? 24 : 23} expected), never the tarball's own length (BR-8.1)`,
+        `(${licence ? 28 : 27} expected), never the tarball's own length (BR-8.1)`,
     );
 
     const packageJsonText = readFileSync(
